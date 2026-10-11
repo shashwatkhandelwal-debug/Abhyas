@@ -46,6 +46,7 @@ Work through tasks in this exact order:
 
 ## Quality Rules & Execution Workflow
 - Follow quality rules a–f in `LANES.md`. Write tests first or alongside code.
+- **Never invent user data, test results, teacher quotes, ratings, metrics, dates of events that have not happened, or evaluation numbers. Templates contain placeholders only. Synthetic demo data for the product UI must live in db/demo_data.py, be clearly labelled 'डेमो', and never appear in eval/, docs/ or the deck as evidence.**
 - After each task:
   - Run `ruff check .`, `ruff format --check .`, `mypy --strict backend/app`, `pytest backend/tests content/tests`.
   - Rebase or fast-forward on `origin/main` if needed.
