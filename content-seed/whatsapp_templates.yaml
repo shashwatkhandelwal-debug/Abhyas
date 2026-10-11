@@ -1,0 +1,52 @@
+# WhatsApp message templates (category: UTILITY, language: hi). Submit in Meta WhatsApp Manager (HUMAN INPUT H5).
+# Variables are positional {{1}}, {{2}} as Meta requires. Keep wording factual/transactional (utility, not marketing),
+# otherwise Meta may re-categorise as MARKETING (higher cost). Set approved: true once Meta approves.
+templates:
+  - name: abhyas_weekly_move
+    key: tpl_weekly_move
+    category: UTILITY
+    language: hi
+    body: "नमस्ते {{1}} जी, अभ्यास में आपका इस हफ्ते का तरीका तैयार है: {{2}}। शुरू करने के लिए 'शुरू' लिखें।"
+    example: ["सुनीता", "हासिल वाला घटाव: बंडल खोलकर"]
+    buttons: [{type: QUICK_REPLY, text: "शुरू"}]
+    approved: false
+  - name: abhyas_reminder
+    key: tpl_reminder
+    category: UTILITY
+    language: hi
+    body: "{{1}} जी, अभ्यास में आपका इस हफ्ते का अभ्यास '{{2}}' अभी बाकी है। जारी रखने के लिए 'आगे' लिखें।"
+    example: ["सुनीता", "बच्चों के साथ अभ्यास"]
+    buttons: [{type: QUICK_REPLY, text: "आगे"}]
+    approved: false
+  - name: abhyas_followup_question
+    key: tpl_followup_question
+    category: UTILITY
+    language: hi
+    body: "{{1}} जी, आपने अभ्यास में '{{2}}' के बारे में पूछा था। क्या दिया गया सुझाव आपकी कक्षा में काम आया?"
+    example: ["सुनीता", "दो कक्षाएँ साथ में पढ़ाना"]
+    buttons: [{type: QUICK_REPLY, text: "हाँ"}, {type: QUICK_REPLY, text: "नहीं"}, {type: QUICK_REPLY, text: "अभी नहीं"}]
+    approved: false
+  - name: abhyas_try_in_class_followup
+    key: tpl_try_in_class_followup
+    category: UTILITY
+    language: hi
+    body: "{{1}} जी, क्या आपने '{{2}}' वाला तरीका अपनी कक्षा में आज़माया? जवाब देने के लिए नीचे चुनें।"
+    example: ["सुनीता", "हासिल वाला घटाव"]
+    buttons: [{type: QUICK_REPLY, text: "साथी ने देखा"}, {type: QUICK_REPLY, text: "खुद बताऊँगी"}, {type: QUICK_REPLY, text: "बाद में"}]
+    approved: false
+  - name: abhyas_arp_digest
+    key: tpl_arp_digest
+    category: UTILITY
+    language: hi
+    body: "नमस्ते {{1}} जी, संकुल {{2}} की इस हफ्ते की अभ्यास रिपोर्ट तैयार है: {{3}} शिक्षकों ने अभ्यास किया, {{4}} प्रश्न आपके उत्तर की प्रतीक्षा में हैं। रिपोर्ट देखें: {{5}}"
+    example: ["राजेश", "KNP-C01", "9", "2", "https://example.org/arp"]
+    buttons: []
+    approved: false
+  - name: abhyas_arp_answer
+    key: tpl_arp_answer
+    category: UTILITY
+    language: hi
+    body: "{{1}} जी, आपके प्रश्न का उत्तर आपके ARP ने भेजा है: {{2}}"
+    example: ["सुनीता", "बहु-कक्षा में पहले बड़ी कक्षा को अभ्यास देकर छोटी कक्षा के साथ बंडल वाली गतिविधि करें।"]
+    buttons: []
+    approved: false

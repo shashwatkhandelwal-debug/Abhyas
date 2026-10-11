@@ -1,0 +1,268 @@
+# Teacher-facing message catalog. Keys referenced in spec/08. Placeholders in {braces}.
+# audio: true → also sent as voice (narrator voice "abhyas") unless lite_mode. Keep sentences short and respectful (आप).
+# Button titles must be ≤ 20 characters (WhatsApp limit).
+# GENDER: texts below use feminine verb forms (most FLN teachers addressed are women). Teachers choose
+# शिक्षिका/शिक्षक at onboarding (teacher.address_form = f|m). For every key whose text has gendered verbs
+# (रही हैं, चाहती, थीं, पहुँचीं, बताऊँगी, गई, पाई, सकती …), the agent adds a `text_m` variant
+# (रहे हैं, चाहते, थे, पहुँचे, बताऊँगा, गया …). messages.py picks text_m when address_form == "m".
+# A test asserts every key containing a feminine marker has text_m.
+
+# ── Onboarding ───────────────────────────────────────────────
+welcome:
+  text: "नमस्ते! मैं अभ्यास हूँ — आपकी अभ्यास-साथी। हर हफ्ते लगभग 15 मिनट में हम कक्षा का एक तरीका सीखेंगे, और तीन बच्चों के साथ बोलकर उसका अभ्यास करेंगे।"
+  audio: true
+consent_service:
+  text: "शुरू करने से पहले: आपकी आवाज़ को लिखित रूप में बदलकर आवाज़ तुरंत मिटा दी जाती है। आपके अंक केवल आपको दिखेंगे, जब तक आप स्वयं ARP के साथ साझा करने की अनुमति न दें। आप कभी भी 'मेरा डेटा हटाएँ' लिखकर सब कुछ मिटा सकती हैं। क्या आप सहमत हैं?"
+  audio: true
+consent_details:
+  text: "हम क्या रखते हैं: आपका नाम, कक्षा, अनुभव, आपकी बातों का लिखित रूप और अभ्यास के अंक। हम क्या नहीं रखते: आपकी आवाज़ की रिकॉर्डिंग, बच्चों की कोई जानकारी। ट्रेनर (DIET/SCERT) को केवल 10 या उससे ज़्यादा शिक्षकों के समूह के कुल आँकड़े दिखते हैं, किसी का नाम नहीं।"
+  audio: false
+consent_declined:
+  text: "कोई बात नहीं। जब भी आप शुरू करना चाहें, 'नमस्ते' लिखकर भेजें।"
+  audio: false
+ask_join_code:
+  text: "आपके ARP ने जो कोड दिया है, वह भेजें। कोड नहीं है तो 'नहीं' लिखें।"
+  audio: false
+join_code_invalid:
+  text: "यह कोड नहीं मिला। कृपया फिर से भेजें, या 'नहीं' लिखें।"
+  audio: false
+ask_name:
+  text: "आपका नाम क्या है?"
+  audio: true
+ask_address_form:
+  text: "आपको कैसे संबोधित करें?"
+  audio: false
+btn_female: {text: "शिक्षिका", audio: false}
+btn_male: {text: "शिक्षक", audio: false}
+ask_experience:
+  text: "{name} जी, आप कितने साल से पढ़ा रही हैं?"
+  audio: false
+ask_classes:
+  text: "आप इस साल कौन-सी कक्षा पढ़ाती हैं?"
+  audio: false
+consent_share_scores:
+  text: "क्या आप चाहती हैं कि आपके ARP आपके अभ्यास के अंक देख सकें, ताकि वे कक्षा-भ्रमण में आपकी मदद कर सकें? आप इसे कभी भी बदल सकती हैं।"
+  audio: false
+placement_intro:
+  text: "चलिए, एक छोटा-सा अभ्यास करते हैं। यह कोई परीक्षा नहीं है। बोर्ड पर लिखा है: 52 − 17। कक्षा 2 का रवि कहता है: '45!' आप रवि से वैसे ही बात कीजिए जैसे कक्षा में करती हैं — बोलकर या लिखकर।"
+  audio: true
+placement_done:
+  text: "बहुत अच्छा! अब मुझे पता है कि आपके लिए कहाँ से शुरू करें।"
+  audio: true
+ready_first_move:
+  text: "आपका पहला तरीका है: {move_title}। चलिए शुरू करते हैं!"
+  audio: true
+
+# ── Weekly loop ───────────────────────────────────────────────
+learn_intro:
+  text: "इस हफ्ते का तरीका: {move_title}। पहले 2 मिनट की यह आवाज़ सुनिए। मुख्य बातें नीचे लिखी हैं:"
+  audio: false
+explain_back_prompt:
+  text: "अब 1 मिनट में अपने शब्दों में बताइए: इस तरीके में सबसे ज़रूरी क्या है? बोलकर या लिखकर भेजें।"
+  audio: true
+explain_back_reply:
+  text: "धन्यवाद! आपने {covered} में से {total} मुख्य बातें कहीं।"
+  audio: true
+explain_back_missing:
+  text: "एक बात और याद रखें: {point}"
+  audio: true
+explain_back_misconception:
+  text: "ध्यान दें: {note}"
+  audio: false
+model_offer:
+  text: "क्या आप सुनना चाहेंगी कि एक शिक्षिका इन्हीं तीन बच्चों के साथ यह तरीका कैसे करती हैं? (लगभग 1 मिनट)"
+  audio: false
+model_header:
+  text: "आदर्श अभ्यास:"
+  audio: false
+rehearse_intro:
+  text: "{scene_intro} जब तैयार हों, बच्चों से बोलना शुरू करें। किसी बच्चे का नाम लेकर बात करें। खत्म करने के लिए 'बस' बोलें।"
+  audio: true
+child_silent:
+  text: "({name} चुप है और नीचे देख रही है।)"
+  audio: false
+thinking:
+  text: "बच्चे सोच रहे हैं…"
+  audio: false
+scene_turn_limit:
+  text: "अभ्यास का समय पूरा हुआ।"
+  audio: false
+scene_all_correct:
+  text: "वाह! तीनों बच्चे समझ गए।"
+  audio: true
+feedback_header:
+  text: "आपके अभ्यास पर सुझाव:"
+  audio: false
+feedback_body:
+  text: "👍 {strength}\n🔁 {change}\n🗣️ अगली बार ऐसे कहकर देखें: \"{exact_words}\""
+  audio: true
+feedback_trajectory:
+  text: "बच्चों में बदलाव: {trajectory}"
+  audio: false
+coach_low_conf_prefix:
+  text: "(यह सुझाव एक विशेषज्ञ भी देखेंगे।)"
+  audio: false
+realism_prompt:
+  text: "ये बच्चे असली कक्षा के बच्चों जैसे लगे? 1 (बिल्कुल नहीं) से 5 (बिल्कुल वैसे ही) चुनें।"
+  audio: false
+retry_limit:
+  text: "इस हफ्ते के 3 अभ्यास पूरे हो गए। अब कक्षा में आज़माने की बारी है!"
+  audio: false
+try_in_class:
+  text: "अब यह तरीका अपनी कक्षा में आज़माइए। किसी साथी शिक्षक से 5 मिनट देखने को कहें और यह सूची भरवाएँ:"
+  audio: true
+try_in_class_reflect:
+  text: "या खुद इन 2 सवालों के जवाब दें:"
+  audio: false
+peer_item:
+  text: "साथी की सूची ({i}/{n}): {item}"
+  audio: false
+reflect_q:
+  text: "सवाल {i}: {question}"
+  audio: true
+week_done:
+  text: "शाबाश {name} जी! इस हफ्ते आप '{level_name}' तक पहुँचीं। अगला तरीका: {next_move_title}।"
+  audio: true
+evidence_level_1: {text: "अभ्यास किया", audio: false}
+evidence_level_2: {text: "स्वयं बताया", audio: false}
+evidence_level_3: {text: "साथी ने देखा", audio: false}
+evidence_level_4: {text: "ARP ने देखा", audio: false}
+evidence_level_5: {text: "बच्चों में सुधार", audio: false}
+resume_prompt:
+  text: "आप '{state_name}' पर थीं। आगे बढ़ें?"
+  audio: false
+weekly_move:
+  text: "नमस्ते {name} जी! इस हफ्ते का नया तरीका तैयार है: {move_title}। शुरू करें?"
+  audio: true
+reminder:
+  text: "{name} जी, आपका इस हफ्ते का अभ्यास बाकी है। 10 मिनट निकालें?"
+  audio: false
+
+# ── Ask any time ─────────────────────────────────────────────
+ask_prompt:
+  text: "अपना सवाल बोलकर या लिखकर भेजें।"
+  audio: false
+ask_clarify_prefix:
+  text: "एक बात बताइए:"
+  audio: false
+ask_source_line:
+  text: "स्रोत: {source}{page_part}"
+  audio: false
+ask_try_this_week:
+  text: "इस हफ्ते आज़माएँ: {tip}"
+  audio: false
+ask_escalated:
+  text: "अच्छा सवाल है। इसका पक्का जवाब मैं आपके ARP से पूछकर बताती हूँ।"
+  audio: true
+ask_out_of_scope:
+  text: "माफ़ कीजिए, मैं कक्षा 1-3 की पढ़ाई और कक्षा से जुड़े सवालों में ही मदद कर सकती हूँ।"
+  audio: false
+ask_admin:
+  text: "यह जानकारी आपके BEO या ARP कार्यालय से मिलेगी। मैंने आपका सवाल ARP तक पहुँचा दिया है।"
+  audio: false
+ask_resume:
+  text: "चलिए, जहाँ थे वहीं से आगे बढ़ते हैं।"
+  audio: false
+followup_question:
+  text: "{name} जी, आपने '{topic}' के बारे में पूछा था। क्या सुझाव काम आया?"
+  audio: false
+arp_answer_delivered:
+  text: "आपके सवाल का जवाब आपके ARP ने भेजा है: {answer}"
+  audio: true
+
+# ── System / errors / settings ───────────────────────────────
+help_menu:
+  text: "आप क्या करना चाहेंगी?"
+  audio: false
+stt_failed:
+  text: "आवाज़ साफ़ नहीं आई। कृपया फिर से बोलें या लिखकर भेजें।"
+  audio: false
+stt_confirm:
+  text: "मैंने सुना: \"{text}\" — सही है?"
+  audio: false
+audio_too_long:
+  text: "यह संदेश बहुत लंबा है। कृपया 1 मिनट से छोटा भेजें।"
+  audio: false
+unsupported_type:
+  text: "मैं अभी केवल आवाज़ और लिखे संदेश समझ सकती हूँ।"
+  audio: false
+unclear:
+  text: "माफ़ कीजिए, मैं समझ नहीं पाई। 'मदद' लिखकर विकल्प देखें।"
+  audio: false
+lite_on:
+  text: "लाइट मोड चालू: अब केवल लिखे संदेश आएँगे, आवाज़ नहीं। इससे डेटा बचेगा।"
+  audio: false
+lite_off:
+  text: "लाइट मोड बंद: अब आवाज़ वाले संदेश भी आएँगे।"
+  audio: false
+progress_summary:
+  text: "आपकी प्रगति: {n_done} तरीके पूरे। {lines}"
+  audio: false
+consent_menu:
+  text: "ARP के साथ अंक साझा करना: {share_state}। बदलना चाहेंगी?"
+  audio: false
+delete_confirm:
+  text: "क्या आप सच में अपना सारा डेटा मिटाना चाहती हैं? यह वापस नहीं आएगा।"
+  audio: false
+data_deleted:
+  text: "आपका सारा डेटा मिटा दिया गया है। धन्यवाद। फिर से शुरू करने के लिए 'नमस्ते' भेजें।"
+  audio: false
+rate_limited:
+  text: "बहुत सारे संदेश आ गए हैं, थोड़ी देर बाद फिर कोशिश करें।"
+  audio: false
+
+# ── Buttons (≤ 20 chars) ─────────────────────────────────────
+btn_agree: {text: "सहमत हूँ", audio: false}
+btn_more: {text: "और जानें", audio: false}
+btn_decline: {text: "नहीं", audio: false}
+btn_yes: {text: "हाँ", audio: false}
+btn_no: {text: "नहीं", audio: false}
+btn_understood: {text: "समझ गई, आगे", audio: false}
+btn_replay: {text: "फिर से सुनें", audio: false}
+btn_skip: {text: "छोड़ें", audio: false}
+btn_listen: {text: "सुनें", audio: false}
+btn_retry: {text: "फिर से अभ्यास", audio: false}
+btn_continue: {text: "आगे बढ़ें", audio: false}
+btn_peer: {text: "साथी ने देखा", audio: false}
+btn_self: {text: "खुद बताऊँगी", audio: false}
+btn_later: {text: "बाद में", audio: false}
+btn_next_move: {text: "अगला तरीका", audio: false}
+btn_progress: {text: "मेरी प्रगति", audio: false}
+btn_ask: {text: "प्रश्न पूछें", audio: false}
+btn_confirm_ok: {text: "हाँ, सही है", audio: false}
+btn_confirm_redo: {text: "फिर से बोलूँगी", audio: false}
+btn_restart: {text: "शुरू से", audio: false}
+btn_not_now: {text: "अभी नहीं", audio: false}
+btn_lite: {text: "लाइट मोड", audio: false}
+
+# ── Web UI labels ────────────────────────────────────────────
+ui_app_name: {text: "अभ्यास", audio: false}
+ui_hold_to_talk: {text: "बोलने के लिए दबाकर रखें", audio: false}
+ui_type_here: {text: "यहाँ लिखें…", audio: false}
+ui_type_instead: {text: "बोलने की जगह लिखें", audio: false}
+ui_offline_banner: {text: "इंटरनेट नहीं है — संदेश भेजे जाने के लिए रखे गए हैं", audio: false}
+ui_slow_banner: {text: "नेटवर्क धीमा है — लाइट मोड चालू करें?", audio: false}
+ui_mic_denied: {text: "माइक की अनुमति नहीं मिली। ब्राउज़र की सेटिंग में माइक चालू करें, या लिखकर भेजें।", audio: false}
+ui_demo_banner: {text: "डेमो डेटा — वास्तविक शिक्षक नहीं", audio: false}
+ui_in_review: {text: "समीक्षा में", audio: false}
+ui_suppressed: {text: "समूह छोटा है (n<10) — गोपनीयता हेतु छिपाया गया", audio: false}
+ui_samples_title: {text: "नमूना आवाज़ें (मूल्यांकन हेतु)", audio: false}
+ui_logout: {text: "लॉग आउट", audio: false}
+ui_delete_data: {text: "मेरा डेटा हटाएँ", audio: false}
+
+# ── Speaker labels ───────────────────────────────────────────
+speaker_abhyas: {text: "अभ्यास", audio: false}
+speaker_coach: {text: "कोच", audio: false}
+speaker_model_teacher: {text: "आदर्श शिक्षिका", audio: false}
+speaker_teacher: {text: "आप", audio: false}
+
+# ── State names (for resume prompt) ──────────────────────────
+state_LEARN: {text: "सीखना", audio: false}
+state_EXPLAIN_BACK: {text: "अपने शब्दों में बताना", audio: false}
+state_MODEL: {text: "आदर्श अभ्यास सुनना", audio: false}
+state_REHEARSE_INTRO: {text: "बच्चों के साथ अभ्यास", audio: false}
+state_REHEARSE: {text: "बच्चों के साथ अभ्यास", audio: false}
+state_FEEDBACK: {text: "सुझाव", audio: false}
+state_TRY_IN_CLASS: {text: "कक्षा में आज़माना", audio: false}
+state_REFLECT_PEER: {text: "साथी की सूची", audio: false}
+state_REFLECT_SELF: {text: "अपने अनुभव बताना", audio: false}

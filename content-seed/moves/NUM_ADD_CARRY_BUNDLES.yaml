@@ -1,0 +1,122 @@
+# DRAFT — needs FLN coach review (H8) and module_ref verification (H7).
+id: NUM_ADD_CARRY_BUNDLES
+version: 1
+status: in_review
+domain: numeracy
+grade: [2]
+title_hi: "हासिल वाला जोड़: 10 तीलियों का बंडल बनाकर"
+summary_hi: "जब इकाई का जोड़ 10 या उससे ज़्यादा हो, तो 10 तीलियों का नया बंडल बनवाएँ और उसे दहाई में जोड़ें।"
+tags: [addition, regrouping, carry, place_value, ganit]
+module_ref:
+  source_id: up_ganit_sandarshika_c2
+  section: "जोड़ (हासिल सहित)"
+  page: null
+  verified: false
+sankul_month: November
+
+key_points:
+  - id: kp1
+    text_hi: "38 + 45 में इकाई का जोड़ 13 आता है। बच्चे अक्सर 13 पूरा लिख देते हैं या हासिल भूल जाते हैं। पहले बच्चे से उसका तरीका पूछें।"
+    must_have: true
+    keywords_hi: [पूछें, तरीका, 13, हासिल, भूल]
+    source_chunk_ids: []
+  - id: kp2
+    text_hi: "दोनों संख्याएँ बंडल-तीली से बनवाएँ: 38 = 3 बंडल 8 तीलियाँ, 45 = 4 बंडल 5 तीलियाँ।"
+    must_have: true
+    keywords_hi: [बंडल, तीली, बनवा, दहाई, इकाई]
+    source_chunk_ids: []
+  - id: kp3
+    text_hi: "खुली तीलियाँ मिलाने पर 13 हो जाती हैं। इनमें से 10 का एक नया बंडल बाँधें: अब 3 खुली तीलियाँ और 1 नया बंडल।"
+    must_have: true
+    keywords_hi: [10, नया बंडल, बाँध, 13, 3]
+    source_chunk_ids: []
+  - id: kp4
+    text_hi: "नया बंडल बाकी बंडलों में मिलाएँ: 3 + 4 + 1 = 8 बंडल। उत्तर 8 बंडल और 3 तीलियाँ, यानी 83।"
+    must_have: false
+    keywords_hi: [8 बंडल, 83, मिलाएँ]
+    source_chunk_ids: []
+  - id: kp5
+    text_hi: "उत्तर खुद न बताएँ; बच्चों के अलग-अलग उत्तरों की तुलना करवाएँ।"
+    must_have: true
+    keywords_hi: [न बताएँ, तुलना, उत्तर]
+    source_chunk_ids: []
+
+teaching_acts_effective: [ask_to_explain, concrete_representation, probe_simpler_case, contrast_answers, model_step_aloud, involve_peer]
+target_causes: [ADD_CARRY_FORGOTTEN, ADD_NO_CARRY, ADD_CARRY_WRONG_DIGIT]
+
+rubric:
+  criteria:
+    - id: crit_explain
+      text_hi: "बच्चे से उसका तरीका पूछना"
+      levels: {0: "तरीका नहीं पूछा", 1: "पूछा पर सुना नहीं", 2: "पूछा और बच्चे के कदम सुने"}
+      signal_acts: [ask_to_explain]
+      negative_acts: []
+    - id: crit_concrete
+      text_hi: "10 तीलियों का नया बंडल बनवाना"
+      levels: {0: "केवल अंकों में", 1: "तीलियाँ गिनवाईं पर बंडल नहीं बनवाया", 2: "13 में से 10 का नया बंडल बनवाया और दहाई में मिलवाया"}
+      signal_acts: [concrete_representation, model_step_aloud, probe_simpler_case]
+      negative_acts: []
+    - id: crit_no_telling
+      text_hi: "उत्तर बताने के बजाय तुलना करवाना"
+      levels: {0: "उत्तर खुद बताया", 1: "उत्तर नहीं बताया पर तुलना नहीं करवाई", 2: "अलग-अलग उत्तरों की तुलना करवाई"}
+      signal_acts: [contrast_answers, involve_peer]
+      negative_acts: [tell_answer]
+
+feedback_bank:
+  crit_explain:
+    strength_hi: "आपने बच्चे से पूछा कि उसने कैसे जोड़ा, इससे उसकी गलती की वजह दिखी।"
+    change_hi: "अगली बार उत्तर जाँचने से पहले बच्चे से उसका हर कदम सुनिए।"
+    exact_words_hi: "रवि, 8 और 5 जोड़कर तुम्हें क्या मिला, और फिर तुमने क्या लिखा?"
+  crit_concrete:
+    strength_hi: "आपने तीलियों से जोड़ करवाया, बच्चों ने गिनकर देखा।"
+    change_hi: "13 तीलियों में से 10 का नया बंडल बँधवाइए, फिर उसे बंडलों में मिलवाइए।"
+    exact_words_hi: "इन 13 तीलियों में से 10 गिनकर एक बंडल बाँधो। अब कितने बंडल हो गए?"
+  crit_no_telling:
+    strength_hi: "आपने उत्तर नहीं बताया, बच्चों को खुद सोचने दिया।"
+    change_hi: "दो अलग उत्तर सामने रखकर पूछिए कि तीलियों से कौन-सा सही निकलता है।"
+    exact_words_hi: "प्रिया ने 713 कहा, रवि ने 73। बंडल गिनकर बताओ, असल में कितनी तीलियाँ हैं?"
+
+learn_script_hi: >-
+  नमस्ते! इस हफ्ते हम हासिल वाला जोड़ सीखेंगे। 38 और 45 जोड़ते समय इकाई में 8 और 5 मिलकर 13 होते हैं। कुछ बच्चे 13 पूरा
+  नीचे लिख देते हैं और उत्तर 713 बना देते हैं। कुछ 3 लिखते हैं और हासिल भूल जाते हैं, तो उत्तर 73 आता है। कुछ उल्टा
+  1 लिखकर 3 ऊपर ले जाते हैं। पहला कदम: बच्चे से पूछिए, तुमने कैसे जोड़ा? दूसरा कदम: दोनों संख्याएँ बंडल और तीलियों से
+  बनवाइए। 38 यानी 3 बंडल और 8 तीलियाँ, 45 यानी 4 बंडल और 5 तीलियाँ। खुली तीलियाँ मिलाइए, 13 हो गईं। अब पूछिए, क्या
+  इनमें से एक बंडल बन सकता है? 10 तीलियाँ गिनकर नया बंडल बाँधिए। 3 तीलियाँ खुली बचीं। अब बंडल गिनिए: 3 और 4 और यह
+  नया 1, कुल 8 बंडल। उत्तर 8 बंडल और 3 तीलियाँ, यानी 83। तीसरा कदम: उत्तर खुद न बताइए, बच्चों के उत्तरों की तुलना
+  करवाइए। अब आप यह तरीका अपने शब्दों में बताइए।
+learn_summary_hi:
+  - "1. बच्चे से पूछें: तुमने कैसे जोड़ा?"
+  - "2. 38 = 3 बंडल + 8 तीलियाँ, 45 = 4 बंडल + 5 तीलियाँ"
+  - "3. 8 + 5 = 13 तीलियाँ → 10 का नया बंडल → 3 तीलियाँ बचीं"
+  - "4. 3 + 4 + 1 = 8 बंडल → 83"
+  - "5. उत्तर न बताएँ, तुलना करवाएँ"
+
+scenario:
+  intro_hi: "कक्षा 2। बोर्ड पर लिखा है: 38 + 45। रवि, प्रिया और अमन ने अपने उत्तर बताए हैं। अब आप उनसे बात करें।"
+  items:
+    - {type: add, a: 38, b: 45}
+    - {type: add, a: 27, b: 48}
+    - {type: add, a: 56, b: 29}
+  children:
+    - {persona_id: ravi,  misconception: ADD_CARRY_FORGOTTEN}     # 73
+    - {persona_id: priya, misconception: ADD_NO_CARRY}            # 713
+    - {persona_id: aman,  misconception: ADD_CARRY_WRONG_DIGIT}   # 101
+  guess_lexicon: {}
+
+model_rehearsal:
+  - {speaker: teacher, text_hi: "रवि, तुमने 38 और 45 कैसे जोड़े? पहले इकाई में क्या किया?", acts: [ask_to_explain], addressed: ravi, problem: null}
+  - {speaker: teacher, text_hi: "प्रिया, तुम्हारी कोशिश अच्छी है। बताओ, 713 कैसे आया?", acts: [ask_to_explain, praise_effort], addressed: priya, problem: null}
+  - {speaker: teacher, text_hi: "सब देखो: 3 बंडल 8 तीलियाँ और 4 बंडल 5 तीलियाँ। खुली तीलियाँ मिलाओ, 13 हुईं। इनमें से 10 का एक नया बंडल बाँधते हैं।", acts: [concrete_representation], addressed: all, problem: null}
+  - {speaker: teacher, text_hi: "अमन, तुमने 101 कहा था, रवि अब 83 कह रहा है। बंडल गिनकर बताओ, कौन सही है?", acts: [contrast_answers], addressed: aman, problem: null}
+  - {speaker: teacher, text_hi: "प्रिया, 713 और 83, तीलियाँ गिनकर कौन-सा सही निकलता है?", acts: [contrast_answers], addressed: priya, problem: null}
+  - {speaker: teacher, text_hi: "रवि, तुमने 73 कहा था। नया बंडल कहाँ गया? अब बताओ, 73 या 83?", acts: [contrast_answers], addressed: ravi, problem: null}
+
+peer_checklist:
+  - "शिक्षक ने बच्चे से पूछा कि उसने कैसे जोड़ा।"
+  - "दोनों संख्याएँ बंडल-तीली या चित्र से बनाई गईं।"
+  - "10 खुली तीलियों का नया बंडल बनवाया गया।"
+  - "शिक्षक ने उत्तर खुद नहीं बताया।"
+reflection_questions:
+  - "नया बंडल बनाते समय बच्चों ने क्या कहा या किया?"
+  - "किस गलती वाले बच्चे को सबसे ज़्यादा मदद चाहिए थी?"
+approvals: []

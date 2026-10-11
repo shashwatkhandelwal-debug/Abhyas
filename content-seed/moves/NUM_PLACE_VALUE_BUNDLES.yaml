@@ -1,0 +1,116 @@
+# DRAFT — needs FLN coach review (H8) and module_ref verification (H7).
+id: NUM_PLACE_VALUE_BUNDLES
+version: 1
+status: in_review
+domain: numeracy
+grade: [1, 2]
+title_hi: "स्थानीय मान: बंडल और खुली तीलियों से संख्या"
+summary_hi: "बंडल (दहाई) और खुली तीलियों (इकाई) से दो अंकों की संख्या बनवाएँ और बच्चे से पूछें कि उसने संख्या कैसे लिखी।"
+tags: [place_value, number_sense, ganit]
+module_ref:
+  source_id: up_ganit_sandarshika_c2
+  section: "स्थानीय मान (दहाई-इकाई)"
+  page: null
+  verified: false
+sankul_month: September
+
+key_points:
+  - id: kp1
+    text_hi: "एक बंडल में 10 तीलियाँ होती हैं; बच्चे से खुद गिनकर बंडल बनवाएँ ताकि वह जाने कि एक बंडल 10 के बराबर है।"
+    must_have: true
+    keywords_hi: [बंडल, 10, गिन, बराबर]
+    source_chunk_ids: []
+  - id: kp2
+    text_hi: "4 बंडल और 7 तीलियाँ = 40 और 7 = 47। बंडल दहाई के घर में, खुली तीलियाँ इकाई के घर में।"
+    must_have: true
+    keywords_hi: [दहाई, इकाई, घर, 47, 40]
+    source_chunk_ids: []
+  - id: kp3
+    text_hi: "आम गलतियाँ: बंडल को 1 गिनना (11), 'चालीस-सात' सुनकर 407 लिखना, या अंक उल्टे लिखना (74)। बच्चे से पूछें कि उसने कैसे लिखा।"
+    must_have: true
+    keywords_hi: [गलती, 407, 74, 11, पूछें]
+    source_chunk_ids: []
+  - id: kp4
+    text_hi: "बच्चे से बोलकर गिनवाएँ: 10, 20, 30, 40 … फिर 41 से 47 तक।"
+    must_have: false
+    keywords_hi: [10, 20, 30, 40, गिनवाएँ]
+    source_chunk_ids: []
+
+teaching_acts_effective: [ask_to_explain, concrete_representation, model_step_aloud, contrast_answers, involve_peer]
+target_causes: [PV_REVERSAL, PV_BUNDLE_AS_ONE, PV_CONCAT_SPOKEN]
+
+rubric:
+  criteria:
+    - id: crit_explain
+      text_hi: "बच्चे से उसका तरीका पूछना"
+      levels: {0: "नहीं पूछा", 1: "पूछा पर आगे नहीं बढ़ीं", 2: "पूछा और उसके उत्तर के आधार पर अगला सवाल किया"}
+      signal_acts: [ask_to_explain]
+      negative_acts: []
+    - id: crit_concrete
+      text_hi: "बंडल को 10 के रूप में गिनवाना"
+      levels: {0: "केवल अंक", 1: "बंडल दिखाए पर 10-10 करके नहीं गिनवाया", 2: "10, 20, 30, 40 गिनवाया और फिर खुली तीलियाँ"}
+      signal_acts: [concrete_representation, model_step_aloud]
+      negative_acts: []
+    - id: crit_no_telling
+      text_hi: "उत्तरों की तुलना करवाना"
+      levels: {0: "उत्तर बताया", 1: "न बताया न तुलना करवाई", 2: "अलग उत्तरों की तुलना करवाई"}
+      signal_acts: [contrast_answers, involve_peer]
+      negative_acts: [tell_answer]
+
+feedback_bank:
+  crit_explain:
+    strength_hi: "आपने बच्चे से पूछा कि उसने संख्या कैसे लिखी।"
+    change_hi: "बच्चे के उत्तर के बाद पूछिए कि उसने पहले कौन-सा अंक लिखा और क्यों।"
+    exact_words_hi: "अमन, तुमने 407 कैसे लिखा? पहले क्या लिखा, फिर क्या?"
+  crit_concrete:
+    strength_hi: "आपने बंडल और तीलियाँ दिखाकर संख्या बनवाई।"
+    change_hi: "बंडल को 10-10 करके बोलकर गिनवाइए: 10, 20, 30, 40।"
+    exact_words_hi: "चलो बंडल गिनें: 10, 20, 30, 40। अब खुली तीलियाँ जोड़ो: 41, 42 … कितनी हुईं?"
+  crit_no_telling:
+    strength_hi: "आपने उत्तर नहीं बताया।"
+    change_hi: "दो बच्चों के उत्तर साथ रखकर पूछिए कि तीलियाँ गिनकर कौन-सा सही है।"
+    exact_words_hi: "प्रिया ने 11 कहा और रवि ने 47। गिनकर देखो, कौन सही है?"
+
+learn_script_hi: >-
+  नमस्ते! इस हफ्ते का तरीका है: बंडल और खुली तीलियों से संख्या समझाना। बच्चे से 10 तीलियाँ गिनवाकर एक बंडल बँधवाइए,
+  ताकि उसे पता चले कि एक बंडल यानी 10। अब मेज़ पर 4 बंडल और 7 खुली तीलियाँ रखिए और पूछिए, कुल कितनी तीलियाँ हैं?
+  कुछ बच्चे हर बंडल को 1 गिनते हैं और 11 कहते हैं। कुछ 'चालीस' और 'सात' सुनकर 407 लिख देते हैं। कुछ अंक उल्टे लिखकर
+  74 बना देते हैं। सबसे पहले बच्चे से पूछिए: तुमने कैसे गिना या कैसे लिखा? फिर बंडलों को 10-10 करके बोलकर गिनवाइए:
+  10, 20, 30, 40। फिर खुली तीलियाँ: 41, 42, 43 से 47 तक। बताइए कि बंडल दहाई के घर में जाते हैं और खुली तीलियाँ इकाई
+  के घर में। उत्तर खुद न बताइए; अलग-अलग उत्तरों की तुलना करवाइए। अब आप यह तरीका अपने शब्दों में बताइए।
+learn_summary_hi:
+  - "1. 10 तीलियाँ गिनकर एक बंडल बँधवाएँ"
+  - "2. 4 बंडल + 7 तीलियाँ = 47 (दहाई में 4, इकाई में 7)"
+  - "3. गलतियाँ: 11, 407, 74 — बच्चे से तरीका पूछें"
+  - "4. बोलकर गिनवाएँ: 10, 20, 30, 40, 41 … 47"
+  - "5. उत्तर न बताएँ, तुलना करवाएँ"
+
+scenario:
+  intro_hi: "कक्षा 1-2। मेज़ पर 4 बंडल (हर बंडल में 10 तीलियाँ) और 7 खुली तीलियाँ हैं। सवाल: कुल कितनी तीलियाँ हैं? रवि, प्रिया और अमन ने उत्तर बताए हैं।"
+  items:
+    - {type: place_value, tens: 4, ones: 7}
+    - {type: place_value, tens: 3, ones: 5}
+    - {type: place_value, tens: 6, ones: 2}
+  children:
+    - {persona_id: ravi,  misconception: PV_REVERSAL}        # 74
+    - {persona_id: priya, misconception: PV_BUNDLE_AS_ONE}   # 11
+    - {persona_id: aman,  misconception: PV_CONCAT_SPOKEN}   # 407
+  guess_lexicon: {}
+
+model_rehearsal:
+  - {speaker: teacher, text_hi: "रवि, तुमने 74 कैसे लिखा? पहले कौन-सा अंक लिखा?", acts: [ask_to_explain], addressed: ravi, problem: null}
+  - {speaker: teacher, text_hi: "प्रिया, अच्छा, धीरे से बताओ, तुमने कैसे गिना?", acts: [ask_to_explain, praise_effort], addressed: priya, problem: null}
+  - {speaker: teacher, text_hi: "सब मेरे साथ गिनो। हर बंडल में 10 तीलियाँ: 10, 20, 30, 40। अब खुली तीलियाँ: 41, 42, 43, 44, 45, 46, 47।", acts: [model_step_aloud, concrete_representation], addressed: all, problem: null}
+  - {speaker: teacher, text_hi: "अमन, तुमने 407 कहा था और अभी हमने गिनकर 47 पाया। कौन-सा सही है?", acts: [contrast_answers], addressed: aman, problem: null}
+  - {speaker: teacher, text_hi: "प्रिया, 11 या 47? बंडल में कितनी तीलियाँ थीं?", acts: [contrast_answers], addressed: priya, problem: null}
+  - {speaker: teacher, text_hi: "रवि, 74 और 47 में से कौन-सा सही है? दहाई के घर में कितने बंडल हैं?", acts: [contrast_answers], addressed: ravi, problem: null}
+
+peer_checklist:
+  - "बच्चों ने 10 तीलियाँ गिनकर बंडल बनाया या बंडल को 10 गिना।"
+  - "शिक्षक ने बच्चे से पूछा कि उसने संख्या कैसे लिखी।"
+  - "बंडलों को 10, 20, 30 … बोलकर गिना गया।"
+  - "शिक्षक ने उत्तर खुद नहीं बताया।"
+reflection_questions:
+  - "किस गलती (11, 407 या 74) वाले बच्चे आपकी कक्षा में ज़्यादा हैं?"
+  - "10-10 गिनवाने पर बच्चों ने क्या किया?"
+approvals: []
