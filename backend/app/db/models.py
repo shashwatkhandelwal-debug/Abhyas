@@ -66,20 +66,14 @@ class AppUser(Base):
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[str] = mapped_column(Text, nullable=False)
     display_name: Mapped[str | None] = mapped_column(Text, nullable=True)
-    cluster_id: Mapped[str | None] = mapped_column(
-        Text, ForeignKey("cluster.id"), nullable=True
-    )
+    cluster_id: Mapped[str | None] = mapped_column(Text, ForeignKey("cluster.id"), nullable=True)
     district: Mapped[str | None] = mapped_column(Text, nullable=True)
-    teacher_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True
-    )
+    teacher_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
@@ -103,47 +97,27 @@ class Teacher(Base):
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     phone_hash: Mapped[str | None] = mapped_column(Text, unique=True, nullable=True)
     name: Mapped[str | None] = mapped_column(Text, nullable=True)
     school_id: Mapped[str | None] = mapped_column(Text, nullable=True)
-    cluster_id: Mapped[str | None] = mapped_column(
-        Text, ForeignKey("cluster.id"), nullable=True
-    )
+    cluster_id: Mapped[str | None] = mapped_column(Text, ForeignKey("cluster.id"), nullable=True)
     block_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     district: Mapped[str | None] = mapped_column(Text, nullable=True)
-    batch_id: Mapped[str | None] = mapped_column(
-        Text, ForeignKey("batch.id"), nullable=True
-    )
+    batch_id: Mapped[str | None] = mapped_column(Text, ForeignKey("batch.id"), nullable=True)
     experience_band: Mapped[str | None] = mapped_column(Text, nullable=True)
     first_year: Mapped[bool | None] = mapped_column(Boolean, default=False)
     classes: Mapped[list[int] | None] = mapped_column(ARRAY(Integer), nullable=True)
     address_form: Mapped[str] = mapped_column(Text, default="f", nullable=False)
-    preferred_channel: Mapped[str] = mapped_column(
-        Text, default="whatsapp", nullable=False
-    )
+    preferred_channel: Mapped[str] = mapped_column(Text, default="whatsapp", nullable=False)
     lite_mode: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    consent_service: Mapped[bool] = mapped_column(
-        Boolean, default=False, nullable=False
-    )
-    consent_share_scores: Mapped[bool] = mapped_column(
-        Boolean, default=False, nullable=False
-    )
-    consent_class_audio: Mapped[bool] = mapped_column(
-        Boolean, default=False, nullable=False
-    )
-    consent_research: Mapped[bool] = mapped_column(
-        Boolean, default=False, nullable=False
-    )
+    consent_service: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    consent_share_scores: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    consent_class_audio: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    consent_research: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    onboarding_state: Mapped[str] = mapped_column(
-        Text, default="NEW", nullable=False
-    )
-    last_inbound_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    onboarding_state: Mapped[str] = mapped_column(Text, default="NEW", nullable=False)
+    last_inbound_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
@@ -164,36 +138,26 @@ class InviteCode(Base):
     __tablename__ = "invite_code"
 
     code: Mapped[str] = mapped_column(Text, primary_key=True)
-    cluster_id: Mapped[str | None] = mapped_column(
-        Text, ForeignKey("cluster.id"), nullable=True
-    )
-    batch_id: Mapped[str | None] = mapped_column(
-        Text, ForeignKey("batch.id"), nullable=True
-    )
+    cluster_id: Mapped[str | None] = mapped_column(Text, ForeignKey("cluster.id"), nullable=True)
+    batch_id: Mapped[str | None] = mapped_column(Text, ForeignKey("batch.id"), nullable=True)
     district: Mapped[str | None] = mapped_column(Text, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
 
 class ARPAssignment(Base):
     __tablename__ = "arp_assignment"
-    __table_args__ = (
-        PrimaryKeyConstraint("arp_user_id", "cluster_id"),
-    )
+    __table_args__ = (PrimaryKeyConstraint("arp_user_id", "cluster_id"),)
 
     arp_user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("app_user.id"), nullable=False
     )
-    cluster_id: Mapped[str] = mapped_column(
-        Text, ForeignKey("cluster.id"), nullable=False
-    )
+    cluster_id: Mapped[str] = mapped_column(Text, ForeignKey("cluster.id"), nullable=False)
 
 
 class ConsentLog(Base):
     __tablename__ = "consent_log"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     teacher_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("teacher.id"), nullable=True
     )
@@ -234,9 +198,7 @@ class Move(Base):
     )
 
     id: Mapped[str] = mapped_column(Text, nullable=False)
-    release_id: Mapped[str] = mapped_column(
-        Text, ForeignKey("content_release.id"), nullable=False
-    )
+    release_id: Mapped[str] = mapped_column(Text, ForeignKey("content_release.id"), nullable=False)
     domain: Mapped[str] = mapped_column(Text, nullable=False)
     title_hi: Mapped[str] = mapped_column(Text, nullable=False)
     sankul_month: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -247,14 +209,10 @@ class Move(Base):
 
 class Persona(Base):
     __tablename__ = "persona"
-    __table_args__ = (
-        PrimaryKeyConstraint("id", "release_id"),
-    )
+    __table_args__ = (PrimaryKeyConstraint("id", "release_id"),)
 
     id: Mapped[str] = mapped_column(Text, nullable=False)
-    release_id: Mapped[str] = mapped_column(
-        Text, ForeignKey("content_release.id"), nullable=False
-    )
+    release_id: Mapped[str] = mapped_column(Text, ForeignKey("content_release.id"), nullable=False)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
 
 
@@ -279,9 +237,7 @@ class BugRule(Base):
 
 class SessionState(Base):
     __tablename__ = "session_state"
-    __table_args__ = (
-        PrimaryKeyConstraint("teacher_id", "week_start"),
-    )
+    __table_args__ = (PrimaryKeyConstraint("teacher_id", "week_start"),)
 
     teacher_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -301,9 +257,7 @@ class SessionState(Base):
 
 class MovePath(Base):
     __tablename__ = "move_path"
-    __table_args__ = (
-        PrimaryKeyConstraint("teacher_id", "position"),
-    )
+    __table_args__ = (PrimaryKeyConstraint("teacher_id", "position"),)
 
     teacher_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -328,9 +282,7 @@ class Scene(Base):
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     teacher_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("teacher.id", ondelete="CASCADE"),
@@ -347,17 +299,13 @@ class Scene(Base):
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
-    ended_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Turn(Base):
     __tablename__ = "turn"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     teacher_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("teacher.id", ondelete="CASCADE"),
@@ -395,9 +343,7 @@ class Message(Base):
         UniqueConstraint("channel", "channel_msg_id", name="uq_channel_channel_msg_id"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     teacher_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("teacher.id", ondelete="CASCADE"),
@@ -424,9 +370,7 @@ class Message(Base):
 class RehearsalScore(Base):
     __tablename__ = "rehearsal_score"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     teacher_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("teacher.id", ondelete="CASCADE"),
@@ -454,9 +398,7 @@ class RehearsalScore(Base):
 class ExplainScore(Base):
     __tablename__ = "explain_score"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     teacher_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("teacher.id", ondelete="CASCADE"),
@@ -465,9 +407,7 @@ class ExplainScore(Base):
     move_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     transcript: Mapped[str | None] = mapped_column(Text, nullable=True)
     points: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    misconceptions: Mapped[list[str] | None] = mapped_column(
-        ARRAY(Text), nullable=True
-    )
+    misconceptions: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
     confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     needs_review: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     prompt_version: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -490,9 +430,7 @@ class AdoptionEvidence(Base):
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     teacher_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("teacher.id", ondelete="CASCADE"),
@@ -502,9 +440,7 @@ class AdoptionEvidence(Base):
     level: Mapped[int] = mapped_column(Integer, nullable=False)
     source: Mapped[str] = mapped_column(Text, nullable=False)
     detail: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
-    created_by: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True
-    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
@@ -519,9 +455,7 @@ class RealismRating(Base):
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     teacher_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("teacher.id", ondelete="CASCADE"),
@@ -548,9 +482,7 @@ class Question(Base):
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     teacher_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("teacher.id", ondelete="CASCADE"),
@@ -558,16 +490,12 @@ class Question(Base):
     )
     text: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str | None] = mapped_column(Text, nullable=True)
-    clarifying_asked: Mapped[bool] = mapped_column(
-        Boolean, default=False, nullable=False
-    )
+    clarifying_asked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     answer_hi: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_ids: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
     confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     status: Mapped[str] = mapped_column(Text, nullable=False)
-    followup_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    followup_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     followup_result: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
@@ -606,31 +534,23 @@ class ReviewItem(Base):
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     kind: Mapped[str | None] = mapped_column(Text, nullable=True)
     ref_id: Mapped[str] = mapped_column(Text, nullable=False)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(Text, default="open", nullable=False)
     resolution: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
-    resolved_by: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True
-    )
+    resolved_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
-    resolved_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class CalibrationLabel(Base):
     __tablename__ = "calibration_label"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     scene_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("scene.id"), nullable=True
     )
@@ -651,9 +571,7 @@ class CalibrationLabel(Base):
 class ARPObservation(Base):
     __tablename__ = "arp_observation"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     arp_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("app_user.id"), nullable=True
     )
@@ -681,9 +599,7 @@ class ScheduledJob(Base):
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     kind: Mapped[str] = mapped_column(Text, nullable=False)
     run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
@@ -698,17 +614,11 @@ class ScheduledJob(Base):
 class TemplateSend(Base):
     __tablename__ = "template_send"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    teacher_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    teacher_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     template_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     category: Mapped[str | None] = mapped_column(Text, nullable=True)
-    est_cost_inr: Mapped[float | None] = mapped_column(
-        Numeric(8, 3), nullable=True
-    )
+    est_cost_inr: Mapped[float | None] = mapped_column(Numeric(8, 3), nullable=True)
     sent_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
@@ -717,9 +627,7 @@ class TemplateSend(Base):
 class LLMCall(Base):
     __tablename__ = "llm_call"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     role: Mapped[str | None] = mapped_column(Text, nullable=True)
     prompt_version: Mapped[str | None] = mapped_column(Text, nullable=True)
     model: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -751,22 +659,14 @@ class TTSCache(Base):
 
 class AggModuleBatch(Base):
     __tablename__ = "agg_module_batch"
-    __table_args__ = (
-        PrimaryKeyConstraint("batch_id", "move_id"),
-    )
+    __table_args__ = (PrimaryKeyConstraint("batch_id", "move_id"),)
 
     batch_id: Mapped[str] = mapped_column(Text, nullable=False)
     move_id: Mapped[str] = mapped_column(Text, nullable=False)
     n_teachers: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    explain_missing: Mapped[dict[str, Any] | None] = mapped_column(
-        JSONB, nullable=True
-    )
-    rubric_dist: Mapped[dict[str, Any] | None] = mapped_column(
-        JSONB, nullable=True
-    )
-    ladder_dist: Mapped[dict[str, Any] | None] = mapped_column(
-        JSONB, nullable=True
-    )
+    explain_missing: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    rubric_dist: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    ladder_dist: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     active_rate: Mapped[float | None] = mapped_column(Float, nullable=True)
     computed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False

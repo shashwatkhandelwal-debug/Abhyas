@@ -35,7 +35,9 @@ class Settings(BaseSettings):
     ALEMBIC_DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/abhyas"
 
     # ── Security & Authentication ────────────────────────────────────────
-    SESSION_SECRET: str = "dev_session_secret_change_in_production_min_64_chars_length_required_here"
+    SESSION_SECRET: str = (
+        "dev_session_secret_change_in_production_min_64_chars_length_required_here"
+    )
     PHONE_HASH_SALT: str = "dev_phone_hash_salt_32_chars_ok"
     PHONE_ENC_KEY: str = "P5sUu77tT3i8_R1m2tZ_7lqf4xL6D-0K0A5vG4J-7-8="
     DEMO_PASSWORD: str = "abhyas-demo-2026"
@@ -116,7 +118,9 @@ class Settings(BaseSettings):
             missing: list[str] = []
             if not self.ANTHROPIC_API_KEY and self.LLM_PROVIDER == "anthropic":
                 missing.append("ANTHROPIC_API_KEY")
-            if not self.SARVAM_API_KEY and (self.STT_PROVIDER == "sarvam" or self.TTS_PROVIDER == "sarvam"):
+            if not self.SARVAM_API_KEY and (
+                self.STT_PROVIDER == "sarvam" or self.TTS_PROVIDER == "sarvam"
+            ):
                 missing.append("SARVAM_API_KEY")
             if self.WHATSAPP_ENABLED:
                 if not self.WHATSAPP_ACCESS_TOKEN:

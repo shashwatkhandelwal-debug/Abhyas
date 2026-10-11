@@ -94,12 +94,20 @@ def upgrade() -> None:
         sa.Column("first_year", sa.Boolean(), server_default=sa.text("false"), nullable=True),
         sa.Column("classes", postgresql.ARRAY(sa.Integer()), nullable=True),
         sa.Column("address_form", sa.Text(), server_default=sa.text("'f'"), nullable=False),
-        sa.Column("preferred_channel", sa.Text(), server_default=sa.text("'whatsapp'"), nullable=False),
+        sa.Column(
+            "preferred_channel", sa.Text(), server_default=sa.text("'whatsapp'"), nullable=False
+        ),
         sa.Column("lite_mode", sa.Boolean(), server_default=sa.text("false"), nullable=False),
         sa.Column("consent_service", sa.Boolean(), server_default=sa.text("false"), nullable=False),
-        sa.Column("consent_share_scores", sa.Boolean(), server_default=sa.text("false"), nullable=False),
-        sa.Column("consent_class_audio", sa.Boolean(), server_default=sa.text("false"), nullable=False),
-        sa.Column("consent_research", sa.Boolean(), server_default=sa.text("false"), nullable=False),
+        sa.Column(
+            "consent_share_scores", sa.Boolean(), server_default=sa.text("false"), nullable=False
+        ),
+        sa.Column(
+            "consent_class_audio", sa.Boolean(), server_default=sa.text("false"), nullable=False
+        ),
+        sa.Column(
+            "consent_research", sa.Boolean(), server_default=sa.text("false"), nullable=False
+        ),
         sa.Column("is_demo", sa.Boolean(), server_default=sa.text("false"), nullable=False),
         sa.Column("onboarding_state", sa.Text(), server_default=sa.text("'NEW'"), nullable=False),
         sa.Column("last_inbound_at", sa.DateTime(timezone=True), nullable=True),
@@ -114,7 +122,9 @@ def upgrade() -> None:
             name="check_teacher_experience_band",
         ),
         sa.CheckConstraint("address_form IN ('f', 'm')", name="check_teacher_address_form"),
-        sa.CheckConstraint("preferred_channel IN ('whatsapp', 'web')", name="check_teacher_preferred_channel"),
+        sa.CheckConstraint(
+            "preferred_channel IN ('whatsapp', 'web')", name="check_teacher_preferred_channel"
+        ),
     )
 
     op.create_table(
@@ -139,7 +149,12 @@ def upgrade() -> None:
 
     op.create_table(
         "arp_assignment",
-        sa.Column("arp_user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("app_user.id"), nullable=False),
+        sa.Column(
+            "arp_user_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("app_user.id"),
+            nullable=False,
+        ),
         sa.Column("cluster_id", sa.Text(), sa.ForeignKey("cluster.id"), nullable=False),
         sa.PrimaryKeyConstraint("arp_user_id", "cluster_id"),
     )
@@ -152,7 +167,9 @@ def upgrade() -> None:
             primary_key=True,
             server_default=sa.text("gen_random_uuid()"),
         ),
-        sa.Column("teacher_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("teacher.id"), nullable=True),
+        sa.Column(
+            "teacher_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("teacher.id"), nullable=True
+        ),
         sa.Column("field", sa.Text(), nullable=False),
         sa.Column("value", sa.Boolean(), nullable=False),
         sa.Column("channel", sa.Text(), nullable=True),
@@ -170,7 +187,12 @@ def upgrade() -> None:
         "content_release",
         sa.Column("id", sa.Text(), primary_key=True),
         sa.Column("notes", sa.Text(), nullable=True),
-        sa.Column("published_by", postgresql.UUID(as_uuid=True), sa.ForeignKey("app_user.id"), nullable=True),
+        sa.Column(
+            "published_by",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("app_user.id"),
+            nullable=True,
+        ),
         sa.Column(
             "published_at",
             sa.DateTime(timezone=True),
@@ -191,7 +213,9 @@ def upgrade() -> None:
         sa.Column("payload", postgresql.JSONB(), nullable=False),
         sa.Column("approvals", postgresql.JSONB(), server_default=sa.text("'[]'"), nullable=False),
         sa.PrimaryKeyConstraint("id", "release_id"),
-        sa.CheckConstraint("status IN ('draft', 'in_review', 'approved')", name="check_move_status"),
+        sa.CheckConstraint(
+            "status IN ('draft', 'in_review', 'approved')", name="check_move_status"
+        ),
     )
 
     op.create_table(
@@ -372,7 +396,9 @@ def upgrade() -> None:
             sa.ForeignKey("teacher.id", ondelete="CASCADE"),
             nullable=False,
         ),
-        sa.Column("scene_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("scene.id"), nullable=True),
+        sa.Column(
+            "scene_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("scene.id"), nullable=True
+        ),
         sa.Column("move_id", sa.Text(), nullable=True),
         sa.Column("attempt", sa.Integer(), nullable=True),
         sa.Column("scores", postgresql.JSONB(), nullable=False),
@@ -468,7 +494,9 @@ def upgrade() -> None:
             sa.ForeignKey("teacher.id", ondelete="CASCADE"),
             nullable=False,
         ),
-        sa.Column("scene_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("scene.id"), nullable=True),
+        sa.Column(
+            "scene_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("scene.id"), nullable=True
+        ),
         sa.Column("rating", sa.Integer(), nullable=True),
         sa.Column(
             "created_at",
@@ -496,7 +524,9 @@ def upgrade() -> None:
         ),
         sa.Column("text", sa.Text(), nullable=False),
         sa.Column("category", sa.Text(), nullable=True),
-        sa.Column("clarifying_asked", sa.Boolean(), server_default=sa.text("false"), nullable=False),
+        sa.Column(
+            "clarifying_asked", sa.Boolean(), server_default=sa.text("false"), nullable=False
+        ),
         sa.Column("answer_hi", sa.Text(), nullable=True),
         sa.Column("source_ids", postgresql.ARRAY(sa.Text()), nullable=True),
         sa.Column("confidence", sa.Float(), nullable=True),
@@ -571,9 +601,21 @@ def upgrade() -> None:
             primary_key=True,
             server_default=sa.text("gen_random_uuid()"),
         ),
-        sa.Column("scene_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("scene.id"), nullable=True),
-        sa.Column("explain_score_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("explain_score.id"), nullable=True),
-        sa.Column("coach_user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("app_user.id"), nullable=True),
+        sa.Column(
+            "scene_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("scene.id"), nullable=True
+        ),
+        sa.Column(
+            "explain_score_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("explain_score.id"),
+            nullable=True,
+        ),
+        sa.Column(
+            "coach_user_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("app_user.id"),
+            nullable=True,
+        ),
         sa.Column("scores", postgresql.JSONB(), nullable=False),
         sa.Column("note", sa.Text(), nullable=True),
         sa.Column("blind", sa.Boolean(), server_default=sa.text("true"), nullable=False),
@@ -593,7 +635,12 @@ def upgrade() -> None:
             primary_key=True,
             server_default=sa.text("gen_random_uuid()"),
         ),
-        sa.Column("arp_user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("app_user.id"), nullable=True),
+        sa.Column(
+            "arp_user_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("app_user.id"),
+            nullable=True,
+        ),
         sa.Column(
             "teacher_id",
             postgresql.UUID(as_uuid=True),

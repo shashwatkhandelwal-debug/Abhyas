@@ -1,44 +1,33 @@
-"""Text-to-Speech (TTS) adapter interface and providers (§10)."""
+"""Text-to-Speech (TTS) interface and provider protocol (spec/06 §6.3).
 
-from abc import ABC, abstractmethod
+Task T17 implements Sarvam TTS, pitch shifting, caching, and voices.
+"""
 
-from backend.app.config import settings
+from typing import Protocol
 
-
-class TTSProvider(ABC):
-    @abstractmethod
-    async def synthesize(self, text: str, voice_id: str, lang: str = "hi") -> bytes:
-        """Synthesize text to speech (OGG/Opus format for WhatsApp)."""
-        pass
+from pydantic import BaseModel
 
 
-class IndicParlerTTS(TTSProvider):
-    """Adapter for AI4Bharat Indic Parler-TTS with distinct voices."""
-
-    def __init__(self, endpoint: str = settings.TTS_ENDPOINT):
-        self.endpoint = endpoint
-        self._cache: dict[str, bytes] = {}
-
-    async def synthesize(self, text: str, voice_id: str, lang: str = "hi") -> bytes:
-        cache_key = f"{voice_id}:{text}"
-        if cache_key in self._cache:
-            return self._cache[cache_key]
-
-        # Synthesize audio bytes (simulated OGG payload in scaffold)
-        dummy_ogg_header = b"OggS\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00"
-        audio_data = dummy_ogg_header + text.encode("utf-8")
-        self._cache[cache_key] = audio_data
-        return audio_data
+class VoiceSpec(BaseModel):
+    provider_speaker: str
+    model: str
+    pace: float = 1.0
+    pitch_factor: float = 1.0
 
 
-class MockTTS(TTSProvider):
-    """Mock TTS for testing and local development."""
+class TTSProvider(Protocol):
+    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> bytes:
+        """Synthesize Hindi text to WAV 22.05 kHz mono audio bytes."""
+        ...
 
-    async def synthesize(self, text: str, voice_id: str, lang: str = "hi") -> bytes:
-        return b"OggS\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00mock_audio_bytes"
+
+class MockTTS:
+    """Mock TTS provider returning synthetic audio."""
+
+    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> bytes:
+        raise NotImplementedError("Spec 06 §6.3: Implemented in T17")
 
 
 def get_tts_provider() -> TTSProvider:
-    if settings.TTS_PROVIDER == "indic_parler_tts":
-        return IndicParlerTTS()
-    return MockTTS()
+    """Returns configured TTS provider instance."""
+    raise NotImplementedError("Spec 06 §6.3: Implemented in T17")

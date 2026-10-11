@@ -160,6 +160,7 @@ All items from `spec/15_human_inputs.md` are currently open:
 ## 5. Decisions
 
 1. **Model name validation in T08 (no auto-substitution)**: Per user instruction, do not auto-substitute model names. In T08, add a startup check (production mode only) that makes one minimal test call per configured model. If a model ID is rejected, fail fast with a clear error explicitly naming the environment variable to change (`CLAUDE_MODEL_FAST`, `CLAUDE_MODEL_SMART`, or `CLAUDE_MODEL_BUILD`).
+2. **Typed stubs for modules rewritten in later tasks**: Modules scheduled for deep redesign in later tasks (e.g. `rule_engine/engine.py`, `rule_engine/misconceptions.py`, `sessions/state_machine.py`, `sessions/manager.py`, `scoring/*`, `reports/*`, `llm/guards.py`, `speech/*`) are maintained with strict types matching spec interfaces. Obsolete tests and partial ad-hoc legacy logic are removed to keep `make ci` and `mypy --strict` 100% green without fake implementations.
 
 ---
 

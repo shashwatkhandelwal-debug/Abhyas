@@ -1,17 +1,11 @@
 """Scoring package exports."""
 
-from backend.app.scoring.coach_scorer import CoachScorer
-from backend.app.scoring.evidence_ladder import (
-    AdoptionLevel,
-    EvidenceRecord,
-    get_adoption_level_metadata,
-)
-from backend.app.scoring.fidelity_scorer import FidelityScorer
+from backend.app.scoring.coach_scorer import CoachFeedback, score_rehearsal
+from backend.app.scoring.fidelity_scorer import ExplainScoreResult, check_fidelity
 
 __all__ = [
-    "CoachScorer",
-    "FidelityScorer",
-    "AdoptionLevel",
-    "EvidenceRecord",
-    "get_adoption_level_metadata",
+    "CoachFeedback",
+    "score_rehearsal",
+    "ExplainScoreResult",
+    "check_fidelity",
 ]

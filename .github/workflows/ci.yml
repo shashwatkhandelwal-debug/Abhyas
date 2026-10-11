@@ -18,8 +18,10 @@ jobs:
       - name: Install dependencies
         run: |
           pip install ruff mypy
-      - name: Run ruff
+      - name: Run ruff check
         run: ruff check .
+      - name: Run ruff format check
+        run: ruff format --check .
       - name: Run mypy
         run: mypy --strict backend/app
 
@@ -55,6 +57,7 @@ jobs:
           ENVIRONMENT: test
           DATABASE_URL: postgresql+asyncpg://postgres:postgrespassword@localhost:5432/abhyas_test
           ALEMBIC_DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/abhyas_test
+          TEST_DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/abhyas_test
         run: pytest --cov=backend/app --cov-report=term-missing
 
   content:

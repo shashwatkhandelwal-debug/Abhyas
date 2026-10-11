@@ -35,8 +35,16 @@ db-seed:
 
 test:
 	ruff check .
+	ruff format --check .
 	mypy --strict backend/app
 	pytest
+
+ci:
+	ruff check .
+	ruff format --check .
+	mypy --strict backend/app
+	pytest --cov=backend/app --cov-report=term-missing
+	pytest content/tests
 
 test-live:
 	pytest -m live

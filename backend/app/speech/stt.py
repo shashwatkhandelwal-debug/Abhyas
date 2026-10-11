@@ -1,53 +1,38 @@
-"""Speech-to-Text (STT) adapter interface and providers (§10)."""
+"""Speech-to-Text (STT) interface and provider protocol (spec/06 §6.2).
 
-from abc import ABC, abstractmethod
+Task T16 implements Sarvam STT, split audio, and MockSTT.
+"""
+
+from typing import Protocol
 
 from pydantic import BaseModel
-
-from backend.app.config import settings
 
 
 class Transcript(BaseModel):
     text: str
-    words: list[str] = []
-    confidence: float = 1.0
+    confidence: float
+    language: str | None = None
+    provider: str
+    ms: int
 
 
-class STTProvider(ABC):
-    @abstractmethod
-    async def transcribe(self, audio_bytes: bytes, lang_hint: str = "hi") -> Transcript:
-        """Transcribe audio bytes to text. Deletes/does not persist raw audio."""
-        pass
+class STTProvider(Protocol):
+    async def transcribe(
+        self, wav16k: bytes, lang: str = "hi-IN", keyterms: list[str] | None = None
+    ) -> Transcript:
+        """Transcribe 16kHz mono WAV audio to Hindi text."""
+        ...
 
 
-class IndicConformerSTT(STTProvider):
-    """Adapter for self-hosted or API-backed AI4Bharat IndicConformer."""
+class MockSTT:
+    """Mock STT provider for tests and development."""
 
-    def __init__(self, endpoint: str = settings.STT_ENDPOINT):
-        self.endpoint = endpoint
-
-    async def transcribe(self, audio_bytes: bytes, lang_hint: str = "hi") -> Transcript:
-        # In real deployment, posts audio to IndicConformer service
-        # Audio is processed in memory and never written to permanent disk
-        return Transcript(
-            text="रवि, ५२ में से १७ कैसे घटाया? बताओ।",
-            words=["रवि,", "५२", "में", "से", "१७", "कैसे", "घटाया?", "बताओ।"],
-            confidence=0.95,
-        )
-
-
-class MockSTT(STTProvider):
-    """Mock STT for testing and local development."""
-
-    async def transcribe(self, audio_bytes: bytes, lang_hint: str = "hi") -> Transcript:
-        return Transcript(
-            text="Ravi, 52 mein se 17 kaise ghataya? Batao.",
-            words=["Ravi,", "52", "mein", "se", "17", "kaise", "ghataya?", "Batao."],
-            confidence=0.98,
-        )
+    async def transcribe(
+        self, wav16k: bytes, lang: str = "hi-IN", keyterms: list[str] | None = None
+    ) -> Transcript:
+        raise NotImplementedError("Spec 06 §6.2: Implemented in T16")
 
 
 def get_stt_provider() -> STTProvider:
-    if settings.STT_PROVIDER == "indic_conformer":
-        return IndicConformerSTT()
-    return MockSTT()
+    """Returns configured STT provider instance."""
+    raise NotImplementedError("Spec 06 §6.2: Implemented in T16")
