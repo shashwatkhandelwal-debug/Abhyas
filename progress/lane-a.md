@@ -9,6 +9,7 @@ Database: None required (pure deterministic algorithms)
 - [x] T05 Hindi utilities (llm/hindi_numbers.py, guards.norm, rule_engine/bugs/akshar.py)
 - [x] T06 Bug rules (all 12 rules, step templates, registry)
 - [x] T07 Rule engine (types, transitions, RuleEngine.step, placement, 100% line coverage)
+- [x] T09 Guards (all 8 spec/05 guards, >= 3 pass/fail fixtures, 97% line coverage)
 
 ## Deviations from spec
 None.
@@ -24,6 +25,19 @@ None.
   4. `guess_lexicon`: Added `guess_lexicon: dict[str, list[str]] = Field(default_factory=dict)` to `SceneState` and used directly in answer computation.
   5. Literacy reading: `read_correct` renders `READ_AKSHARS` with aksharas joined by `" - "` and `words=aksharas`.
   6. Cleanup: Deleted `RuleEngineResult`, `RehearsalRuleEngine`, and legacy `TRANSITIONS` in `child_state.py`; eliminated `# type: ignore` in `transitions.py`; moved config tunables to `SceneState` fields (`max_turns`, `shy_silent_turns`, `distracted_interject_after`); simulated all 4 seed model rehearsals through the engine, confirming all 4 moves end in `all_correct`. 100% line coverage maintained (673/673 statements).
+- T09: Implemented all 8 Claude output guards matching spec/05 §5.3–§5.10 in `backend/app/llm/guards.py`:
+  1. `guard_intent_router`: Schema and intent enum validity + confidence bounds [0.0, 1.0].
+  2. `guard_act_tagger`: Taxonomy membership, max 4 acts, persona id / "all" / None address, quote substring match with fuzzy fallback, and problem number/word verification via hindi_numbers.
+  3. `guard_child_line`: Length (<= 25 words), silent child empty line, character consistency, off-topic/interject number restriction, allowed numbers enforcement, forbidden token verification (checked prior to answer presence to prevent false-negative messages), and literacy word answer presence.
+  4. `guard_coach`: Rubric criteria key and score (0/1/2) integrity, teacher speech extraction and quote verification against teacher turns, word budget (<= 60 words), single-sentence integrity, respectful Hindi register (आप/आपने, no तुम/तुमने), leaked answer detection.
+  5. `guard_fidelity_checker`: Key point IDs 1:1 match, covered/partial quote substring matching, missing empty quote enforcement, max 3 misconceptions (<= 25 words each), confidence bounds.
+  6. `guard_question_classifier`: Category validity, clarifying question bounds (<= 20 words) when needed, search query presence for pedagogy/classroom management, confidence bounds.
+  7. `guard_guide_answerer`: Source IDs non-empty subset of retrieved, max 80 words, cited chunks number verification, respectful register (no तुम/तुमने), confidence bounds.
+  8. `guard_page_ocr`: Devanagari character ratio >= 0.60, non-empty text enforcement.
+  - Test suite written test-first with >= 3 pass and >= 3 fail fixtures per guard (62 tests total in `test_guards.py`).
+  - Achieved 97% line coverage on `backend/app/llm/guards.py` (226/234 statements).
+  - All 408 unit tests pass clean. `ruff check` clean, `ruff format` clean, `mypy --strict` clean with zero issues.
+
 
 
 
