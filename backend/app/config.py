@@ -1,83 +1,158 @@
 """Application configuration and centralized threshold registry.
 
-Strictly follows Section 18 of ARCHITECTURE.md:
-All thresholds and configuration constants reside here - no magic numbers anywhere in the codebase.
+Strictly follows AGENTS.md, spec/02_architecture.md, and all spec files:
+- All thresholds and configuration constants reside here - no magic numbers anywhere else.
+- Provider selection logs mocks in development; fail-fast on missing secrets in production.
 """
 
+import logging
 from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger("abhyas.config")
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
-    # Server Environment
-    ENVIRONMENT: Literal["development", "staging", "production", "test"] = "development"
+    # ── Server & Environment ──────────────────────────────────────────────
+    ENVIRONMENT: Literal["development", "test", "production"] = "development"
     PORT: int = 8000
     HOST: str = "0.0.0.0"
     LOG_LEVEL: str = "INFO"
+    PUBLIC_BASE_URL: str = "http://localhost:8000"
+    GIT_SHA: str = "dev"
 
-    # Database & Cache
+    # ── Database ─────────────────────────────────────────────────────────
+    # Supabase session pooler in prod; docker compose locally
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/abhyas"
-    SYNC_DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/abhyas"
-    REDIS_URL: str = "redis://localhost:6379/0"
+    ALEMBIC_DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/abhyas"
 
-    # LLM Settings (Anthropic Claude)
-    ANTHROPIC_API_KEY: str = "mock-key-for-scaffold"
-    CLAUDE_MODEL: str = "claude-3-7-sonnet-20250219"
+    # ── Security & Authentication ────────────────────────────────────────
+    SESSION_SECRET: str = "dev_session_secret_change_in_production_min_64_chars_length_required_here"
+    PHONE_HASH_SALT: str = "dev_phone_hash_salt_32_chars_ok"
+    PHONE_ENC_KEY: str = "P5sUu77tT3i8_R1m2tZ_7lqf4xL6D-0K0A5vG4J-7-8="
+    DEMO_PASSWORD: str = "abhyas-demo-2026"
+
+    # ── Claude (Anthropic) — H1 ──────────────────────────────────────────
+    LLM_PROVIDER: Literal["anthropic", "mock"] = "anthropic"
+    ANTHROPIC_API_KEY: str = ""
+    CLAUDE_MODEL_FAST: str = "claude-haiku-5-5"
+    CLAUDE_MODEL_SMART: str = "claude-sonnet-5-5"
+    CLAUDE_MODEL_BUILD: str = "claude-sonnet-5-5"
+    LLM_DAILY_TOKEN_BUDGET: int = 3_000_000
     LLM_TIMEOUT_SECONDS: float = 8.0
+    LLM_BUILD_TIMEOUT_SECONDS: float = 60.0
     LLM_MAX_RETRIES: int = 1
 
-    # WhatsApp Business Cloud API & BSP
-    WHATSAPP_VERIFY_TOKEN: str = "abhyas_webhook_verify_token_secure"
-    WHATSAPP_ACCESS_TOKEN: str = "mock_whatsapp_token"
-    WHATSAPP_PHONE_NUMBER_ID: str = "mock_phone_id"
-    WHATSAPP_APP_SECRET: str = "mock_secret"
-    BSP_PROVIDER: Literal["gupshup", "meta_direct", "mock"] = "gupshup"
-    BSP_API_KEY: str = "mock_bsp_key"
-
-    # Speech Processing
-    STT_PROVIDER: Literal["indic_conformer", "hosted_api", "mock"] = "mock"
-    STT_ENDPOINT: str = "http://localhost:8001/transcribe"
-    STT_API_KEY: str = ""
-
-    TTS_PROVIDER: Literal["indic_parler_tts", "hosted_api", "mock"] = "mock"
-    TTS_ENDPOINT: str = "http://localhost:8002/synthesize"
-    TTS_API_KEY: str = ""
-
-    # =========================================================================
-    # Pedagogical & System Thresholds (Per ARCHITECTURE.md Specification)
-    # =========================================================================
-    # Latency: voice note in -> voice reply out < 20s for 95% of turns (§0, §15)
-    LATENCY_P95_TARGET_MS: int = 20000
-
-    # Coach confidence threshold: < 0.6 routes to expert review queue (§5.3, §8)
-    COACH_CONFIDENCE_THRESHOLD: float = 0.60
-
-    # Privacy & Reporting: suppress groups < 10 for DIET/SCERT trainer views (§0, §12, §13)
-    AGGREGATION_SUPPRESSION_N: int = 10
-
-    # Rehearsal turn budget: max 8 teacher turns per rehearsal scene (§5.2)
-    MAX_TURNS_PER_REHEARSAL: int = 8
-
-    # Rehearsal retries: maximum 3 rehearsal retries per teacher per week (§4)
-    MAX_REHEARSAL_RETRIES_PER_WEEK: int = 3
-
-    # Follow-up job delay for "Ask Any Time" questions: 2 days (§8)
-    TWO_DAY_FOLLOWUP_HOURS: int = 48
-
-    # Spoken audio durations (§0, §3.3)
+    # ── Speech (STT / TTS / Audio) — H2 ──────────────────────────────────
+    STT_PROVIDER: Literal["sarvam", "bhashini", "google", "mock"] = "sarvam"
+    TTS_PROVIDER: Literal["sarvam", "mock"] = "sarvam"
+    SARVAM_API_KEY: str = ""
+    SARVAM_BASE_URL: str = "https://api.sarvam.ai"
+    SARVAM_STT_MODEL: str = "saaras:v4"
+    SARVAM_TTS_MODEL: str = "bulbul:v3"
+    BHASHINI_USER_ID: str = ""
+    BHASHINI_API_KEY: str = ""
+    GOOGLE_APPLICATION_CREDENTIALS: str = ""
+    MOCK_STT_TEXT: str = "रवि, 52 में से 17 कैसे घटाया? बताओ।"
+    STT_TIMEOUT_S: float = 8.0
+    STT_MIN_CONFIDENCE: float = 0.50
+    MAX_INBOUND_AUDIO_S: int = 90
     EXPLAIN_BACK_MAX_SECONDS: int = 60
+    REHEARSE_TURN_MAX_S: int = 30
     LEARN_AUDIO_MAX_SECONDS: int = 120
 
-    # Output speech length guards (§5.1, §5.3, §8)
+    # ── WhatsApp Cloud API (Meta) — H4/H5 ────────────────────────────────
+    WHATSAPP_ENABLED: bool = False
+    WHATSAPP_GRAPH_VERSION: str = "v23.0"
+    WHATSAPP_PHONE_NUMBER_ID: str = ""
+    WHATSAPP_ACCESS_TOKEN: str = ""
+    WHATSAPP_APP_SECRET: str = ""
+    WHATSAPP_VERIFY_TOKEN: str = "abhyas_webhook_verify_token"
+    WHATSAPP_DISPLAY_NUMBER: str = ""
+    WHATSAPP_UTILITY_COST_INR: float = 0.12
+
+    # ── Retrieval (Dense Vectors & Hybrid Search) — H16 ──────────────────
+    VOYAGE_API_KEY: str = ""
+    VOYAGE_MODEL: str = "voyage-multilingual-2"
+    RETRIEVAL_TOP_K: int = 5
+    RETRIEVAL_MIN_SCORE: float = 0.25
+    QUOTE_FUZZY_MIN: float = 90.0
+
+    # ── Pedagogical & Rule Engine Thresholds ──────────────────────────────
+    MAX_TURNS_PER_REHEARSAL: int = 8
+    SHY_SILENT_TURNS: int = 1
+    MAX_REHEARSAL_RETRIES_PER_WEEK: int = 3
+    COACH_CONFIDENCE_THRESHOLD: float = 0.60
+    GUIDE_CONFIDENCE_THRESHOLD: float = 0.60
     MAX_CHILD_LINE_WORDS: int = 25
     MAX_COACH_FEEDBACK_WORDS: int = 60
     MAX_GUIDE_ANSWER_WORDS: int = 80
-
-    # Coach evaluation calibration target (§5.3, §15)
+    MOVE_APPROVALS_REQUIRED: int = 2
     KAPPA_CALIBRATION_TARGET: float = 0.70
 
+    # ── Reporting & Privacy Thresholds ────────────────────────────────────
+    AGGREGATION_SUPPRESSION_N: int = 10
+    LATENCY_P95_TARGET_MS: int = 20_000
+    TWO_DAY_FOLLOWUP_HOURS: int = 48
+    REMINDER_AFTER_HOURS: int = 72
 
+    # ── Demo / Evaluation & Observability ────────────────────────────────
+    SERVE_IN_REVIEW_TO_DEMO: bool = True
+    DEMO_MODE: bool = True
+    SENTRY_DSN: str = ""
+
+    @model_validator(mode="after")
+    def validate_production_and_mocks(self) -> "Settings":
+        # 1. Fail-fast in production if required secrets are missing
+        if self.ENVIRONMENT == "production":
+            missing: list[str] = []
+            if not self.ANTHROPIC_API_KEY and self.LLM_PROVIDER == "anthropic":
+                missing.append("ANTHROPIC_API_KEY")
+            if not self.SARVAM_API_KEY and (self.STT_PROVIDER == "sarvam" or self.TTS_PROVIDER == "sarvam"):
+                missing.append("SARVAM_API_KEY")
+            if self.WHATSAPP_ENABLED:
+                if not self.WHATSAPP_ACCESS_TOKEN:
+                    missing.append("WHATSAPP_ACCESS_TOKEN")
+                if not self.WHATSAPP_PHONE_NUMBER_ID:
+                    missing.append("WHATSAPP_PHONE_NUMBER_ID")
+                if not self.WHATSAPP_APP_SECRET:
+                    missing.append("WHATSAPP_APP_SECRET")
+            if self.DEMO_PASSWORD == "abhyas-demo-2026":
+                missing.append("DEMO_PASSWORD (must rotate in production)")
+            if not self.SESSION_SECRET or self.SESSION_SECRET.startswith("dev_"):
+                missing.append("SESSION_SECRET")
+            if not self.PHONE_HASH_SALT or self.PHONE_HASH_SALT.startswith("dev_"):
+                missing.append("PHONE_HASH_SALT")
+            if not self.PHONE_ENC_KEY:
+                missing.append("PHONE_ENC_KEY")
+
+            if missing:
+                err_msg = (
+                    f"Production startup failed: required secrets missing or insecure: {', '.join(missing)}. "
+                    "Provide these environment variables before starting in production."
+                )
+                logger.critical(err_msg)
+                raise ValueError(err_msg)
+
+        # 2. In development or test, log active mocks for absent keys
+        else:
+            if not self.ANTHROPIC_API_KEY:
+                logger.info("MOCK MODE active: ANTHROPIC_API_KEY empty -> LLM using MockLLM")
+            if not self.SARVAM_API_KEY:
+                logger.info("MOCK MODE active: SARVAM_API_KEY empty -> STT/TTS using mock audio")
+            if not self.VOYAGE_API_KEY:
+                logger.info("BM25 ONLY active: VOYAGE_API_KEY empty -> Dense retrieval skipped")
+
+        return self
+
+
+# Global singleton settings
 settings = Settings()
