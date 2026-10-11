@@ -1,0 +1,173 @@
+# DRAFT — written by the team for the prototype. Needs FLN coach review (HUMAN INPUT H8) and
+# verification of module_ref against the actual UP teacher guide (H7) before status: approved.
+id: NUM_SUB_REGROUP_BUNDLES
+version: 1
+status: in_review
+domain: numeracy
+grade: [2]
+title_hi: "हासिल वाला घटाव: बंडल खोलकर"
+summary_hi: "जब इकाई में ऊपर की संख्या छोटी हो, तो बच्चे से उसका तरीका पूछें और 10-10 तीलियों के बंडल खोलकर घटाव समझाएँ।"
+tags: [subtraction, regrouping, place_value, ganit]
+module_ref:
+  source_id: up_ganit_sandarshika_c2
+  section: "घटाव (हासिल सहित)"
+  page: null
+  verified: false
+sankul_month: October
+
+key_points:
+  - id: kp1
+    text_hi: "जब इकाई में ऊपर की संख्या छोटी हो, तो बच्चे अक्सर बड़ी संख्या में से छोटी घटा देते हैं। सबसे पहले बच्चे से पूछें कि उसने कैसे किया।"
+    must_have: true
+    keywords_hi: [पूछें, कैसे, तरीका, बड़ी, छोटी, उल्टा]
+    source_chunk_ids: []
+  - id: kp2
+    text_hi: "10-10 तीलियों के बंडल से संख्या बनवाएँ: 43 यानी 4 बंडल और 3 खुली तीलियाँ।"
+    must_have: true
+    keywords_hi: [बंडल, तीली, दहाई, इकाई, 10]
+    source_chunk_ids: []
+  - id: kp3
+    text_hi: "3 तीलियों में से 7 नहीं निकलतीं, इसलिए एक बंडल खोलें: अब 13 खुली तीलियाँ और 3 बंडल हैं।"
+    must_have: true
+    keywords_hi: [खोल, बंडल, 13, हासिल, उधार]
+    source_chunk_ids: []
+  - id: kp4
+    text_hi: "खुली तीलियों में से 7 और बंडलों में से 2 हटाएँ; बचा 1 बंडल और 6 तीलियाँ, यानी 16।"
+    must_have: false
+    keywords_hi: [हटाएँ, बचा, गिन, 16]
+    source_chunk_ids: []
+  - id: kp5
+    text_hi: "उत्तर खुद न बताएँ। दो उत्तरों की तुलना करवाएँ और बच्चे को ही सही उत्तर तक पहुँचने दें।"
+    must_have: true
+    keywords_hi: [न बताएँ, तुलना, दोनों, खुद, सोच]
+    source_chunk_ids: []
+
+teaching_acts_effective: [ask_to_explain, concrete_representation, probe_simpler_case, contrast_answers, model_step_aloud, involve_peer]
+target_causes: [SUB_SMALLER_FROM_LARGER, SUB_BORROW_NO_DECREMENT, SUB_WRITE_ZERO_WHEN_STUCK]
+
+rubric:
+  criteria:
+    - id: crit_explain
+      text_hi: "बच्चे से उसका तरीका पूछना"
+      levels:
+        0: "बच्चे का तरीका नहीं पूछा"
+        1: "पूछा, पर केवल 'गलत है' कहकर आगे बढ़ गईं"
+        2: "बच्चे से पूछा कि उसने कैसे घटाया और उसकी बात सुनी"
+      signal_acts: [ask_to_explain]
+      negative_acts: []
+    - id: crit_concrete
+      text_hi: "बंडल और तीलियों का उपयोग"
+      levels:
+        0: "केवल अंकों में समझाया"
+        1: "तीलियों का ज़िक्र किया, पर बंडल खोलकर नहीं दिखाया"
+        2: "संख्या बंडल-तीली से बनवाई और बंडल खोलकर 13 तीलियाँ दिखाईं"
+      signal_acts: [concrete_representation, probe_simpler_case]
+      negative_acts: []
+    - id: crit_no_telling
+      text_hi: "उत्तर बताने के बजाय बच्चे को सोचने देना"
+      levels:
+        0: "सही उत्तर खुद बता दिया"
+        1: "उत्तर नहीं बताया, पर बच्चे से तुलना या जाँच नहीं करवाई"
+        2: "दो उत्तरों की तुलना करवाई या साथी बच्चे से समझवाया"
+      signal_acts: [contrast_answers, involve_peer]
+      negative_acts: [tell_answer]
+    - id: crit_all_children
+      text_hi: "सभी बच्चों को शामिल करना (शांत बच्चे सहित)"
+      levels:
+        0: "केवल एक बच्चे से बात की"
+        1: "दो बच्चों से बात की"
+        2: "तीनों बच्चों से बात की, शांत बच्ची को भी प्रोत्साहित किया"
+      signal_acts: [involve_peer, praise_effort]
+      negative_acts: [scold]
+
+feedback_bank:
+  crit_explain:
+    strength_hi: "आपने बच्चे से उसका तरीका पूछा, इससे उसकी असली उलझन सामने आई।"
+    change_hi: "अगली बार 'गलत है' कहने से पहले बच्चे से पूछिए कि उसने कैसे घटाया।"
+    exact_words_hi: "रवि, तुमने 43 में से 27 कैसे घटाया? मुझे एक-एक कदम बताओ।"
+  crit_concrete:
+    strength_hi: "आपने बंडल और तीलियों से संख्या बनवाई, यह बच्चों को दिखता है।"
+    change_hi: "अगली बार बंडल खोलकर गिनवाइए कि अब कितनी खुली तीलियाँ हो गईं।"
+    exact_words_hi: "3 तीलियों में से 7 नहीं निकलतीं, तो एक बंडल खोलो। अब गिनो, कितनी तीलियाँ हुईं?"
+  crit_no_telling:
+    strength_hi: "आपने उत्तर खुद नहीं बताया, बच्चों को सोचने का मौका दिया।"
+    change_hi: "उत्तर बताने के बजाय दो उत्तर सामने रखकर पूछिए कि कौन-सा सही है।"
+    exact_words_hi: "रवि ने 24 कहा और प्रिया ने 16। तीलियाँ गिनकर बताओ, कौन-सा सही है?"
+  crit_all_children:
+    strength_hi: "आपने तीनों बच्चों को बातचीत में शामिल किया।"
+    change_hi: "शांत बच्ची प्रिया का नाम लेकर उसे धीरे से बोलने का मौका दीजिए।"
+    exact_words_hi: "प्रिया, तुम्हारा तरीका भी सुनना है। धीरे से बताओ, कोई बात नहीं।"
+
+learn_script_hi: >-
+  नमस्ते! इस हफ्ते हम हासिल वाले घटाव पर एक तरीका सीखेंगे। जब बच्चे 43 में से 27 घटाते हैं, तो कई बच्चे इकाई में
+  3 में से 7 नहीं घटा पाते और 7 में से 3 घटा देते हैं। उनका उत्तर आता है 24। कुछ बच्चे 13 में से 7 तो करते हैं,
+  पर दहाई में 4 को 3 करना भूल जाते हैं। ये गलतियाँ लापरवाही नहीं हैं, बच्चे के मन में एक नियम बैठा होता है।
+  इसलिए सबसे पहला कदम है: बच्चे से पूछिए, तुमने कैसे किया? जब बच्चा अपना तरीका बताता है, तब पता चलता है कि उलझन कहाँ है।
+  दूसरा कदम: 10-10 तीलियों के बंडल लीजिए। 43 बनवाइए: 4 बंडल और 3 खुली तीलियाँ। अब पूछिए, 3 तीलियों में से 7 कैसे
+  निकालें? बच्चे खुद कहेंगे, नहीं निकलेंगी। तब एक बंडल खोलिए। अब 13 खुली तीलियाँ और 3 बंडल हैं। 13 में से 7 हटाइए,
+  6 बचीं। 3 बंडल में से 2 हटाइए, 1 बचा। कुल 1 बंडल और 6 तीलियाँ, यानी 16। तीसरा कदम: उत्तर खुद मत बताइए। दो उत्तर
+  सामने रखिए, 24 और 16, और पूछिए कौन-सा सही है और क्यों। और ध्यान रखिए, कक्षा का शांत बच्चा भी बोले।
+  अब आप यह तरीका अपने शब्दों में बताइए, फिर तीन बच्चों के साथ अभ्यास करेंगे।
+learn_summary_hi:
+  - "1. पहले बच्चे से पूछें: तुमने कैसे घटाया?"
+  - "2. संख्या बंडल-तीली से बनवाएँ: 43 = 4 बंडल + 3 तीलियाँ"
+  - "3. 3 में से 7 नहीं निकलतीं → एक बंडल खोलें → 13 तीलियाँ, 3 बंडल"
+  - "4. 13 − 7 = 6, 3 − 2 = 1 → 16"
+  - "5. उत्तर न बताएँ, दो उत्तरों की तुलना करवाएँ"
+  - "6. शांत बच्चे को भी मौका दें"
+
+scenario:
+  intro_hi: "कक्षा 2। बोर्ड पर लिखा है: 43 − 27। आपके सामने तीन बच्चे हैं: रवि, प्रिया और अमन। तीनों ने अपना उत्तर बताया है। अब आप उनसे बात करें।"
+  items:
+    - {type: sub, a: 43, b: 27}
+    - {type: sub, a: 61, b: 28}
+    - {type: sub, a: 52, b: 17}
+    - {type: sub, a: 74, b: 39}
+  children:
+    - {persona_id: ravi,  misconception: SUB_SMALLER_FROM_LARGER}     # 43−27 → 24
+    - {persona_id: priya, misconception: SUB_BORROW_NO_DECREMENT}     # 43−27 → 26
+    - {persona_id: aman,  misconception: SUB_WRITE_ZERO_WHEN_STUCK}   # 43−27 → 20
+  guess_lexicon: {}
+
+model_rehearsal:
+  - speaker: teacher
+    text_hi: "रवि, तुमने 43 में से 27 कैसे घटाया? मुझे एक-एक कदम बताओ।"
+    acts: [ask_to_explain]
+    addressed: ravi
+    problem: null
+  - speaker: teacher
+    text_hi: "प्रिया, अच्छा सोचा तुमने। धीरे से बताओ, तुमने कैसे किया?"
+    acts: [ask_to_explain, praise_effort]
+    addressed: priya
+    problem: null
+  - speaker: teacher
+    text_hi: "सब लोग देखो। ये रहे 4 बंडल और 3 खुली तीलियाँ, यानी 43। 3 तीलियों में से 7 कैसे निकालें? चलो, एक बंडल खोलते हैं।"
+    acts: [concrete_representation]
+    addressed: all
+    problem: null
+  - speaker: teacher
+    text_hi: "अमन, रवि ने पहले 24 कहा था और अब तीलियाँ गिनकर 16 कह रहा है। कौन-सा सही है, और क्यों?"
+    acts: [contrast_answers]
+    addressed: aman
+    problem: null
+  - speaker: teacher
+    text_hi: "प्रिया, तुमने 26 कहा था। बंडल खोलने के बाद कितने बंडल बचे थे? तो 26 सही है या 16?"
+    acts: [contrast_answers]
+    addressed: priya
+    problem: null
+  - speaker: teacher
+    text_hi: "रवि, अब तुम बताओ, 24 और 16 में से कौन-सा ठीक है?"
+    acts: [contrast_answers]
+    addressed: ravi
+    problem: null
+
+peer_checklist:
+  - "शिक्षक ने कम से कम एक बच्चे से पूछा कि उसने कैसे घटाया।"
+  - "बच्चों ने बंडल-तीली (या चित्र) से संख्या बनाई।"
+  - "बंडल खोलकर खुली तीलियाँ गिनवाई गईं।"
+  - "शिक्षक ने सही उत्तर खुद नहीं बताया।"
+  - "कम से कम एक शांत बच्चे ने बोलकर बताया।"
+reflection_questions:
+  - "बंडल खोलते समय बच्चों को सबसे ज़्यादा उलझन कहाँ हुई?"
+  - "किस बच्चे ने अपना तरीका बताया, और उससे आपको क्या पता चला?"
+approvals: []

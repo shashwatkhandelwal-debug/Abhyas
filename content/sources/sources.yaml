@@ -1,0 +1,34 @@
+- id: nipun_guidelines_2021
+  title: "NIPUN Bharat — Guidelines for Implementation (MoE, 2021)"
+  short_hi: "निपुण भारत दिशानिर्देश"
+  file: nipun_bharat_guidelines.pdf
+  lang: hi
+  licence_note: "Government of India publication — used for non-commercial educational purposes"
+
+- id: up_ganit_sandarshika_c2
+  title: "UP Basic Shiksha Shikshak Sandarshika, Ganit, Class 2"
+  short_hi: "गणित संदर्शिका कक्षा 2 (उ.प्र.)"
+  file: up_ganit_sandarshika_c2.pdf
+  lang: hi
+  licence_note: "UP Basic Shiksha Parishad publication"
+
+- id: up_bhasha_sandarshika_c1
+  title: "UP Basic Shiksha Shikshak Sandarshika, Bhasha, Class 1"
+  short_hi: "भाषा संदर्शिका कक्षा 1 (उ.प्र.)"
+  file: up_bhasha_sandarshika_c1.pdf
+  lang: hi
+  licence_note: "UP Basic Shiksha Parishad publication"
+
+- id: ncert_vidya_pravesh
+  title: "NCERT Vidya Pravesh Guidelines"
+  short_hi: "विद्या प्रवेश (NCERT)"
+  file: ncert_vidya_pravesh.pdf
+  lang: hi
+  licence_note: "NCERT publication"
+
+- id: ncert_fln_learning_outcomes
+  title: "NCERT FLN Learning Outcomes"
+  short_hi: "बुनियादी अधिगम प्रतिफल (NCERT)"
+  file: ncert_fln_learning_outcomes.pdf
+  lang: hi
+  licence_note: "NCERT publication"

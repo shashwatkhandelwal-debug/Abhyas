@@ -1,0 +1,126 @@
+# DRAFT — needs FLN coach review (H8) and module_ref verification (H7).
+id: LIT_MATRA_BLENDING
+version: 1
+status: in_review
+domain: literacy
+grade: [1, 2]
+title_hi: "मात्रा वाले शब्द: अक्षर की ध्वनि मिलाकर पढ़ना"
+summary_hi: "बच्चे को अक्षर और मात्रा की ध्वनि अलग-अलग बोलकर फिर मिलाकर पूरा शब्द पढ़ना सिखाएँ; अंदाज़े से पढ़ने पर उसे रोकें नहीं, ध्वनि पर लौटाएँ।"
+tags: [reading, phonics, matra, blending, bhasha]
+module_ref:
+  source_id: up_bhasha_sandarshika_c1
+  section: "मात्रा और शब्द पठन"
+  page: null
+  verified: false
+sankul_month: October
+
+key_points:
+  - id: kp1
+    text_hi: "बच्चे तीन तरह से अटकते हैं: मात्रा छोड़ देते हैं (मेला को 'मल'), पहले अक्षर से अंदाज़ा लगाते हैं (मेला को 'मछली'), या अक्षर-अक्षर बोलते हैं पर मिला नहीं पाते ('मे… ला')।"
+    must_have: true
+    keywords_hi: [मात्रा, अंदाज़ा, मिला, अक्षर, छोड़]
+    source_chunk_ids: []
+  - id: kp2
+    text_hi: "हर अक्षर पर उँगली रखकर पहले व्यंजन और मात्रा की ध्वनि बुलवाएँ: म + े = मे।"
+    must_have: true
+    keywords_hi: [उँगली, ध्वनि, मात्रा, मे]
+    source_chunk_ids: []
+  - id: kp3
+    text_hi: "फिर धीरे-धीरे अक्षरों को मिलाकर बुलवाएँ: मे… ला… मेला। पहले शिक्षक करके दिखाएँ, फिर बच्चे साथ में।"
+    must_have: true
+    keywords_hi: [मिला, धीरे, करके दिखा, साथ]
+    source_chunk_ids: []
+  - id: kp4
+    text_hi: "अंदाज़े से गलत पढ़ने पर डाँटें नहीं; कहें 'पहला अक्षर फिर से देखो, कौन-सी मात्रा है?'"
+    must_have: false
+    keywords_hi: [डाँट, फिर से देखो, मात्रा]
+    source_chunk_ids: []
+
+teaching_acts_effective: [phonics_sound_out, model_step_aloud, contrast_answers, ask_to_explain, involve_peer]
+target_causes: [AKSHAR_BY_AKSHAR, FIRST_AKSHAR_GUESS, MATRA_DROP]
+
+rubric:
+  criteria:
+    - id: crit_sound_out
+      text_hi: "अक्षर और मात्रा की ध्वनि बुलवाना"
+      levels: {0: "ध्वनि पर काम नहीं किया", 1: "पूरा शब्द दोहरवाया, ध्वनि नहीं", 2: "हर अक्षर-मात्रा की ध्वनि अलग बुलवाई"}
+      signal_acts: [phonics_sound_out]
+      negative_acts: []
+    - id: crit_blend_model
+      text_hi: "मिलाकर पढ़ना करके दिखाना"
+      levels: {0: "नहीं दिखाया", 1: "शब्द पढ़कर सुना दिया", 2: "धीरे-धीरे मिलाकर दिखाया और बच्चों से साथ में करवाया"}
+      signal_acts: [model_step_aloud]
+      negative_acts: []
+    - id: crit_no_telling
+      text_hi: "शब्द बताने के बजाय बच्चे को पढ़ने देना"
+      levels: {0: "शब्द खुद बता दिया", 1: "न बताया, न जाँच करवाई", 2: "बच्चे से फिर से ध्वनि मिलवाकर खुद पढ़वाया"}
+      signal_acts: [phonics_sound_out, contrast_answers, involve_peer]
+      negative_acts: [tell_answer, scold]
+
+feedback_bank:
+  crit_sound_out:
+    strength_hi: "आपने अक्षर और मात्रा की ध्वनि अलग-अलग बुलवाई।"
+    change_hi: "पूरा शब्द दोहरवाने के बजाय पहले अक्षर पर उँगली रखवाकर उसकी ध्वनि बुलवाइए।"
+    exact_words_hi: "अमन, पहले अक्षर पर उँगली रखो। म पर कौन-सी मात्रा है? बोलो, म… ए… मे।"
+  crit_blend_model:
+    strength_hi: "आपने मिलाकर पढ़ना धीरे-धीरे करके दिखाया।"
+    change_hi: "शब्द पढ़कर सुनाने से पहले धीरे-धीरे ध्वनियाँ मिलाकर दिखाइए, फिर बच्चों से साथ में करवाइए।"
+    exact_words_hi: "मेरे साथ बोलो: मे… ला… मे-ला… मेला!"
+  crit_no_telling:
+    strength_hi: "आपने शब्द खुद नहीं बताया, बच्चे को पढ़ने दिया।"
+    change_hi: "बच्चा अंदाज़ा लगाए तो उसे पहले अक्षर पर लौटाइए, शब्द मत बताइए।"
+    exact_words_hi: "प्रिया, मछली नहीं, पहला अक्षर फिर से देखो। उस पर कौन-सी मात्रा है?"
+
+learn_script_hi: >-
+  नमस्ते! इस हफ्ते हम मात्रा वाले शब्द पढ़ना सिखाने का एक तरीका सीखेंगे। जब बच्चे 'मेला' पढ़ते हैं, तो कुछ मात्रा छोड़कर
+  'मल' पढ़ते हैं। कुछ पहला अक्षर देखकर अंदाज़ा लगाते हैं और 'मछली' कह देते हैं। कुछ 'मे… ला' अलग-अलग बोलते हैं पर
+  मिलाकर नहीं पढ़ पाते। पहला कदम: बच्चे से हर अक्षर पर उँगली रखवाइए और ध्वनि बुलवाइए: म और ए की मात्रा, मे। ल और आ
+  की मात्रा, ला। दूसरा कदम: आप खुद धीरे-धीरे मिलाकर दिखाइए: मे… ला… मेला। फिर बच्चों से साथ में बुलवाइए। तीसरा कदम:
+  अगर बच्चा अंदाज़ा लगाए, तो डाँटिए नहीं और शब्द भी मत बताइए। कहिए, पहला अक्षर फिर से देखो, कौन-सी मात्रा है?
+  अब आप यह तरीका अपने शब्दों में बताइए, फिर तीन बच्चों के साथ अभ्यास करेंगे।
+learn_summary_hi:
+  - "1. तीन अटकनें: मात्रा छोड़ना (मल), अंदाज़ा (मछली), मिला न पाना (मे… ला)"
+  - "2. उँगली रखकर ध्वनि: म + े = मे, ल + ा = ला"
+  - "3. करके दिखाएँ: मे… ला… मेला, फिर साथ में"
+  - "4. अंदाज़े पर डाँटें नहीं, शब्द न बताएँ — पहले अक्षर पर लौटाएँ"
+
+scenario:
+  intro_hi: "कक्षा 1। बोर्ड पर शब्द लिखा है: मेला। रवि, प्रिया और अमन ने उसे पढ़ने की कोशिश की है। अब आप उनसे बात करें।"
+  items:
+    - {type: read_word, word: "मेला"}
+    - {type: read_word, word: "पानी"}
+    - {type: read_word, word: "किताब"}
+    - {type: read_word, word: "गुड़िया"}
+  children:
+    - {persona_id: ravi,  misconception: AKSHAR_BY_AKSHAR}     # मे - ला
+    - {persona_id: priya, misconception: FIRST_AKSHAR_GUESS}   # मछली
+    - {persona_id: aman,  misconception: MATRA_DROP}           # मल
+  guess_lexicon:
+    म: [मछली, मटर]
+    प: [पतंग, पत्ता]
+    क: [कमल, कलम]
+    ग: [गमला, गाय]
+    न: [नल, नाव]
+    ब: [बतख, बस]
+    र: [रथ, रस्सी]
+    स: [सड़क, सेब]
+    ल: [लट्टू, लड्डू]
+    ट: [टमाटर, टोपी]
+    च: [चमचा, चिड़िया]
+    आ: [आम, आग]
+
+model_rehearsal:
+  - {speaker: teacher, text_hi: "रवि, शाबाश कोशिश की। अब उँगली रखकर बोलो: म… ए… मे। फिर ल… आ… ला।", acts: [phonics_sound_out, praise_effort], addressed: ravi, problem: null}
+  - {speaker: teacher, text_hi: "प्रिया, पहला अक्षर फिर से देखो। म पर कौन-सी मात्रा है? धीरे से उसकी आवाज़ निकालो।", acts: [phonics_sound_out], addressed: priya, problem: null}
+  - {speaker: teacher, text_hi: "अमन, म के ऊपर ये मात्रा देखो। म… ए… मे। बोलो।", acts: [phonics_sound_out], addressed: aman, problem: null}
+  - {speaker: teacher, text_hi: "अब सब मेरे साथ धीरे-धीरे मिलाओ: मे… ला… मे-ला… मेला!", acts: [model_step_aloud], addressed: all, problem: null}
+
+peer_checklist:
+  - "शिक्षक ने बच्चों से अक्षर पर उँगली रखवाई।"
+  - "अक्षर और मात्रा की ध्वनि अलग-अलग बुलवाई गई।"
+  - "शिक्षक ने धीरे-धीरे मिलाकर पढ़ना करके दिखाया।"
+  - "अंदाज़ा लगाने वाले बच्चे को डाँटा नहीं गया और शब्द नहीं बताया गया।"
+reflection_questions:
+  - "आपकी कक्षा में तीनों में से कौन-सी अटकन सबसे आम है?"
+  - "ध्वनि मिलाकर पढ़वाने पर किस बच्चे में बदलाव दिखा?"
+approvals: []

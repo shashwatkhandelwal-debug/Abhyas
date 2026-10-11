@@ -1,78 +1,431 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Move",
-  "type": "object",
+  "$defs": {
+    "Domain": {
+      "enum": [
+        "numeracy",
+        "literacy"
+      ],
+      "title": "Domain",
+      "type": "string"
+    },
+    "FeedbackItem": {
+      "properties": {
+        "strength_hi": {
+          "title": "Strength Hi",
+          "type": "string"
+        },
+        "change_hi": {
+          "title": "Change Hi",
+          "type": "string"
+        },
+        "exact_words_hi": {
+          "title": "Exact Words Hi",
+          "type": "string"
+        }
+      },
+      "required": [
+        "strength_hi",
+        "change_hi",
+        "exact_words_hi"
+      ],
+      "title": "FeedbackItem",
+      "type": "object"
+    },
+    "KeyPoint": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "text_hi": {
+          "title": "Text Hi",
+          "type": "string"
+        },
+        "must_have": {
+          "default": false,
+          "title": "Must Have",
+          "type": "boolean"
+        },
+        "keywords_hi": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Keywords Hi",
+          "type": "array"
+        },
+        "source_chunk_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Chunk Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "text_hi"
+      ],
+      "title": "KeyPoint",
+      "type": "object"
+    },
+    "ModelRehearsalTurn": {
+      "properties": {
+        "speaker": {
+          "title": "Speaker",
+          "type": "string"
+        },
+        "text_hi": {
+          "title": "Text Hi",
+          "type": "string"
+        },
+        "acts": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Acts",
+          "type": "array"
+        },
+        "addressed": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Addressed"
+        },
+        "problem": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Problem"
+        }
+      },
+      "required": [
+        "speaker",
+        "text_hi"
+      ],
+      "title": "ModelRehearsalTurn",
+      "type": "object"
+    },
+    "ModuleRef": {
+      "properties": {
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        },
+        "section": {
+          "title": "Section",
+          "type": "string"
+        },
+        "page": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Page"
+        },
+        "verified": {
+          "default": false,
+          "title": "Verified",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "source_id",
+        "section"
+      ],
+      "title": "ModuleRef",
+      "type": "object"
+    },
+    "MoveStatus": {
+      "enum": [
+        "draft",
+        "in_review",
+        "approved"
+      ],
+      "title": "MoveStatus",
+      "type": "string"
+    },
+    "Rubric": {
+      "properties": {
+        "criteria": {
+          "items": {
+            "$ref": "#/$defs/RubricCriterion"
+          },
+          "title": "Criteria",
+          "type": "array"
+        }
+      },
+      "required": [
+        "criteria"
+      ],
+      "title": "Rubric",
+      "type": "object"
+    },
+    "RubricCriterion": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "text_hi": {
+          "title": "Text Hi",
+          "type": "string"
+        },
+        "levels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Levels",
+          "type": "object"
+        },
+        "signal_acts": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Signal Acts",
+          "type": "array"
+        },
+        "negative_acts": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Negative Acts",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "text_hi",
+        "levels"
+      ],
+      "title": "RubricCriterion",
+      "type": "object"
+    },
+    "Scenario": {
+      "properties": {
+        "intro_hi": {
+          "title": "Intro Hi",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "children": {
+          "items": {
+            "$ref": "#/$defs/ScenarioChild"
+          },
+          "title": "Children",
+          "type": "array"
+        },
+        "guess_lexicon": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": "Guess Lexicon",
+          "type": "object"
+        }
+      },
+      "required": [
+        "intro_hi",
+        "items",
+        "children"
+      ],
+      "title": "Scenario",
+      "type": "object"
+    },
+    "ScenarioChild": {
+      "properties": {
+        "persona_id": {
+          "title": "Persona Id",
+          "type": "string"
+        },
+        "misconception": {
+          "title": "Misconception",
+          "type": "string"
+        }
+      },
+      "required": [
+        "persona_id",
+        "misconception"
+      ],
+      "title": "ScenarioChild",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "id": {
+      "pattern": "^[A-Z]{3}_[A-Z0-9_]+$",
+      "title": "Id",
+      "type": "string"
+    },
+    "version": {
+      "default": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "status": {
+      "$ref": "#/$defs/MoveStatus"
+    },
+    "domain": {
+      "$ref": "#/$defs/Domain"
+    },
+    "grade": {
+      "items": {
+        "type": "integer"
+      },
+      "title": "Grade",
+      "type": "array"
+    },
+    "title_hi": {
+      "title": "Title Hi",
+      "type": "string"
+    },
+    "summary_hi": {
+      "title": "Summary Hi",
+      "type": "string"
+    },
+    "tags": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+    },
+    "module_ref": {
+      "$ref": "#/$defs/ModuleRef"
+    },
+    "sankul_month": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sankul Month"
+    },
+    "key_points": {
+      "items": {
+        "$ref": "#/$defs/KeyPoint"
+      },
+      "title": "Key Points",
+      "type": "array"
+    },
+    "teaching_acts_effective": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Teaching Acts Effective",
+      "type": "array"
+    },
+    "target_causes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Target Causes",
+      "type": "array"
+    },
+    "rubric": {
+      "$ref": "#/$defs/Rubric"
+    },
+    "feedback_bank": {
+      "additionalProperties": {
+        "$ref": "#/$defs/FeedbackItem"
+      },
+      "title": "Feedback Bank",
+      "type": "object"
+    },
+    "learn_script_hi": {
+      "title": "Learn Script Hi",
+      "type": "string"
+    },
+    "learn_summary_hi": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Learn Summary Hi",
+      "type": "array"
+    },
+    "scenario": {
+      "$ref": "#/$defs/Scenario"
+    },
+    "model_rehearsal": {
+      "items": {
+        "$ref": "#/$defs/ModelRehearsalTurn"
+      },
+      "title": "Model Rehearsal",
+      "type": "array"
+    },
+    "peer_checklist": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Peer Checklist",
+      "type": "array"
+    },
+    "reflection_questions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Reflection Questions",
+      "type": "array"
+    },
+    "approvals": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Approvals",
+      "type": "array"
+    }
+  },
   "required": [
     "id",
+    "status",
     "domain",
+    "grade",
     "title_hi",
+    "summary_hi",
     "module_ref",
     "key_points",
     "teaching_acts_effective",
     "target_causes",
     "rubric",
+    "feedback_bank",
     "learn_script_hi",
-    "model_rehearsal",
+    "learn_summary_hi",
     "scenario",
+    "model_rehearsal",
     "peer_checklist",
     "reflection_questions"
   ],
-  "properties": {
-    "id": {"type": "string"},
-    "domain": {"type": "string", "enum": ["numeracy", "literacy"]},
-    "title_hi": {"type": "string"},
-    "module_ref": {
-      "type": "object",
-      "required": ["module_name", "section"],
-      "properties": {
-        "module_name": {"type": "string"},
-        "section": {"type": "string"},
-        "page": {"type": ["integer", "null"]}
-      }
-    },
-    "sankul_month": {"type": ["string", "null"]},
-    "key_points": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["id", "text_hi", "must_have"],
-        "properties": {
-          "id": {"type": "string"},
-          "text_hi": {"type": "string"},
-          "must_have": {"type": "boolean"}
-        }
-      }
-    },
-    "teaching_acts_effective": {
-      "type": "array",
-      "items": {"type": "string"}
-    },
-    "target_causes": {
-      "type": "array",
-      "items": {"type": "string"}
-    },
-    "rubric": {
-      "type": "object",
-      "required": ["criteria"],
-      "properties": {
-        "criteria": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": ["id", "text", "levels"],
-            "properties": {
-              "id": {"type": "string"},
-              "text": {"type": "string"},
-              "levels": {"type": "object"}
-            }
-          }
-        }
-      }
-    },
-    "learn_script_hi": {"type": "string"},
-    "model_rehearsal": {"type": "array"},
-    "scenario": {"type": "object"},
-    "peer_checklist": {"type": "array", "items": {"type": "string"}},
-    "reflection_questions": {"type": "array", "items": {"type": "string"}}
-  }
+  "title": "MoveCard",
+  "type": "object"
 }

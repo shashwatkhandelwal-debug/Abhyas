@@ -1,29 +1,50 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Persona",
-  "type": "object",
-  "required": [
-    "id",
-    "name",
-    "grade",
-    "voice_id",
-    "misconceptions",
-    "temperament",
-    "speech_style_hi"
-  ],
   "properties": {
-    "id": {"type": "string"},
-    "name": {"type": "string"},
-    "grade": {"type": "integer"},
-    "voice_id": {"type": "string"},
-    "misconceptions": {
-      "type": "array",
-      "items": {"type": "string"}
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "name_hi": {
+      "title": "Name Hi",
+      "type": "string"
+    },
+    "age": {
+      "title": "Age",
+      "type": "integer"
     },
     "temperament": {
-      "type": "string",
-      "enum": ["shy", "confident", "distracted"]
+      "enum": [
+        "confident",
+        "shy",
+        "distracted"
+      ],
+      "title": "Temperament",
+      "type": "string"
     },
-    "speech_style_hi": {"type": "string"}
-  }
+    "voice_id": {
+      "title": "Voice Id",
+      "type": "string"
+    },
+    "speech_style_hi": {
+      "title": "Speech Style Hi",
+      "type": "string"
+    },
+    "off_topic_lines_hi": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Off Topic Lines Hi",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "name_hi",
+    "age",
+    "temperament",
+    "voice_id",
+    "speech_style_hi"
+  ],
+  "title": "PersonaCard",
+  "type": "object"
 }
