@@ -11,7 +11,7 @@ from backend.app.rule_engine.domain import (
     SourceRef,
     TeachingAct,
 )
-from backend.app.rule_engine.engine import RehearsalRuleEngine, RuleEngineResult
+from backend.app.rule_engine.engine import RehearsalRuleEngine, RuleEngine, RuleEngineResult
 from backend.app.rule_engine.misconceptions import (
     MISCONCEPTION_REGISTRY,
     add_no_carry,
@@ -30,6 +30,7 @@ __all__ = [
     "Persona",
     "Scenario",
     "Move",
+    "RuleEngine",
     "RehearsalRuleEngine",
     "RuleEngineResult",
     "MISCONCEPTION_REGISTRY",

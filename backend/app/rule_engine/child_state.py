@@ -1,14 +1,6 @@
-"""Child state and transition logic as specified in Section 5.2."""
+from backend.app.rule_engine.domain import ChildState as ChildState
 
-from enum import Enum
-
-
-class ChildState(Enum):
-    MISCONCEPTION = 0  # applies bug rule, confident
-    CAN_EXPLAIN = 1  # still wrong, but explains steps (reveals the bug)
-    PARTIAL = 2  # corrects with scaffold, may relapse on a new item
-    CORRECT = 3  # correct and explains why
-
+__all__ = ["ChildState", "TRANSITIONS"]
 
 # Transition table per Section 5.2
 TRANSITIONS: dict[str, dict[ChildState, ChildState] | str] = {

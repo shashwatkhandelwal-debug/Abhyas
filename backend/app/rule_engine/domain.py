@@ -102,6 +102,9 @@ class ChildRuntime(BaseModel):
     history: list[tuple[int, ChildState]] = Field(default_factory=list)
 
 
+EndReason = Literal["all_correct", "turn_limit", "teacher_stop"]
+
+
 class SceneState(BaseModel):
     """State of an ongoing interactive rehearsal scene (§4.1)."""
 
@@ -116,7 +119,7 @@ class SceneState(BaseModel):
     teacher_turns: int = 0
     last_responder: str | None = None
     ended: bool = False
-    end_reason: str | None = None
+    end_reason: EndReason | None = None
 
 
 class TaggedTurn(BaseModel):
@@ -164,7 +167,7 @@ class StepResult(BaseModel):
 
     responses: list[ChildResponse]  # 1 main + at most 1 INTERJECT
     ended: bool = False
-    end_reason: Literal["all_correct", "turn_limit", "teacher_stop"] | None = None
+    end_reason: EndReason | None = None
 
 
 # Canonical aliases exported for rule engine and consumers
