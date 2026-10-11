@@ -47,6 +47,18 @@ Seed data: `content-seed/` (moves, personas, Hindi message catalog, WhatsApp tem
 13. When the spec is silent, choose the simplest option that keeps the demo reliable, record the decision in `PROGRESS.md › Decisions`, and move on.
 14. If you find a contradiction inside this pack, the order of precedence is: `AGENTS.md` > `14_tasks.md` > the numbered spec file most specific to the topic.
 
+## Terminal command rules (Permissions & Auto-Approval Policy)
+
+1. **Run exactly ONE command per terminal call.**
+   - No chaining: never use `;`, `&&`, `||` or `|`.
+   - No command substitution `$(...)` or backticks, no redirections (`>`, `>>`, `2>&1`).
+   - Example: instead of `git add .; git commit -m "x"; git push`, make three separate calls.
+2. **No inline multi-line scripts** (`python -c "..."` with more than one statement). Write the script to a file under `scripts/` (e.g. `scripts/ci_status.py`) and run `python scripts/ci_status.py`. Reuse these scripts instead of re-typing them.
+3. **Prefer allowed single tools**: use `python scripts/...` for anything PowerShell would need pipes for. Use `make <target>` for multi-step workflows.
+4. **Never run**: `git push --force`, `git reset --hard`, `Remove-Item -Recurse` outside the repo or worktrees, anything with sudo/runas, `Format-*`, `shutdown`.
+5. **Deletions (`Remove-Item`, `git rm`)**: batch into as few calls as possible and explain why in one line before calling.
+6. **Commands that prompted**: whenever a command still required manual approval, log it to `PROGRESS.md › Commands that prompted`.
+
 ## Commands the repo must support (create the Makefile)
 
 | Command | Does |

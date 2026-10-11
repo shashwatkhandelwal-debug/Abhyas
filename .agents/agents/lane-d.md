@@ -47,3 +47,10 @@ Work through tasks in this exact order:
   - Push branch `lane-d`.
   - Log completed task in `progress/lane-d.md`.
 - **Checkpoint**: Stop and return your report (what was built, test output, deviations, requests for coordinator) **immediately after completing T37**, and after every 3 tasks thereafter.
+
+## Terminal command rules (Strict Auto-Approval Policy)
+- Run exactly ONE command per call (never chain with `;`, `&&`, `||`, `|`).
+- No command substitution `$(...)`, backticks, or redirects (`>`, `>>`, `2>&1`).
+- No multi-line inline scripts (`python -c "..."`). Write reusable scripts in `scripts/`.
+- Never run force push, hard reset, recursive deletes outside worktree, or shutdown.
+- Deletions must be batched and explained in one line before calling.

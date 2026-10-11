@@ -178,3 +178,12 @@ All items from `spec/15_human_inputs.md` are currently open:
 3. **`spec/05_llm_roles.md` §5.1 model names vs current Anthropic API strings**:
    - Spec refers to `claude-haiku-5-5` and `claude-sonnet-5-5`. The `.env.example` sets defaults to `CLAUDE_MODEL_FAST=claude-haiku-5-5` and `CLAUDE_MODEL_SMART=claude-sonnet-5-5`.
    - *Resolution per User Approval*: Do not auto-substitute model names. In T08, add a startup check (production only) that makes one minimal call per configured model; if rejected, fail fast with a clear error naming the env var to change. Record in Decisions #1.
+
+---
+
+## 7. Commands that prompted
+
+*(List commands that required manual approval with command text and reason)*
+- `git worktree add ../abhyas-lane-a lane-a; git worktree add ../abhyas-lane-d lane-d` (chained with semicolon)
+- `git -C ../abhyas-lane-a merge --ff-only origin/main; git -C ../abhyas-lane-d merge --ff-only origin/main` (chained with semicolon)
+- `git worktree remove --force ../abhyas-a ../abhyas-b ../abhyas-c ../abhyas-d` (batch removal)
