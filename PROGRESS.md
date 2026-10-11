@@ -114,7 +114,7 @@ A comprehensive audit comparing the current scaffold against `spec/02_architectu
 - [ ] **T34 Coach review console** · Priority: P1 · Finish-by: 25 Oct
 - [ ] **T35 Admin** · Priority: P1 · Finish-by: 25 Oct
 - [ ] **T36 Sankul mode** · Priority: P2 · Finish-by: 28 Oct
-- [ ] **T37 User-testing kit** · Priority: P0 · Finish-by: 14 Oct
+- [x] **T37 User-testing kit** · Priority: P0 · Finish-by: 14 Oct (completed 11 Oct via Lane D)
 - [ ] **T38 Golden fixtures** · Priority: P0 · Finish-by: 17 Oct
 - [ ] **T39 Evaluator samples** · Priority: P0 · Finish-by: 22 Oct
 - [ ] **T40 Source ingestion** · Priority: P1 · Finish-by: 23 Oct
