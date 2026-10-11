@@ -80,7 +80,7 @@ A comprehensive audit comparing the current scaffold against `spec/02_architectu
 
 - [x] **T01 Repo restructure** · Priority: P0 · Finish-by: 12 Oct
 - [x] **T02 Config** · Priority: P0 · Finish-by: 12 Oct
-- [ ] **T03 Database** · Priority: P0 · Finish-by: 13 Oct
+- [x] **T03 Database** · Priority: P0 · Finish-by: 13 Oct
 - [ ] **T04 Content models & seed content** · Priority: P0 · Finish-by: 13 Oct
 - [ ] **T05 Hindi utilities** · Priority: P0 · Finish-by: 13 Oct
 - [ ] **T06 Bug rules** · Priority: P0 · Finish-by: 14 Oct
