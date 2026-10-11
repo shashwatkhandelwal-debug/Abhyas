@@ -1,22 +1,54 @@
-"""Guard functions to validate Claude outputs before sending to users (§5.1, §5.3, §5.5, §5.10, §6, §8, §9)."""
+"""Guard functions to validate Claude outputs before sending to users.
+
+Strictly follows AGENTS.md, spec/05 §5.3–§5.10, and T09 acceptance criteria:
+- Every runtime and build-time Claude output is validated by pure guard functions.
+- Normalized substring checks with fuzzy fallback (QUOTE_FUZZY_MIN).
+- Number extraction and verification via hindi_numbers.py.
+- Respectful register enforcement (आप / आपने, no तुम / तुमने with teachers).
+"""
 
 import re
 import unicodedata
-from typing import Any
 
 import rapidfuzz
 
 from backend.app.config import settings
 from backend.app.llm.hindi_numbers import DEVANAGARI_DIGITS, extract_numbers
 from backend.app.llm.schemas import (
+    ActTaggerOutput,
     CoachFeedbackOutput,
     FidelityCheckerOutput,
     GuideAnswererOutput,
+    IntentRouterOutput,
+    PageOCROutput,
+    QuestionClassifierOutput,
 )
-from backend.app.rule_engine.child_state import ChildState
-from backend.app.rule_engine.domain import ChildResponse, ResponseKind
+from backend.app.rule_engine.domain import (
+    ChildResponse,
+    ResponseKind,
+    TeachingAct,
+)
+
+VALID_INTENTS: frozenset[str] = frozenset(
+    {
+        "answer_for_step",
+        "question",
+        "command_next",
+        "command_skip",
+        "command_repeat",
+        "command_help",
+        "smalltalk",
+        "unclear",
+    }
+)
+
+DISRESPECTFUL_WORDS: frozenset[str] = frozenset(
+    {"तुम", "तुमने", "तुम्हारा", "तुम्हारे", "तुम्हारी", "तुमसे", "तुझे", "तेरा", "तेरी", "तेरे"}
+)
+RESPECTFUL_WORDS: frozenset[str] = frozenset({"आप", "आपने", "आपका", "आपके", "आपकी", "आपसे", "आपको"})
 
 
+# ── Text Normalization & Substring Match (§5.10) ─────────────────────────────
 def norm(s: str) -> str:
     """Canonical text normalisation for guards (spec/05 §5.10).
 
@@ -56,7 +88,7 @@ def substring_match(quote: str, source: str, min_fuzzy: float = 90.0) -> bool:
 
 
 def normalize_hindi_text(text: str) -> str:
-    """NFC normalization for Hindi and Devanagari text (§18)."""
+    """NFC normalization for Hindi and Devanagari text."""
     return unicodedata.normalize("NFC", text.strip())
 
 
@@ -65,6 +97,65 @@ def extract_numbers_from_text(text: str) -> list[int]:
     return extract_numbers(text)
 
 
+# ── 1. guard_intent_router (§5.3) ────────────────────────────────────────────
+def guard_intent_router(output: IntentRouterOutput) -> tuple[bool, str]:
+    """Validate intent_router output schema and bounds (§5.3)."""
+    if output.intent not in VALID_INTENTS:
+        return False, f"Invalid intent: {output.intent}"
+    if not (0.0 <= output.confidence <= 1.0):
+        return False, f"Confidence out of bounds: {output.confidence}"
+    return True, "Valid"
+
+
+# ── 2. guard_act_tagger (§5.4) ───────────────────────────────────────────────
+def guard_act_tagger(
+    output: ActTaggerOutput,
+    transcript: str,
+    scene_persona_ids: list[str],
+) -> tuple[bool, str]:
+    """Validate act_tagger output (§5.4).
+
+    Guards:
+    - every act in taxonomy (TeachingAct)
+    - 1 to 4 acts maximum
+    - addressed_child in scene persona ids | "all" | None
+    - quote is a normalised substring of transcript or empty
+    - if problem present, its numbers or word appear in transcript
+    """
+    if not output.acts:
+        return False, "At least one act must be tagged"
+    if len(output.acts) > 4:
+        return False, f"Exceeds maximum of 4 acts ({len(output.acts)} > 4)"
+    for act in output.acts:
+        if act not in TeachingAct:
+            return False, f"Invalid teaching act: {act}"
+
+    allowed_addressed: set[str | None] = {*scene_persona_ids, "all", None}
+    if output.addressed_child not in allowed_addressed:
+        return False, f"Invalid addressed_child '{output.addressed_child}'"
+
+    if output.quote.strip():
+        if not substring_match(output.quote, transcript, min_fuzzy=settings.QUOTE_FUZZY_MIN):
+            return False, f"quote not in transcript: '{output.quote}'"
+
+    if output.problem is not None:
+        p = output.problem
+        transcript_numbers = set(extract_numbers(transcript))
+        if p.a is not None and p.a not in transcript_numbers:
+            return False, f"problem number a={p.a} absent from transcript"
+        if p.b is not None and p.b not in transcript_numbers:
+            return False, f"problem number b={p.b} absent from transcript"
+        if p.tens is not None and p.tens not in transcript_numbers:
+            return False, f"problem tens={p.tens} absent from transcript"
+        if p.ones is not None and p.ones not in transcript_numbers:
+            return False, f"problem ones={p.ones} absent from transcript"
+        if p.word and norm(p.word) not in norm(transcript):
+            return False, f"problem word '{p.word}' absent from transcript"
+
+    return True, "Valid"
+
+
+# ── 3. guard_child_line (§5.5) ───────────────────────────────────────────────
 def guard_child_line(
     line_hi: str,
     response: ChildResponse,
@@ -110,7 +201,19 @@ def guard_child_line(
         if num not in response.allowed_numbers:
             return False, f"Number {num} not in allowed_numbers {response.allowed_numbers}"
 
-    # For answer kinds, the answer must appear
+    # 3. Forbidden: check BEFORE answer check (prevents false answer error when forbidden number used)
+    for forb in response.forbidden:
+        if not forb:
+            continue
+        if forb.isdigit():
+            forb_int = int(forb)
+            if forb_int in extracted_nums:
+                return False, f"Forbidden number {forb_int} appeared in line"
+        forb_norm = norm(forb)
+        if forb_norm and forb_norm in norm(line_hi):
+            return False, f"Forbidden token '{forb}' appeared in line"
+
+    # 4. For answer kinds, the answer must appear
     if response.kind in (
         ResponseKind.ANSWER,
         ResponseKind.EXPLAIN_BUG,
@@ -128,113 +231,281 @@ def guard_child_line(
             if ans_clean not in line_clean:
                 return False, f"Literacy answer '{response.answer}' does not appear in line"
 
-    # 3. Forbidden: no token in forbidden appears
-    for forb in response.forbidden:
-        if not forb:
+    return True, "Valid"
+
+
+# ── 4. guard_coach (§5.6) ────────────────────────────────────────────────────
+def _extract_teacher_speech(transcript: str) -> str:
+    """Extracts only the teacher's lines from a dialogue transcript."""
+    teacher_lines: list[str] = []
+    for raw_line in transcript.splitlines():
+        line = raw_line.strip()
+        if not line:
             continue
-        if forb.isdigit():
-            forb_int = int(forb)
-            if forb_int in extracted_nums:
-                return False, f"Forbidden number {forb_int} appeared in line"
-        forb_norm = norm(forb)
-        if forb_norm and forb_norm in norm(line_hi):
-            return False, f"Forbidden token '{forb}' appeared in line"
-
-    return True, "Valid"
-
-
-def validate_child_voice(
-    line_hi: str,
-    rule_result: Any,
-    correct_answer: Any,
-) -> tuple[bool, str]:
-    """Legacy helper for child voice lines."""
-    line_norm = normalize_hindi_text(line_hi)
-    words = line_norm.split()
-
-    if len(words) > settings.MAX_CHILD_LINE_WORDS:
-        return (
-            False,
-            f"Line exceeds max word count ({len(words)} > {settings.MAX_CHILD_LINE_WORDS})",
-        )
-
-    extracted_nums = extract_numbers_from_text(line_norm)
-
-    if rule_result.new_state in (ChildState.MISCONCEPTION, ChildState.CAN_EXPLAIN):
-        if (
-            isinstance(correct_answer, int)
-            and correct_answer in extracted_nums
-            and not rule_result.is_parrot
+        line_lower = line.lower()
+        if "teacher:" in line_lower or "टीचर:" in line or "टीचर :" in line:
+            parts = re.split(r"(?:teacher|टीचर)\s*[:：]", line, flags=re.IGNORECASE)
+            if len(parts) > 1:
+                teacher_lines.append(parts[1].strip())
+        elif ":" in line and any(
+            role in line_lower
+            for role in [
+                "ravi",
+                "priya",
+                "aman",
+                "रवि",
+                "प्रिया",
+                "अमन",
+                "child",
+                "बच्चा",
+            ]
         ):
-            return False, f"Leaked correct answer {correct_answer} during error state"
-
-    allowed_nums = {
-        int(n)
-        for n in rule_result.numbers_involved
-        if isinstance(n, (int, str)) and str(n).isdigit()
-    }
-    for num in extracted_nums:
-        if num not in allowed_nums:
-            return False, f"Number {num} not authorized by rule engine result {allowed_nums}"
-
-    return True, "Valid"
+            # Explicit child speaker line, ignore
+            continue
+        else:
+            # Unprefixed transcript line or plain teacher text
+            teacher_lines.append(line)
+    return " ".join(teacher_lines)
 
 
-def validate_coach_feedback(
-    feedback: CoachFeedbackOutput,
-    transcript: str,
+def guard_coach(
+    output: CoachFeedbackOutput,
+    rubric_criterion_ids: list[str],
+    teacher_transcript: str,
+    rubric_rewards_not_telling: bool,
+    current_item_answer: int | str | None,
 ) -> tuple[bool, str]:
-    """Guard for coach rubric feedback (§5.3)."""
-    for crit_id, quote in feedback.evidence.items():
-        if quote and not substring_match(quote, transcript):
-            return False, f"Evidence quote for {crit_id} not found in transcript: '{quote}'"
+    """Validate coach rubric feedback (§5.6).
 
-    total_spoken_words = len(
-        f"{feedback.strength_hi} {feedback.change_hi} {feedback.exact_words_hi}".split()
-    )
-    if total_spoken_words > settings.MAX_COACH_FEEDBACK_WORDS:
+    Guards:
+    - keys of scores == rubric_criterion_ids exactly
+    - values of scores in {0, 1, 2}
+    - for every score > 0, evidence is normalised substring of teacher line
+    - strength, change, exact_words each single sentence (<= 1 period/danda inside)
+    - total words across the three <= MAX_COACH_FEEDBACK_WORDS (60)
+    - respectful register: coach uses आप/आपने and never तुम/तुमने with teacher
+    - exact_words_hi must not contain correct answer if rubric rewards not telling
+    - confidence in [0.0, 1.0]
+    """
+    if set(output.scores.keys()) != set(rubric_criterion_ids):
         return (
             False,
-            f"Feedback exceeds maximum word budget ({total_spoken_words} > {settings.MAX_COACH_FEEDBACK_WORDS})",
+            f"Rubric criteria keys mismatch: expected {set(rubric_criterion_ids)}, got {set(output.scores.keys())}",
         )
 
+    for crit_id, score in output.scores.items():
+        if score not in (0, 1, 2):
+            return False, f"Score for {crit_id} must be in {{0, 1, 2}}, got {score}"
+
+    teacher_speech = _extract_teacher_speech(teacher_transcript)
+    for crit_id, score in output.scores.items():
+        if score > 0:
+            quote = output.evidence.get(crit_id, "").strip()
+            if not quote:
+                return False, f"Evidence quote missing for criterion {crit_id} with score {score}"
+            if not substring_match(quote, teacher_speech, min_fuzzy=settings.QUOTE_FUZZY_MIN):
+                return (
+                    False,
+                    f"Evidence quote for {crit_id} not in teacher transcript: '{quote}'",
+                )
+
+    # Word budget
+    total_words = (
+        len(output.strength_hi.split())
+        + len(output.change_hi.split())
+        + len(output.exact_words_hi.split())
+    )
+    if total_words > settings.MAX_COACH_FEEDBACK_WORDS:
+        return (
+            False,
+            f"Coach feedback exceeds word budget ({total_words} > {settings.MAX_COACH_FEEDBACK_WORDS})",
+        )
+
+    # Single sentence checks
+    for field_name, sentence in [
+        ("strength_hi", output.strength_hi),
+        ("change_hi", output.change_hi),
+        ("exact_words_hi", output.exact_words_hi),
+    ]:
+        stripped = sentence.strip().rstrip("।,.!? ")
+        inner_terminators = len(re.findall(r"[।\.]", stripped))
+        if inner_terminators > 1:
+            return (
+                False,
+                f"{field_name} must be a single sentence (found {inner_terminators} internal stops)",
+            )
+
+    # Respectful register: coach addressing the teacher in strength_hi and change_hi
+    coach_evaluation = f"{output.strength_hi} {output.change_hi}"
+    coach_tokens = set(norm(coach_evaluation).split())
+    if coach_tokens & DISRESPECTFUL_WORDS:
+        return False, "Disrespectful register: coach must not use तुम/तुमने with teacher"
+    if not (coach_tokens & RESPECTFUL_WORDS):
+        return False, "Coach feedback must use respectful register (आप/आपने)"
+
+    # Answer leak prevention in exact_words_hi
+    if rubric_rewards_not_telling and current_item_answer is not None:
+        if isinstance(current_item_answer, int):
+            exact_numbers = extract_numbers(output.exact_words_hi)
+            if current_item_answer in exact_numbers:
+                return (
+                    False,
+                    f"Coach leaked correct answer {current_item_answer} in exact_words_hi",
+                )
+        elif isinstance(current_item_answer, str) and current_item_answer.strip():
+            if norm(current_item_answer) in norm(output.exact_words_hi):
+                return (
+                    False,
+                    f"Coach leaked correct answer '{current_item_answer}' in exact_words_hi",
+                )
+
+    if not (0.0 <= output.confidence <= 1.0):
+        return False, f"Confidence out of bounds: {output.confidence}"
+
     return True, "Valid"
 
 
-def validate_fidelity_check(
-    result: FidelityCheckerOutput,
-    explanation_transcript: str,
+# ── 5. guard_fidelity_checker (§5.7) ─────────────────────────────────────────
+def guard_fidelity_checker(
+    output: FidelityCheckerOutput,
+    transcript: str,
+    key_point_ids: list[str],
 ) -> tuple[bool, str]:
-    """Guard for 'explain it back' fidelity check (§6)."""
-    for point in result.points:
-        if point.status in ("covered", "partial"):
-            if not point.quote:
-                return False, f"Key point {point.id} marked {point.status} without supporting quote"
-            if not substring_match(point.quote, explanation_transcript):
-                return False, f"Quote for point {point.id} not in transcript: '{point.quote}'"
+    """Validate fidelity_checker explain-it-back output (§5.7).
+
+    Guards:
+    - one entry per key point id, no extras
+    - covered | partial require quote that is normalised substring of transcript
+    - missing requires empty quote
+    - misconceptions <= 3, each <= 25 words
+    - confidence in [0.0, 1.0]
+    """
+    point_ids = [p.id for p in output.points]
+    if len(point_ids) != len(key_point_ids) or set(point_ids) != set(key_point_ids):
+        return (
+            False,
+            f"Evaluated key points do not match expected IDs: expected {set(key_point_ids)}, got {set(point_ids)}",
+        )
+
+    for p in output.points:
+        if p.status in ("covered", "partial"):
+            if not p.quote.strip():
+                return False, f"Key point {p.id} marked {p.status} without supporting quote"
+            if not substring_match(p.quote, transcript, min_fuzzy=settings.QUOTE_FUZZY_MIN):
+                return False, f"quote for point {p.id} not found in transcript: '{p.quote}'"
+        elif p.status == "missing":
+            if p.quote.strip():
+                return False, f"Key point {p.id} marked missing but contains quote: '{p.quote}'"
+
+    if len(output.misconceptions) > 3:
+        return False, f"Too many misconceptions ({len(output.misconceptions)} > 3)"
+
+    for m in output.misconceptions:
+        if len(m.split()) > 25:
+            return False, f"Misconception exceeds 25 words: '{m}'"
+
+    if not (0.0 <= output.confidence <= 1.0):
+        return False, f"Confidence out of bounds: {output.confidence}"
 
     return True, "Valid"
 
 
-def validate_guide_answer(
-    result: GuideAnswererOutput,
+# ── 6. guard_question_classifier (§5.8) ──────────────────────────────────────
+def guard_question_classifier(output: QuestionClassifierOutput) -> tuple[bool, str]:
+    """Validate question_classifier output (§5.8).
+
+    Guards:
+    - category in (pedagogy, classroom_management, admin, out_of_scope)
+    - confidence in [0.0, 1.0]
+    - if needs_clarification: clarifying_question_hi non-empty and <= 20 words
+    - if pedagogy/classroom_management without clarification: search_query_hi non-empty
+    """
+    if output.category not in ("pedagogy", "classroom_management", "admin", "out_of_scope"):
+        return False, f"Invalid category: {output.category}"
+
+    if not (0.0 <= output.confidence <= 1.0):
+        return False, f"Confidence out of bounds: {output.confidence}"
+
+    if output.needs_clarification:
+        if not output.clarifying_question_hi.strip():
+            return False, "clarifying_question_hi cannot be empty when clarification is needed"
+        words = output.clarifying_question_hi.split()
+        if len(words) > 20:
+            return False, f"clarifying_question exceeds 20 words ({len(words)} > 20)"
+
+    if output.category in ("pedagogy", "classroom_management") and not output.needs_clarification:
+        if not output.search_query_hi.strip():
+            return (
+                False,
+                "search_query_hi must not be empty for pedagogy or classroom_management",
+            )
+
+    return True, "Valid"
+
+
+# ── 7. guard_guide_answerer (§5.8) ───────────────────────────────────────────
+def guard_guide_answerer(
+    output: GuideAnswererOutput,
     retrieved_source_ids: list[str],
+    retrieved_chunks_text: str,
 ) -> tuple[bool, str]:
-    """Guard for guide answers (§8)."""
-    valid_sources = set(retrieved_source_ids)
-    cited_sources = set(result.source_ids)
+    """Validate guide_answerer output (§5.8).
 
-    if not cited_sources:
-        return False, "Answer did not cite any source"
+    Guards:
+    - source_ids non-empty and subset of retrieved_source_ids
+    - answer <= MAX_GUIDE_ANSWER_WORDS (80)
+    - every number in answer appears in cited chunks text
+    - respectful register (no तुम/तुमने)
+    - confidence in [0.0, 1.0]
+    """
+    if not output.source_ids:
+        return False, "Guide answer must cite at least one source ID"
 
-    if not cited_sources.issubset(valid_sources):
-        return False, f"Cited sources {cited_sources} not in retrieved set {valid_sources}"
+    retrieved_set = set(retrieved_source_ids)
+    if not set(output.source_ids).issubset(retrieved_set):
+        return (
+            False,
+            f"Cited source IDs {output.source_ids} not in retrieved sources {retrieved_set}",
+        )
 
-    words = normalize_hindi_text(result.answer_hi).split()
+    words = output.answer_hi.split()
     if len(words) > settings.MAX_GUIDE_ANSWER_WORDS:
         return (
             False,
-            f"Answer exceeds word budget ({len(words)} > {settings.MAX_GUIDE_ANSWER_WORDS})",
+            f"Answer exceeds maximum word budget ({len(words)} > {settings.MAX_GUIDE_ANSWER_WORDS})",
         )
+
+    ans_tokens = set(norm(output.answer_hi).split())
+    if ans_tokens & DISRESPECTFUL_WORDS:
+        return False, "Disrespectful register: guide answer must not use तुम/तुमने"
+
+    # Number integrity against retrieved chunks text
+    answer_numbers = extract_numbers(output.answer_hi)
+    chunks_numbers = set(extract_numbers(retrieved_chunks_text))
+    for num in answer_numbers:
+        if num not in chunks_numbers:
+            return False, f"Unauthorized number {num} in guide answer"
+
+    if not (0.0 <= output.confidence <= 1.0):
+        return False, f"Confidence out of bounds: {output.confidence}"
+
+    return True, "Valid"
+
+
+# ── 8. guard_page_ocr (§5.9) ─────────────────────────────────────────────────
+def guard_page_ocr(output: PageOCROutput) -> tuple[bool, str]:
+    """Validate page_ocr output (§5.9).
+
+    Guard:
+    - Devanagari character ratio >= 0.60
+    """
+    non_space_chars = [c for c in output.text_hi if not c.isspace()]
+    if not non_space_chars:
+        return False, "Devanagari OCR text is empty"
+
+    devanagari_chars = [c for c in non_space_chars if "\u0900" <= c <= "\u097f"]
+    ratio = len(devanagari_chars) / len(non_space_chars)
+    if ratio < 0.60:
+        return False, f"Devanagari character ratio too low ({ratio:.2f} < 0.60)"
 
     return True, "Valid"
