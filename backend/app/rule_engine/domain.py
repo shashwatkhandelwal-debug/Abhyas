@@ -176,7 +176,7 @@ SourceRef = ModuleRef
 class Persona(PersonaCard):
     """Runtime / legacy persona model extending PersonaCard."""
 
-    model_config = {"extra": "allow"}  # type: ignore[assignment]
+    model_config = {"extra": "allow"}
     name_hi: str = ""
     age: int = 7
     name: str | None = None
