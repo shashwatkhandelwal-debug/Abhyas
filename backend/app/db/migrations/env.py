@@ -1,4 +1,5 @@
 import asyncio
+import os
 from logging.config import fileConfig
 
 from alembic import context
@@ -11,7 +12,16 @@ from backend.app.config import settings
 from backend.app.db.base import Base
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+target_url = (
+    config.get_main_option("sqlalchemy.url")
+    or os.environ.get("TEST_DATABASE_URL")
+    or os.environ.get("ALEMBIC_DATABASE_URL")
+    or settings.DATABASE_URL
+)
+# Ensure target_url uses postgresql+asyncpg:// for async_engine_from_config
+if target_url.startswith("postgresql://"):
+    target_url = target_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+config.set_main_option("sqlalchemy.url", target_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -39,7 +49,7 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_async_migrations() -> None:
     configuration = config.get_section(config.config_ini_section) or {}
-    configuration["sqlalchemy.url"] = settings.DATABASE_URL
+    configuration["sqlalchemy.url"] = target_url
     connectable = async_engine_from_config(
         configuration,
         prefix="sqlalchemy.",

@@ -22,8 +22,13 @@ TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 def test_alembic_migrations_round_trip() -> None:
     """Round-trip migration test: upgrade head -> downgrade base -> upgrade head."""
     assert TEST_DATABASE_URL is not None
-    # Use sync driver for alembic command runner and inspection
-    sync_url = TEST_DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
+    # Use sync psycopg2 driver for inspection
+    if "postgresql+asyncpg://" in TEST_DATABASE_URL:
+        sync_url = TEST_DATABASE_URL.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+    elif TEST_DATABASE_URL.startswith("postgresql://"):
+        sync_url = TEST_DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
+    else:
+        sync_url = TEST_DATABASE_URL
     alembic_cfg = Config("alembic.ini")
     alembic_cfg.set_main_option("sqlalchemy.url", sync_url)
 
