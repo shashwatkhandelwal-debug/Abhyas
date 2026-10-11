@@ -2,13 +2,11 @@
 
 from backend.app.rule_engine.child_state import ChildState
 from backend.app.rule_engine.domain import (
-    Criterion,
     KeyPoint,
     Move,
     Persona,
     Rubric,
     Scenario,
-    ScenarioItem,
     SourceRef,
     TeachingAct,
 )
@@ -17,11 +15,17 @@ from backend.app.rule_engine.misconceptions import sub_smaller_from_larger
 
 
 def create_sample_place_value_move() -> Move:
+    from backend.app.content_models import FeedbackItem, MoveStatus, RubricCriterion, ScenarioChild
+
     return Move(
         id="NUM_BUNDLES_PLACE_VALUE",
+        version=1,
+        status=MoveStatus.APPROVED,
         domain="numeracy",
+        grade=[2],
         title_hi="बंडल और तीली से हासिल का घटाव",
-        module_ref=SourceRef(module_name="UP FLN Ganit Sandarshika", section="Adhyay 4"),
+        summary_hi="बंडल और तीली से हासिल का घटाव सिखाना",
+        module_ref=SourceRef(source_id="UP FLN Ganit Sandarshika", section="Adhyay 4"),
         sankul_month="October",
         key_points=[
             KeyPoint(id="kp1", text_hi="दहाई को बंडल बनाकर खोलना समझाना", must_have=True),
@@ -34,15 +38,27 @@ def create_sample_place_value_move() -> Move:
         target_causes=["SUB_SMALLER_FROM_LARGER"],
         rubric=Rubric(
             criteria=[
-                Criterion(
-                    id="crit1", text="बंडल का उपयोग", levels={0: "नहीं किया", 1: "आंशिक", 2: "पूर्ण"}
+                RubricCriterion(
+                    id="crit1",
+                    text_hi="बंडल का उपयोग",
+                    levels={0: "नहीं किया", 1: "आंशिक", 2: "पूर्ण"},
                 )
             ]
         ),
+        feedback_bank={
+            "crit1": FeedbackItem(
+                strength_hi="आपने बंडल का उपयोग किया।",
+                change_hi="अगली बार तीली भी गिनवाएँ।",
+                exact_words_hi="10 का बंडल खोलकर देखो।",
+            )
+        },
         learn_script_hi="दो मिनट का ऑडियो",
+        learn_summary_hi=["दहाई खोलना"],
         model_rehearsal=[],
         scenario=Scenario(
-            problem_text_hi="52 - 17", items=[ScenarioItem(question="52 - 17", expected_correct=35)]
+            intro_hi="52 - 17 का अभ्यास",
+            items=[{"question": "52 - 17", "expected_correct": 35}],
+            children=[ScenarioChild(persona_id="ravi", misconception="SUB_SMALLER_FROM_LARGER")],
         ),
         peer_checklist=["क्या शिक्षक ने तीली-बंडल का उपयोग किया?"],
         reflection_questions=["बच्चों को कहाँ कठिनाई हुई?"],

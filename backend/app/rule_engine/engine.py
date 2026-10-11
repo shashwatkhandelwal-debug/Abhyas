@@ -73,8 +73,10 @@ class RehearsalRuleEngine:
     ) -> RuleEngineResult:
         """Evaluates a teacher turn deterministically against a child's misconception state."""
         # Check primary misconception
-        primary_bug_id = child.misconceptions[0] if child.misconceptions else None
-        is_target_misconception = primary_bug_id in self.move.target_causes
+        misconceptions = getattr(child, "misconceptions", [])
+        primary_bug_id = misconceptions[0] if misconceptions else None
+        target_causes = getattr(self.move, "target_causes", []) if self.move else []
+        is_target_misconception = primary_bug_id in target_causes
 
         # Determine state transition
         new_state = current_state
@@ -90,10 +92,11 @@ class RehearsalRuleEngine:
                 affect = "confused"
 
         # Handle 'tell_answer' act -> PARROT behavior
+        child_name = getattr(child, "name_hi", getattr(child, "name", child.id))
         if TeachingAct.TELL_ANSWER.value in act_strs:
             return RuleEngineResult(
                 child_id=child.id,
-                child_name=child.name,
+                child_name=child_name,
                 answer=correct_answer,
                 reasoning_steps=["teacher_told_answer"],
                 prior_state=current_state,
@@ -160,7 +163,7 @@ class RehearsalRuleEngine:
 
         return RuleEngineResult(
             child_id=child.id,
-            child_name=child.name,
+            child_name=child_name,
             answer=answer,
             reasoning_steps=reasoning_steps,
             prior_state=current_state,

@@ -5,6 +5,16 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from backend.app.content_models import (
+    KeyPoint,
+    ModuleRef,
+    MoveCard,
+    PersonaCard,
+    Rubric,
+    RubricCriterion,
+    Scenario,
+)
+
 
 class Domain(StrEnum):
     """Domain of teaching move (§4.1)."""
@@ -157,19 +167,59 @@ class StepResult(BaseModel):
     end_reason: Literal["all_correct", "turn_limit", "teacher_stop"] | None = None
 
 
-from backend.app.content_models import (
-    KeyPoint,
-    ModuleRef,
-    MoveCard,
-    PersonaCard,
-    Rubric,
-    RubricCriterion,
-    Scenario,
-)
-
 # Canonical aliases exported for rule engine and consumers
 Move = MoveCard
-Persona = PersonaCard
 Criterion = RubricCriterion
 SourceRef = ModuleRef
 
+
+class Persona(PersonaCard):
+    """Runtime / legacy persona model extending PersonaCard."""
+
+    model_config = {"extra": "allow"}  # type: ignore[assignment]
+    name_hi: str = ""
+    age: int = 7
+    name: str | None = None
+    grade: int | None = None
+    misconceptions: list[str] = Field(default_factory=list)
+
+
+class ScenarioItem(BaseModel):
+    question: str
+    expected_correct: Any = None
+    context_notes: str | None = None
+
+
+class ScriptLine(BaseModel):
+    speaker: str
+    text_hi: str
+    act: str | None = None
+
+
+__all__ = [
+    "Domain",
+    "TeachingAct",
+    "Problem",
+    "Step",
+    "BugOutput",
+    "ChildState",
+    "ChildRuntime",
+    "SceneState",
+    "TaggedTurn",
+    "ResponseKind",
+    "ChildResponse",
+    "StepResult",
+    "KeyPoint",
+    "ModuleRef",
+    "MoveCard",
+    "PersonaCard",
+    "Rubric",
+    "RubricCriterion",
+    "Scenario",
+    "Move",
+    "Persona",
+    "Criterion",
+    "SourceRef",
+    "ScenarioItem",
+    "ScriptLine",
+]
