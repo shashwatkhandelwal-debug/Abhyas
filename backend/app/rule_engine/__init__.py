@@ -8,8 +8,6 @@ from backend.app.rule_engine.domain import (
     Persona,
     Rubric,
     Scenario,
-    ScenarioItem,
-    ScriptLine,
     SourceRef,
     TeachingAct,
 )
@@ -29,9 +27,7 @@ __all__ = [
     "KeyPoint",
     "Criterion",
     "Rubric",
-    "ScriptLine",
     "Persona",
-    "ScenarioItem",
     "Scenario",
     "Move",
     "RehearsalRuleEngine",
@@ -41,3 +37,4 @@ __all__ = [
     "add_no_carry",
     "matra_drop",
 ]
+

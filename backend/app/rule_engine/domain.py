@@ -157,69 +157,19 @@ class StepResult(BaseModel):
     end_reason: Literal["all_correct", "turn_limit", "teacher_stop"] | None = None
 
 
-# Legacy helper types used in Move schema and initial tests
-class SourceRef(BaseModel):
-    module_name: str
-    section: str
-    page: int | None = None
+from backend.app.content_models import (
+    KeyPoint,
+    ModuleRef,
+    MoveCard,
+    PersonaCard,
+    Rubric,
+    RubricCriterion,
+    Scenario,
+)
 
+# Canonical aliases exported for rule engine and consumers
+Move = MoveCard
+Persona = PersonaCard
+Criterion = RubricCriterion
+SourceRef = ModuleRef
 
-class KeyPoint(BaseModel):
-    id: str
-    text_hi: str
-    must_have: bool = True
-
-
-class Criterion(BaseModel):
-    id: str
-    text: str
-    levels: dict[int, str]
-
-
-class Rubric(BaseModel):
-    criteria: list[Criterion]
-
-
-class ScriptLine(BaseModel):
-    speaker: str
-    text_hi: str
-    act: str | None = None
-
-
-class Persona(BaseModel):
-    id: str
-    name: str
-    grade: int
-    voice_id: str
-    misconceptions: list[str]
-    temperament: Literal["shy", "confident", "distracted"]
-    speech_style_hi: str
-
-
-class ScenarioItem(BaseModel):
-    question: str
-    expected_correct: Any
-    context_notes: str | None = None
-
-
-class Scenario(BaseModel):
-    problem_text_hi: str
-    items: list[ScenarioItem] = Field(default_factory=list)
-    personas: list[Persona] = Field(default_factory=list)
-
-
-class Move(BaseModel):
-    id: str
-    domain: Literal["numeracy", "literacy"]
-    title_hi: str
-    module_ref: SourceRef
-    sankul_month: str | None = None
-    key_points: list[KeyPoint]
-    teaching_acts_effective: list[str]
-    target_causes: list[str]
-    rubric: Rubric
-    learn_script_hi: str
-    model_rehearsal: list[ScriptLine]
-    scenario: Scenario
-    peer_checklist: list[str]
-    reflection_questions: list[str]
