@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Move",
+  "type": "object",
+  "required": [
+    "id",
+    "domain",
+    "title_hi",
+    "module_ref",
+    "key_points",
+    "teaching_acts_effective",
+    "target_causes",
+    "rubric",
+    "learn_script_hi",
+    "model_rehearsal",
+    "scenario",
+    "peer_checklist",
+    "reflection_questions"
+  ],
+  "properties": {
+    "id": {"type": "string"},
+    "domain": {"type": "string", "enum": ["numeracy", "literacy"]},
+    "title_hi": {"type": "string"},
+    "module_ref": {
+      "type": "object",
+      "required": ["module_name", "section"],
+      "properties": {
+        "module_name": {"type": "string"},
+        "section": {"type": "string"},
+        "page": {"type": ["integer", "null"]}
+      }
+    },
+    "sankul_month": {"type": ["string", "null"]},
+    "key_points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "text_hi", "must_have"],
+        "properties": {
+          "id": {"type": "string"},
+          "text_hi": {"type": "string"},
+          "must_have": {"type": "boolean"}
+        }
+      }
+    },
+    "teaching_acts_effective": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "target_causes": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "rubric": {
+      "type": "object",
+      "required": ["criteria"],
+      "properties": {
+        "criteria": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "text", "levels"],
+            "properties": {
+              "id": {"type": "string"},
+              "text": {"type": "string"},
+              "levels": {"type": "object"}
+            }
+          }
+        }
+      }
+    },
+    "learn_script_hi": {"type": "string"},
+    "model_rehearsal": {"type": "array"},
+    "scenario": {"type": "object"},
+    "peer_checklist": {"type": "array", "items": {"type": "string"}},
+    "reflection_questions": {"type": "array", "items": {"type": "string"}}
+  }
+}

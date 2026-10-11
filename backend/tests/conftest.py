@@ -1,0 +1,22 @@
+"""Pytest configuration and test fixtures."""
+
+import os
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+# Set test environment
+os.environ["ENVIRONMENT"] = "test"
+os.environ["ANTHROPIC_API_KEY"] = "mock_key_for_testing"
+os.environ["WHATSAPP_ACCESS_TOKEN"] = "mock_whatsapp_token"
+os.environ["STT_PROVIDER"] = "mock"
+os.environ["TTS_PROVIDER"] = "mock"
+
+from backend.app.main import app
+
+
+@pytest.fixture
+async def async_client():
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        yield client

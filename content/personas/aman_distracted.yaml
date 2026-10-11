@@ -1,0 +1,8 @@
+id: aman
+name: अमन
+grade: 2
+voice_id: child_boy_2
+misconceptions:
+  - MATRA_DROP
+temperament: distracted
+speech_style_hi: चंचल, बीच में दूसरी बातें करने वाला
