@@ -69,7 +69,7 @@ jobs:
           ALEMBIC_DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/abhyas_test
           TEST_DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/abhyas_test
         run: |
-          python -m pytest -v --tb=short backend/tests content/tests
+          python -m pytest -rA backend/tests content/tests
 
   content:
     runs-on: ubuntu-latest

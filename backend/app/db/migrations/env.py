@@ -19,7 +19,11 @@ target_url = (
     or settings.DATABASE_URL
 )
 # Ensure target_url uses postgresql+asyncpg:// for async_engine_from_config
-if target_url.startswith("postgresql://"):
+if target_url.startswith("postgresql+psycopg2://"):
+    target_url = target_url.replace("postgresql+psycopg2://", "postgresql+asyncpg://", 1)
+elif target_url.startswith("postgresql+psycopg://"):
+    target_url = target_url.replace("postgresql+psycopg://", "postgresql+asyncpg://", 1)
+elif target_url.startswith("postgresql://"):
     target_url = target_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 config.set_main_option("sqlalchemy.url", target_url)
 
