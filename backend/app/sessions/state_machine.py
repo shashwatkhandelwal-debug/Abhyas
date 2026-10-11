@@ -1,13 +1,14 @@
 """Session State Machine for the Weekly Loop (§4)."""
 
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, Optional
+from datetime import UTC, datetime
+from enum import StrEnum
+
 from pydantic import BaseModel, Field
+
 from backend.app.config import settings
 
 
-class SessionStateEnum(str, Enum):
+class SessionStateEnum(StrEnum):
     PLACEMENT = "PLACEMENT"
     LEARN = "LEARN"
     EXPLAIN_BACK = "EXPLAIN_BACK"
@@ -25,11 +26,11 @@ class SessionContext(BaseModel):
     week_start: str
     current_move_id: str
     current_state: SessionStateEnum = SessionStateEnum.LEARN
-    prior_state_before_ask: Optional[SessionStateEnum] = None
+    prior_state_before_ask: SessionStateEnum | None = None
     retries_count: int = 0
     rehearsal_turns_count: int = 0
     child_states: dict[str, int] = Field(default_factory=dict)
-    last_inbound_at: Optional[datetime] = None
+    last_inbound_at: datetime | None = None
 
 
 class WeeklyStateMachine:
@@ -42,7 +43,7 @@ class WeeklyStateMachine:
         """Checks if current time is outside Meta 24h customer service window."""
         if not self.ctx.last_inbound_at:
             return True
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         diff = (now - self.ctx.last_inbound_at).total_seconds()
         return diff > 86400  # 24 hours
 

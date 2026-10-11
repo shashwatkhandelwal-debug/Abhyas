@@ -3,12 +3,13 @@
 Deterministic implementations following Brown & Burton (1978).
 """
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 
 def sub_smaller_from_larger(a: int, b: int) -> dict[str, Any]:
     """Misconception: When top digit is smaller than bottom digit, subtract smaller from larger.
-    
+
     Example: 52 - 17
     Units: 2 < 7 -> child does 7 - 2 = 5
     Tens: 5 - 1 = 4
@@ -39,7 +40,7 @@ def sub_smaller_from_larger(a: int, b: int) -> dict[str, Any]:
 
 def add_no_carry(a: int, b: int) -> dict[str, Any]:
     """Misconception: Writes the full sum of digits side-by-side without regrouping.
-    
+
     Example: 28 + 15 -> 8+5=13, 2+1=3 -> 313
     """
     a_units = a % 10

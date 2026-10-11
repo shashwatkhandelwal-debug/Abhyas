@@ -34,6 +34,8 @@ Teacher's Spoken Explanation:
         )
 
         is_valid, _ = validate_fidelity_check(result, explanation_transcript)
-        requires_review = (not is_valid) or (result.confidence < settings.COACH_CONFIDENCE_THRESHOLD)
+        requires_review = (not is_valid) or (
+            result.confidence < settings.COACH_CONFIDENCE_THRESHOLD
+        )
 
         return result, requires_review

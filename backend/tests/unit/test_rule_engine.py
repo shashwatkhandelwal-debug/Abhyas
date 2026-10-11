@@ -34,12 +34,16 @@ def create_sample_place_value_move() -> Move:
         target_causes=["SUB_SMALLER_FROM_LARGER"],
         rubric=Rubric(
             criteria=[
-                Criterion(id="crit1", text="बंडल का उपयोग", levels={0: "नहीं किया", 1: "आंशिक", 2: "पूर्ण"})
+                Criterion(
+                    id="crit1", text="बंडल का उपयोग", levels={0: "नहीं किया", 1: "आंशिक", 2: "पूर्ण"}
+                )
             ]
         ),
         learn_script_hi="दो मिनट का ऑडियो",
         model_rehearsal=[],
-        scenario=Scenario(problem_text_hi="52 - 17", items=[ScenarioItem(question="52 - 17", expected_correct=35)]),
+        scenario=Scenario(
+            problem_text_hi="52 - 17", items=[ScenarioItem(question="52 - 17", expected_correct=35)]
+        ),
         peer_checklist=["क्या शिक्षक ने तीली-बंडल का उपयोग किया?"],
         reflection_questions=["बच्चों को कहाँ कठिनाई हुई?"],
     )
@@ -56,7 +60,7 @@ def test_sub_smaller_from_larger_computation():
 
 def test_ravi_worked_example_acceptance_criteria():
     """Verifies §5.2 Worked Example: Ravi with SUB_SMALLER_FROM_LARGER.
-    
+
     1. Initial state: MISCONCEPTION (computes 45)
     2. Teacher says 'ask_to_explain' -> moves to CAN_EXPLAIN
     3. Teacher provides 'concrete_representation' -> moves to PARTIAL
@@ -102,7 +106,7 @@ def test_ravi_worked_example_acceptance_criteria():
 
 def test_relapse_after_tell_answer():
     """Verifies §5.2 and Milestone M2:
-    
+
     'Telling the answer yields a correct echo followed by the same bug on the next item.'
     """
     move = create_sample_place_value_move()

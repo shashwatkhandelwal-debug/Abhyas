@@ -41,12 +41,18 @@ venv.bak/
 .env
 .env.local
 *.env
+!.env.example
 
-# Audio temporary files (strictly per privacy guidelines: audio deleted after transcription)
-*.ogg
-*.opus
+# Source PDFs if licence unclear (spec 14 T01: content/sources/*.pdf)
+content/sources/*.pdf
+
+# Audio files (spec 14 T01: *.wav, *.ogg except eval/samples and content/audio)
 *.wav
-*.mp3
+*.ogg
+!eval/samples/**/*.ogg
+!eval/samples/**/*.wav
+!content/audio/**/*.ogg
+!content/audio/**/*.wav
 tmp_audio/
 
 # Unit test / coverage
@@ -67,13 +73,13 @@ coverage.xml
 *.mo
 *.pot
 
-# Django / Database
+# Database & local data
 *.log
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
-# IDEs
+# IDEs & Editors
 .idea/
 .vscode/
 *.swp

@@ -5,7 +5,7 @@ from typing import Any
 
 def bug_sub_smaller_from_larger(top: int, bottom: int) -> dict[str, Any]:
     """When top digit is smaller than bottom digit, subtracts top from bottom.
-    
+
     Example: 52 - 17 -> |2-7|=5, 5-1=4 -> 45
     """
     top_u, top_t = top % 10, (top // 10) % 10

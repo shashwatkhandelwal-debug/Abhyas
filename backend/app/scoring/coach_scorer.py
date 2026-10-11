@@ -1,6 +1,7 @@
 """Coach scoring and calibration evaluation logic (§5.3)."""
 
 from typing import Any
+
 from backend.app.config import settings
 from backend.app.llm.client import ClaudeClient
 from backend.app.llm.guards import validate_coach_feedback
@@ -20,7 +21,7 @@ class CoachScorer:
         trajectory: list[dict[str, Any]],
     ) -> tuple[CoachFeedbackOutput, bool]:
         """Scores rehearsal transcript against move rubric.
-        
+
         Returns (feedback, requires_expert_review).
         """
         user_prompt = f"""

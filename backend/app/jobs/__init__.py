@@ -5,11 +5,9 @@ from backend.app.jobs.scheduler import (
     trigger_two_day_followups,
     trigger_weekly_prompts,
 )
-from backend.app.jobs.worker import WorkerSettings
 
 __all__ = [
     "trigger_weekly_prompts",
     "trigger_two_day_followups",
     "trigger_arp_weekly_digests",
-    "WorkerSettings",
 ]

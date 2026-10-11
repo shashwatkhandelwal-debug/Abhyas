@@ -1,8 +1,9 @@
 """WhatsApp Webhook endpoint router (§11)."""
 
 import logging
-from typing import Any
+
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Response, status
+
 from backend.app.config import settings
 from backend.app.whatsapp.models import WhatsAppWebhookPayload
 from backend.app.whatsapp.security import verify_whatsapp_signature
@@ -39,9 +40,13 @@ async def receive_webhook(
 
     # Signature verification (skip if in test/mock environment without app secret)
     if settings.ENVIRONMENT != "test" and not settings.WHATSAPP_APP_SECRET.startswith("mock"):
-        if not x_hub_signature_256 or not verify_whatsapp_signature(body_bytes, x_hub_signature_256):
+        if not x_hub_signature_256 or not verify_whatsapp_signature(
+            body_bytes, x_hub_signature_256
+        ):
             logger.error("Invalid webhook HMAC signature.")
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid signature")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid signature"
+            )
 
     payload_json = await request.json()
     try:

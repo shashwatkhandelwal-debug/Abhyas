@@ -1,6 +1,6 @@
 """Rule engine package exports."""
 
-from backend.app.rule_engine.child_state import ChildState, TRANSITIONS
+from backend.app.rule_engine.child_state import TRANSITIONS, ChildState
 from backend.app.rule_engine.domain import (
     Criterion,
     KeyPoint,

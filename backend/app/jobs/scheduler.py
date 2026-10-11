@@ -1,8 +1,6 @@
 """Scheduled background tasks for weekly loops, reminders, and ARP digests (§1, §4, §8, §13)."""
 
 import logging
-from datetime import datetime, timezone
-from backend.app.config import settings
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,5 @@
 """Document chunk retrieval over state guides and practice library (§8)."""
 
-from typing import Any, Optional
 from pydantic import BaseModel
 
 

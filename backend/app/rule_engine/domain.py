@@ -1,12 +1,14 @@
 """Domain models strictly matching Section 3 of ARCHITECTURE.md."""
 
-from enum import Enum
-from typing import Any, Literal, Optional
+from enum import StrEnum
+from typing import Any, Literal
+
 from pydantic import BaseModel, Field
 
 
-class TeachingAct(str, Enum):
+class TeachingAct(StrEnum):
     """Fixed taxonomy for tagging teacher turns (§3)."""
+
     ASK_TO_EXPLAIN = "ask_to_explain"
     CONCRETE_REPRESENTATION = "concrete_representation"
     PROBE_SIMPLER_CASE = "probe_simpler_case"
@@ -25,7 +27,7 @@ class TeachingAct(str, Enum):
 class SourceRef(BaseModel):
     module_name: str
     section: str
-    page: Optional[int] = None
+    page: int | None = None
 
 
 class KeyPoint(BaseModel):
@@ -47,11 +49,12 @@ class Rubric(BaseModel):
 class ScriptLine(BaseModel):
     speaker: str
     text_hi: str
-    act: Optional[str] = None
+    act: str | None = None
 
 
 class Persona(BaseModel):
     """An AI child persona representation (§3)."""
+
     id: str
     name: str
     grade: int
@@ -64,7 +67,7 @@ class Persona(BaseModel):
 class ScenarioItem(BaseModel):
     question: str
     expected_correct: Any
-    context_notes: Optional[str] = None
+    context_notes: str | None = None
 
 
 class Scenario(BaseModel):
@@ -75,11 +78,12 @@ class Scenario(BaseModel):
 
 class Move(BaseModel):
     """One teachable practice card (§3)."""
+
     id: str
     domain: Literal["numeracy", "literacy"]
     title_hi: str
     module_ref: SourceRef
-    sankul_month: Optional[str] = None
+    sankul_month: str | None = None
     key_points: list[KeyPoint]
     teaching_acts_effective: list[str]
     target_causes: list[str]

@@ -10,7 +10,9 @@ Enforces:
 
 import unicodedata
 from typing import Any
+
 from pydantic import ValidationError
+
 from backend.app.rule_engine.domain import Move
 
 
@@ -41,6 +43,8 @@ def validate_move_card(move_dict: dict[str, Any]) -> Move:
     # 4. Length constraints check
     learn_words = move.learn_script_hi.split()
     if len(learn_words) > 300:  # ~2 minutes spoken Hindi
-        raise ContentValidationError(f"Learn script exceeds 2-minute word limit: {len(learn_words)} words")
+        raise ContentValidationError(
+            f"Learn script exceeds 2-minute word limit: {len(learn_words)} words"
+        )
 
     return move

@@ -2,9 +2,11 @@
 
 import json
 import logging
-from typing import Any, Optional, Type, TypeVar
+from typing import TypeVar
+
 import httpx
 from pydantic import BaseModel
+
 from backend.app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -15,9 +17,9 @@ T = TypeVar("T", bound=BaseModel)
 class ClaudeClient:
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        model: Optional[str] = None,
-        timeout: Optional[float] = None,
+        api_key: str | None = None,
+        model: str | None = None,
+        timeout: float | None = None,
     ):
         self.api_key = api_key or settings.ANTHROPIC_API_KEY
         self.model = model or settings.CLAUDE_MODEL
@@ -27,7 +29,7 @@ class ClaudeClient:
         self,
         system_prompt: str,
         user_prompt: str,
-        response_model: Type[T],
+        response_model: type[T],
         temperature: float = 0.2,
     ) -> T:
         """Generates structured JSON adhering to the target Pydantic schema."""
@@ -47,9 +49,7 @@ class ClaudeClient:
             "max_tokens": 1024,
             "temperature": temperature,
             "system": system_prompt,
-            "messages": [
-                {"role": "user", "content": user_prompt}
-            ],
+            "messages": [{"role": "user", "content": user_prompt}],
         }
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
@@ -64,7 +64,7 @@ class ClaudeClient:
             parsed_json = json.loads(content_text)
             return response_model.model_validate(parsed_json)
 
-    def _mock_structured_response(self, response_model: Type[T]) -> T:
+    def _mock_structured_response(self, response_model: type[T]) -> T:
         """Returns baseline mock instance for development and offline testing."""
         from backend.app.llm.schemas import (
             ActTaggerOutput,

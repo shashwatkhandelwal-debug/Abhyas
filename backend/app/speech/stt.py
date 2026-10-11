@@ -1,8 +1,9 @@
 """Speech-to-Text (STT) adapter interface and providers (§10)."""
 
 from abc import ABC, abstractmethod
-from typing import Optional
+
 from pydantic import BaseModel
+
 from backend.app.config import settings
 
 
@@ -21,6 +22,7 @@ class STTProvider(ABC):
 
 class IndicConformerSTT(STTProvider):
     """Adapter for self-hosted or API-backed AI4Bharat IndicConformer."""
+
     def __init__(self, endpoint: str = settings.STT_ENDPOINT):
         self.endpoint = endpoint
 
@@ -36,6 +38,7 @@ class IndicConformerSTT(STTProvider):
 
 class MockSTT(STTProvider):
     """Mock STT for testing and local development."""
+
     async def transcribe(self, audio_bytes: bytes, lang_hint: str = "hi") -> Transcript:
         return Transcript(
             text="Ravi, 52 mein se 17 kaise ghataya? Batao.",

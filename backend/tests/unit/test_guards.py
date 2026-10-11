@@ -2,7 +2,6 @@
 
 from backend.app.llm.guards import (
     extract_numbers_from_text,
-    normalize_hindi_text,
     validate_child_voice,
     validate_coach_feedback,
 )

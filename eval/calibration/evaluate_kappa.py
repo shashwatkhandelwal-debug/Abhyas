@@ -3,7 +3,7 @@
 Target: Cohen's kappa >= 0.70 across double-coded rehearsal scores.
 """
 
-from typing import Sequence
+from collections.abc import Sequence
 
 
 def compute_cohens_kappa(rater1: Sequence[int], rater2: Sequence[int]) -> float:
@@ -13,8 +13,8 @@ def compute_cohens_kappa(rater1: Sequence[int], rater2: Sequence[int]) -> float:
     if n == 0:
         return 0.0
 
-    categories = sorted(list(set(rater1).union(set(rater2))))
-    observed_agreement = sum(1 for a, b in zip(rater1, rater2) if a == b) / n
+    categories = sorted(set(rater1).union(set(rater2)))
+    observed_agreement = sum(1 for a, b in zip(rater1, rater2, strict=True) if a == b) / n
 
     expected_agreement = 0.0
     for cat in categories:

@@ -5,6 +5,7 @@ if consent_share_scores == True.
 """
 
 from typing import Any
+
 from pydantic import BaseModel
 
 

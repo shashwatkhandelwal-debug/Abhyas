@@ -1,19 +1,20 @@
 """Database package init."""
+
 from backend.app.db.base import Base
 from backend.app.db.models import (
-    Teacher,
     ARP,
+    AdoptionEvidence,
+    DocChunk,
+    ExplainScore,
     Move,
     Persona,
+    Question,
+    RehearsalScore,
+    ReviewItem,
     Rule,
     SessionState,
+    Teacher,
     Turn,
-    RehearsalScore,
-    ExplainScore,
-    AdoptionEvidence,
-    Question,
-    DocChunk,
-    ReviewItem,
 )
 
 __all__ = [

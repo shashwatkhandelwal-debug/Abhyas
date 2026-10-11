@@ -1,13 +1,14 @@
 """Pydantic models for WhatsApp incoming and outgoing payloads (§11)."""
 
-from typing import Any, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
 class WhatsAppMedia(BaseModel):
     id: str
-    mime_type: Optional[str] = None
-    sha256: Optional[str] = None
+    mime_type: str | None = None
+    sha256: str | None = None
 
 
 class WhatsAppAudioMessage(BaseModel):
@@ -29,9 +30,9 @@ class WhatsAppMessage(BaseModel):
     id: str
     timestamp: str
     type: str  # text | audio | interactive | button
-    text: Optional[WhatsAppTextMessage] = None
-    audio: Optional[WhatsAppAudioMessage] = None
-    interactive: Optional[dict[str, Any]] = None
+    text: WhatsAppTextMessage | None = None
+    audio: WhatsAppAudioMessage | None = None
+    interactive: dict[str, Any] | None = None
 
 
 class WhatsAppWebhookEntry(BaseModel):

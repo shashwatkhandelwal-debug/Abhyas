@@ -1,6 +1,7 @@
 """Tests for content validation and move schema verification."""
 
 import os
+
 from content.pipeline.generator import load_and_validate_move_yaml
 
 

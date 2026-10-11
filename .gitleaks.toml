@@ -1,0 +1,17 @@
+# Gitleaks configuration for Abhyas
+title = "gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowed placeholder test strings and tokens"
+paths = [
+  '''^\.env\.example$''',
+  '''^backend/tests/.*''',
+  '''^tests/.*'''
+]
+regexes = [
+  '''mock-[a-zA-Z0-9_-]+''',
+  '''mock_[a-zA-Z0-9_-]+'''
+]

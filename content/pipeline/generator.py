@@ -2,14 +2,16 @@
 
 import logging
 from typing import Any
+
 import yaml
+
 from content.pipeline.validator import validate_move_card
 
 logger = logging.getLogger(__name__)
 
 
 def load_and_validate_move_yaml(yaml_path: str) -> dict[str, Any]:
-    with open(yaml_path, "r", encoding="utf-8") as f:
+    with open(yaml_path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
     move = validate_move_card(data)
     return move.model_dump()

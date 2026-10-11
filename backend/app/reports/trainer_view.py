@@ -1,7 +1,9 @@
 """DIET/SCERT Trainer View aggregator with strict n >= 10 suppression (§13, §15)."""
 
-from typing import Any, Optional
+from typing import Any
+
 from pydantic import BaseModel
+
 from backend.app.config import settings
 
 
@@ -22,7 +24,7 @@ def aggregate_trainer_view(
     records: list[dict[str, Any]],
 ) -> ModuleBatchAggregate:
     """Aggregates training metrics by module and batch.
-    
+
     CRITICAL PRIVACY RULE: Suppress aggregates when sample size n < 10.
     """
     n = len(records)

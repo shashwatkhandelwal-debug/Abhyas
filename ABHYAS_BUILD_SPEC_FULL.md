@@ -294,31 +294,40 @@ Delete top-level `review-console/` and `trainer-view/` (merged into `backend/app
 # core/types.py
 class InboundMessage(BaseModel):
     channel: Literal["whatsapp", "web"]
-    channel_msg_id: str              # idempotency key
+    channel_msg_id: str  # idempotency key
     teacher_id: UUID
     kind: Literal["text", "audio", "button"]
-    text: str | None = None          # for text, or transcript after STT
+    text: str | None = None  # for text, or transcript after STT
     button_id: str | None = None
     audio_bytes: bytes | None = Field(default=None, exclude=True)  # never persisted
     audio_mime: str | None = None
     received_at: datetime
 
-class Button(BaseModel): id: str; title_hi: str    # title ≤ 20 chars (WhatsApp limit)
+
+class Button(BaseModel):
+    id: str
+    title_hi: str  # title ≤ 20 chars (WhatsApp limit)
+
 
 class OutboundMessage(BaseModel):
     kind: Literal["text", "audio", "buttons", "template"]
     text_hi: str | None = None
-    audio_ref: str | None = None     # cache key of TTS audio
-    buttons: list[Button] = []       # ≤ 3
+    audio_ref: str | None = None  # cache key of TTS audio
+    buttons: list[Button] = []  # ≤ 3
     template_name: str | None = None
     template_params: list[str] = []
-    speaker: str | None = None       # "abhyas" | persona id | "model_teacher" | "coach"
+    speaker: str | None = None  # "abhyas" | persona id | "model_teacher" | "coach"
+
 
 # channels/base.py
 class Channel(Protocol):
     name: str
+
     async def send(self, teacher: Teacher, msgs: list[OutboundMessage]) -> None: ...
-    async def can_send_freeform(self, teacher: Teacher) -> bool: ...   # 24-h window (always True for web)
+    async def can_send_freeform(
+        self, teacher: Teacher
+    ) -> bool: ...  # 24-h window (always True for web)
+
 
 # core/conversation.py
 class ConversationService:
@@ -569,75 +578,87 @@ Supabase RLS (defence in depth): enable RLS on all tables; no anon policies (the
 ## 4.1 Types
 
 ```python
-class Domain(str, Enum): NUMERACY = "numeracy"; LITERACY = "literacy"
+class Domain(str, Enum):
+    NUMERACY = "numeracy"
+    LITERACY = "literacy"
 
-class Problem(BaseModel):                      # an item the children work on
+
+class Problem(BaseModel):  # an item the children work on
     type: Literal["sub", "add", "place_value", "read_word"]
-    a: int | None = None                       # sub/add: a − b or a + b (two-digit)
+    a: int | None = None  # sub/add: a − b or a + b (two-digit)
     b: int | None = None
-    tens: int | None = None                    # place_value: bundles of 10
-    ones: int | None = None                    #              loose sticks
-    word: str | None = None                    # read_word (Devanagari, NFC)
-    def key(self) -> str: ...                  # stable id e.g. "sub:52-17", "pv:4-7", "word:मेला"
+    tens: int | None = None  # place_value: bundles of 10
+    ones: int | None = None  #              loose sticks
+    word: str | None = None  # read_word (Devanagari, NFC)
 
-class Step(BaseModel):                         # one reasoning step, engine-rendered
-    code: str                                  # e.g. "SUB_CANNOT", "SUB_SWAP", "REGROUP_OPEN_BUNDLE"
-    nums: list[int] = []                       # every number mentioned in this step
-    words: list[str] = []                      # every Hindi word token that must appear (literacy)
-    text_hi: str                               # rendered template (digits as Arabic numerals)
+    def key(self) -> str: ...  # stable id e.g. "sub:52-17", "pv:4-7", "word:मेला"
+
+
+class Step(BaseModel):  # one reasoning step, engine-rendered
+    code: str  # e.g. "SUB_CANNOT", "SUB_SWAP", "REGROUP_OPEN_BUNDLE"
+    nums: list[int] = []  # every number mentioned in this step
+    words: list[str] = []  # every Hindi word token that must appear (literacy)
+    text_hi: str  # rendered template (digits as Arabic numerals)
+
 
 class BugOutput(BaseModel):
     rule_id: str
     answer: int | str
     steps: list[Step]
 
+
 class ChildState(IntEnum):
-    MISCONCEPTION = 0   # applies bug, confident, no explanation
-    CAN_EXPLAIN   = 1   # still wrong, explains steps (reveals the bug)
-    PARTIAL       = 2   # correct with scaffold on the current item; may relapse on a new item
-    CORRECT       = 3   # correct and explains why, on any item
+    MISCONCEPTION = 0  # applies bug, confident, no explanation
+    CAN_EXPLAIN = 1  # still wrong, explains steps (reveals the bug)
+    PARTIAL = 2  # correct with scaffold on the current item; may relapse on a new item
+    CORRECT = 3  # correct and explains why, on any item
+
 
 class ChildRuntime(BaseModel):
     persona_id: str
-    misconception: str                         # bug rule id assigned by the scenario
+    misconception: str  # bug rule id assigned by the scenario
     temperament: Literal["confident", "shy", "distracted"]
     state: ChildState = ChildState.MISCONCEPTION
-    partial_item_key: str | None = None        # item on which PARTIAL was reached
+    partial_item_key: str | None = None  # item on which PARTIAL was reached
     silent_turns: int = 0
     turns_since_addressed: int = 0
     last_answer: int | str | None = None
-    history: list[tuple[int, ChildState]] = [] # (teacher_turn_idx, state) trajectory
+    history: list[tuple[int, ChildState]] = []  # (teacher_turn_idx, state) trajectory
+
 
 class SceneState(BaseModel):
     move_id: str
     domain: Domain
-    effective_acts: list[str]                  # from move.teaching_acts_effective
+    effective_acts: list[str]  # from move.teaching_acts_effective
     target_causes: list[str]
-    items: list[Problem]                       # scenario items (in order)
+    items: list[Problem]  # scenario items (in order)
     item_idx: int = 0
     current_item: Problem
-    children: list[ChildRuntime]               # exactly 3 in normal mode, 1 in placement mode
+    children: list[ChildRuntime]  # exactly 3 in normal mode, 1 in placement mode
     teacher_turns: int = 0
     last_responder: str | None = None
     ended: bool = False
     end_reason: str | None = None
 
-class TaggedTurn(BaseModel):                   # from act_tagger (05), validated
+
+class TaggedTurn(BaseModel):  # from act_tagger (05), validated
     acts: list[TeachingAct]
-    addressed_child: str | None                # persona id | "all" | None
-    problem: Problem | None                    # if the teacher posed a new item
+    addressed_child: str | None  # persona id | "all" | None
+    problem: Problem | None  # if the teacher posed a new item
+
 
 class ResponseKind(str, Enum):
-    ANSWER = "answer"                          # MISCONCEPTION: bug answer, no steps
-    EXPLAIN_BUG = "explain_bug"                # CAN_EXPLAIN: bug answer + bug steps
+    ANSWER = "answer"  # MISCONCEPTION: bug answer, no steps
+    EXPLAIN_BUG = "explain_bug"  # CAN_EXPLAIN: bug answer + bug steps
     SCAFFOLDED_CORRECT = "scaffolded_correct"  # PARTIAL: correct answer, hesitant, correct steps
-    RELAPSE = "relapse"                        # PARTIAL on a new item without support: bug again
-    CORRECT_EXPLAINED = "correct_explained"    # CORRECT
-    PARROT = "parrot"                          # repeats the told answer, no understanding
-    SILENT = "silent"                          # shy child after scolding
-    OFF_TOPIC = "off_topic"                    # distracted child
-    INTERJECT = "interject"                    # unprompted distracted interjection
-    CONFUSED = "confused"                      # teacher posed an out-of-scope problem
+    RELAPSE = "relapse"  # PARTIAL on a new item without support: bug again
+    CORRECT_EXPLAINED = "correct_explained"  # CORRECT
+    PARROT = "parrot"  # repeats the told answer, no understanding
+    SILENT = "silent"  # shy child after scolding
+    OFF_TOPIC = "off_topic"  # distracted child
+    INTERJECT = "interject"  # unprompted distracted interjection
+    CONFUSED = "confused"  # teacher posed an out-of-scope problem
+
 
 class ChildResponse(BaseModel):
     persona_id: str
@@ -649,12 +670,13 @@ class ChildResponse(BaseModel):
     new_state: ChildState
     affect: Literal["neutral", "confident", "encouraged", "upset", "shy", "distracted"]
     item: Problem
-    allowed_numbers: set[int]                  # for the guard
+    allowed_numbers: set[int]  # for the guard
     allowed_words: set[str]
-    forbidden: set[str]                        # tokens that must NOT appear (e.g. correct answer)
+    forbidden: set[str]  # tokens that must NOT appear (e.g. correct answer)
+
 
 class StepResult(BaseModel):
-    responses: list[ChildResponse]             # 1 main + at most 1 INTERJECT
+    responses: list[ChildResponse]  # 1 main + at most 1 INTERJECT
     ended: bool
     end_reason: Literal["all_correct", "turn_limit", "teacher_stop"] | None
 ```
@@ -735,15 +757,25 @@ Implement as a dict `STEP_TEMPLATES[code] -> str.format(**vars)`; all numbers pl
 
 ```python
 ADVANCE: dict[TeachingAct, dict[ChildState, ChildState]] = {
-    ASK_TO_EXPLAIN:          {MISCONCEPTION: CAN_EXPLAIN},
+    ASK_TO_EXPLAIN: {MISCONCEPTION: CAN_EXPLAIN},
     CONCRETE_REPRESENTATION: {MISCONCEPTION: PARTIAL, CAN_EXPLAIN: PARTIAL},
     PROBE_WITH_SIMPLER_CASE: {CAN_EXPLAIN: PARTIAL},
-    PHONICS_SOUND_OUT:       {MISCONCEPTION: PARTIAL, CAN_EXPLAIN: PARTIAL},
-    CONTRAST_TWO_ANSWERS:    {PARTIAL: CORRECT},
-    MODEL_STEP_ALOUD:        {PARTIAL: CORRECT},
-    INVOLVE_PEER:            {CAN_EXPLAIN: PARTIAL},   # only when the peer who explains is CORRECT (see rule 3d)
+    PHONICS_SOUND_OUT: {MISCONCEPTION: PARTIAL, CAN_EXPLAIN: PARTIAL},
+    CONTRAST_TWO_ANSWERS: {PARTIAL: CORRECT},
+    MODEL_STEP_ALOUD: {PARTIAL: CORRECT},
+    INVOLVE_PEER: {
+        CAN_EXPLAIN: PARTIAL
+    },  # only when the peer who explains is CORRECT (see rule 3d)
 }
-NON_ADVANCING = {TELL_ANSWER, REPEAT_QUESTION, PRAISE_EFFORT, PRAISE_GENERIC, SCOLD, OFF_TASK, GIVE_NEW_PROBLEM}
+NON_ADVANCING = {
+    TELL_ANSWER,
+    REPEAT_QUESTION,
+    PRAISE_EFFORT,
+    PRAISE_GENERIC,
+    SCOLD,
+    OFF_TASK,
+    GIVE_NEW_PROBLEM,
+}
 ```
 
 Add `GIVE_NEW_PROBLEM = "give_new_problem"` to the `TeachingAct` taxonomy (14 acts total).
@@ -823,9 +855,15 @@ All Claude calls go through `llm/client.py`. Each role lives in `llm/roles/<role
 
 ```python
 async def call_tool(
-    role: str, model: str, system: str, messages: list[dict],
-    tool_name: str, input_schema: dict,            # JSON Schema from the pydantic model
-    temperature: float, max_tokens: int, timeout_s: float,
+    role: str,
+    model: str,
+    system: str,
+    messages: list[dict],
+    tool_name: str,
+    input_schema: dict,  # JSON Schema from the pydantic model
+    temperature: float,
+    max_tokens: int,
+    timeout_s: float,
 ) -> dict: ...
 ```
 
@@ -1137,9 +1175,18 @@ Limits (config): `MAX_INBOUND_AUDIO_S = 90`, `EXPLAIN_BACK_MAX_SECONDS = 60` (so
 ## 6.2 STT (`speech/stt.py`)
 
 ```python
-class Transcript(BaseModel): text: str; confidence: float; language: str | None; provider: str; ms: int
+class Transcript(BaseModel):
+    text: str
+    confidence: float
+    language: str | None
+    provider: str
+    ms: int
+
+
 class STTProvider(Protocol):
-    async def transcribe(self, wav16k: bytes, lang: str = "hi-IN", keyterms: list[str] = []) -> Transcript: ...
+    async def transcribe(
+        self, wav16k: bytes, lang: str = "hi-IN", keyterms: list[str] = []
+    ) -> Transcript: ...
 ```
 
 Providers (select by `STT_PROVIDER`):
@@ -1158,8 +1205,16 @@ Text normalisation of transcripts: NFC, collapse whitespace; keep original numer
 
 ```python
 class TTSProvider(Protocol):
-    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> bytes: ...   # returns WAV 22.05 kHz mono
-class VoiceSpec(BaseModel): provider_speaker: str; model: str; pace: float = 1.0; pitch_factor: float = 1.0
+    async def synthesize(
+        self, text_hi: str, voice: VoiceSpec
+    ) -> bytes: ...  # returns WAV 22.05 kHz mono
+
+
+class VoiceSpec(BaseModel):
+    provider_speaker: str
+    model: str
+    pace: float = 1.0
+    pitch_factor: float = 1.0
 ```
 
 **Voices** (`content/voices.yaml`, loaded at startup; provider speaker ids are config, verify against Sarvam docs):

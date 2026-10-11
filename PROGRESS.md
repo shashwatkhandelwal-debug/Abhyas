@@ -78,7 +78,7 @@ A comprehensive audit comparing the current scaffold against `spec/02_architectu
 
 ## 3. Task Plan (T01–T52)
 
-- [ ] **T01 Repo restructure** · Priority: P0 · Finish-by: 12 Oct
+- [x] **T01 Repo restructure** · Priority: P0 · Finish-by: 12 Oct
 - [ ] **T02 Config** · Priority: P0 · Finish-by: 12 Oct
 - [ ] **T03 Database** · Priority: P0 · Finish-by: 13 Oct
 - [ ] **T04 Content models & seed content** · Priority: P0 · Finish-by: 13 Oct
@@ -159,7 +159,7 @@ All items from `spec/15_human_inputs.md` are currently open:
 
 ## 5. Decisions
 
-*(Empty for now. Technical decisions will be logged here as they are made).*
+1. **Model name validation in T08 (no auto-substitution)**: Per user instruction, do not auto-substitute model names. In T08, add a startup check (production mode only) that makes one minimal test call per configured model. If a model ID is rejected, fail fast with a clear error explicitly naming the environment variable to change (`CLAUDE_MODEL_FAST`, `CLAUDE_MODEL_SMART`, or `CLAUDE_MODEL_BUILD`).
 
 ---
 
@@ -175,4 +175,4 @@ All items from `spec/15_human_inputs.md` are currently open:
    - *Resolution for T03*: Include `calibration_label` and `invite_code` directly in the initial comprehensive migration in T03.
 3. **`spec/05_llm_roles.md` §5.1 model names vs current Anthropic API strings**:
    - Spec refers to `claude-haiku-5-5` and `claude-sonnet-5-5`. The `.env.example` sets defaults to `CLAUDE_MODEL_FAST=claude-haiku-5-5` and `CLAUDE_MODEL_SMART=claude-sonnet-5-5`.
-   - *Resolution for T02*: Read exact model string from environment variables (`CLAUDE_MODEL_FAST`, `CLAUDE_MODEL_SMART`), falling back to standard valid model identifiers if custom identifiers are unrouted in testing.
+   - *Resolution per User Approval*: Do not auto-substitute model names. In T08, add a startup check (production only) that makes one minimal call per configured model; if rejected, fail fast with a clear error naming the env var to change. Record in Decisions #1.

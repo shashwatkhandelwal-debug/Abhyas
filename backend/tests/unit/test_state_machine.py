@@ -1,6 +1,7 @@
 """Tests for Weekly State Machine and 24-hour window rules (§4)."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
 from backend.app.sessions.state_machine import SessionContext, SessionStateEnum, WeeklyStateMachine
 
 
@@ -45,8 +46,8 @@ def test_ask_interruption_and_resume():
 
 
 def test_24_hour_window_tracking():
-    now = datetime.now(timezone.utc)
-    
+    now = datetime.now(UTC)
+
     # Inbound message 2 hours ago -> within window
     ctx_recent = SessionContext(
         teacher_id="t1",

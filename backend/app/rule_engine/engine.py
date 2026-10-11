@@ -4,8 +4,9 @@ Computes child answers, explanations, state changes, and affect.
 Does NOT rely on LLM for mathematical logic or misconception rules.
 """
 
-from typing import Any, Optional
-from backend.app.rule_engine.child_state import ChildState, TRANSITIONS
+from typing import Any
+
+from backend.app.rule_engine.child_state import TRANSITIONS, ChildState
 from backend.app.rule_engine.domain import Move, Persona, TeachingAct
 from backend.app.rule_engine.misconceptions import MISCONCEPTION_REGISTRY
 
@@ -71,7 +72,6 @@ class RehearsalRuleEngine:
         # Determine state transition
         new_state = current_state
         affect = "neutral"
-        is_parrot = False
 
         act_strs = [a.value for a in acts]
 
@@ -84,7 +84,6 @@ class RehearsalRuleEngine:
 
         # Handle 'tell_answer' act -> PARROT behavior
         if TeachingAct.TELL_ANSWER.value in act_strs:
-            is_parrot = True
             return RuleEngineResult(
                 child_id=child.id,
                 child_name=child.name,

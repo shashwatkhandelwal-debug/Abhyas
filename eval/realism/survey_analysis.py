@@ -3,7 +3,7 @@
 Target: >= 4 of 5 average teacher rating on post-rehearsal realism.
 """
 
-from typing import Sequence
+from collections.abc import Sequence
 
 
 def analyze_realism_ratings(ratings: Sequence[int]) -> dict[str, float]:

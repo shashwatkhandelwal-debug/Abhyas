@@ -1,8 +1,10 @@
 """WhatsApp Business Cloud API / BSP Client (§11)."""
 
 import logging
-from typing import Any, Optional
+from typing import Any
+
 import httpx
+
 from backend.app.config import settings
 
 logger = logging.getLogger(__name__)
