@@ -7,7 +7,14 @@ Does NOT rely on LLM for mathematical logic or misconception rules.
 from typing import Any
 
 from backend.app.rule_engine.child_state import TRANSITIONS, ChildState
-from backend.app.rule_engine.domain import Move, Persona, TeachingAct
+from backend.app.rule_engine.domain import (
+    Move,
+    Persona,
+    SceneState,
+    StepResult,
+    TaggedTurn,
+    TeachingAct,
+)
 from backend.app.rule_engine.misconceptions import MISCONCEPTION_REGISTRY
 
 
@@ -163,3 +170,19 @@ class RehearsalRuleEngine:
             numbers_involved=numbers,
             is_parrot=False,
         )
+
+
+class RuleEngine:
+    """Deterministic rule engine for interactive rehearsal scenes (spec/04 §4.4)."""
+
+    def __init__(self, move: Move | None = None) -> None:
+        self.move = move
+
+    @staticmethod
+    def step(scene: "SceneState", tagged: "TaggedTurn") -> "StepResult":
+        """Advances scene state by one turn following the exact algorithm in spec/04 §4.4.
+
+        Raises:
+            NotImplementedError: Implemented by Lane A in task T07.
+        """
+        raise NotImplementedError("spec/04 §4.4 — RuleEngine.step owned by Lane A (T07)")
