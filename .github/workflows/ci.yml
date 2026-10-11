@@ -58,7 +58,7 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://postgres:postgrespassword@localhost:5432/abhyas_test
           ALEMBIC_DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/abhyas_test
           TEST_DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/abhyas_test
-        run: pytest --cov=backend/app --cov-report=term-missing
+        run: pytest -v --tb=short --cov=backend/app --cov-report=term-missing
 
   content:
     runs-on: ubuntu-latest
