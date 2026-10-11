@@ -28,9 +28,15 @@ ADVANCE: dict[TeachingAct, dict[ChildState, ChildState]] = {
     },
 }
 
-# Also support lookup by string value
-for _act_enum, _trans_dict in list(ADVANCE.items()):
-    ADVANCE[_act_enum.value] = _trans_dict  # type: ignore[index]
+
+def get_advance(act: TeachingAct | str) -> dict[ChildState, ChildState]:
+    """Returns the advance transition dictionary for a TeachingAct (or string value)."""
+    if isinstance(act, str):
+        try:
+            act = TeachingAct(act)
+        except ValueError:
+            return {}
+    return ADVANCE.get(act, {})
 
 
 NON_ADVANCING: set[TeachingAct] = {

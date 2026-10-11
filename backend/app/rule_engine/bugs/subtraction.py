@@ -50,6 +50,15 @@ def sub_correct(problem: Problem, context: dict[str, Any] | None = None) -> BugO
             )
         )
         steps.append(
+            make_step(
+                "SUB_UNITS_NORMAL",
+                nums=[u_new, u_bot, d_u],
+                u_top=u_new,
+                u_bot=u_bot,
+                d_u=d_u,
+            )
+        )
+        steps.append(
             make_step("SUB_TENS", nums=[t_left, t_bot, d_t], t_top=t_left, t_bot=t_bot, d_t=d_t)
         )
     else:

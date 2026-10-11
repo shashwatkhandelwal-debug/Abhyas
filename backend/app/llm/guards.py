@@ -15,7 +15,6 @@ from backend.app.llm.schemas import (
 )
 from backend.app.rule_engine.child_state import ChildState
 from backend.app.rule_engine.domain import ChildResponse, ResponseKind
-from backend.app.rule_engine.engine import RuleEngineResult
 
 
 def norm(s: str) -> str:
@@ -146,7 +145,7 @@ def guard_child_line(
 
 def validate_child_voice(
     line_hi: str,
-    rule_result: RuleEngineResult,
+    rule_result: Any,
     correct_answer: Any,
 ) -> tuple[bool, str]:
     """Legacy helper for child voice lines."""

@@ -21,8 +21,6 @@ from backend.app.rule_engine.child_state import ChildState
 from backend.app.rule_engine.domain import (
     ChildRuntime,
     Domain,
-    Move,
-    Persona,
     Problem,
     ResponseKind,
     SceneState,
@@ -30,7 +28,6 @@ from backend.app.rule_engine.domain import (
     TeachingAct,
 )
 from backend.app.rule_engine.engine import (
-    RehearsalRuleEngine,
     RuleEngine,
     _select_responder,
     _validate_problem,
@@ -115,109 +112,6 @@ def test_legacy_misconceptions_adapter() -> None:
     mat_res = legacy_matra_drop("मेला")
     assert mat_res["answer"] == "मल"
     assert "SUB_SMALLER_FROM_LARGER" in MISCONCEPTION_REGISTRY
-
-
-def test_legacy_rehearsal_rule_engine_branches() -> None:
-    """Verify all branches of legacy RehearsalRuleEngine."""
-    move = Move(
-        id="NUM_SUB_REGROUP_BUNDLES",
-        version=1,
-        status="approved",
-        domain="numeracy",
-        grade=[2],
-        title_hi="बंडल और तीली",
-        summary_hi="घटाव",
-        module_ref={"source_id": "test", "section": "sec"},
-        key_points=[],
-        teaching_acts_effective=["ask_to_explain", "concrete_representation", "contrast_answers"],
-        target_causes=["SUB_SMALLER_FROM_LARGER"],
-        rubric={"criteria": []},
-        feedback_bank={},
-        learn_script_hi="",
-        learn_summary_hi=[],
-        scenario={"intro_hi": "", "items": [], "children": []},
-        model_rehearsal=[],
-        peer_checklist=[],
-        reflection_questions=[],
-    )
-    engine = RehearsalRuleEngine(move)
-
-    ravi = Persona(
-        id="ravi",
-        name="रवि",
-        grade=2,
-        voice_id="v1",
-        misconceptions=["SUB_SMALLER_FROM_LARGER"],
-        temperament="confident",
-        speech_style_hi="",
-    )
-
-    # TELL_ANSWER
-    res_tell = engine.evaluate_turn(
-        child=ravi,
-        current_state=ChildState.MISCONCEPTION,
-        acts=[TeachingAct.TELL_ANSWER],
-        problem_args=(52, 17),
-        correct_answer=35,
-    )
-    assert res_tell.is_parrot is True
-    assert res_tell.affect == "echo"
-
-    # Effective act transition (ASK_TO_EXPLAIN: MISCONCEPTION -> CAN_EXPLAIN)
-    res_trans = engine.evaluate_turn(
-        child=ravi,
-        current_state=ChildState.MISCONCEPTION,
-        acts=[TeachingAct.ASK_TO_EXPLAIN],
-        problem_args=(52, 17),
-        correct_answer=35,
-    )
-    assert res_trans.new_state == ChildState.CAN_EXPLAIN
-    assert res_trans.affect == "explaining"
-
-    # Effective act transition (CONCRETE_REPRESENTATION: CAN_EXPLAIN -> PARTIAL)
-    res_partial = engine.evaluate_turn(
-        child=ravi,
-        current_state=ChildState.CAN_EXPLAIN,
-        acts=[TeachingAct.CONCRETE_REPRESENTATION],
-        problem_args=(52, 17),
-        correct_answer=35,
-    )
-    assert res_partial.new_state == ChildState.PARTIAL
-    assert res_partial.affect == "tentative"
-
-    # Other bug
-    other_child = Persona(
-        id="aman",
-        name="अमन",
-        grade=2,
-        voice_id="v3",
-        misconceptions=["UNKNOWN_BUG"],
-        temperament="distracted",
-        speech_style_hi="",
-    )
-    res_other = engine.evaluate_turn(
-        child=other_child,
-        current_state=ChildState.MISCONCEPTION,
-        acts=[TeachingAct.REPEAT_QUESTION],
-        problem_args=(52, 17),
-        correct_answer=35,
-    )
-    assert res_other.answer == 35
-
-    # CORRECT state
-    res_corr = engine.evaluate_turn(
-        child=ravi,
-        current_state=ChildState.CORRECT,
-        acts=[TeachingAct.REPEAT_QUESTION],
-        problem_args=(52, 17),
-        correct_answer=35,
-    )
-    assert res_corr.answer == 35
-
-    # RuleEngineResult.to_dict()
-    d = res_corr.to_dict()
-    assert d["child_id"] == "ravi"
-    assert d["answer"] == 35
 
 
 def test_engine_validation_branches() -> None:
@@ -541,3 +435,14 @@ def test_engine_literacy_allowed_words() -> None:
     t = TaggedTurn(acts=[], addressed_child="ravi")
     res = RuleEngine.step(scene, t)
     assert "कतब" in res.responses[0].allowed_words
+
+
+def test_get_advance_helper() -> None:
+    """Verify get_advance helper handles enums, valid strings, and invalid strings."""
+    from backend.app.rule_engine.transitions import get_advance
+
+    assert get_advance(TeachingAct.ASK_TO_EXPLAIN) == {
+        ChildState.MISCONCEPTION: ChildState.CAN_EXPLAIN
+    }
+    assert get_advance("ask_to_explain") == {ChildState.MISCONCEPTION: ChildState.CAN_EXPLAIN}
+    assert get_advance("invalid_act_name") == {}

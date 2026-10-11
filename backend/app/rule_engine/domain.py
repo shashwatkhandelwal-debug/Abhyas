@@ -120,6 +120,10 @@ class SceneState(BaseModel):
     last_responder: str | None = None
     ended: bool = False
     end_reason: EndReason | None = None
+    guess_lexicon: dict[str, list[str]] = Field(default_factory=dict)
+    max_turns: int = 8
+    shy_silent_turns: int = 1
+    distracted_interject_after: int = 3
 
 
 class TaggedTurn(BaseModel):

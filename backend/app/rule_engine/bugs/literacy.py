@@ -45,7 +45,7 @@ def read_correct(problem: Problem, context: dict[str, Any] | None = None) -> Bug
         make_step(
             "READ_AKSHARS",
             words=aksharas,
-            aksharas="".join(aksharas),
+            aksharas=join_akshars(aksharas, sep=" - "),
         ),
         make_step("ANSWER", words=[word], answer=word),
     ]

@@ -1,23 +1,19 @@
 """Pure Python deterministic rule engine strictly implementing spec/04 §4.4."""
 
 import re
-from typing import Any, Literal
+from typing import Literal
 
-from backend.app.config import settings
 from backend.app.rule_engine.bugs import (
     get_rule_info,
     make_step,
     split_akshars,
-    sub_smaller_from_larger,
 )
-from backend.app.rule_engine.child_state import TRANSITIONS
 from backend.app.rule_engine.domain import (
     ChildResponse,
     ChildRuntime,
     ChildState,
     Domain,
     Move,
-    Persona,
     Problem,
     ResponseKind,
     SceneState,
@@ -29,135 +25,20 @@ from backend.app.rule_engine.domain import (
 from backend.app.rule_engine.transitions import ADVANCE
 
 
-class RuleEngineResult:
-    """Legacy result class maintained for backward compatibility."""
-
-    def __init__(
-        self,
-        child_id: str,
-        child_name: str,
-        answer: Any,
-        reasoning_steps: list[str],
-        prior_state: ChildState,
-        new_state: ChildState,
-        affect: str,
-        explanation_hint_hi: str,
-        numbers_involved: list[Any],
-        is_parrot: bool = False,
-    ):
-        self.child_id = child_id
-        self.child_name = child_name
-        self.answer = answer
-        self.reasoning_steps = reasoning_steps
-        self.prior_state = prior_state
-        self.new_state = new_state
-        self.affect = affect
-        self.explanation_hint_hi = explanation_hint_hi
-        self.numbers_involved = numbers_involved
-        self.is_parrot = is_parrot
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "child_id": self.child_id,
-            "child_name": self.child_name,
-            "answer": self.answer,
-            "reasoning_steps": self.reasoning_steps,
-            "prior_state": self.prior_state.name,
-            "new_state": self.new_state.name,
-            "affect": self.affect,
-            "explanation_hint_hi": self.explanation_hint_hi,
-            "numbers_involved": self.numbers_involved,
-            "is_parrot": self.is_parrot,
-        }
-
-
-class RehearsalRuleEngine:
-    """Legacy helper for backward-compatibility with older tests."""
-
-    def __init__(self, move: Move):
-        self.move = move
-
-    def evaluate_turn(
-        self,
-        child: Persona,
-        current_state: ChildState,
-        acts: list[TeachingAct],
-        problem_args: tuple[Any, ...],
-        correct_answer: Any,
-        has_relapsed: bool = False,
-    ) -> RuleEngineResult:
-        misconceptions = getattr(child, "misconceptions", [])
-        primary_bug_id = misconceptions[0] if misconceptions else "SUB_SMALLER_FROM_LARGER"
-        target_causes = getattr(self.move, "target_causes", []) if self.move else []
-        is_target_misconception = primary_bug_id in target_causes
-
-        new_state = current_state
-        act_strs = [a.value for a in acts]
-        child_name = getattr(child, "name_hi", getattr(child, "name", child.id))
-
-        if TeachingAct.TELL_ANSWER.value in act_strs:
-            return RuleEngineResult(
-                child_id=child.id,
-                child_name=child_name,
-                answer=correct_answer,
-                reasoning_steps=["teacher_told_answer"],
-                prior_state=current_state,
-                new_state=current_state,
-                affect="echo",
-                explanation_hint_hi=f"Haan ji, {correct_answer}!",
-                numbers_involved=[correct_answer],
-                is_parrot=True,
-            )
-
-        if is_target_misconception:
-            for act_str in act_strs:
-                if act_str in self.move.teaching_acts_effective:
-                    transition_rule = TRANSITIONS.get(act_str)
-                    if isinstance(transition_rule, dict) and current_state in transition_rule:
-                        new_state = transition_rule[current_state]
-                        break
-
-        # Generate rule output
-        if primary_bug_id == "SUB_SMALLER_FROM_LARGER" and len(problem_args) >= 2:
-            prob = Problem(type="sub", a=problem_args[0], b=problem_args[1])
-            bug_res = sub_smaller_from_larger(prob)
-            ans = bug_res.answer
-            numbers = [
-                problem_args[0],
-                problem_args[1],
-                ans,
-                problem_args[0] % 10,
-                problem_args[1] % 10,
-            ]
-        else:
-            ans = correct_answer
-            numbers = [correct_answer]
-
-        if new_state == ChildState.CORRECT:
-            answer = correct_answer
-            affect = "confident"
-        elif new_state == ChildState.PARTIAL:
-            answer = correct_answer
-            affect = "tentative"
-        elif new_state == ChildState.CAN_EXPLAIN:
-            answer = ans
-            affect = "explaining"
-        else:
-            answer = ans
-            affect = "confident"
-
-        return RuleEngineResult(
-            child_id=child.id,
-            child_name=child_name,
-            answer=answer,
-            reasoning_steps=["procedural_step"],
-            prior_state=current_state,
-            new_state=new_state,
-            affect=affect,
-            explanation_hint_hi="",
-            numbers_involved=numbers,
-            is_parrot=False,
-        )
+def _check_end_conditions(scene: SceneState) -> None:
+    """Evaluates scene end conditions and updates scene.ended and scene.end_reason."""
+    if len(scene.children) == 1:
+        # Placement mode: 2 teacher turns then end
+        if scene.teacher_turns >= 2:
+            scene.ended = True
+            scene.end_reason = "turn_limit"
+    else:
+        if all(c.state == ChildState.CORRECT for c in scene.children):
+            scene.ended = True
+            scene.end_reason = "all_correct"
+        elif scene.teacher_turns >= scene.max_turns:
+            scene.ended = True
+            scene.end_reason = "turn_limit"
 
 
 def _validate_problem(problem: Problem, domain: Domain) -> bool:
@@ -252,6 +133,9 @@ class RuleEngine:
         # 1. Turn count
         scene.teacher_turns += 1
 
+        # Snapshot start-of-turn states for all children to prevent chaining within one turn
+        start_states = {c.persona_id: c.state for c in scene.children}
+
         # 2. New item handling
         deferred_item_switch: Problem | None = None
         if tagged.problem is not None:
@@ -279,6 +163,7 @@ class RuleEngine:
                 for c in scene.children:
                     if c.persona_id != responder.persona_id:
                         c.turns_since_addressed += 1
+                _check_end_conditions(scene)
                 return StepResult(
                     responses=[confused_resp], ended=scene.ended, end_reason=scene.end_reason
                 )
@@ -299,7 +184,7 @@ class RuleEngine:
 
         # 3. Select Responder
         responder = _select_responder(scene, tagged)
-        prior_state = responder.state
+        prior_state = start_states[responder.persona_id]
 
         # 4. Whole-class acts: if addressed_child == "all"
         whole_class_acts = {
@@ -308,20 +193,18 @@ class RuleEngine:
             TeachingAct.PHONICS_SOUND_OUT,
         }
         if tagged.addressed_child == "all":
-            for act in tagged.acts:
-                if act in whole_class_acts and act in scene.effective_acts:
-                    for child in scene.children:
-                        if child.silent_turns == 0 and child.misconception in scene.target_causes:
-                            act_trans = ADVANCE.get(act, {})
-                            if child.state in act_trans:
-                                nxt = act_trans[child.state]
-                                if nxt > child.state:
-                                    if (
-                                        nxt == ChildState.PARTIAL
-                                        and child.state < ChildState.PARTIAL
-                                    ):
-                                        child.partial_item_key = scene.current_item.key()
-                                    child.state = nxt
+            for child in scene.children:
+                if child.silent_turns == 0 and child.misconception in scene.target_causes:
+                    c_start = start_states[child.persona_id]
+                    candidates = [c_start]
+                    for act in tagged.acts:
+                        if act in whole_class_acts and act in scene.effective_acts:
+                            if act in ADVANCE and c_start in ADVANCE[act]:
+                                candidates.append(ADVANCE[act][c_start])
+                    nxt = max(candidates)
+                    if nxt == ChildState.PARTIAL and c_start < ChildState.PARTIAL:
+                        child.partial_item_key = scene.current_item.key()
+                    child.state = nxt
 
         # 5. Silence check
         affect: Literal["neutral", "confident", "encouraged", "upset", "shy", "distracted"] = (
@@ -354,6 +237,7 @@ class RuleEngine:
             for c in scene.children:
                 if c.persona_id != responder.persona_id:
                     c.turns_since_addressed += 1
+            _check_end_conditions(scene)
             return StepResult(
                 responses=[silent_resp], ended=scene.ended, end_reason=scene.end_reason
             )
@@ -364,7 +248,7 @@ class RuleEngine:
 
         if TeachingAct.SCOLD in tagged.acts:
             if responder.temperament == "shy":
-                responder.silent_turns = getattr(settings, "SHY_SILENT_TURNS", 1)
+                responder.silent_turns = scene.shy_silent_turns
                 scold_silent_resp = ChildResponse(
                     persona_id=responder.persona_id,
                     kind=ResponseKind.SILENT,
@@ -386,6 +270,7 @@ class RuleEngine:
                 for c in scene.children:
                     if c.persona_id != responder.persona_id:
                         c.turns_since_addressed += 1
+                _check_end_conditions(scene)
                 return StepResult(
                     responses=[scold_silent_resp], ended=scene.ended, end_reason=scene.end_reason
                 )
@@ -394,21 +279,25 @@ class RuleEngine:
                 new_state = responder.state
         else:
             if is_target_cause and effective:
+                r_start = start_states[responder.persona_id]
                 candidate_states = [responder.state]
                 for act in effective:
-                    if act in ADVANCE and responder.state in ADVANCE[act]:
-                        candidate_states.append(ADVANCE[act][responder.state])
+                    if act in ADVANCE and r_start in ADVANCE[act]:
+                        candidate_states.append(ADVANCE[act][r_start])
                 new_state = max(candidate_states)
             else:
                 new_state = responder.state
 
-            if new_state == ChildState.PARTIAL and prior_state < ChildState.PARTIAL:
+            if (
+                new_state == ChildState.PARTIAL
+                and start_states[responder.persona_id] < ChildState.PARTIAL
+            ):
                 responder.partial_item_key = scene.current_item.key()
             responder.state = new_state
 
         # 7. Answer computation
         rule_info = get_rule_info(responder.misconception)
-        context = {"guess_lexicon": getattr(scene, "guess_lexicon", {})}
+        context = {"guess_lexicon": scene.guess_lexicon}
         bug_out = rule_info.fn(scene.current_item, context)
         corr_out = rule_info.correct_fn(scene.current_item, context)
 
@@ -536,7 +425,7 @@ class RuleEngine:
             if (
                 c.persona_id != responder.persona_id
                 and c.temperament == "distracted"
-                and c.turns_since_addressed >= 3
+                and c.turns_since_addressed >= scene.distracted_interject_after
             ):
                 interject = ChildResponse(
                     persona_id=c.persona_id,
@@ -557,17 +446,5 @@ class RuleEngine:
                 break
 
         # 11. End conditions
-        if len(scene.children) == 1:
-            # Placement mode: 2 teacher turns then end
-            if scene.teacher_turns >= 2:
-                scene.ended = True
-                scene.end_reason = "turn_limit"
-        else:
-            if all(c.state == ChildState.CORRECT for c in scene.children):
-                scene.ended = True
-                scene.end_reason = "all_correct"
-            elif scene.teacher_turns >= getattr(settings, "MAX_TURNS_PER_REHEARSAL", 8):
-                scene.ended = True
-                scene.end_reason = "turn_limit"
-
+        _check_end_conditions(scene)
         return StepResult(responses=responses, ended=scene.ended, end_reason=scene.end_reason)
