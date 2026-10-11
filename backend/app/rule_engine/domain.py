@@ -5,6 +5,16 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from backend.app.content_models import (
+    KeyPoint,
+    ModuleRef,
+    MoveCard,
+    PersonaCard,
+    Rubric,
+    RubricCriterion,
+    Scenario,
+)
+
 
 class Domain(StrEnum):
     """Domain of teaching move (§4.1)."""
@@ -92,6 +102,9 @@ class ChildRuntime(BaseModel):
     history: list[tuple[int, ChildState]] = Field(default_factory=list)
 
 
+EndReason = Literal["all_correct", "turn_limit", "teacher_stop"]
+
+
 class SceneState(BaseModel):
     """State of an ongoing interactive rehearsal scene (§4.1)."""
 
@@ -106,7 +119,11 @@ class SceneState(BaseModel):
     teacher_turns: int = 0
     last_responder: str | None = None
     ended: bool = False
-    end_reason: str | None = None
+    end_reason: EndReason | None = None
+    guess_lexicon: dict[str, list[str]] = Field(default_factory=dict)
+    max_turns: int = 8
+    shy_silent_turns: int = 1
+    distracted_interject_after: int = 3
 
 
 class TaggedTurn(BaseModel):
@@ -154,30 +171,30 @@ class StepResult(BaseModel):
 
     responses: list[ChildResponse]  # 1 main + at most 1 INTERJECT
     ended: bool = False
-    end_reason: Literal["all_correct", "turn_limit", "teacher_stop"] | None = None
+    end_reason: EndReason | None = None
 
 
-# Legacy helper types used in Move schema and initial tests
-class SourceRef(BaseModel):
-    module_name: str
-    section: str
-    page: int | None = None
+# Canonical aliases exported for rule engine and consumers
+Move = MoveCard
+Criterion = RubricCriterion
+SourceRef = ModuleRef
 
 
-class KeyPoint(BaseModel):
-    id: str
-    text_hi: str
-    must_have: bool = True
+class Persona(PersonaCard):
+    """Runtime / legacy persona model extending PersonaCard."""
+
+    model_config = {"extra": "allow"}
+    name_hi: str = ""
+    age: int = 7
+    name: str | None = None
+    grade: int | None = None
+    misconceptions: list[str] = Field(default_factory=list)
 
 
-class Criterion(BaseModel):
-    id: str
-    text: str
-    levels: dict[int, str]
-
-
-class Rubric(BaseModel):
-    criteria: list[Criterion]
+class ScenarioItem(BaseModel):
+    question: str
+    expected_correct: Any = None
+    context_notes: str | None = None
 
 
 class ScriptLine(BaseModel):
@@ -186,40 +203,30 @@ class ScriptLine(BaseModel):
     act: str | None = None
 
 
-class Persona(BaseModel):
-    id: str
-    name: str
-    grade: int
-    voice_id: str
-    misconceptions: list[str]
-    temperament: Literal["shy", "confident", "distracted"]
-    speech_style_hi: str
-
-
-class ScenarioItem(BaseModel):
-    question: str
-    expected_correct: Any
-    context_notes: str | None = None
-
-
-class Scenario(BaseModel):
-    problem_text_hi: str
-    items: list[ScenarioItem] = Field(default_factory=list)
-    personas: list[Persona] = Field(default_factory=list)
-
-
-class Move(BaseModel):
-    id: str
-    domain: Literal["numeracy", "literacy"]
-    title_hi: str
-    module_ref: SourceRef
-    sankul_month: str | None = None
-    key_points: list[KeyPoint]
-    teaching_acts_effective: list[str]
-    target_causes: list[str]
-    rubric: Rubric
-    learn_script_hi: str
-    model_rehearsal: list[ScriptLine]
-    scenario: Scenario
-    peer_checklist: list[str]
-    reflection_questions: list[str]
+__all__ = [
+    "Domain",
+    "TeachingAct",
+    "Problem",
+    "Step",
+    "BugOutput",
+    "ChildState",
+    "ChildRuntime",
+    "SceneState",
+    "TaggedTurn",
+    "ResponseKind",
+    "ChildResponse",
+    "StepResult",
+    "KeyPoint",
+    "ModuleRef",
+    "MoveCard",
+    "PersonaCard",
+    "Rubric",
+    "RubricCriterion",
+    "Scenario",
+    "Move",
+    "Persona",
+    "Criterion",
+    "SourceRef",
+    "ScenarioItem",
+    "ScriptLine",
+]

@@ -1,4 +1,5 @@
-"""Unit tests for Claude output guards (§5.1, §5.3, §6, §8, §9)."""
+from dataclasses import dataclass
+from typing import Any
 
 from backend.app.llm.guards import (
     extract_numbers_from_text,
@@ -7,7 +8,20 @@ from backend.app.llm.guards import (
 )
 from backend.app.llm.schemas import CoachFeedbackOutput
 from backend.app.rule_engine.child_state import ChildState
-from backend.app.rule_engine.engine import RuleEngineResult
+
+
+@dataclass
+class RuleEngineResult:
+    child_id: str
+    child_name: str
+    answer: Any
+    reasoning_steps: list[str]
+    prior_state: ChildState
+    new_state: ChildState
+    affect: str
+    explanation_hint_hi: str
+    numbers_involved: list[Any]
+    is_parrot: bool = False
 
 
 def test_extract_numbers():
