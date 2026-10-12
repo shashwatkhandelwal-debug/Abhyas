@@ -7,7 +7,7 @@ Database: `abhyas_c` (waits for Docker Desktop)
 
 ## Tasks
 - [x] T25 Auth & demo users (spec/09 §9.7, spec/14)
-- [ ] T26 Web channel API (spec/07 §7.3)
+- [x] T26 Web channel API (spec/07 §7.3)
 - [ ] T27 Teacher chat PWA (spec/09 §9.2)
 - [ ] T28 WhatsApp channel (spec/07 §7.2)
 - [ ] T29 Progress, consent, delete (spec/09 §9.2)
@@ -24,3 +24,5 @@ None.
 
 ## Self-Reviews
 - T25 completed: Passlib/bcrypt password hashing, signed HttpOnly sessions (itsdangerous, 12h expiry), role route guards for teacher/arp/trainer/coach/admin, sliding window login rate limiter (5/min/IP), double-submit cookie CSRF protection, demo seed users across all 5 roles in `seed.py`.
+- T26 completed: WebChannel protocol compliance, inbound message deduplication / idempotency on client_msg_id, per-teacher asyncio.Lock serialisation, pending status polling indicator, audio multipart with 2 MB limit, audio caching endpoint with private immutable header, realism rating endpoint, settings update endpoint.
+- Self-Review (T25 & T26 against spec/09 §9.7 and spec/07 §7.3): All endpoints adhere strictly to spec specifications, schemas, error codes, and NFC Hindi normalization.
