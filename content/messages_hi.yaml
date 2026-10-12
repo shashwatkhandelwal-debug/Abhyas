@@ -12,7 +12,7 @@ welcome:
   text: "नमस्ते! मैं अभ्यास हूँ — आपकी अभ्यास-साथी। हर हफ्ते लगभग 15 मिनट में हम कक्षा का एक तरीका सीखेंगे, और तीन बच्चों के साथ बोलकर उसका अभ्यास करेंगे।"
   audio: true
 consent_service:
-  text: "शुरू करने से पहले: आपकी आवाज़ को लिखित रूप में बदलकर आवाज़ तुरंत मिटा दी जाती है। आपके अंक केवल आपको दिखेंगे, जब तक आप स्वयं ARP के साथ साझा करने की अनुमति न दें। आप कभी भी 'मेरा डेटा हटाएँ' लिखकर सब कुछ मिटा सकती हैं। क्या आप सहमत हैं?"
+  text: "शुरू करने से पहले: आपकी आवाज़ को लिखित रूप में बदलकर आवाज़ तुरंत मिटा दी जाती है। आपके अंक केवल आपको दिखेंगे, जब तक आप स्वयं ARP के साथ साझा करने की अनुमति न दें। 'मेरा डेटा हटाएँ' लिखकर कभी भी सब कुछ मिटाया जा सकता है। क्या आप सहमत हैं?"
   audio: true
 consent_details:
   text: "हम क्या रखते हैं: आपका नाम, कक्षा, अनुभव, आपकी बातों का लिखित रूप और अभ्यास के अंक। हम क्या नहीं रखते: आपकी आवाज़ की रिकॉर्डिंग, बच्चों की कोई जानकारी। ट्रेनर (DIET/SCERT) को केवल 10 या उससे ज़्यादा शिक्षकों के समूह के कुल आँकड़े दिखते हैं, किसी का नाम नहीं।"
@@ -36,15 +36,19 @@ btn_female: {text: "शिक्षिका", audio: false}
 btn_male: {text: "शिक्षक", audio: false}
 ask_experience:
   text: "{name} जी, आप कितने साल से पढ़ा रही हैं?"
+  text_m: "{name} जी, आप कितने साल से पढ़ा रहे हैं?"
   audio: false
 ask_classes:
   text: "आप इस साल कौन-सी कक्षा पढ़ाती हैं?"
+  text_m: "आप इस साल कौन-सी कक्षा पढ़ाते हैं?"
   audio: false
 consent_share_scores:
   text: "क्या आप चाहती हैं कि आपके ARP आपके अभ्यास के अंक देख सकें, ताकि वे कक्षा-भ्रमण में आपकी मदद कर सकें? आप इसे कभी भी बदल सकती हैं।"
+  text_m: "क्या आप चाहते हैं कि आपके ARP आपके अभ्यास के अंक देख सकें, ताकि वे कक्षा-भ्रमण में आपकी मदद कर सकें? आप इसे कभी भी बदल सकते हैं।"
   audio: false
 placement_intro:
   text: "चलिए, एक छोटा-सा अभ्यास करते हैं। यह कोई परीक्षा नहीं है। बोर्ड पर लिखा है: 52 − 17। कक्षा 2 का रवि कहता है: '45!' आप रवि से वैसे ही बात कीजिए जैसे कक्षा में करती हैं — बोलकर या लिखकर।"
+  text_m: "चलिए, एक छोटा-सा अभ्यास करते हैं। यह कोई परीक्षा नहीं है। बोर्ड पर लिखा है: 52 − 17। कक्षा 2 का रवि कहता है: '45!' आप रवि से वैसे ही बात कीजिए जैसे कक्षा में करते हैं — बोलकर या लिखकर।"
   audio: true
 placement_done:
   text: "बहुत अच्छा! अब मुझे पता है कि आपके लिए कहाँ से शुरू करें।"
@@ -80,6 +84,7 @@ fidelity_reply_misconception:
   audio: false
 model_offer:
   text: "क्या आप सुनना चाहेंगी कि एक शिक्षिका इन्हीं तीन बच्चों के साथ यह तरीका कैसे करती हैं? (लगभग 1 मिनट)"
+  text_m: "क्या आप सुनना चाहेंगे कि एक शिक्षक इन्हीं तीन बच्चों के साथ यह तरीका कैसे करते हैं? (लगभग 1 मिनट)"
   audio: false
 model_header:
   text: "आदर्श अभ्यास:"
@@ -89,6 +94,7 @@ rehearse_intro:
   audio: true
 child_silent:
   text: "({name} चुप है और नीचे देख रही है।)"
+  text_boy: "({name} चुप है और नीचे देख रहा है।)"
   audio: false
 thinking:
   text: "बच्चे सोच रहे हैं…"
@@ -134,6 +140,7 @@ reflect_q:
   audio: true
 week_done:
   text: "शाबाश {name} जी! इस हफ्ते आप '{level_name}' तक पहुँचीं। अगला तरीका: {next_move_title}।"
+  text_m: "शाबाश {name} जी! इस हफ्ते आप '{level_name}' तक पहुँचे। अगला तरीका: {next_move_title}।"
   audio: true
 evidence_level_1: {text: "अभ्यास किया", audio: false}
 evidence_level_2: {text: "स्वयं बताया", audio: false}
@@ -142,6 +149,7 @@ evidence_level_4: {text: "ARP ने देखा", audio: false}
 evidence_level_5: {text: "बच्चों में सुधार", audio: false}
 resume_prompt:
   text: "आप '{state_name}' पर थीं। आगे बढ़ें?"
+  text_m: "आप '{state_name}' पर थे। आगे बढ़ें?"
   audio: false
 weekly_move:
   text: "नमस्ते {name} जी! इस हफ्ते का नया तरीका तैयार है: {move_title}। शुरू करें?"
@@ -215,9 +223,11 @@ progress_summary:
   audio: false
 consent_menu:
   text: "ARP के साथ अंक साझा करना: {share_state}। बदलना चाहेंगी?"
+  text_m: "ARP के साथ अंक साझा करना: {share_state}। बदलना चाहेंगे?"
   audio: false
 delete_confirm:
   text: "क्या आप सच में अपना सारा डेटा मिटाना चाहती हैं? यह वापस नहीं आएगा।"
+  text_m: "क्या आप सच में अपना सारा डेटा मिटाना चाहते हैं? यह वापस नहीं आएगा।"
   audio: false
 data_deleted:
   text: "आपका सारा डेटा मिटा दिया गया है। धन्यवाद। फिर से शुरू करने के लिए 'नमस्ते' भेजें।"
@@ -232,7 +242,7 @@ btn_more: {text: "और जानें", audio: false}
 btn_decline: {text: "नहीं", audio: false}
 btn_yes: {text: "हाँ", audio: false}
 btn_no: {text: "नहीं", audio: false}
-btn_understood: {text: "समझ गई, आगे", audio: false}
+btn_understood: {text: "समझ गई, आगे", text_m: "समझ गया, आगे", audio: false}
 btn_replay: {text: "फिर से सुनें", audio: false}
 btn_skip: {text: "छोड़ें", audio: false}
 btn_listen: {text: "सुनें", audio: false}
@@ -240,13 +250,13 @@ btn_retry: {text: "फिर से अभ्यास", audio: false}
 btn_retry_speak: {text: "फिर से बोलूँगी", text_m: "फिर से बोलूँगा", audio: false}
 btn_continue: {text: "आगे बढ़ें", audio: false}
 btn_peer: {text: "साथी ने देखा", audio: false}
-btn_self: {text: "खुद बताऊँगी", audio: false}
+btn_self: {text: "खुद बताऊँगी", text_m: "खुद बताऊँगा", audio: false}
 btn_later: {text: "बाद में", audio: false}
 btn_next_move: {text: "अगला तरीका", audio: false}
 btn_progress: {text: "मेरी प्रगति", audio: false}
 btn_ask: {text: "प्रश्न पूछें", audio: false}
 btn_confirm_ok: {text: "हाँ, सही है", audio: false}
-btn_confirm_redo: {text: "फिर से बोलूँगी", audio: false}
+btn_confirm_redo: {text: "फिर से बोलूँगी", text_m: "फिर से बोलूँगा", audio: false}
 btn_restart: {text: "शुरू से", audio: false}
 btn_not_now: {text: "अभी नहीं", audio: false}
 btn_lite: {text: "लाइट मोड", audio: false}
