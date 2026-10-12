@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     PHONE_HASH_SALT: str = "dev_phone_hash_salt_32_chars_ok"
     PHONE_ENC_KEY: str = "P5sUu77tT3i8_R1m2tZ_7lqf4xL6D-0K0A5vG4J-7-8="
     DEMO_PASSWORD: str = "abhyas-demo-2026"
+    TRUSTED_PROXY_IPS: str = "127.0.0.1"
+    MAX_LOGIN_ATTEMPTS_PER_MINUTE: int = 5
+    LOGIN_RATE_LIMIT_WINDOW_SECONDS: int = 60
 
     # ── Claude (Anthropic) — H1 ──────────────────────────────────────────
     LLM_PROVIDER: Literal["anthropic", "mock"] = "anthropic"
