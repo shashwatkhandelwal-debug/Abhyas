@@ -53,6 +53,7 @@ eval/samples/audio/*
 !eval/samples/audio/README.md
 !content/audio/**/*.ogg
 !content/audio/**/*.wav
+!backend/tests/fixtures/audio/**
 tmp_audio/
 tts_cache/
 
