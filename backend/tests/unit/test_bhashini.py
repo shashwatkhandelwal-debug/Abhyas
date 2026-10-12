@@ -74,7 +74,6 @@ async def test_bhashini_stt_success(wav_5s: bytes) -> None:
     assert transcript.ms >= 0
 
 
-
 @pytest.mark.asyncio
 @respx.mock
 async def test_bhashini_tts_success(wav_5s: bytes) -> None:
@@ -100,11 +99,13 @@ async def test_bhashini_tts_success(wav_5s: bytes) -> None:
         with patch("backend.app.speech.tts.tts_cache", test_cache):
             tts = BhashiniTTS(api_key="test-bhashini-key", user_id="test-user")
             voice = get_voice("abhyas")
-            result_wav, cache_key = await tts.synthesize("नमस्ते_भाषिनी", voice)
+            synth_res = await tts.synthesize("नमस्ते_भाषिनी", voice)
 
-            assert result_wav.startswith(b"RIFF")
-            assert len(result_wav) == len(wav_5s)
-            assert len(cache_key) == 64
+            assert synth_res.audio.startswith(b"RIFF")
+            assert len(synth_res.audio) == len(wav_5s)
+            assert len(synth_res.cache_key) == 64
+            assert synth_res.fmt == "wav"
+            assert synth_res.cache_hit is False
 
 
 def test_get_stt_provider_bhashini() -> None:

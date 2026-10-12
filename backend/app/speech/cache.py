@@ -85,12 +85,6 @@ class TTSCache:
                             return bytes(audio_row.ogg)
                         if fmt == "mp3" and audio_row.mp3:
                             return bytes(audio_row.mp3)
-                        if fmt == "wav":
-                            # In DB mode, delivered formats (ogg/mp3) serve as cached audio
-                            if audio_row.ogg:
-                                return bytes(audio_row.ogg)
-                            if audio_row.mp3:
-                                return bytes(audio_row.mp3)
             except Exception as exc:
                 logger.warning("Database TTS cache get query error: %s", exc)
 

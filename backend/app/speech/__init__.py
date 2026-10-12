@@ -8,7 +8,9 @@ from backend.app.speech.audio import (
     split_for_stt,
     to_mp3,
     to_ogg_opus,
+    to_wav,
     to_wav16k,
+    to_wav_sync,
     to_web,
     validate_audio_duration,
 )
@@ -27,6 +29,7 @@ from backend.app.speech.stt import (
 from backend.app.speech.tts import (
     MockTTS,
     SarvamTTS,
+    SynthResult,
     TTSError,
     TTSProvider,
     TTSUnavailable,
@@ -38,6 +41,8 @@ from backend.app.speech.voices import VOICE_CATALOG, VoiceSpec, get_voice, load_
 
 __all__ = [
     # Audio pipeline
+    "to_wav",
+    "to_wav_sync",
     "to_wav16k",
     "duration_s",
     "split_for_stt",
@@ -59,6 +64,7 @@ __all__ = [
     "normalize_transcript_text",
     "calculate_confidence",
     # TTS
+    "SynthResult",
     "TTSProvider",
     "MockTTS",
     "SarvamTTS",

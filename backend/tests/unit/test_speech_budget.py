@@ -106,8 +106,8 @@ async def test_mock_by_default() -> None:
 async def test_live_mode_records_spend(wav_5s: bytes) -> None:
     """When SPEECH_PROVIDER_LIVE is True, STT and TTS record real spend."""
     mock_tts = MockTTS()
-    sample_wav, _ = await mock_tts.synthesize("नमस्ते", get_voice("abhyas"))
-    b64_audio = base64.b64encode(sample_wav).decode("utf-8")
+    sample_res = await mock_tts.synthesize("नमस्ते", get_voice("abhyas"))
+    b64_audio = base64.b64encode(sample_res.audio).decode("utf-8")
 
     respx.post("https://api.sarvam.ai/speech-to-text").mock(
         return_value=httpx.Response(200, json={"transcript": "नमस्ते", "language_probability": 0.9})
@@ -155,10 +155,12 @@ async def test_tts_budget_exhaustion_triggers_lite_mode() -> None:
         # Exhaust budget
         await speech_budget.record_spend("sarvam", "tts", 100, 1.0)
         tts = SarvamTTS(api_key="test-key")
-        result, _ = await tts.synthesize("नमस्ते शिक्षक जी", get_voice("abhyas"))
+        result = await tts.synthesize("नमस्ते शिक्षक जी", get_voice("abhyas"))
 
         # Returns empty bytes (text-only reply)
-        assert result == b""
+        assert result.audio == b""
+        assert result.fmt == "wav"
+        assert result.cache_hit is False
         # API was never called because budget guard intercepted it
         assert route.call_count == 0
 
@@ -192,11 +194,13 @@ async def test_cap_hit_order_fallback_to_bhashini(wav_5s: bytes) -> None:
     ):
         await speech_budget.record_spend("sarvam", "tts", 100, 1.0)
         tts = SarvamTTS(api_key="test-key")
-        result, ckey = await tts.synthesize("नमस्ते शिक्षक जी", get_voice("abhyas"))
+        result = await tts.synthesize("नमस्ते शिक्षक जी", get_voice("abhyas"))
 
         # Successfully synthesizes via Bhashini fallback
-        assert result.startswith(b"RIFF")
-        assert len(result) == len(wav_5s)
+        assert result.audio.startswith(b"RIFF")
+        assert len(result.audio) == len(wav_5s)
+        assert result.fmt == "wav"
+        assert result.cache_hit is False
 
 
 @pytest.mark.asyncio
@@ -236,10 +240,12 @@ async def test_cache_hit_results_in_zero_spend(wav_5s: bytes) -> None:
 
         with patch("backend.app.speech.tts.tts_cache", test_cache):
             tts = SarvamTTS(api_key="test-key")
-            result, ckey = await tts.synthesize(text, voice)
+            result = await tts.synthesize(text, voice)
 
-            assert result == cached_audio
-            assert ckey == key
+            assert result.audio == cached_audio
+            assert result.cache_key == key
+            assert result.fmt == "ogg"
+            assert result.cache_hit is True
             # Zero spend recorded
             assert speech_budget.daily_spend == 0.0
             # Zero API calls made

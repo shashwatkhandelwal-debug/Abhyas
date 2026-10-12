@@ -15,7 +15,9 @@ from backend.app.speech.audio import (
     split_for_stt,
     to_mp3,
     to_ogg_opus,
+    to_wav,
     to_wav16k,
+    to_wav_sync,
     to_web,
     validate_audio_duration,
 )
@@ -215,3 +217,25 @@ async def test_concurrent_conversions_non_blocking(ogg_5s: bytes) -> None:
 
     # Event loop was not blocked if ticker ran multiple times
     assert ticks > 0, "Event loop was blocked during conversions"
+
+
+@pytest.mark.asyncio
+async def test_to_wav_converts_ogg_and_preserves_wav(wav_5s: bytes, ogg_5s: bytes) -> None:
+    """to_wav converts OGG to 22.05 kHz mono WAV and passes through WAV without re-encoding."""
+    # 1. WAV passthrough
+    wav_out = await to_wav(wav_5s, fmt="wav")
+    assert wav_out == wav_5s
+
+    # 2. OGG conversion
+    converted_wav = await to_wav(ogg_5s, fmt="ogg")
+    assert converted_wav.startswith(b"RIFF")
+    dur = await duration_s(converted_wav)
+    assert 4.8 <= dur <= 5.2
+
+    # 3. Synchronous helper
+    sync_wav = to_wav_sync(ogg_5s, fmt="ogg")
+    assert sync_wav.startswith(b"RIFF")
+
+    # 4. Empty audio
+    assert await to_wav(b"") == b""
+    assert to_wav_sync(b"") == b""

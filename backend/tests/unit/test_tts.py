@@ -11,12 +11,14 @@ import pytest
 import respx
 
 from backend.app.config import settings
-from backend.app.speech.audio import duration_s
+from backend.app.speech.audio import duration_s, to_wav
 from backend.app.speech.cache import TTSCache, compute_cache_key, tts_cache
 from backend.app.speech.tts import (
     MockTTS,
     SarvamTTS,
+    SynthResult,
     TTSUnavailable,
+    _concat_wav_bytes,
     convert_digits_for_tts,
     get_tts_provider,
     split_sentences_for_tts,
@@ -87,10 +89,13 @@ async def test_mock_tts_synthesizes_valid_wav() -> None:
     mock_tts = MockTTS()
     voice = get_voice("abhyas")
 
-    wav_bytes, ckey = await mock_tts.synthesize("नमस्ते, आज हम घटाव सीखेंगे।", voice)
-    assert wav_bytes.startswith(b"RIFF")
-    assert len(ckey) == 64
-    dur = await duration_s(wav_bytes)
+    res = await mock_tts.synthesize("नमस्ते, आज हम घटाव सीखेंगे।", voice)
+    assert isinstance(res, SynthResult)
+    assert res.audio.startswith(b"RIFF")
+    assert len(res.cache_key) == 64
+    assert res.fmt == "wav"
+    assert res.cache_hit is False
+    dur = await duration_s(res.audio)
     assert 0.5 <= dur <= 5.0
 
 
@@ -100,9 +105,11 @@ async def test_mock_tts_child_pitch_shifted() -> None:
     mock_tts = MockTTS()
     voice = get_voice("child_ravi")  # pitch 1.22
 
-    wav_bytes, ckey = await mock_tts.synthesize("पैंतालीस!", voice)
-    assert wav_bytes.startswith(b"RIFF")
-    dur = await duration_s(wav_bytes)
+    res = await mock_tts.synthesize("पैंतालीस!", voice)
+    assert res.audio.startswith(b"RIFF")
+    assert res.fmt == "wav"
+    assert res.cache_hit is False
+    dur = await duration_s(res.audio)
     assert dur > 0.1
 
 
@@ -112,8 +119,8 @@ async def test_sarvam_tts_success() -> None:
     """SarvamTTS calls API, decodes base64 WAV audio, and returns valid bytes and cache key."""
     # Create minimal 1-second WAV
     mock_tts = MockTTS()
-    sample_wav, _ = await mock_tts.synthesize("नमस्ते", get_voice("abhyas"))
-    b64_audio = base64.b64encode(sample_wav).decode("utf-8")
+    sample_res = await mock_tts.synthesize("नमस्ते", get_voice("abhyas"))
+    b64_audio = base64.b64encode(sample_res.audio).decode("utf-8")
 
     respx.post("https://api.sarvam.ai/text-to-speech").mock(
         return_value=httpx.Response(
@@ -124,11 +131,13 @@ async def test_sarvam_tts_success() -> None:
 
     tts = SarvamTTS(api_key="test-key")
     voice = VoiceSpec(provider_speaker="ritu", model="bulbul:v3", pace=0.95, pitch_factor=1.0)
-    result, ckey = await tts.synthesize("नमस्ते_नया", voice)
+    result = await tts.synthesize("नमस्ते_नया", voice)
 
-    assert result.startswith(b"RIFF")
-    assert len(result) == len(sample_wav)
-    assert len(ckey) == 64
+    assert result.audio.startswith(b"RIFF")
+    assert len(result.audio) == len(sample_res.audio)
+    assert len(result.cache_key) == 64
+    assert result.fmt == "wav"
+    assert result.cache_hit is False
 
 
 @pytest.mark.asyncio
@@ -136,8 +145,8 @@ async def test_sarvam_tts_success() -> None:
 async def test_sarvam_tts_retry_on_500() -> None:
     """SarvamTTS retries on 500 error and recovers."""
     mock_tts = MockTTS()
-    sample_wav, _ = await mock_tts.synthesize("नमस्ते", get_voice("abhyas"))
-    b64_audio = base64.b64encode(sample_wav).decode("utf-8")
+    sample_res = await mock_tts.synthesize("नमस्ते", get_voice("abhyas"))
+    b64_audio = base64.b64encode(sample_res.audio).decode("utf-8")
 
     route = respx.post("https://api.sarvam.ai/text-to-speech")
     route.side_effect = [
@@ -147,10 +156,12 @@ async def test_sarvam_tts_retry_on_500() -> None:
 
     tts = SarvamTTS(api_key="test-key")
     voice = VoiceSpec(provider_speaker="ritu", model="bulbul:v3")
-    result, ckey = await tts.synthesize("नमस्ते_retry", voice)
+    result = await tts.synthesize("नमस्ते_retry", voice)
 
-    assert result.startswith(b"RIFF")
+    assert result.audio.startswith(b"RIFF")
     assert route.call_count == 2
+    assert result.fmt == "wav"
+    assert result.cache_hit is False
 
 
 @pytest.mark.asyncio
@@ -275,12 +286,66 @@ async def test_tts_cache_hit_with_use_db_makes_zero_provider_calls() -> None:
         patch("backend.app.speech.tts.tts_cache", test_cache),
     ):
         # 1st call: cache miss -> calls provider (call_count == 1)
-        res1, key1 = await tts.synthesize(text, voice)
+        res1 = await tts.synthesize(text, voice)
         assert route.call_count == 1
-        assert key1 in db_storage
+        assert res1.cache_key in db_storage
+        assert res1.fmt == "wav"
+        assert res1.cache_hit is False
 
         # 2nd call: cache hit in Postgres tts_audio -> zero additional provider calls
-        res2, key2 = await tts.synthesize(text, voice)
+        res2 = await tts.synthesize(text, voice)
         assert route.call_count == 1  # Still 1! Zero provider calls
-        assert key1 == key2
-        assert res2 == db_storage[key1].ogg
+        assert res1.cache_key == res2.cache_key
+        assert res2.fmt == "ogg"
+        assert res2.cache_hit is True
+        assert res2.audio == db_storage[res1.cache_key].ogg
+
+
+@pytest.mark.asyncio
+async def test_cache_hit_returns_ogg_and_concat_of_two_cached_lines_yields_valid_audio() -> None:
+    """A cache hit returns fmt='ogg', and concat of two cached lines yields valid audio."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_cache = TTSCache(cache_dir=tmpdir, use_db=False)
+        mock_tts = MockTTS()
+        voice = get_voice("abhyas")
+
+        with patch("backend.app.speech.tts.tts_cache", test_cache):
+            # Line 1: miss -> puts wav, ogg, mp3 in cache
+            miss1 = await mock_tts.synthesize("पहली पंक्ति यहाँ है।", voice)
+            assert miss1.cache_hit is False
+            assert miss1.fmt == "wav"
+            assert miss1.audio.startswith(b"RIFF")
+
+            # Line 2: miss -> puts wav, ogg, mp3 in cache
+            miss2 = await mock_tts.synthesize("दूसरी पंक्ति यहाँ है।", voice)
+            assert miss2.cache_hit is False
+            assert miss2.fmt == "wav"
+            assert miss2.audio.startswith(b"RIFF")
+
+            # Line 1: hit -> returns fmt="ogg"
+            hit1 = await mock_tts.synthesize("पहली पंक्ति यहाँ है।", voice)
+            assert hit1.cache_hit is True
+            assert hit1.fmt == "ogg"
+            assert not hit1.audio.startswith(b"RIFF")
+
+            # Line 2: hit -> returns fmt="ogg"
+            hit2 = await mock_tts.synthesize("दूसरी पंक्ति यहाँ है।", voice)
+            assert hit2.cache_hit is True
+            assert hit2.fmt == "ogg"
+            assert not hit2.audio.startswith(b"RIFF")
+
+            # Convert cached lines via audio.to_wav
+            wav1 = await to_wav(hit1.audio, fmt=hit1.fmt)
+            wav2 = await to_wav(hit2.audio, fmt=hit2.fmt)
+            assert wav1.startswith(b"RIFF")
+            assert wav2.startswith(b"RIFF")
+
+            # Concat of two cached lines yields valid audio
+            concatenated = _concat_wav_bytes([wav1, wav2])
+            assert concatenated.startswith(b"RIFF")
+
+            dur1 = await duration_s(wav1)
+            dur2 = await duration_s(wav2)
+            dur_total = await duration_s(concatenated)
+            assert dur_total > 0.5
+            assert abs(dur_total - (dur1 + dur2)) < 0.2

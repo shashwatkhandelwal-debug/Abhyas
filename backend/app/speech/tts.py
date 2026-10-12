@@ -12,13 +12,14 @@ import io
 import logging
 import re
 import wave
-from typing import Protocol
+from typing import Literal, Protocol
 
 import httpx
+from pydantic import BaseModel
 
 from backend.app.config import settings
 from backend.app.llm.hindi_numbers import to_words
-from backend.app.speech.audio import pitch_shift
+from backend.app.speech.audio import pitch_shift, to_wav_sync
 from backend.app.speech.cache import compute_cache_key, tts_cache
 from backend.app.speech.client import get_speech_http_client
 from backend.app.speech.spend import calculate_tts_cost, speech_budget
@@ -37,6 +38,15 @@ class TTSUnavailable(TTSError):
     """Raised when TTS provider is unavailable or exhausted retries (spec/06 §6.3)."""
 
     pass
+
+
+class SynthResult(BaseModel):
+    """Result of TTS synthesis containing format and cache status (spec/06 §6.3)."""
+
+    cache_key: str
+    fmt: Literal["wav", "ogg", "mp3"]
+    audio: bytes
+    cache_hit: bool = False
 
 
 def convert_digits_for_tts(text_hi: str) -> str:
@@ -96,8 +106,8 @@ def split_sentences_for_tts(text_hi: str, max_chars: int = 1500) -> list[str]:
 class TTSProvider(Protocol):
     """Protocol for TTS providers (spec/06 §6.3)."""
 
-    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> tuple[bytes, str]:
-        """Synthesizes Hindi text to WAV 22.05 kHz mono audio bytes and returns (wav_bytes, cache_key)."""
+    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> SynthResult:
+        """Synthesizes Hindi text to audio bytes and returns SynthResult."""
         ...
 
 
@@ -108,19 +118,22 @@ class MockTTS:
     to text length (so latency calculations and audio players work).
     """
 
-    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> tuple[bytes, str]:
-        """Synthesizes mock WAV audio and returns (wav_bytes, cache_key)."""
+    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> SynthResult:
+        """Synthesizes mock audio and returns SynthResult."""
         cache_key = compute_cache_key(text_hi, voice.provider_speaker, voice)
         if not text_hi or not text_hi.strip():
-            return b"", cache_key
+            return SynthResult(cache_key=cache_key, fmt="wav", audio=b"", cache_hit=False)
 
-        cached_audio = (
-            await tts_cache.get(cache_key, "ogg")
-            or await tts_cache.get(cache_key, "mp3")
-            or await tts_cache.get(cache_key, "wav")
-        )
-        if cached_audio is not None:
-            return cached_audio, cache_key
+        format_candidates: tuple[Literal["ogg", "mp3", "wav"], ...] = ("ogg", "mp3", "wav")
+        for hit_fmt in format_candidates:
+            cached_audio = await tts_cache.get(cache_key, hit_fmt)
+            if cached_audio is not None:
+                return SynthResult(
+                    cache_key=cache_key,
+                    fmt=hit_fmt,
+                    audio=cached_audio,
+                    cache_hit=True,
+                )
 
         clean_text = convert_digits_for_tts(text_hi)
         # Duration proportional to character count: ~0.06s per character, min 0.5s, max 10.0s
@@ -144,7 +157,12 @@ class MockTTS:
                 pass
 
         await tts_cache.put_wav(cache_key, raw_wav)
-        return raw_wav, cache_key
+        return SynthResult(
+            cache_key=cache_key,
+            fmt="wav",
+            audio=raw_wav,
+            cache_hit=False,
+        )
 
 
 class SarvamTTS:
@@ -223,20 +241,23 @@ class SarvamTTS:
 
         raise TTSUnavailable(f"Sarvam TTS failed after retries: {last_error}") from last_error
 
-    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> tuple[bytes, str]:
-        """Synthesizes Hindi text to WAV 22.05 kHz mono audio bytes (spec/06 §6.3)."""
+    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> SynthResult:
+        """Synthesizes Hindi text to audio via Sarvam AI and returns SynthResult (spec/06 §6.3)."""
         cache_key = compute_cache_key(text_hi, voice.provider_speaker, voice)
         if not text_hi or not text_hi.strip():
-            return b"", cache_key
+            return SynthResult(cache_key=cache_key, fmt="wav", audio=b"", cache_hit=False)
 
         # Check cache for delivered format (ogg/mp3/wav) before budget check or provider calls
-        cached_audio = (
-            await tts_cache.get(cache_key, "ogg")
-            or await tts_cache.get(cache_key, "mp3")
-            or await tts_cache.get(cache_key, "wav")
-        )
-        if cached_audio is not None:
-            return cached_audio, cache_key
+        format_candidates: tuple[Literal["ogg", "mp3", "wav"], ...] = ("ogg", "mp3", "wav")
+        for hit_fmt in format_candidates:
+            cached_audio = await tts_cache.get(cache_key, hit_fmt)
+            if cached_audio is not None:
+                return SynthResult(
+                    cache_key=cache_key,
+                    fmt=hit_fmt,
+                    audio=cached_audio,
+                    cache_hit=True,
+                )
 
         # Budget guard: if cap exceeded, fallback to Bhashini (if configured) -> lite mode (CHANGES 254f622 Item 2)
         if settings.SPEECH_PROVIDER_LIVE:
@@ -254,7 +275,7 @@ class SarvamTTS:
                         logger.warning(
                             "Bhashini fallback failed: %s. Falling back to lite mode.", exc
                         )
-                return b"", cache_key
+                return SynthResult(cache_key=cache_key, fmt="wav", audio=b"", cache_hit=False)
             await speech_budget.record_spend("sarvam", "tts", len(text_hi), cost)
 
         # 1. Convert numerals in child lines / text to Hindi words (spec/06 §6.3)
@@ -282,7 +303,12 @@ class SarvamTTS:
         # Store synthesized audio in cache
         await tts_cache.put_wav(cache_key, raw_wav)
 
-        return raw_wav, cache_key
+        return SynthResult(
+            cache_key=cache_key,
+            fmt="wav",
+            audio=raw_wav,
+            cache_hit=False,
+        )
 
 
 class BhashiniTTS:
@@ -300,19 +326,22 @@ class BhashiniTTS:
         if not self.api_key:
             raise TTSUnavailable("Bhashini TTS is not configured (BHASHINI_API_KEY missing)")
 
-    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> tuple[bytes, str]:
-        """Synthesizes Hindi text to WAV audio via Bhashini ULCA pipeline."""
+    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> SynthResult:
+        """Synthesizes Hindi text to audio via Bhashini ULCA pipeline and returns SynthResult."""
         cache_key = compute_cache_key(text_hi, voice.provider_speaker, voice)
         if not text_hi or not text_hi.strip():
-            return b"", cache_key
+            return SynthResult(cache_key=cache_key, fmt="wav", audio=b"", cache_hit=False)
 
-        cached_audio = (
-            await tts_cache.get(cache_key, "ogg")
-            or await tts_cache.get(cache_key, "mp3")
-            or await tts_cache.get(cache_key, "wav")
-        )
-        if cached_audio is not None:
-            return cached_audio, cache_key
+        format_candidates: tuple[Literal["ogg", "mp3", "wav"], ...] = ("ogg", "mp3", "wav")
+        for hit_fmt in format_candidates:
+            cached_audio = await tts_cache.get(cache_key, hit_fmt)
+            if cached_audio is not None:
+                return SynthResult(
+                    cache_key=cache_key,
+                    fmt=hit_fmt,
+                    audio=cached_audio,
+                    cache_hit=True,
+                )
 
         if settings.SPEECH_PROVIDER_LIVE:
             await speech_budget.record_spend("bhashini", "tts", len(text_hi), 0.0)
@@ -365,7 +394,12 @@ class BhashiniTTS:
             raw_wav = await pitch_shift(raw_wav, voice.pitch_factor)
 
         await tts_cache.put_wav(cache_key, raw_wav)
-        return raw_wav, cache_key
+        return SynthResult(
+            cache_key=cache_key,
+            fmt="wav",
+            audio=raw_wav,
+            cache_hit=False,
+        )
 
 
 def _concat_wav_bytes(wav_chunks: list[bytes]) -> bytes:
@@ -374,6 +408,13 @@ def _concat_wav_bytes(wav_chunks: list[bytes]) -> bytes:
     sample_rate = 22050
 
     for chunk in wav_chunks:
+        if not chunk:
+            continue
+        if not chunk.startswith(b"RIFF"):
+            try:
+                chunk = to_wav_sync(chunk)
+            except Exception:
+                pass
         try:
             with wave.open(io.BytesIO(chunk), "rb") as wf:
                 sample_rate = wf.getframerate()
@@ -410,6 +451,7 @@ def get_tts_provider() -> TTSProvider:
 
 
 __all__ = [
+    "SynthResult",
     "VoiceSpec",
     "get_voice",
     "TTSProvider",
@@ -421,4 +463,5 @@ __all__ = [
     "split_sentences_for_tts",
     "TTSError",
     "TTSUnavailable",
+    "_concat_wav_bytes",
 ]

@@ -245,6 +245,7 @@ async def prewarm_fixed_audio(
     extra_lines: list[tuple[str, str]] | None = None,
 ) -> list[str]:
     """Pre-warms TTS audio cache via explicit script/action (never automatic on startup, Item 3)."""
+    from backend.app.speech.audio import to_wav
     from backend.app.speech.cache import compute_cache_key, tts_cache
     from backend.app.speech.tts import get_tts_provider
     from backend.app.speech.voices import get_voice
@@ -283,9 +284,14 @@ async def prewarm_fixed_audio(
                         text_content, default_voice.provider_speaker, default_voice
                     )
                     if not await active_cache.has(ckey, "wav"):
-                        wav_bytes, _ = await active_tts.synthesize(text_content, default_voice)
-                        if wav_bytes:
-                            await active_cache.put_wav(ckey, wav_bytes)
+                        synth_res = await active_tts.synthesize(text_content, default_voice)
+                        if synth_res.audio:
+                            wav_audio = (
+                                synth_res.audio
+                                if synth_res.fmt == "wav"
+                                else await to_wav(synth_res.audio, fmt=synth_res.fmt)
+                            )
+                            await active_cache.put_wav(ckey, wav_audio)
                     keys_prewarmed.append(ckey)
         except Exception as exc:
             logger.warning("Error reading message catalog for prewarming: %s", exc)
@@ -296,9 +302,14 @@ async def prewarm_fixed_audio(
             voice = get_voice(voice_id)
             ckey = compute_cache_key(line, voice.provider_speaker, voice)
             if not await active_cache.has(ckey, "wav"):
-                wav_bytes, _ = await active_tts.synthesize(line, voice)
-                if wav_bytes:
-                    await active_cache.put_wav(ckey, wav_bytes)
+                synth_res = await active_tts.synthesize(line, voice)
+                if synth_res.audio:
+                    wav_audio = (
+                        synth_res.audio
+                        if synth_res.fmt == "wav"
+                        else await to_wav(synth_res.audio, fmt=synth_res.fmt)
+                    )
+                    await active_cache.put_wav(ckey, wav_audio)
             keys_prewarmed.append(ckey)
 
     return keys_prewarmed

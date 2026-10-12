@@ -13,6 +13,7 @@ import logging
 import os
 import re
 import shutil
+import subprocess
 import wave
 from pathlib import Path
 
@@ -246,6 +247,81 @@ def to_wav16k_sync(audio_bytes: bytes, mime: str | None = None) -> bytes:
     return asyncio.run(to_wav16k(audio_bytes, mime))
 
 
+async def to_wav(audio_bytes: bytes, fmt: str = "ogg", sample_rate: int = 22050) -> bytes:
+    """Converts OGG or MP3 audio bytes to 22.05 kHz 16-bit mono WAV (spec/06 §6.1)."""
+    if not audio_bytes:
+        return b""
+    if fmt == "wav" and audio_bytes.startswith(b"RIFF"):
+        return audio_bytes
+    if audio_bytes.startswith(b"RIFF"):
+        return audio_bytes
+
+    ffmpeg = get_ffmpeg_path()
+    cmd = [
+        ffmpeg,
+        "-v",
+        "error",
+        "-i",
+        "pipe:0",
+        "-ac",
+        "1",
+        "-ar",
+        str(sample_rate),
+        "-f",
+        "wav",
+        "pipe:1",
+    ]
+
+    retcode, stdout, stderr = await _run_subprocess_async(
+        cmd, input_bytes=audio_bytes, timeout_s=15.0
+    )
+    if retcode != 0:
+        err = stderr.decode("utf-8", errors="replace").strip()
+        raise AudioProcessingError(f"ffmpeg to_wav failed (code {retcode}): {err}")
+
+    return stdout
+
+
+def to_wav_sync(audio_bytes: bytes, fmt: str = "ogg", sample_rate: int = 22050) -> bytes:
+    """Synchronous helper for to_wav."""
+    if not audio_bytes:
+        return b""
+    if (fmt == "wav" or audio_bytes.startswith(b"RIFF")) and audio_bytes.startswith(b"RIFF"):
+        return audio_bytes
+
+    ffmpeg = get_ffmpeg_path()
+    cmd = [
+        ffmpeg,
+        "-v",
+        "error",
+        "-i",
+        "pipe:0",
+        "-ac",
+        "1",
+        "-ar",
+        str(sample_rate),
+        "-f",
+        "wav",
+        "pipe:1",
+    ]
+    try:
+        proc_res = subprocess.run(
+            cmd,
+            input=audio_bytes,
+            capture_output=True,
+            timeout=15.0,
+            check=False,
+        )
+    except Exception as exc:
+        raise AudioProcessingError(f"Subprocess to_wav_sync failed: {exc}") from exc
+
+    if proc_res.returncode != 0:
+        err = proc_res.stderr.decode("utf-8", errors="replace").strip()
+        raise AudioProcessingError(f"ffmpeg to_wav_sync failed (code {proc_res.returncode}): {err}")
+
+    return proc_res.stdout
+
+
 async def to_ogg_opus(wav_bytes: bytes) -> bytes:
     """Converts WAV audio to WhatsApp-compatible OGG/Opus mono 48 kHz (spec/06 §6.1)."""
     if not wav_bytes:
@@ -327,6 +403,9 @@ async def pitch_shift(wav_bytes: bytes, factor: float) -> bytes:
 
     if abs(factor - 1.0) < 0.001:
         return wav_bytes
+
+    if not wav_bytes.startswith(b"RIFF"):
+        wav_bytes = await to_wav(wav_bytes)
 
     # Detect sample rate from WAV header if available, default to 22050 per spec
     sample_rate = 22050
@@ -505,3 +584,27 @@ async def trim_silence(wav_bytes: bytes) -> bytes:
         pass
 
     return wav_bytes
+
+
+__all__ = [
+    "AudioProcessingError",
+    "AudioTooLongError",
+    "MAX_INBOUND_AUDIO_S",
+    "EXPLAIN_BACK_MAX_SECONDS",
+    "REHEARSE_TURN_MAX_S",
+    "get_ffmpeg_path",
+    "get_ffprobe_path",
+    "validate_audio_duration",
+    "duration_s",
+    "duration_s_sync",
+    "to_wav",
+    "to_wav_sync",
+    "to_wav16k",
+    "to_wav16k_sync",
+    "to_ogg_opus",
+    "to_web",
+    "to_mp3",
+    "pitch_shift",
+    "split_for_stt",
+    "trim_silence",
+]

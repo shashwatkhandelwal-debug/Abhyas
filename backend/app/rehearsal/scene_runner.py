@@ -294,13 +294,13 @@ class SceneRunner:
             voice_spec = get_voice(line_rec.voice_id)
             if synthesize_audio:
                 try:
-                    wav_bytes, ckey = await self.tts.synthesize(line_rec.line_hi, voice_spec)
-                    if wav_bytes:
-                        line_rec.audio_ref = ckey
+                    synth_res = await self.tts.synthesize(line_rec.line_hi, voice_spec)
+                    if synth_res.audio:
+                        line_rec.audio_ref = synth_res.cache_key
                         return OutboundMessage(
                             kind="audio",
                             text_hi=line_rec.line_hi,
-                            audio_ref=ckey,
+                            audio_ref=synth_res.cache_key,
                             speaker=line_rec.persona_id,
                         )
                 except Exception as exc:
