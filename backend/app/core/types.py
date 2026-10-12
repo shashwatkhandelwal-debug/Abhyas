@@ -1,7 +1,7 @@
 """Core message types shared across channels and conversation service (spec/02 §2.5)."""
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -19,6 +19,7 @@ class InboundMessage(BaseModel):
     audio_bytes: bytes | None = Field(default=None, exclude=True)  # never persisted
     audio_mime: str | None = None
     received_at: datetime
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class Button(BaseModel):
