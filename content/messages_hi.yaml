@@ -266,3 +266,12 @@ state_FEEDBACK: {text: "सुझाव", audio: false}
 state_TRY_IN_CLASS: {text: "कक्षा में आज़माना", audio: false}
 state_REFLECT_PEER: {text: "साथी की सूची", audio: false}
 state_REFLECT_SELF: {text: "अपने अनुभव बताना", audio: false}
+
+# ── Coach exact words fallbacks ──────────────────────────────
+coach_exact_words_contrast_math:
+  text: "दोनों उत्तर स्लेट पर रखकर पूछिए: तीलियाँ गिनकर बताओ, कौन-सा तरीका सही है?"
+  audio: false
+coach_exact_words_contrast_lit:
+  text: "दोनों बच्चों के उत्तर स्लेट पर लिखकर पूछिए: कौन-सा शब्द सही है?"
+  audio: false
+
