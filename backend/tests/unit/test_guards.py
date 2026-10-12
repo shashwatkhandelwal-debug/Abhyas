@@ -347,7 +347,7 @@ def test_guard_child_line_fail_off_topic_with_number() -> None:
 
 # ── 4. guard_coach (§5.6) ────────────────────────────────────────────────────
 def test_guard_coach_pass_1() -> None:
-    transcript = "टीचर: रवि, तुमने 52 में से 17 कैसे घटाया? मुझे बताओ।"
+    teacher_lines = ["रवि, तुमने 52 में से 17 कैसे घटाया? मुझे बताओ।"]
     fb = CoachFeedbackOutput(
         scores={"crit_explaining": 2, "crit_concrete": 0},
         evidence={"crit_explaining": "तुमने 52 में से 17 कैसे घटाया? मुझे बताओ।", "crit_concrete": ""},
@@ -356,13 +356,13 @@ def test_guard_coach_pass_1() -> None:
         exact_words_hi="10-10 तीलियों के बंडल बनाकर 52 तीलियाँ गिनो।",
         confidence=0.85,
     )
-    valid, msg = guard_coach(fb, ["crit_explaining", "crit_concrete"], transcript, False, 35)
+    valid, msg = guard_coach(fb, ["crit_explaining", "crit_concrete"], teacher_lines, False, 35)
     assert valid is True
     assert msg == "Valid"
 
 
 def test_guard_coach_pass_2() -> None:
-    transcript = "टीचर: रवि, 43 में से 27 घटाकर बताओ।"
+    teacher_lines = ["रवि, 43 में से 27 घटाकर बताओ।"]
     fb = CoachFeedbackOutput(
         scores={"c1": 0, "c2": 0},
         evidence={"c1": "", "c2": ""},
@@ -371,13 +371,13 @@ def test_guard_coach_pass_2() -> None:
         exact_words_hi="रवि, तुमने यह कैसे सोचा, मुझे समझाओ।",
         confidence=0.7,
     )
-    valid, msg = guard_coach(fb, ["c1", "c2"], transcript, False, 16)
+    valid, msg = guard_coach(fb, ["c1", "c2"], teacher_lines, False, 16)
     assert valid is True
     assert msg == "Valid"
 
 
 def test_guard_coach_pass_3() -> None:
-    transcript = "टीचर: बहुत अच्छा! दोनों उत्तर बोर्ड पर रखकर देखो।"
+    teacher_lines = ["बहुत अच्छा! दोनों उत्तर बोर्ड पर रखकर देखो।"]
     fb = CoachFeedbackOutput(
         scores={"c_contrast": 2},
         evidence={"c_contrast": "दोनों उत्तर बोर्ड पर रखकर देखो।"},
@@ -386,13 +386,13 @@ def test_guard_coach_pass_3() -> None:
         exact_words_hi="प्रिया, तुम भी बताओ कि तुम्हारा क्या सोचना है।",
         confidence=0.9,
     )
-    valid, msg = guard_coach(fb, ["c_contrast"], transcript, True, 16)
+    valid, msg = guard_coach(fb, ["c_contrast"], teacher_lines, True, 16)
     assert valid is True
     assert msg == "Valid"
 
 
 def test_guard_coach_fail_missing_rubric_key() -> None:
-    transcript = "टीचर: बताओ कैसे किया?"
+    teacher_lines = ["बताओ कैसे किया?"]
     fb = CoachFeedbackOutput(
         scores={"c1": 2},
         evidence={"c1": "बताओ कैसे किया?"},
@@ -401,28 +401,28 @@ def test_guard_coach_fail_missing_rubric_key() -> None:
         exact_words_hi="कीलियाँ गिनो।",
         confidence=0.8,
     )
-    valid, msg = guard_coach(fb, ["c1", "c2"], transcript, False, 35)
+    valid, msg = guard_coach(fb, ["c1", "c2"], teacher_lines, False, 35)
     assert valid is False
     assert "criteria" in msg or "key" in msg
 
 
 def test_guard_coach_fail_quote_not_in_teacher_transcript() -> None:
-    transcript = "टीचर: शाबाश रवि!\nरवि: 45 आया!"
+    teacher_lines = ["शाबाश रवि!"]
     fb = CoachFeedbackOutput(
         scores={"c1": 2},
-        evidence={"c1": "45 आया!"},  # This is child line, not teacher line!
+        evidence={"c1": "45 आया!"},  # This is child line, not in teacher lines!
         strength_hi="आपने अच्छा काम किया।",
         change_hi="अगली बार बंडल लाएँ।",
         exact_words_hi="बंडल खोलो।",
         confidence=0.8,
     )
-    valid, msg = guard_coach(fb, ["c1"], transcript, False, 35)
+    valid, msg = guard_coach(fb, ["c1"], teacher_lines, False, 35)
     assert valid is False
     assert "evidence" in msg or "transcript" in msg
 
 
 def test_guard_coach_fail_disrespectful_register() -> None:
-    transcript = "टीचर: रवि कैसे किया?"
+    teacher_lines = ["रवि कैसे किया?"]
     fb = CoachFeedbackOutput(
         scores={"c1": 1},
         evidence={"c1": "रवि कैसे किया?"},
@@ -431,13 +431,13 @@ def test_guard_coach_fail_disrespectful_register() -> None:
         exact_words_hi="बंडल खोलो।",
         confidence=0.8,
     )
-    valid, msg = guard_coach(fb, ["c1"], transcript, False, 35)
+    valid, msg = guard_coach(fb, ["c1"], teacher_lines, False, 35)
     assert valid is False
     assert "register" in msg or "आप" in msg or "तुम" in msg
 
 
 def test_guard_coach_fail_leaked_answer() -> None:
-    transcript = "टीचर: कैसे किया?"
+    teacher_lines = ["कैसे किया?"]
     fb = CoachFeedbackOutput(
         scores={"c1": 1},
         evidence={"c1": "कैसे किया?"},
@@ -446,7 +446,7 @@ def test_guard_coach_fail_leaked_answer() -> None:
         exact_words_hi="रवि, इसका सही उत्तर 35 है, लिख लो।",  # Leaks correct answer 35!
         confidence=0.8,
     )
-    valid, msg = guard_coach(fb, ["c1"], transcript, True, 35)
+    valid, msg = guard_coach(fb, ["c1"], teacher_lines, True, 35)
     assert valid is False
     assert "answer" in msg or "leak" in msg or "35" in msg
 
@@ -884,7 +884,7 @@ def test_guard_child_line_additional_branches() -> None:
 
 
 def test_guard_coach_additional_branches() -> None:
-    transcript = "टीचर: बहुत अच्छा! आपने सवाल पूछा।"
+    teacher_lines = ["बहुत अच्छा! आपने सवाल पूछा।"]
     # Invalid score value
     fb_score = CoachFeedbackOutput.model_construct(
         scores={"c1": 3},  # invalid score
@@ -894,7 +894,7 @@ def test_guard_coach_additional_branches() -> None:
         exact_words_hi="बंडल गिनो।",
         confidence=0.8,
     )
-    valid_sc, msg_sc = guard_coach(fb_score, ["c1"], transcript, False, 10)
+    valid_sc, msg_sc = guard_coach(fb_score, ["c1"], teacher_lines, False, 10)
     assert valid_sc is False
     assert "Score for c1 must be in {0, 1, 2}" in msg_sc
 
@@ -907,7 +907,7 @@ def test_guard_coach_additional_branches() -> None:
         exact_words_hi="बंडल गिनो।",
         confidence=0.8,
     )
-    valid_nq, msg_nq = guard_coach(fb_no_quote, ["c1"], transcript, False, 10)
+    valid_nq, msg_nq = guard_coach(fb_no_quote, ["c1"], teacher_lines, False, 10)
     assert valid_nq is False
     assert "Evidence quote missing" in msg_nq
 
@@ -920,7 +920,7 @@ def test_guard_coach_additional_branches() -> None:
         exact_words_hi="बंडल गिनो।",
         confidence=0.8,
     )
-    valid_wb, msg_wb = guard_coach(fb_words, ["c1"], transcript, False, 10)
+    valid_wb, msg_wb = guard_coach(fb_words, ["c1"], teacher_lines, False, 10)
     assert valid_wb is False
     assert "exceeds word budget" in msg_wb
 
@@ -933,7 +933,7 @@ def test_guard_coach_additional_branches() -> None:
         exact_words_hi="बंडल गिनो।",
         confidence=0.8,
     )
-    valid_ms, msg_ms = guard_coach(fb_multi, ["c1"], transcript, False, 10)
+    valid_ms, msg_ms = guard_coach(fb_multi, ["c1"], teacher_lines, False, 10)
     assert valid_ms is False
     assert "must be a single sentence" in msg_ms
 
@@ -946,7 +946,7 @@ def test_guard_coach_additional_branches() -> None:
         exact_words_hi="कमल बोलो।",
         confidence=0.8,
     )
-    valid_ls, msg_ls = guard_coach(fb_leak_str, ["c1"], transcript, True, "कमल")
+    valid_ls, msg_ls = guard_coach(fb_leak_str, ["c1"], teacher_lines, True, "कमल")
     assert valid_ls is False
     assert "leaked correct answer" in msg_ls
 
@@ -959,7 +959,7 @@ def test_guard_coach_additional_branches() -> None:
         exact_words_hi="बंडल गिनो।",
         confidence=1.5,
     )
-    valid_cf, msg_cf = guard_coach(fb_conf, ["c1"], transcript, False, 10)
+    valid_cf, msg_cf = guard_coach(fb_conf, ["c1"], teacher_lines, False, 10)
     assert valid_cf is False
     assert "Confidence out of bounds" in msg_cf
 

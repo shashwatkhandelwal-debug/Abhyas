@@ -96,6 +96,24 @@ class ChildState(IntEnum):
         return None
 
 
+def child_state_rank(state: ChildState) -> int:
+    """Returns progression rank for a ChildState: MISCONCEPTION=0 < CAN_EXPLAIN=1 < PARTIAL=2 < CORRECT=3."""
+    ranks: dict[ChildState, int] = {
+        ChildState.MISCONCEPTION: 0,
+        ChildState.CAN_EXPLAIN: 1,
+        ChildState.PARTIAL: 2,
+        ChildState.CORRECT: 3,
+    }
+    return ranks.get(state, int(state.value) if isinstance(state, ChildState) else 0)
+
+
+class SceneTurn(BaseModel):
+    """Single turn in a rehearsal scene."""
+
+    speaker: str  # "teacher" or child persona id
+    text_hi: str
+
+
 class ChildRuntime(BaseModel):
     """Runtime state of one simulated child in the scene (§4.1)."""
 
@@ -218,6 +236,8 @@ __all__ = [
     "Step",
     "BugOutput",
     "ChildState",
+    "child_state_rank",
+    "SceneTurn",
     "ChildRuntime",
     "SceneState",
     "TaggedTurn",

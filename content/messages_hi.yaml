@@ -69,6 +69,15 @@ explain_back_missing:
 explain_back_misconception:
   text: "ध्यान दें: {note}"
   audio: false
+fidelity_reply_summary:
+  text: "धन्यवाद! आपने {n_covered} में से {n_total} मुख्य बातें कहीं।"
+  audio: false
+fidelity_reply_missing:
+  text: "एक बात और याद रखें: {text}"
+  audio: false
+fidelity_reply_misconception:
+  text: "ध्यान दें: {text}"
+  audio: false
 model_offer:
   text: "क्या आप सुनना चाहेंगी कि एक शिक्षिका इन्हीं तीन बच्चों के साथ यह तरीका कैसे करती हैं? (लगभग 1 मिनट)"
   audio: false
@@ -228,6 +237,7 @@ btn_replay: {text: "फिर से सुनें", audio: false}
 btn_skip: {text: "छोड़ें", audio: false}
 btn_listen: {text: "सुनें", audio: false}
 btn_retry: {text: "फिर से अभ्यास", audio: false}
+btn_retry_speak: {text: "फिर से बोलूँगी", text_m: "फिर से बोलूँगा", audio: false}
 btn_continue: {text: "आगे बढ़ें", audio: false}
 btn_peer: {text: "साथी ने देखा", audio: false}
 btn_self: {text: "खुद बताऊँगी", audio: false}

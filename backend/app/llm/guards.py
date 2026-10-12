@@ -237,43 +237,10 @@ def guard_child_line(
 
 
 # ── 4. guard_coach (§5.6) ────────────────────────────────────────────────────
-def _extract_teacher_speech(transcript: str) -> str:
-    """Extracts only the teacher's lines from a dialogue transcript."""
-    teacher_lines: list[str] = []
-    for raw_line in transcript.splitlines():
-        line = raw_line.strip()
-        if not line:
-            continue
-        line_lower = line.lower()
-        if "teacher:" in line_lower or "टीचर:" in line or "टीचर :" in line:
-            parts = re.split(r"(?:teacher|टीचर)\s*[:：]", line, flags=re.IGNORECASE)
-            if len(parts) > 1:
-                teacher_lines.append(parts[1].strip())
-        elif ":" in line and any(
-            role in line_lower
-            for role in [
-                "ravi",
-                "priya",
-                "aman",
-                "रवि",
-                "प्रिया",
-                "अमन",
-                "child",
-                "बच्चा",
-            ]
-        ):
-            # Explicit child speaker line, ignore
-            continue
-        else:
-            # Unprefixed transcript line or plain teacher text
-            teacher_lines.append(line)
-    return " ".join(teacher_lines)
-
-
 def guard_coach(
     output: CoachFeedbackOutput,
     rubric_criterion_ids: list[str],
-    teacher_transcript: str,
+    teacher_lines: list[str],
     rubric_rewards_not_telling: bool,
     current_item_answer: int | str | None,
 ) -> tuple[bool, str]:
@@ -299,7 +266,7 @@ def guard_coach(
         if score not in (0, 1, 2):
             return False, f"Score for {crit_id} must be in {{0, 1, 2}}, got {score}"
 
-    teacher_speech = _extract_teacher_speech(teacher_transcript)
+    teacher_speech = " ".join(teacher_lines)
     for crit_id, score in output.scores.items():
         if score > 0:
             quote = output.evidence.get(crit_id, "").strip()
