@@ -22,7 +22,7 @@ from backend.app.llm.roles.act_tagger import (
     tag_act,
 )
 from backend.app.llm.schemas import ActTaggerOutput
-from backend.app.rule_engine.domain import TeachingAct
+from backend.app.rule_engine.domain import Problem, TeachingAct
 
 
 # ── 1. Content: act_examples_hi.yaml Verification ────────────────────────────
@@ -340,3 +340,89 @@ async def test_tag_act_missing_prompt_template() -> None:
             scene_persona_ids=["ravi"],
         )
         assert res.acts == [TeachingAct.ASK_TO_EXPLAIN]
+
+
+def test_feedback_items_and_evaluator_samples() -> None:
+    """Verify all 5 test sentences from user feedback + 5 evaluator samples (items 3-8)."""
+    # 1. TELL_ANSWER fallback: stated answer vs question
+    # "रवि, सही उत्तर क्या है?" must NOT be tell_answer (expect ask_to_explain or repeat_question)
+    res_q = fallback_tag_act("रवि, सही उत्तर क्या है?")
+    assert TeachingAct.TELL_ANSWER not in res_q.acts
+    assert res_q.addressed_child == "ravi"
+    assert any(
+        act in res_q.acts for act in (TeachingAct.ASK_TO_EXPLAIN, TeachingAct.REPEAT_QUESTION)
+    )
+
+    # "Ravi, answer 16 hai" MUST be tell_answer (evaluator sample s3)
+    res_s3_short = fallback_tag_act("Ravi, answer 16 hai")
+    assert TeachingAct.TELL_ANSWER in res_s3_short.acts
+    assert res_s3_short.addressed_child == "ravi"
+
+    # 2. SCOLD fallback: remove "ध्यान दो"
+    # "प्रिया, ध्यान दो, 43 में से 27 कैसे करोगी?" → ask_to_explain (+ give_new_problem), not scold
+    res_scold_neutral = fallback_tag_act("प्रिया, ध्यान दो, 43 में से 27 कैसे करोगी?")
+    assert TeachingAct.SCOLD not in res_scold_neutral.acts
+    assert TeachingAct.ASK_TO_EXPLAIN in res_scold_neutral.acts
+    assert res_scold_neutral.addressed_child == "priya"
+
+    # 3. Problem detection in fallback:
+    # "अमन, अब 61 में से 28 करो" → problem sub 61/28 + give_new_problem
+    res_sub = fallback_tag_act("अमन, अब 61 में से 28 करो")
+    assert res_sub.problem is not None
+    assert res_sub.problem.type == "sub"
+    assert res_sub.problem.a == 61
+    assert res_sub.problem.b == 28
+    assert TeachingAct.GIVE_NEW_PROBLEM in res_sub.acts
+    assert res_sub.addressed_child == "aman"
+
+    # "सब लोग देखो, 38 और 45 जोड़ो" → add 38/45, addressed all
+    res_add = fallback_tag_act("सब लोग देखो, 38 और 45 जोड़ो")
+    assert res_add.problem is not None
+    assert res_add.problem.type == "add"
+    assert res_add.problem.a == 38
+    assert res_add.problem.b == 45
+    assert TeachingAct.GIVE_NEW_PROBLEM in res_add.acts
+    assert res_add.addressed_child == "all"
+
+    # Evaluator samples from eval/samples/samples.yaml:
+    # s1: "रवि, तुमने 43 में से 27 कैसे घटाया? मुझे एक-एक कदम बताओ।"
+    s1_text = "रवि, तुमने 43 में से 27 कैसे घटाया? मुझे एक-एक कदम बताओ।"
+    res_s1 = fallback_tag_act(s1_text)
+    assert TeachingAct.ASK_TO_EXPLAIN in res_s1.acts
+    assert res_s1.addressed_child == "ravi"
+
+    # s2: "सब लोग देखो, ये 4 बंडल और 3 खुली तीलियाँ हैं। 3 में से 7 नहीं निकलतीं, तो एक बंडल खोलते हैं। अब कितनी तीलियाँ हुईं?"
+    s2_text = (
+        "सब लोग देखो, ये 4 बंडल और 3 खुली तीलियाँ हैं। "
+        "3 में से 7 नहीं निकलतीं, तो एक बंडल खोलते हैं। अब कितनी तीलियाँ हुईं?"
+    )
+    current_item_sub = Problem(type="sub", a=43, b=27)
+    res_s2 = fallback_tag_act(s2_text, current_item=current_item_sub)
+    assert TeachingAct.CONCRETE_REPRESENTATION in res_s2.acts
+    assert res_s2.addressed_child == "all"
+    assert res_s2.problem is None
+
+    # s3: "Aman, sahi answer 16 hai, yaad rakho."
+    s3_text = "Aman, sahi answer 16 hai, yaad rakho."
+    res_s3 = fallback_tag_act(s3_text)
+    assert TeachingAct.TELL_ANSWER in res_s3.acts
+    assert res_s3.addressed_child == "aman"
+
+    # s4: "इस तरीके में सबसे पहले बच्चे से पूछना है कि उसने कैसे घटाया। फिर दस-दस तीलियों के बंडल से संख्या बनवानी है, और जब इकाई में कम हो तो एक बंडल खोलना है। उत्तर खुद नहीं बताना।"
+    s4_text = (
+        "इस तरीके में सबसे पहले बच्चे से पूछना है कि उसने कैसे घटाया। "
+        "फिर दस-दस तीलियों के बंडल से संख्या बनवानी है, और जब इकाई में कम हो "
+        "तो एक बंडल खोलना है। उत्तर खुद नहीं बताना।"
+    )
+    res_s4 = fallback_tag_act(s4_text)
+    assert any(
+        act in res_s4.acts
+        for act in (TeachingAct.CONCRETE_REPRESENTATION, TeachingAct.ASK_TO_EXPLAIN)
+    )
+
+    # s5: "मेरी कक्षा में पहली और दूसरी कक्षा के बच्चे साथ बैठते हैं। हासिल वाला घटाव दोनों को एक साथ कैसे कराऊँ?"
+    s5_text = (
+        "मेरी कक्षा में पहली और दूसरी कक्षा के बच्चे साथ बैठते हैं। हासिल वाला घटाव दोनों को एक साथ कैसे कराऊँ?"
+    )
+    res_s5 = fallback_tag_act(s5_text)
+    assert TeachingAct.ASK_TO_EXPLAIN in res_s5.acts

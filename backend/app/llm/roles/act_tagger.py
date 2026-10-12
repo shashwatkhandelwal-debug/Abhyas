@@ -6,6 +6,7 @@ with a deterministic, rule_engine-independent keyword fallback.
 
 import logging
 import re
+import unicodedata
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -26,7 +27,10 @@ PROMPT_VERSION = "act_tagger.v1"
 # Regex rules for deterministic keyword fallback (§5.4)
 FALLBACK_PATTERNS: list[tuple[re.Pattern[str], TeachingAct]] = [
     (
-        re.compile(r"क्यों|कैसे|बताओ|समझाओ|\bhow\b|\bwhy\b|\bexplain\b", re.IGNORECASE),
+        re.compile(
+            r"क्यों|कैसे|बताओ|समझाओ|\bhow\b|\bwhy\b|\bexplain\b",
+            re.IGNORECASE,
+        ),
         TeachingAct.ASK_TO_EXPLAIN,
     ),
     (
@@ -38,20 +42,23 @@ FALLBACK_PATTERNS: list[tuple[re.Pattern[str], TeachingAct]] = [
     ),
     (
         re.compile(
-            r"सही उत्तर|\banswer is\b|उत्तर \d+ है|उत्तर है",
+            r"(?:"
+            r"(?:सही\s+उत्तर|उत्तर)\s+(?:\d+|[०-९]+|सोलह|सत्रह|अठारह|उन्नीस|बीस|इक्कीस|बाईस|तेईस|चौबीस|पच्चीस|छब्बीस|सत्ताईस|अट्ठाईस|उनतीस|तीस|इकत्तीस|बत्तीस|तैंतीस|चौंतीस|पैंतीस|छत्तीस|सैंतीस|अड़तीस|उनतालीस|चालीस|इकतालीस|बयालीस|तैंतालीस|चवालीस|पैंतालीस|छियालीस|सैंतालीस|अड़तालीस|उनचास|पचास|बावन|एक|दो|तीन|चार|पाँच|छह|सात|आठ|नौ|दस|ग्यारह|बारह|तेरह|चौदह|पंद्रह|[a-zA-Z\u0900-\u097F]+)\s+(?:आता\s+)?है|"
+            r"\b(?:sahi\s+)?answer\s+(?:is\s+)?(?:\d+|[a-zA-Z0-9]+)(?:\s+hai)?\b"
+            r")",
             re.IGNORECASE,
         ),
         TeachingAct.TELL_ANSWER,
     ),
     (
         re.compile(
-            r"शाबाश .* कोशिश|बहुत अच्छा कोशिश|अच्छी कोशिश|\bgood try\b|अच्छा सोचा|मेहनत अच्छी|तरीका अच्छा",
+            r"शाबाश .* कोशिश|बहुत अच्छा कोशिश|अच्छी कोशिश|\bgood try\b|अच्छा सोचा|मेहनत अच्छी|तरीका अच्छा|सोच .* अच्छी|अच्छी सोच",
             re.IGNORECASE,
         ),
         TeachingAct.PRAISE_EFFORT,
     ),
     (
-        re.compile(r"चुप|ध्यान दो|गलत है ना|इतना भी नहीं आता|चुपचाप", re.IGNORECASE),
+        re.compile(r"चुप रहो|चुपचाप|इतना भी नहीं आता|गलत है ना", re.IGNORECASE),
         TeachingAct.SCOLD,
     ),
     (
@@ -126,6 +133,72 @@ def format_act_examples_block(examples: Sequence[dict[str, Any]]) -> str:
     return "\n".join(blocks)
 
 
+def detect_problem_in_fallback(
+    clean_text: str,
+    current_item: Problem | None = None,
+) -> Problem | None:
+    """Detects problem posed in teacher speech and validates against current_item domain (spec/05 §5.4)."""
+    candidate: Problem | None = None
+
+    # 1. Subtraction phrases: "X में से Y", "X - Y", "X माइनस Y", "X से Y घटाओ"
+    sub_patterns = [
+        r"(?P<x>[\u0900-\u097F\w]+)\s+में\s+से\s+(?P<y>[\u0900-\u097F\w]+)(?!\s*नहीं)",
+        r"(?P<x>\d+|[०-९]+)\s*-\s*(?P<y>\d+|[०-९]+)",
+        r"(?P<x>[\u0900-\u097F\w]+)\s+(?:माइनस|minus)\s+(?P<y>[\u0900-\u097F\w]+)",
+        r"(?P<x>[\u0900-\u097F\w]+)\s+से\s+(?P<y>[\u0900-\u097F\w]+)\s+(?:घटा|घटाओ|घटाना)",
+    ]
+    for pat in sub_patterns:
+        m = re.search(pat, clean_text, flags=re.IGNORECASE)
+        if m:
+            nx = extract_numbers(m.group("x"))
+            ny = extract_numbers(m.group("y"))
+            if nx and ny and nx[0] >= ny[0]:
+                candidate = Problem(type="sub", a=nx[0], b=ny[0])
+                break
+
+    # 2. Addition phrases: "X और Y जोड़ो", "X + Y", "X प्लस Y"
+    if candidate is None:
+        add_patterns = [
+            r"(?P<x>[\u0900-\u097F\w]+)\s+और\s+(?P<y>[\u0900-\u097F\w]+)\s+(?:जोड़|जोड़ो|जोड़ना)",
+            r"(?P<x>\d+|[०-९]+)\s*\+\s*(?P<y>\d+|[०-९]+)",
+            r"(?P<x>[\u0900-\u097F\w]+)\s+(?:प्लस|plus)\s+(?P<y>[\u0900-\u097F\w]+)",
+        ]
+        for pat in add_patterns:
+            m = re.search(pat, clean_text, flags=re.IGNORECASE)
+            if m:
+                nx = extract_numbers(m.group("x"))
+                ny = extract_numbers(m.group("y"))
+                if nx and ny:
+                    candidate = Problem(type="add", a=nx[0], b=ny[0])
+                    break
+
+    # 3. Place value: "X बंडल (और) Y तीली(याँ)"
+    if candidate is None:
+        pv_pat = r"(?P<x>[\u0900-\u097F\w]+)\s+बंडल(?:\s+और)?\s+(?:(?:ये\s+)?(?:हैं|खुली)\s+)?(?P<y>[\u0900-\u097F\w]+)\s*(?:खुली\s+)?(?:तीली|तीलियाँ|तीलीयाँ|तीलियों)"
+        m = re.search(pv_pat, clean_text, flags=re.IGNORECASE)
+        if m:
+            nx = extract_numbers(m.group("x"))
+            ny = extract_numbers(m.group("y"))
+            if nx and ny:
+                candidate = Problem(type="place_value", tens=nx[0], ones=ny[0])
+
+    # 4. Literacy: a Devanagari word after "पढ़ो"/"शब्द"
+    if candidate is None:
+        lit_pat = r"(?:शब्द\s+([\u0900-\u097F]+)|([\u0900-\u097F]+)\s+पढ़ो)"
+        m = re.search(lit_pat, clean_text)
+        if m:
+            w = m.group(1) or m.group(2)
+            if w and w not in {"करो", "देखो", "यह", "ये", "अब", "सब"}:
+                candidate = Problem(type="read_word", word=unicodedata.normalize("NFC", w))
+
+    # Validate against the scene domain (use current_item.type)
+    if candidate is not None and current_item is not None:
+        if candidate.type != current_item.type:
+            return None
+
+    return candidate
+
+
 def fallback_tag_act(
     transcript: str,
     scene_persona_ids: list[str] | None = None,
@@ -146,16 +219,20 @@ def fallback_tag_act(
     for pattern, act in FALLBACK_PATTERNS:
         match = pattern.search(clean_text)
         if match:
+            if act == TeachingAct.TELL_ANSWER:
+                # Must require a stated answer, not a question
+                if "?" in clean_text or re.search(
+                    r"\b(?:क्या|kya|what)\b", clean_text, re.IGNORECASE
+                ):
+                    continue
             if act not in acts:
                 acts.append(act)
                 if not matched_quote:
                     matched_quote = match.group(0)
 
-    # Check for new problem posed via numbers
-    nums = extract_numbers(clean_text)
-    problem: Problem | None = None
-    if len(nums) >= 2 and any(k in clean_text for k in ["घटा", "कम", "माइनस"]):
-        problem = Problem(type="sub", a=nums[0], b=nums[1])
+    # Check for problem posed via speech
+    problem = detect_problem_in_fallback(clean_text, current_item)
+    if problem is not None:
         if TeachingAct.GIVE_NEW_PROBLEM not in acts:
             acts.append(TeachingAct.GIVE_NEW_PROBLEM)
             if not matched_quote:
@@ -171,19 +248,25 @@ def fallback_tag_act(
 
     # 2. Addressed child
     addressed_child: str | None = None
-    if any(
-        k in clean_text
-        for k in ["बच्चों", "सब बच्चे", "सब लोग", "सभी बच्चे", "तुम दोनों", "दोनों बच्चे", "all"]
-    ):
+    all_children_pattern = re.compile(
+        r"\b(?:all|everyone)\b|(?<![\u0900-\u097F\w])(?:बच्चों|सब बच्चे|सब लोग|सभी बच्चे|तुम दोनों|दोनों बच्चे)(?![\u0900-\u097F\w])",
+        re.IGNORECASE,
+    )
+    if all_children_pattern.search(clean_text):
         addressed_child = "all"
     else:
         # Check against persona IDs and names in order of appearance
         valid_ids = scene_persona_ids or ["ravi", "priya", "aman"]
         found_children: list[tuple[int, str]] = []
         for name_token, persona_id in NAME_TO_PERSONA_ID.items():
-            idx = clean_text.lower().find(name_token)
-            if idx != -1 and persona_id in valid_ids:
-                found_children.append((idx, persona_id))
+            name_pattern = (
+                rf"\b{re.escape(name_token)}\b"
+                if name_token.isascii()
+                else rf"(?<![\u0900-\u097F\w]){re.escape(name_token)}(?![\u0900-\u097F\w])"
+            )
+            m = re.search(name_pattern, clean_text, flags=re.IGNORECASE)
+            if m and persona_id in valid_ids:
+                found_children.append((m.start(), persona_id))
         if found_children:
             found_children.sort(key=lambda x: x[0])
             addressed_child = found_children[0][1]

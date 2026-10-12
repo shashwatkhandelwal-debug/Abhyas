@@ -177,12 +177,14 @@ def guard_child_line(
             f"Line exceeds max word count ({len(words)} > {settings.MAX_CHILD_LINE_WORDS})",
         )
 
-    # 5. Stays in character
-    disallowed_terms = ["ai", "assistant", "गलती", "misconception", "rule", "नियम"]
-    line_lower = line_hi.lower()
-    for term in disallowed_terms:
-        if term in line_lower:
-            return False, f"Line contains out-of-character term '{term}'"
+    # 5. Stays in character: match whole words for Latin and Devanagari tokens
+    latin_disallowed = re.compile(r"\b(?:ai|assistant|rule|misconception)\b", re.IGNORECASE)
+    if match := latin_disallowed.search(line_hi):
+        return False, f"Line contains out-of-character term '{match.group(0)}'"
+
+    devanagari_disallowed = re.compile(r"(?<![\u0900-\u097F\w])(?:गलती|नियम)(?![\u0900-\u097F\w])")
+    if match := devanagari_disallowed.search(line_hi):
+        return False, f"Line contains out-of-character term '{match.group(0)}'"
 
     # Reject excessive English words (> 3 words)
     eng_tokens = re.findall(r"\b[a-zA-Z]+\b", line_hi)

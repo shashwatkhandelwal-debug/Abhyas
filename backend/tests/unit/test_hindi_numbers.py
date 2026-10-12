@@ -29,8 +29,17 @@ def test_exhaustive_0_to_100_to_words(n: int) -> None:
 def test_exhaustive_0_to_100_extract_numbers(n: int) -> None:
     """Every single canonical Hindi word from 0 to 100 must be extracted back to its integer."""
     word = to_words(n)
-    extracted = extract_numbers(f"बच्चे ने {word} बोला")
+    # Per review feedback, 'दो' is ambiguous (verb vs number), requiring a counting noun or number context
+    phrase = f"बच्चे ने {word} बंडल देखा" if n == 2 else f"बच्चे ने {word} बोला"
+    extracted = extract_numbers(phrase)
     assert n in extracted
+
+
+def test_extract_numbers_ambiguous_do() -> None:
+    """Verify 'दो' disambiguation: number 2 vs verb 'give' (spec/05, review feedback)."""
+    assert extract_numbers("दीदी, मुझे तीली दो ना") == []
+    assert extract_numbers("दो बंडल") == [2]
+    assert extract_numbers("नौ दो ग्यारह") == [9, 2, 11]
 
 
 @pytest.mark.parametrize(
