@@ -1,0 +1,40 @@
+{
+  "role": "act_tagger",
+  "id": "act_tagger_02_concrete_representation",
+  "description": "Teacher showing bundles and sticks to whole class",
+  "input": {
+    "move_title_hi": "बंडल और तीली से हासिल का घटाव",
+    "current_item_text": "43 - 27",
+    "children_list": [
+      {"id": "ravi", "name": "रवि", "last_line": "3 में से 7 नहीं घटता, तो 7 में से 3 घटाया... 24!"},
+      {"id": "priya", "name": "प्रिया", "last_line": "26"},
+      {"id": "aman", "name": "अमन", "last_line": "20"}
+    ],
+    "scene_persona_ids": ["ravi", "priya", "aman"],
+    "transcript": "सब लोग देखो। ये रहे 4 बंडल और 3 खुली तीलियाँ, यानी 43। 3 तीलियों में से 7 कैसे निकालें? चलो, एक बंडल खोलते हैं।"
+  },
+  "output": {
+    "acts": ["concrete_representation"],
+    "addressed_child": "all",
+    "problem": null,
+    "quote": "ये रहे 4 बंडल और 3 खुली तीलियाँ, यानी 43। 3 तीलियों में से 7 कैसे निकालें? चलो, एक बंडल खोलते हैं।"
+  },
+  "bad_variants": [
+    {
+      "description": "Too many acts (> 4)",
+      "output": {
+        "acts": [
+          "concrete_representation",
+          "ask_to_explain",
+          "probe_simpler_case",
+          "model_step_aloud",
+          "praise_effort"
+        ],
+        "addressed_child": "all",
+        "problem": null,
+        "quote": "ये रहे 4 बंडल"
+      },
+      "expected_error": "Exceeds max acts limit of 4"
+    }
+  ]
+}

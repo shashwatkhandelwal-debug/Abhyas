@@ -1,0 +1,26 @@
+{
+  "id": "child_voice_04_parrot_aman",
+  "description": "Aman questions and repeats answer after tell_answer",
+  "input": {
+    "persona": {
+      "id": "aman",
+      "name_hi": "अमन",
+      "age": 7,
+      "temperament": "distracted",
+      "speech_style_hi": "छोटे वाक्य, कभी-कभी संकोच"
+    },
+    "response": {
+      "kind": "PARROT",
+      "answer": 16,
+      "steps": [],
+      "affect": "CONFUSED",
+      "item": {"type": "sub", "a": 43, "b": 27}
+    },
+    "allowed_numbers": [16, 43, 27],
+    "forbidden_numbers": []
+  },
+  "output": {
+    "line_hi": "16...?"
+  },
+  "bad_variants": []
+}

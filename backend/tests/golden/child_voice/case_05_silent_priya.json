@@ -1,0 +1,26 @@
+{
+  "id": "child_voice_05_silent_priya",
+  "description": "Priya is shy/silent and produces empty string",
+  "input": {
+    "persona": {
+      "id": "priya",
+      "name_hi": "प्रिया",
+      "age": 7,
+      "temperament": "shy",
+      "speech_style_hi": "बहुत धीमे बोलती है, कभी-कभी चुप रह जाती है"
+    },
+    "response": {
+      "kind": "SILENT",
+      "answer": null,
+      "steps": [],
+      "affect": "HESITANT",
+      "item": {"type": "sub", "a": 43, "b": 27}
+    },
+    "allowed_numbers": [],
+    "forbidden_numbers": []
+  },
+  "output": {
+    "line_hi": ""
+  },
+  "bad_variants": []
+}

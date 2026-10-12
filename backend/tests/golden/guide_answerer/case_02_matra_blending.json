@@ -1,0 +1,22 @@
+{
+  "id": "guide_answerer_02_matra_blending",
+  "description": "Answer literacy blending question citing UP Bhasha Sandarshika chunk",
+  "input": {
+    "question": "बच्चे मात्रा पहचान लेते हैं पर जोड़कर शब्द नहीं पढ़ पाते, क्या उपाय करें?",
+    "category": "pedagogy",
+    "retrieved_chunks": [
+      {
+        "id": "up_bhasha_sandarshika_c1:p28:1",
+        "title": "UP FLN Bhasha Sandarshika C1",
+        "text": "वर्ण और मात्रा को जोड़ते समय पहले अलग-अलग ध्वनि निकलवाएँ, जैसे म-े... मे। फिर उँगली फिराते हुए पूरा शब्द बुलवाएँ।"
+      }
+    ]
+  },
+  "output": {
+    "answer_hi": "पहले बच्चे से अक्षर और मात्रा की अलग-अलग ध्वनि बुलवाएँ, जैसे 'म' और 'े' मिलकर 'मे'। फिर शब्द पर उँगली चलाते हुए दोनों को मिलाकर धाराप्रवाह पढ़ने का अभ्यास कराएँ।",
+    "source_ids": ["up_bhasha_sandarshika_c1:p28:1"],
+    "try_this_week_hi": "बोर्ड पर 3 सरल मात्रा वाले शब्द लिखकर उँगली फिराते हुए बुलवाएँ।",
+    "confidence": 0.95
+  },
+  "bad_variants": []
+}

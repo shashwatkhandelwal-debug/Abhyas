@@ -1,0 +1,22 @@
+{
+  "id": "guide_answerer_03_math_readiness",
+  "description": "Answer math readiness question citing Vidya Pravesh chunk",
+  "input": {
+    "question": "कक्षा 1 के बच्चों को संख्याओं की समझ पक्की करने के लिए क्या खेल कराएँ?",
+    "category": "pedagogy",
+    "retrieved_chunks": [
+      {
+        "id": "ncert_vidya_pravesh:p18:2",
+        "title": "NCERT Vidya Pravesh",
+        "text": "विद्या प्रवेश में गणितीय पूर्व-तैयारी के लिए कंकड़, पत्तों और माचिस की तीलियों से 1 से 9 तक की ठोस गिनती व मिलान खेल प्रस्तावित हैं।"
+      }
+    ]
+  },
+  "output": {
+    "answer_hi": "आप बच्चों से परिवेशीय वस्तुएँ जैसे पत्ते या कंकड़ गिनवाएँ। कार्ड पर संख्या दिखाएँ और बच्चों से उतनी ही वस्तुएँ मेज पर रखने को कहें। इससे संख्या और मात्रा का संबंध पक्का होता है।",
+    "source_ids": ["ncert_vidya_pravesh:p18:2"],
+    "try_this_week_hi": "कक्षा में कंकड़ लाकर 1 से 9 तक की संख्या मिलान खेल कराएँ।",
+    "confidence": 0.92
+  },
+  "bad_variants": []
+}

@@ -1,0 +1,27 @@
+{
+  "id": "question_classifier_05_needs_clarification",
+  "description": "Vague question requiring one clarifying question",
+  "input": {
+    "question": "बच्चा समझ नहीं रहा है, क्या करूँ?"
+  },
+  "output": {
+    "category": "pedagogy",
+    "needs_clarification": true,
+    "clarifying_question_hi": "क्या आप बता सकते हैं कि बच्चा किस विषय और किस तरह के सवाल में उलझ रहा है?",
+    "search_query_hi": "कठिनाई निदान उपचारात्मक शिक्षण",
+    "confidence": 0.82
+  },
+  "bad_variants": [
+    {
+      "description": "needs_clarification true but clarifying question empty",
+      "output": {
+        "category": "pedagogy",
+        "needs_clarification": true,
+        "clarifying_question_hi": "",
+        "search_query_hi": "निदान",
+        "confidence": 0.82
+      },
+      "expected_error": "clarifying_question_hi required when needs_clarification is true"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "intent_router_03_command_next",
+  "description": "Teacher asking to move to next step",
+  "input": {
+    "state": "LEARN_SUMMARY",
+    "state_description_hi": "पाठ का सारांश देखना",
+    "expected_input": "अगले चरण पर जाने का निर्देश",
+    "message": "हाँ मैंने पढ़ लिया, अब आगे बढ़ो।"
+  },
+  "output": {
+    "intent": "command_next",
+    "confidence": 0.96
+  },
+  "bad_variants": []
+}

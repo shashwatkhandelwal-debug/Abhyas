@@ -1,0 +1,24 @@
+{
+  "id": "intent_router_01_explain_back",
+  "description": "Teacher explaining the move back during EXPLAIN_BACK step",
+  "input": {
+    "state": "EXPLAIN_BACK",
+    "state_description_hi": "शिक्षक द्वारा शिक्षण विधि को अपने शब्दों में समझाना",
+    "expected_input": "शिक्षण विधि का मौखिक स्पष्टीकरण",
+    "message": "इस तरीके में सबसे पहले बच्चे से पूछना है कि उसने कैसे घटाया। फिर बंडल और तीली से संख्या बनवानी है और बंडल खोलकर दिखाना है।"
+  },
+  "output": {
+    "intent": "answer_for_step",
+    "confidence": 0.95
+  },
+  "bad_variants": [
+    {
+      "description": "Invalid intent enum not in allowed set",
+      "output": {
+        "intent": "teaching_explanation",
+        "confidence": 0.95
+      },
+      "expected_error": "Input should be 'answer_for_step', 'question', 'command_next', 'command_skip', 'command_repeat', 'command_help', 'smalltalk' or 'unclear'"
+    }
+  ]
+}

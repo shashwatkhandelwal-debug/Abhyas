@@ -1,0 +1,15 @@
+{
+  "id": "question_classifier_03_admin",
+  "description": "Teacher asking about administrative forms or deadlines",
+  "input": {
+    "question": "निपुण तालिका का मासिक आकलन पोर्टल पर किस तारीख तक अपलोड करना है?"
+  },
+  "output": {
+    "category": "admin",
+    "needs_clarification": false,
+    "clarifying_question_hi": "",
+    "search_query_hi": "निपुण तालिका मासिक आकलन पोर्टल",
+    "confidence": 0.96
+  },
+  "bad_variants": []
+}

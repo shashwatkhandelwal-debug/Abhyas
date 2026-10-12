@@ -1,0 +1,53 @@
+{
+  "id": "coach_01_all_exemplary",
+  "description": "Teacher demonstrated all effective teaching acts with evidence quotes",
+  "input": {
+    "move_id": "NUM_SUB_REGROUP_BUNDLES",
+    "move_title_hi": "बंडल और तीली से हासिल का घटाव",
+    "transcript": "T1 teacher: रवि, तुमने 43 में से 27 कैसे घटाया? मुझे बताओ।\nT1 ravi: 3 में से 7 नहीं घटता, तो 24!\nT2 teacher: सब लोग देखो, ये रहे 4 बंडल और 3 तीलियाँ। एक बंडल खोलते हैं।\nT2 ravi: अरे, 16 हुआ!\nT3 teacher: अमन, रवि ने पहले 24 कहा और अब 16। कौन-सा सही है?\nT4 teacher: प्रिया, शाबाश! तुम भी बताओ।"
+  },
+  "output": {
+    "scores": {
+      "crit_explain": 2,
+      "crit_concrete": 2,
+      "crit_no_telling": 2,
+      "crit_all_children": 2
+    },
+    "evidence": {
+      "crit_explain": "रवि, तुमने 43 में से 27 कैसे घटाया? मुझे बताओ।",
+      "crit_concrete": "सब लोग देखो, ये रहे 4 बंडल और 3 तीलियाँ। एक बंडल खोलते हैं।",
+      "crit_no_telling": "अमन, रवि ने पहले 24 कहा और अब 16। कौन-सा सही है?",
+      "crit_all_children": "प्रिया, शाबाश! तुम भी बताओ।"
+    },
+    "strength_hi": "आपने बच्चों से उनका तरीका पूछा और बंडल खोलकर प्रत्यक्ष रूप से गिनवाया।",
+    "change_hi": "अगली बार दो अलग-अलग बच्चों से बंडल अलग-अलग चरणों में गिनवाएँ।",
+    "exact_words_hi": "रवि तुम खुली तीलियाँ गिनो और प्रिया तुम बचे हुए बंडल गिनकर बताओ।",
+    "improved_since_last": true,
+    "confidence": 0.95
+  },
+  "bad_variants": [
+    {
+      "description": "Evidence quote hallucinated / not in transcript",
+      "output": {
+        "scores": {
+          "crit_explain": 2,
+          "crit_concrete": 2,
+          "crit_no_telling": 2,
+          "crit_all_children": 2
+        },
+        "evidence": {
+          "crit_explain": "मैंने बच्चों से कहा कि गणित बहुत सरल है।",
+          "crit_concrete": "सब लोग देखो, ये रहे 4 बंडल और 3 तीलियाँ। एक बंडल खोलते हैं।",
+          "crit_no_telling": "अमन, रवि ने पहले 24 कहा और अब 16। कौन-सा सही है?",
+          "crit_all_children": "प्रिया, शाबाश! तुम भी बताओ।"
+        },
+        "strength_hi": "आपने अच्छा किया।",
+        "change_hi": "कुछ मत बदलो।",
+        "exact_words_hi": "अच्छा काम।",
+        "improved_since_last": false,
+        "confidence": 0.95
+      },
+      "expected_error": "Evidence quote for crit_explain not found in transcript"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "role": "act_tagger",
+  "id": "act_tagger_05_praise_and_probe",
+  "description": "Teacher praises Priya's effort and asks her to explain gently",
+  "input": {
+    "move_title_hi": "बंडल और तीली से हासिल का घटाव",
+    "current_item_text": "43 - 27",
+    "children_list": [
+      {"id": "ravi", "name": "रवि", "last_line": "24!"},
+      {"id": "priya", "name": "प्रिया", "last_line": "26"},
+      {"id": "aman", "name": "अमन", "last_line": "20"}
+    ],
+    "scene_persona_ids": ["ravi", "priya", "aman"],
+    "transcript": "प्रिया, अच्छा सोचा तुमने। धीरे से बताओ, तुमने कैसे किया?"
+  },
+  "output": {
+    "acts": ["ask_to_explain", "praise_effort"],
+    "addressed_child": "priya",
+    "problem": null,
+    "quote": "अच्छा सोचा तुमने। धीरे से बताओ, तुमने कैसे किया?"
+  },
+  "bad_variants": []
+}

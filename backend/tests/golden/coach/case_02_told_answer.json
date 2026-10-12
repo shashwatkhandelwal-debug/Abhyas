@@ -1,0 +1,29 @@
+{
+  "id": "coach_02_told_answer",
+  "description": "Teacher told the answer directly, getting 0 on crit_no_telling",
+  "input": {
+    "move_id": "NUM_SUB_REGROUP_BUNDLES",
+    "move_title_hi": "बंडल और तीली से हासिल का घटाव",
+    "transcript": "T1 teacher: रवि, 43 में से 27 कैसे घटाया?\nT1 ravi: 24!\nT2 teacher: नहीं रवि, सही उत्तर 16 है, लिख लो।"
+  },
+  "output": {
+    "scores": {
+      "crit_explain": 2,
+      "crit_concrete": 0,
+      "crit_no_telling": 0,
+      "crit_all_children": 0
+    },
+    "evidence": {
+      "crit_explain": "रवि, 43 में से 27 कैसे घटाया?",
+      "crit_concrete": "",
+      "crit_no_telling": "",
+      "crit_all_children": ""
+    },
+    "strength_hi": "आपने शुरुआत में रवि से पूछा कि उसने सवाल कैसे हल किया।",
+    "change_hi": "सही उत्तर बताने के बजाय बंडल और तीली खोलकर बच्चे से जाँच करवाएँ।",
+    "exact_words_hi": "रवि, 3 तीलियों में से 7 नहीं निकलतीं तो एक बंडल खोलकर गिनो।",
+    "improved_since_last": false,
+    "confidence": 0.92
+  },
+  "bad_variants": []
+}

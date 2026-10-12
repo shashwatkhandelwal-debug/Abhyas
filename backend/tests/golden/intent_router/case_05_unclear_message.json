@@ -1,0 +1,15 @@
+{
+  "id": "intent_router_05_unclear_message",
+  "description": "Garbled speech-to-text or ambiguous teacher sound",
+  "input": {
+    "state": "ONBOARDING",
+    "state_description_hi": "शिक्षक ऑनबोर्डिंग एवं स्वागत",
+    "expected_input": "शिक्षक का नाम या संकुल कोड",
+    "message": "हूँ... हाँ... वो..."
+  },
+  "output": {
+    "intent": "unclear",
+    "confidence": 0.35
+  },
+  "bad_variants": []
+}

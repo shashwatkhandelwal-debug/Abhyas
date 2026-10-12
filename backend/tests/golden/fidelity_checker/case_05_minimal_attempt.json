@@ -1,0 +1,28 @@
+{
+  "id": "fidelity_checker_05_minimal_attempt",
+  "description": "Very short explanation with all points missing",
+  "input": {
+    "key_points": [
+      {"id": "kp1", "text_hi": "पहले बच्चे से पूछें: तुमने कैसे घटाया?", "must_have": true},
+      {"id": "kp2", "text_hi": "संख्या बंडल-तीली से बनवाएँ", "must_have": true}
+    ],
+    "transcript": "हाँ, समझ आ गया।"
+  },
+  "output": {
+    "points": [
+      {
+        "id": "kp1",
+        "status": "missing",
+        "quote": ""
+      },
+      {
+        "id": "kp2",
+        "status": "missing",
+        "quote": ""
+      }
+    ],
+    "misconceptions": [],
+    "confidence": 0.40
+  },
+  "bad_variants": []
+}

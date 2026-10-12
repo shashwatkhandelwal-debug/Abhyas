@@ -1,0 +1,44 @@
+{
+  "id": "child_voice_01_explain_bug_ravi",
+  "description": "Ravi explaining his subtraction bug on 52-17",
+  "input": {
+    "persona": {
+      "id": "ravi",
+      "name_hi": "रवि",
+      "age": 7,
+      "temperament": "confident",
+      "speech_style_hi": "जल्दी और पूरे भरोसे से बोलता है, छोटे वाक्य, 'दीदी' कहकर बात करता है"
+    },
+    "response": {
+      "kind": "EXPLAIN_BUG",
+      "answer": 45,
+      "steps": [
+        {"text_hi": "2 में से 7 नहीं घटता, तो 7 में से 2 घटाया 5", "nums": [2, 7, 5]},
+        {"text_hi": "5 में से 1 गया तो 4", "nums": [5, 1, 4]}
+      ],
+      "affect": "CONFIDENT",
+      "item": {"type": "sub", "a": 52, "b": 17}
+    },
+    "allowed_numbers": [2, 7, 5, 1, 4, 45, 52, 17],
+    "forbidden_numbers": ["35"]
+  },
+  "output": {
+    "line_hi": "दीदी, 2 में से 7 नहीं घटता, तो 7 में से 2 घटाया 5। और 5 में से 1 गया तो 4। 45 आया!"
+  },
+  "bad_variants": [
+    {
+      "description": "Leaked forbidden correct answer 35 while in error state",
+      "output": {
+        "line_hi": "दीदी, 52 में से 17 घटाया तो 35 आया।"
+      },
+      "expected_error": "Leaked correct answer 35 during error state"
+    },
+    {
+      "description": "Unauthorized number 99 not in allowed set",
+      "output": {
+        "line_hi": "दीदी, 99 आया!"
+      },
+      "expected_error": "Number 99 not authorized by rule engine result"
+    }
+  ]
+}

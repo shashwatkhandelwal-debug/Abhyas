@@ -1,0 +1,29 @@
+{
+  "id": "coach_04_partial_retry",
+  "description": "Teacher retrying with Priya and showing improvement",
+  "input": {
+    "move_id": "NUM_SUB_REGROUP_BUNDLES",
+    "move_title_hi": "बंडल और तीली से हासिल का घटाव",
+    "transcript": "T1 teacher: प्रिया, तुमने बहुत अच्छा सोचा। अब बंडल देखकर बताओ क्या हुआ?\nT1 priya: बंडल खोला तो 13 तीलियाँ हुईं...\nT2 teacher: शाबाश प्रिया! 13 में से 7 निकालने पर कितनी बचीं?\nT2 priya: 6!"
+  },
+  "output": {
+    "scores": {
+      "crit_explain": 1,
+      "crit_concrete": 2,
+      "crit_no_telling": 2,
+      "crit_all_children": 2
+    },
+    "evidence": {
+      "crit_explain": "प्रिया, तुमने बहुत अच्छा सोचा। अब बंडल देखकर बताओ क्या हुआ?",
+      "crit_concrete": "अब बंडल देखकर बताओ क्या हुआ?",
+      "crit_no_telling": "13 में से 7 निकालने पर कितनी बचीं?",
+      "crit_all_children": "शाबाश प्रिया! 13 में से 7 निकालने पर कितनी बचीं?"
+    },
+    "strength_hi": "आपने शांत बच्ची प्रिया को धैर्यपूर्वक प्रोत्साहित किया और तीलियाँ गिनवाईं।",
+    "change_hi": "अगली बार अमन और रवि को भी प्रिया के उत्तर की पुष्टि करने में शामिल करें।",
+    "exact_words_hi": "अमन, प्रिया ने 6 कहा, क्या तुम भी गिनकर बता सकते हो?",
+    "improved_since_last": true,
+    "confidence": 0.93
+  },
+  "bad_variants": []
+}

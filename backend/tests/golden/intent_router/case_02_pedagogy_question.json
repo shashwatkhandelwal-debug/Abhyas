@@ -1,0 +1,24 @@
+{
+  "id": "intent_router_02_pedagogy_question",
+  "description": "Teacher asking a pedagogical question during practice",
+  "input": {
+    "state": "LEARN",
+    "state_description_hi": "साप्ताहिक शिक्षण रणनीति सीखना",
+    "expected_input": "ऑडियो सुनने के बाद आगे बढ़ना या प्रश्न पूछना",
+    "message": "दीदी, क्या बंडल की जगह हम कंकड़ या माचिस की तीलियों का उपयोग कर सकते हैं?"
+  },
+  "output": {
+    "intent": "question",
+    "confidence": 0.92
+  },
+  "bad_variants": [
+    {
+      "description": "Confidence out of bounds (> 1.0)",
+      "output": {
+        "intent": "question",
+        "confidence": 1.25
+      },
+      "expected_error": "Input should be less than or equal to 1"
+    }
+  ]
+}

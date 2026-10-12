@@ -1,0 +1,46 @@
+{
+  "id": "fidelity_checker_02_missing_bundle_open",
+  "description": "Teacher forgot must-have key point kp3 (opening bundle), marked missing with empty quote",
+  "input": {
+    "key_points": [
+      {"id": "kp1", "text_hi": "पहले बच्चे से पूछें: तुमने कैसे घटाया?", "must_have": true},
+      {"id": "kp2", "text_hi": "संख्या बंडल-तीली से बनवाएँ", "must_have": true},
+      {"id": "kp3", "text_hi": "कम होने पर एक बंडल खोलें", "must_have": true},
+      {"id": "kp4", "text_hi": "खुली तीलियाँ और बंडल घटाएँ", "must_have": false},
+      {"id": "kp5", "text_hi": "उत्तर खुद न बताएँ", "must_have": true}
+    ],
+    "transcript": "इस तरीके में पहले बच्चे से उसका तरीका पूछना है। फिर बंडल-तीली से संख्या बनानी है। और हमें सही उत्तर खुद नहीं बताना है।"
+  },
+  "output": {
+    "points": [
+      {
+        "id": "kp1",
+        "status": "covered",
+        "quote": "पहले बच्चे से उसका तरीका पूछना है।"
+      },
+      {
+        "id": "kp2",
+        "status": "covered",
+        "quote": "बंडल-तीली से संख्या बनानी है।"
+      },
+      {
+        "id": "kp3",
+        "status": "missing",
+        "quote": ""
+      },
+      {
+        "id": "kp4",
+        "status": "missing",
+        "quote": ""
+      },
+      {
+        "id": "kp5",
+        "status": "covered",
+        "quote": "हमें सही उत्तर खुद नहीं बताना है।"
+      }
+    ],
+    "misconceptions": [],
+    "confidence": 0.94
+  },
+  "bad_variants": []
+}

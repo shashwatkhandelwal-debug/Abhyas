@@ -1,0 +1,34 @@
+{
+  "id": "fidelity_checker_04_partial_coverage",
+  "description": "Teacher mentions bundles vaguely, getting partial status",
+  "input": {
+    "key_points": [
+      {"id": "kp1", "text_hi": "पहले बच्चे से पूछें: तुमने कैसे घटाया?", "must_have": true},
+      {"id": "kp2", "text_hi": "संख्या बंडल-तीली से बनवाएँ", "must_have": true},
+      {"id": "kp3", "text_hi": "कम होने पर एक बंडल खोलें", "must_have": true}
+    ],
+    "transcript": "कक्षा में बंडल और तीली लेकर जाना है और बच्चों को सिखाना है।"
+  },
+  "output": {
+    "points": [
+      {
+        "id": "kp1",
+        "status": "missing",
+        "quote": ""
+      },
+      {
+        "id": "kp2",
+        "status": "partial",
+        "quote": "बंडल और तीली लेकर जाना है"
+      },
+      {
+        "id": "kp3",
+        "status": "missing",
+        "quote": ""
+      }
+    ],
+    "misconceptions": [],
+    "confidence": 0.85
+  },
+  "bad_variants": []
+}

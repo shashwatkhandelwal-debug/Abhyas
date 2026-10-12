@@ -1,0 +1,36 @@
+{
+  "id": "fidelity_checker_03_with_misconception",
+  "description": "Teacher explained procedure but introduced a contradictory shortcut misconception",
+  "input": {
+    "key_points": [
+      {"id": "kp1", "text_hi": "पहले बच्चे से पूछें: तुमने कैसे घटाया?", "must_have": true},
+      {"id": "kp2", "text_hi": "संख्या बंडल-तीली से बनवाएँ", "must_have": true},
+      {"id": "kp3", "text_hi": "कम होने पर एक बंडल खोलें", "must_have": true}
+    ],
+    "transcript": "पहले बच्चे से पूछेंगे कि कैसे किया। फिर बंडल खोलकर दिखाएँगे। और अगर बच्चा फिर भी न समझे तो सीधे बोर्ड पर सही उत्तर 16 लिख देंगे ताकि समय न खराब हो।"
+  },
+  "output": {
+    "points": [
+      {
+        "id": "kp1",
+        "status": "covered",
+        "quote": "पहले बच्चे से पूछेंगे कि कैसे किया।"
+      },
+      {
+        "id": "kp2",
+        "status": "partial",
+        "quote": "बंडल खोलकर दिखाएँगे।"
+      },
+      {
+        "id": "kp3",
+        "status": "covered",
+        "quote": "बंडल खोलकर दिखाएँगे।"
+      }
+    ],
+    "misconceptions": [
+      "बच्चे को खुद सोचने देने के बजाय बोर्ड पर सीधा उत्तर लिख देना"
+    ],
+    "confidence": 0.90
+  },
+  "bad_variants": []
+}

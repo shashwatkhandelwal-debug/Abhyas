@@ -1,0 +1,68 @@
+{
+  "id": "fidelity_checker_01_full_coverage",
+  "description": "Teacher covered all key points with exact verbatim quotes",
+  "input": {
+    "key_points": [
+      {"id": "kp1", "text_hi": "पहले बच्चे से पूछें: तुमने कैसे घटाया?", "must_have": true},
+      {"id": "kp2", "text_hi": "संख्या बंडल-तीली से बनवाएँ", "must_have": true},
+      {"id": "kp3", "text_hi": "कम होने पर एक बंडल खोलें", "must_have": true},
+      {"id": "kp4", "text_hi": "खुली तीलियाँ और बंडल घटाएँ", "must_have": false},
+      {"id": "kp5", "text_hi": "उत्तर खुद न बताएँ, तुलना करवाएँ", "must_have": true},
+      {"id": "kp6", "text_hi": "शांत बच्चे को भी मौका दें", "must_have": false}
+    ],
+    "transcript": "इस तरीके में सबसे पहले बच्चे से पूछना है कि तुमने कैसे घटाया। फिर तीली और बंडल से संख्या बनवाएँगे। जब इकाई में तीलियाँ कम पड़ें तो एक बंडल खोलेंगे और तीलियाँ गिनवाएँगे। फिर खुली तीलियाँ और बचे बंडल घटाएँगे। उत्तर खुद नहीं बताना है, बच्चों से ही तुलना करवानी है और जो बच्चा शांत रहता है उसे भी प्यार से मौका देना है।"
+  },
+  "output": {
+    "points": [
+      {
+        "id": "kp1",
+        "status": "covered",
+        "quote": "सबसे पहले बच्चे से पूछना है कि तुमने कैसे घटाया।"
+      },
+      {
+        "id": "kp2",
+        "status": "covered",
+        "quote": "तीली और बंडल से संख्या बनवाएँगे।"
+      },
+      {
+        "id": "kp3",
+        "status": "covered",
+        "quote": "जब इकाई में तीलियाँ कम पड़ें तो एक बंडल खोलेंगे और तीलियाँ गिनवाएँगे।"
+      },
+      {
+        "id": "kp4",
+        "status": "covered",
+        "quote": "खुली तीलियाँ और बचे बंडल घटाएँगे।"
+      },
+      {
+        "id": "kp5",
+        "status": "covered",
+        "quote": "उत्तर खुद नहीं बताना है, बच्चों से ही तुलना करवानी है"
+      },
+      {
+        "id": "kp6",
+        "status": "covered",
+        "quote": "जो बच्चा शांत रहता है उसे भी प्यार से मौका देना है।"
+      }
+    ],
+    "misconceptions": [],
+    "confidence": 0.96
+  },
+  "bad_variants": [
+    {
+      "description": "Covered point without supporting quote",
+      "output": {
+        "points": [
+          {
+            "id": "kp1",
+            "status": "covered",
+            "quote": ""
+          }
+        ],
+        "misconceptions": [],
+        "confidence": 0.96
+      },
+      "expected_error": "Key point kp1 marked covered without supporting quote"
+    }
+  ]
+}

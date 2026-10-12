@@ -1,0 +1,29 @@
+{
+  "id": "coach_03_no_concrete",
+  "description": "Teacher explained verbally without concrete representation",
+  "input": {
+    "move_id": "NUM_SUB_REGROUP_BUNDLES",
+    "move_title_hi": "बंडल और तीली से हासिल का घटाव",
+    "transcript": "T1 teacher: रवि, तुमने 43 में से 27 कैसे किया?\nT1 ravi: 3 में से 7 घटाया तो 24!\nT2 teacher: 3 में से 7 नहीं घटता, दहाई से एक हासिल लो।"
+  },
+  "output": {
+    "scores": {
+      "crit_explain": 2,
+      "crit_concrete": 0,
+      "crit_no_telling": 1,
+      "crit_all_children": 0
+    },
+    "evidence": {
+      "crit_explain": "रवि, तुमने 43 में से 27 कैसे किया?",
+      "crit_concrete": "",
+      "crit_no_telling": "3 में से 7 नहीं घटता, दहाई से एक हासिल लो।",
+      "crit_all_children": ""
+    },
+    "strength_hi": "आपने बच्चे का तरीका सुना और समझाया कि 3 में से 7 नहीं घटता।",
+    "change_hi": "केवल हासिल बोलने के बजाय तीलियों के बंडल दिखाकर दहाई खोलें।",
+    "exact_words_hi": "देखो 4 बंडल हैं, इनमें से 1 बंडल खोलो और खुली तीलियाँ गिनो।",
+    "improved_since_last": false,
+    "confidence": 0.88
+  },
+  "bad_variants": []
+}

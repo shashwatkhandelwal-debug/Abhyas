@@ -1,0 +1,48 @@
+{
+  "id": "guide_answerer_01_multigrade_bundles",
+  "description": "Answer multigrade math question citing UP Sandarshika chunk",
+  "input": {
+    "question": "मेरी कक्षा में पहली और दूसरी कक्षा के बच्चे साथ बैठते हैं। हासिल वाला घटाव दोनों को एक साथ कैसे कराऊँ?",
+    "category": "classroom_management",
+    "retrieved_chunks": [
+      {
+        "id": "up_ganit_sandarshika_c2:p42:1",
+        "title": "UP FLN Ganit Sandarshika C2",
+        "text": "बहुकक्षा शिक्षण में जब कक्षा 2 के बच्चे बंडल-तीली से हासिल वाला घटाव कर रहे हों, तब कक्षा 1 के बच्चों को 10-10 की गड्डी बनाने और गिनने का काम दें।"
+      },
+      {
+        "id": "nipun_guidelines_2021:p15:2",
+        "title": "NIPUN Bharat Guidelines",
+        "text": "पीयर लर्निंग और छोटे समूहों में कार्य कराने से सभी बच्चों की सक्रिय भागीदारी सुनिश्चित होती है।"
+      }
+    ]
+  },
+  "output": {
+    "answer_hi": "आप दोनों कक्षाओं को दो समूहों में बाँटें। कक्षा 1 के बच्चों को 10-10 तीलियों के बंडल बनाने का अभ्यास दें, जबकि कक्षा 2 के बच्चे उन्हीं बंडलों का उपयोग करके हासिल का घटाव हल करें। इससे दोनों बच्चे एक साथ सक्रिय रहेंगे।",
+    "source_ids": ["up_ganit_sandarshika_c2:p42:1"],
+    "try_this_week_hi": "कक्षा 1 के बच्चों से 4 बंडल बनवाकर कक्षा 2 को घटाव के लिए दीजिए।",
+    "confidence": 0.94
+  },
+  "bad_variants": [
+    {
+      "description": "Cited source id not in retrieved chunks",
+      "output": {
+        "answer_hi": "आप समूहों में कार्य करवाएँ।",
+        "source_ids": ["invented_source_not_retrieved"],
+        "try_this_week_hi": "समूह बनाएँ।",
+        "confidence": 0.94
+      },
+      "expected_error": "Cited sources not in retrieved set"
+    },
+    {
+      "description": "Empty source ids list",
+      "output": {
+        "answer_hi": "आप समूहों में कार्य करवाएँ।",
+        "source_ids": [],
+        "try_this_week_hi": "समूह बनाएँ।",
+        "confidence": 0.94
+      },
+      "expected_error": "Answer did not cite any source"
+    }
+  ]
+}

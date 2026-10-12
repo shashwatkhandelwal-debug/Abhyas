@@ -1,0 +1,38 @@
+{
+  "id": "child_voice_02_scaffolded_correct_ravi",
+  "description": "Ravi reaches scaffolded correct answer 35 using bundles",
+  "input": {
+    "persona": {
+      "id": "ravi",
+      "name_hi": "रवि",
+      "age": 7,
+      "temperament": "confident",
+      "speech_style_hi": "छोटे वाक्य, 'दीदी' कहकर बात करता है"
+    },
+    "response": {
+      "kind": "SCAFFOLDED_CORRECT",
+      "answer": 35,
+      "steps": [
+        {"text_hi": "बंडल खोला तो 12 तीलियाँ हो गईं", "nums": [12]},
+        {"text_hi": "12 में से 7 गई तो 5", "nums": [12, 7, 5]},
+        {"text_hi": "4 बंडल में से 1 गया तो 3", "nums": [4, 1, 3]}
+      ],
+      "affect": "THINKING",
+      "item": {"type": "sub", "a": 52, "b": 17}
+    },
+    "allowed_numbers": [12, 7, 5, 4, 1, 3, 35, 52, 17, 10],
+    "forbidden_numbers": []
+  },
+  "output": {
+    "line_hi": "हम्म... बंडल खोला तो 12 तीलियाँ हो गईं। 12 में से 7 गई 5, और 4 में से 1 गया 3... 35 हुआ दीदी!"
+  },
+  "bad_variants": [
+    {
+      "description": "Exceeds max child words limit (25 words)",
+      "output": {
+        "line_hi": "दीदी मैंने बहुत ध्यान से देखा और जब आपने वो बड़ा बंडल खोला तो मुझे समझ आया कि वहाँ पर बारह तीलियाँ थीं और फिर मैंने एक-एक करके सात हटाईं और फिर बंडल गिने।"
+      },
+      "expected_error": "Line exceeds max word count"
+    }
+  ]
+}

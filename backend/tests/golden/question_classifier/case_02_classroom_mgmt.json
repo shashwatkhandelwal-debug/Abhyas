@@ -1,0 +1,15 @@
+{
+  "id": "question_classifier_02_classroom_mgmt",
+  "description": "Teacher asking about multigrade classroom management",
+  "input": {
+    "question": "मेरी कक्षा में पहली और दूसरी कक्षा के बच्चे साथ बैठते हैं। हासिल वाला घटाव दोनों को एक साथ कैसे कराऊँ?"
+  },
+  "output": {
+    "category": "classroom_management",
+    "needs_clarification": false,
+    "clarifying_question_hi": "",
+    "search_query_hi": "बहुकक्षा शिक्षण समूह कार्य पहली दूसरी",
+    "confidence": 0.93
+  },
+  "bad_variants": []
+}

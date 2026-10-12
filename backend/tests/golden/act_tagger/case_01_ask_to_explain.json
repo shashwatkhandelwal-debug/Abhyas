@@ -1,0 +1,34 @@
+{
+  "role": "act_tagger",
+  "id": "act_tagger_01_ask_to_explain",
+  "description": "Teacher asking Ravi how he calculated his answer",
+  "input": {
+    "move_title_hi": "बंडल और तीली से हासिल का घटाव",
+    "current_item_text": "43 - 27",
+    "children_list": [
+      {"id": "ravi", "name": "रवि", "last_line": "दीदी, 24 आया!"},
+      {"id": "priya", "name": "प्रिया", "last_line": "26..."},
+      {"id": "aman", "name": "अमन", "last_line": "20!"}
+    ],
+    "scene_persona_ids": ["ravi", "priya", "aman"],
+    "transcript": "रवि, तुमने 43 में से 27 कैसे घटाया? मुझे एक-एक कदम बताओ।"
+  },
+  "output": {
+    "acts": ["ask_to_explain"],
+    "addressed_child": "ravi",
+    "problem": null,
+    "quote": "तुमने 43 में से 27 कैसे घटाया? मुझे एक-एक कदम बताओ।"
+  },
+  "bad_variants": [
+    {
+      "description": "Quote not present in teacher transcript",
+      "output": {
+        "acts": ["ask_to_explain"],
+        "addressed_child": "ravi",
+        "problem": null,
+        "quote": "रवि तुमने तीली कैसे गिनी?"
+      },
+      "expected_error": "Quote not found in transcript"
+    }
+  ]
+}

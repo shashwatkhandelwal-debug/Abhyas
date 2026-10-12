@@ -1,0 +1,22 @@
+{
+  "id": "guide_answerer_04_peer_learning",
+  "description": "Answer peer learning question citing NIPUN guidelines chunk",
+  "input": {
+    "question": "कक्षा में शर्मीले बच्चों को गतिविधि में कैसे शामिल करें?",
+    "category": "classroom_management",
+    "retrieved_chunks": [
+      {
+        "id": "nipun_guidelines_2021:p32:1",
+        "title": "NIPUN Bharat Guidelines",
+        "text": "संकोची बच्चों को बड़े समूह के बजाय 2-2 की जोड़ी (सहपाठी अधिगम) में सहज मित्र के साथ बैठाकर अभ्यास कराने से उनका आत्मविश्वास बढ़ता है।"
+      }
+    ]
+  },
+  "output": {
+    "answer_hi": "संकोची बच्चों को सीधे पूरी कक्षा के सामने बोलने के बजाय उनके किसी मित्र के साथ दो-दो की जोड़ी में बैठाएँ। पहले साथी के साथ बातचीत करने दें, फिर धीरे-धीरे प्रोत्साहित करें।",
+    "source_ids": ["nipun_guidelines_2021:p32:1"],
+    "try_this_week_hi": "कल शांत बच्चे को उसके प्रिय मित्र के साथ जोड़ी बनाकर गतिविधि दें।",
+    "confidence": 0.91
+  },
+  "bad_variants": []
+}

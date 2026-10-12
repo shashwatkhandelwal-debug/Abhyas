@@ -1,0 +1,23 @@
+{
+  "role": "act_tagger",
+  "id": "act_tagger_03_contrast_answers",
+  "description": "Teacher asking Aman to contrast Ravi's previous answer with Priya's answer",
+  "input": {
+    "move_title_hi": "बंडल और तीली से हासिल का घटाव",
+    "current_item_text": "43 - 27",
+    "children_list": [
+      {"id": "ravi", "name": "रवि", "last_line": "दीदी, तीलियाँ गिनकर तो 16 आ रहा है!"},
+      {"id": "priya", "name": "प्रिया", "last_line": "16"},
+      {"id": "aman", "name": "अमन", "last_line": "20"}
+    ],
+    "scene_persona_ids": ["ravi", "priya", "aman"],
+    "transcript": "अमन, रवि ने पहले 24 कहा था और अब तीलियाँ गिनकर 16 कह रहा है। कौन-सा सही है, और क्यों?"
+  },
+  "output": {
+    "acts": ["contrast_answers"],
+    "addressed_child": "aman",
+    "problem": null,
+    "quote": "रवि ने पहले 24 कहा था और अब तीलियाँ गिनकर 16 कह रहा है। कौन-सा सही है, और क्यों?"
+  },
+  "bad_variants": []
+}

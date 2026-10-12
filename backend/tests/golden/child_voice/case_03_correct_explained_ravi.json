@@ -1,0 +1,29 @@
+{
+  "id": "child_voice_03_correct_explained_ravi",
+  "description": "Ravi confidently explains the correct concept after contrasting",
+  "input": {
+    "persona": {
+      "id": "ravi",
+      "name_hi": "रवि",
+      "age": 7,
+      "temperament": "confident",
+      "speech_style_hi": "उत्साही और स्पष्ट"
+    },
+    "response": {
+      "kind": "CORRECT_EXPLAINED",
+      "answer": 35,
+      "steps": [
+        {"text_hi": "2 में से 7 नहीं घटता था", "nums": [2, 7]},
+        {"text_hi": "बंडल खोलकर ही घटाना पड़ेगा", "nums": []}
+      ],
+      "affect": "CONFIDENT",
+      "item": {"type": "sub", "a": 52, "b": 17}
+    },
+    "allowed_numbers": [2, 7, 35, 52, 17],
+    "forbidden_numbers": []
+  },
+  "output": {
+    "line_hi": "दीदी 35 सही है! क्योंकि 2 में से 7 नहीं घटता, बंडल खोलकर ही घटाना पड़ेगा।"
+  },
+  "bad_variants": []
+}

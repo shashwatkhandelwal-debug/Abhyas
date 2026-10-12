@@ -1,0 +1,23 @@
+{
+  "role": "act_tagger",
+  "id": "act_tagger_04_tell_answer_hinglish",
+  "description": "Teacher directly tells the answer in Hinglish",
+  "input": {
+    "move_title_hi": "बंडल और तीली से हासिल का घटाव",
+    "current_item_text": "43 - 27",
+    "children_list": [
+      {"id": "ravi", "name": "रवि", "last_line": "24"},
+      {"id": "priya", "name": "प्रिया", "last_line": "26"},
+      {"id": "aman", "name": "अमन", "last_line": "20"}
+    ],
+    "scene_persona_ids": ["ravi", "priya", "aman"],
+    "transcript": "Aman, sahi answer 16 hai, yaad rakho."
+  },
+  "output": {
+    "acts": ["tell_answer"],
+    "addressed_child": "aman",
+    "problem": null,
+    "quote": "sahi answer 16 hai"
+  },
+  "bad_variants": []
+}

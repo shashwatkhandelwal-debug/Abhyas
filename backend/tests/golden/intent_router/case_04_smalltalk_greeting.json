@@ -1,0 +1,15 @@
+{
+  "id": "intent_router_04_smalltalk_greeting",
+  "description": "Teacher sending a greeting or thank-you message",
+  "input": {
+    "state": "IDLE",
+    "state_description_hi": "सत्र समाप्त या मुख्य मेनू",
+    "expected_input": "नया अभ्यास शुरू करना या सामान्य बातचीत",
+    "message": "नमस्ते दीदी, आज बहुत अच्छा अभ्यास रहा। बहुत धन्यवाद!"
+  },
+  "output": {
+    "intent": "smalltalk",
+    "confidence": 0.94
+  },
+  "bad_variants": []
+}

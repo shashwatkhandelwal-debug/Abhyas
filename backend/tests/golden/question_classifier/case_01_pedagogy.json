@@ -1,0 +1,27 @@
+{
+  "id": "question_classifier_01_pedagogy",
+  "description": "Teacher asking about math pedagogy / concrete materials",
+  "input": {
+    "question": "कक्षा 2 में हासिल का घटाव सिखाने के लिए कौन सी सामग्री सबसे अच्छी है?"
+  },
+  "output": {
+    "category": "pedagogy",
+    "needs_clarification": false,
+    "clarifying_question_hi": "",
+    "search_query_hi": "हासिल का घटाव शिक्षण सामग्री बंडल तीली",
+    "confidence": 0.95
+  },
+  "bad_variants": [
+    {
+      "description": "Invalid category enum not in allowed set",
+      "output": {
+        "category": "curriculum",
+        "needs_clarification": false,
+        "clarifying_question_hi": "",
+        "search_query_hi": "घटाव",
+        "confidence": 0.95
+      },
+      "expected_error": "Input should be 'pedagogy', 'classroom_management', 'admin' or 'out_of_scope'"
+    }
+  ]
+}

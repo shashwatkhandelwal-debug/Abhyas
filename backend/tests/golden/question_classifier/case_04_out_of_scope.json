@@ -1,0 +1,15 @@
+{
+  "id": "question_classifier_04_out_of_scope",
+  "description": "Teacher asking about weather or unrelated topic",
+  "input": {
+    "question": "कानपुर में कल मौसम कैसा रहेगा और बारिश होगी क्या?"
+  },
+  "output": {
+    "category": "out_of_scope",
+    "needs_clarification": false,
+    "clarifying_question_hi": "",
+    "search_query_hi": "",
+    "confidence": 0.98
+  },
+  "bad_variants": []
+}

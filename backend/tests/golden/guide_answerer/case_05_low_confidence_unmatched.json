@@ -1,0 +1,22 @@
+{
+  "id": "guide_answerer_05_low_confidence_unmatched",
+  "description": "Question with marginal chunk match returning low confidence for ARP escalation",
+  "input": {
+    "question": "कक्षा में विशेष आवश्यकता वाले बच्चों के लिए विशेष टीएलएम कहाँ से मिलेगा?",
+    "category": "admin",
+    "retrieved_chunks": [
+      {
+        "id": "nipun_guidelines_2021:p50:1",
+        "title": "NIPUN Bharat Guidelines",
+        "text": "समावेशी शिक्षा के अंतर्गत विशेष आवश्यकता वाले बच्चों के लिए ब्लॉक स्तर पर संदर्भ व्यक्तियों (BRC/ARP) से सहायता ली जा सकती है।"
+      }
+    ]
+  },
+  "output": {
+    "answer_hi": "विशेष आवश्यकता वाले बच्चों के लिए सामग्री और सहायता ब्लॉक संसाधन केंद्र (BRC) तथा आपके संकुल एआरपी (ARP) के माध्यम से उपलब्ध कराई जाती है।",
+    "source_ids": ["nipun_guidelines_2021:p50:1"],
+    "try_this_week_hi": "अपने संकुल एआरपी से इस सप्ताह विद्यालय भ्रमण के दौरान चर्चा करें।",
+    "confidence": 0.55
+  },
+  "bad_variants": []
+}
