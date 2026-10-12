@@ -1,0 +1,21 @@
+{
+  "role": "child_voice",
+  "input": {
+    "persona_id": "ravi",
+    "kind": "explain_bug",
+    "answer": 45,
+    "prior_state": "misconception",
+    "new_state": "can_explain",
+    "affect": "confident",
+    "item": {"type": "sub", "a": 52, "b": 17},
+    "steps": [
+      {"rule_id": "SUB_SMALLER_FROM_LARGER", "text_hi": "7 में से 2 गया 5", "numbers": [7, 2, 5]},
+      {"rule_id": "SUB_TENS_NORMAL", "text_hi": "5 में से 1 गया 4", "numbers": [5, 1, 4]}
+    ],
+    "allowed_numbers": [7, 2, 5, 1, 4, 45, 52, 17],
+    "forbidden": ["35"]
+  },
+  "output": {
+    "line_hi": "दीदी, 7 में से 2 गया 5, और 5 में से 1 गया 4, तो 45 आया!"
+  }
+}

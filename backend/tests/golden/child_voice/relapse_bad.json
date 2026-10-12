@@ -1,0 +1,20 @@
+{
+  "role": "child_voice",
+  "input": {
+    "persona_id": "ravi",
+    "kind": "relapse",
+    "answer": 45,
+    "prior_state": "partial",
+    "new_state": "misconception",
+    "affect": "confident",
+    "item": {"type": "sub", "a": 52, "b": 17},
+    "steps": [
+      {"rule_id": "SUB_SMALLER_FROM_LARGER", "text_hi": "7 में से 2 गया 5", "numbers": [7, 2, 5]}
+    ],
+    "allowed_numbers": [7, 2, 5, 45],
+    "forbidden": ["35"]
+  },
+  "output": {
+    "line_hi": "दीदी, 7 में से 2 गया 5 बस!"
+  }
+}

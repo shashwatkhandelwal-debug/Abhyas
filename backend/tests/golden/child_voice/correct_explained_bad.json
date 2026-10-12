@@ -1,0 +1,18 @@
+{
+  "role": "child_voice",
+  "input": {
+    "persona_id": "ravi",
+    "kind": "correct_explained",
+    "answer": 35,
+    "prior_state": "partial",
+    "new_state": "correct",
+    "affect": "confident",
+    "item": {"type": "sub", "a": 52, "b": 17},
+    "steps": [],
+    "allowed_numbers": [35],
+    "forbidden": ["45"]
+  },
+  "output": {
+    "line_hi": "teacher I solved this regrouping step by step and got 35"
+  }
+}

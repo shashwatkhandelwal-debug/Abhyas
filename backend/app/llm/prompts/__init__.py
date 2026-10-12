@@ -1,15 +1,16 @@
-"""LLM prompt templates export."""
+"""Versioned prompt templates loader (spec/05 §5.1)."""
 
-from backend.app.llm.prompts.act_tagger import ACT_TAGGER_SYSTEM_PROMPT
-from backend.app.llm.prompts.child_voice import CHILD_VOICE_SYSTEM_PROMPT
-from backend.app.llm.prompts.coach import COACH_SYSTEM_PROMPT
-from backend.app.llm.prompts.fidelity_checker import FIDELITY_CHECKER_SYSTEM_PROMPT
-from backend.app.llm.prompts.guide_answerer import GUIDE_ANSWERER_SYSTEM_PROMPT
+from pathlib import Path
 
-__all__ = [
-    "ACT_TAGGER_SYSTEM_PROMPT",
-    "CHILD_VOICE_SYSTEM_PROMPT",
-    "COACH_SYSTEM_PROMPT",
-    "FIDELITY_CHECKER_SYSTEM_PROMPT",
-    "GUIDE_ANSWERER_SYSTEM_PROMPT",
-]
+PROMPTS_DIR = Path(__file__).resolve().parent
+
+
+def load_prompt(role: str, version: str = "v1") -> str:
+    """Loads a prompt markdown template by role and version."""
+    path = PROMPTS_DIR / f"{role}.{version}.md"
+    if not path.exists():
+        raise FileNotFoundError(f"Prompt template not found: {path}")
+    return path.read_text(encoding="utf-8")
+
+
+__all__ = ["load_prompt"]

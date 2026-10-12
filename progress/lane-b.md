@@ -1,7 +1,7 @@
-# Lane B Progress (Platform & Channels)
+# Lane B Progress (Pipeline: LLM client, Speech, Rehearsal, Sessions, Retrieval, Scoring, Jobs)
 
 Branch: `lane-b`
-Worktree: `../abhyas-b`
+Worktree: `C:\Users\ASUS\Downloads\abhyas-lane-b`
 Port: 8002
 Database: `abhyas_b` (waits for Docker Desktop)
 
@@ -17,6 +17,11 @@ Database: `abhyas_b` (waits for Docker Desktop)
 - [ ] T22 Intents, ASK, retrieval
 - [ ] T23 Move path
 - [ ] T24 Scheduler & jobs
+
+## Checkpoints
+- After T17 (stop and report)
+- After T21 (stop and report)
+- Every 3 tasks otherwise
 
 ## Deviations from spec
 None.

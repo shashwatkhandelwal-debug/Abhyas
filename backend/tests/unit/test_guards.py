@@ -294,6 +294,42 @@ def test_guard_child_line_fail_out_of_character() -> None:
     assert "out-of-character" in msg or "AI" in msg or "गलती" in msg
 
 
+def test_guard_child_line_out_of_character_whole_words() -> None:
+    resp = ChildResponse(
+        persona_id="ravi",
+        kind=ResponseKind.ANSWER,
+        answer=24,
+        prior_state=ChildState.MISCONCEPTION,
+        new_state=ChildState.MISCONCEPTION,
+        affect="confident",
+        item=Problem(type="sub", a=43, b=27),
+        allowed_numbers={24},
+    )
+    # Substring 'ai' in English word 'email' should NOT trigger guard
+    valid, _ = guard_child_line("दीदी, मेरा email चेक करो 24", resp)
+    assert valid is True
+
+    # Whole word 'AI' MUST trigger guard
+    valid, msg = guard_child_line("दीदी, मैंने AI से पूछा 24", resp)
+    assert valid is False
+    assert "out-of-character" in msg.lower()
+
+    # Whole word 'misconception' MUST trigger guard
+    valid, msg = guard_child_line("दीदी, misconception हुआ 24", resp)
+    assert valid is False
+    assert "out-of-character" in msg.lower()
+
+    # Whole Devanagari token 'गलती' MUST trigger guard
+    valid, msg = guard_child_line("दीदी, मेरी गलती थी 24", resp)
+    assert valid is False
+    assert "out-of-character" in msg.lower()
+
+    # Whole Devanagari token 'नियम' MUST trigger guard
+    valid, msg = guard_child_line("दीदी, नियम से 24 आया", resp)
+    assert valid is False
+    assert "out-of-character" in msg.lower()
+
+
 def test_guard_child_line_fail_off_topic_with_number() -> None:
     resp = ChildResponse(
         persona_id="aman",

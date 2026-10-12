@@ -1,0 +1,17 @@
+{
+  "role": "child_voice",
+  "input": {
+    "persona_id": "ravi",
+    "kind": "confused",
+    "answer": null,
+    "prior_state": "misconception",
+    "new_state": "misconception",
+    "affect": "distracted",
+    "item": {"type": "sub", "a": 52, "b": 17},
+    "allowed_numbers": [],
+    "forbidden": []
+  },
+  "output": {
+    "line_hi": "मुझे यह misconception समझ नहीं आया"
+  }
+}
