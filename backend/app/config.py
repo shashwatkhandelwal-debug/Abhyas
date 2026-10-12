@@ -73,6 +73,11 @@ class Settings(BaseSettings):
     EXPLAIN_BACK_MAX_SECONDS: int = 60
     REHEARSE_TURN_MAX_S: int = 30
     LEARN_AUDIO_MAX_SECONDS: int = 120
+    SPEECH_PROVIDER_LIVE: bool = False
+    SPEECH_DAILY_BUDGET_INR: float = 50.0
+    SPEECH_TOTAL_BUDGET_INR: float = 500.0
+    STT_COST_PER_MINUTE_INR: float = 0.50
+    TTS_COST_PER_1000_CHARS_INR: float = 3.0
 
     # ── WhatsApp Cloud API (Meta) — H4/H5 ────────────────────────────────
     WHATSAPP_ENABLED: bool = False
