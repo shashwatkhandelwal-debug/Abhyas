@@ -165,6 +165,9 @@ ask_prompt:
 ask_clarify_prefix:
   text: "एक बात बताइए:"
   audio: false
+ask_clarify_generic:
+  text: "कृपया अपना सवाल थोड़ा विस्तार से पूछें।"
+  audio: false
 ask_source_line:
   text: "स्रोत: {source}{page_part}"
   audio: false
