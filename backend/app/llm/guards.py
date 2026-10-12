@@ -22,6 +22,7 @@ from backend.app.llm.schemas import (
     IntentRouterOutput,
     PageOCROutput,
     QuestionClassifierOutput,
+    RetrievedChunk,
 )
 from backend.app.rule_engine.domain import (
     ChildResponse,
@@ -407,6 +408,9 @@ def guard_question_classifier(output: QuestionClassifierOutput) -> tuple[bool, s
         words = output.clarifying_question_hi.split()
         if len(words) > 20:
             return False, f"clarifying_question exceeds 20 words ({len(words)} > 20)"
+        clar_tokens = set(norm(output.clarifying_question_hi).split())
+        if clar_tokens & DISRESPECTFUL_WORDS:
+            return False, "Disrespectful register: clarifying question must not use तुम/तुमने"
 
     if output.category in ("pedagogy", "classroom_management") and not output.needs_clarification:
         if not output.search_query_hi.strip():
@@ -421,8 +425,10 @@ def guard_question_classifier(output: QuestionClassifierOutput) -> tuple[bool, s
 # ── 7. guard_guide_answerer (§5.8) ───────────────────────────────────────────
 def guard_guide_answerer(
     output: GuideAnswererOutput,
-    retrieved_source_ids: list[str],
-    retrieved_chunks_text: str,
+    retrieved_source_ids: list[str] | list[RetrievedChunk],
+    retrieved_chunks_text: str = "",
+    *,
+    retrieved_chunks: list[RetrievedChunk] | None = None,
 ) -> tuple[bool, str]:
     """Validate guide_answerer output (§5.8).
 
@@ -431,12 +437,33 @@ def guard_guide_answerer(
     - answer <= MAX_GUIDE_ANSWER_WORDS (80)
     - every number in answer appears in cited chunks text
     - respectful register (no तुम/तुमने)
+    - try_this_week_hi <= 20 words and respectful register
     - confidence in [0.0, 1.0]
     """
     if not output.source_ids:
         return False, "Guide answer must cite at least one source ID"
 
-    retrieved_set = set(retrieved_source_ids)
+    # Extract allowed IDs and chunks text from inputs
+    allowed_ids: list[str]
+    chunk_text_source = retrieved_chunks_text
+
+    if retrieved_chunks is not None:
+        allowed_ids = [c.chunk_id for c in retrieved_chunks]
+        if not chunk_text_source:
+            chunk_text_source = " ".join(
+                c.text for c in retrieved_chunks if c.chunk_id in output.source_ids
+            )
+    elif retrieved_source_ids and isinstance(retrieved_source_ids[0], RetrievedChunk):
+        chunks_list = [c for c in retrieved_source_ids if isinstance(c, RetrievedChunk)]
+        allowed_ids = [c.chunk_id for c in chunks_list]
+        if not chunk_text_source:
+            chunk_text_source = " ".join(
+                c.text for c in chunks_list if c.chunk_id in output.source_ids
+            )
+    else:
+        allowed_ids = [str(sid) for sid in retrieved_source_ids]
+
+    retrieved_set = set(allowed_ids)
     if not set(output.source_ids).issubset(retrieved_set):
         return (
             False,
@@ -454,9 +481,17 @@ def guard_guide_answerer(
     if ans_tokens & DISRESPECTFUL_WORDS:
         return False, "Disrespectful register: guide answer must not use तुम/तुमने"
 
+    if output.try_this_week_hi:
+        tip_words = output.try_this_week_hi.split()
+        if len(tip_words) > 20:
+            return False, f"try_this_week exceeds 20 words ({len(tip_words)} > 20)"
+        tip_tokens = set(norm(output.try_this_week_hi).split())
+        if tip_tokens & DISRESPECTFUL_WORDS:
+            return False, "Disrespectful register: try_this_week must not use तुम/तुमने"
+
     # Number integrity against retrieved chunks text
     answer_numbers = extract_numbers(output.answer_hi)
-    chunks_numbers = set(extract_numbers(retrieved_chunks_text))
+    chunks_numbers = set(extract_numbers(chunk_text_source))
     for num in answer_numbers:
         if num not in chunks_numbers:
             return False, f"Unauthorized number {num} in guide answer"

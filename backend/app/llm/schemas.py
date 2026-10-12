@@ -102,6 +102,28 @@ class QuestionClassifierOutput(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
 
 
+QuestionClassificationOutput = QuestionClassifierOutput
+
+
+class QuestionClassificationResult(BaseModel):
+    """Runtime result returned by question_classifier role."""
+
+    output: QuestionClassifierOutput
+    guarded: bool = True
+    guard_error: str | None = None
+    used_fallback: bool = False
+
+
+class RetrievedChunk(BaseModel):
+    """Retrieved reference document chunk for guide_answerer (§5.8)."""
+
+    chunk_id: str
+    source_short_hi: str
+    section: str = ""
+    page: int | None = None
+    text: str
+
+
 class GuideAnswererOutput(BaseModel):
     """Output schema for guide_answerer role (spec/05 §5.8)."""
 
@@ -109,6 +131,21 @@ class GuideAnswererOutput(BaseModel):
     source_ids: list[str] = Field(default_factory=list)
     try_this_week_hi: str = ""
     confidence: float = Field(ge=0.0, le=1.0)
+
+
+GuideAnswerOutput = GuideAnswererOutput
+
+
+class GuideAnswerResult(BaseModel):
+    """Runtime result returned by guide_answerer role."""
+
+    output: GuideAnswererOutput
+    answer_text_hi: str
+    escalated: bool = False
+    sources_cited: list[RetrievedChunk] = Field(default_factory=list)
+    guarded: bool = True
+    guard_error: str | None = None
+    used_fallback: bool = False
 
 
 # ── 5.9 Build-Time Roles ─────────────────────────────────────────────────────

@@ -1,0 +1,13 @@
+{
+  "role": "question_classifier",
+  "input": {
+    "question": "बच्चे गणित में ध्यान नहीं देते।"
+  },
+  "output": {
+    "category": "classroom_management",
+    "needs_clarification": true,
+    "clarifying_question_hi": "क्या आप बता सकती हैं कि बच्चे किस गतिविधि के दौरान ध्यान नहीं देते?",
+    "search_query_hi": "",
+    "confidence": 0.88
+  }
+}

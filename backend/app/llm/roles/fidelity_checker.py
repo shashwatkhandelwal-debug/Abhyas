@@ -8,17 +8,16 @@ import json
 import logging
 import re
 import unicodedata
-from pathlib import Path
 from typing import Any, Literal
 
 import httpx
-import yaml
 from pydantic import ValidationError
 
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
 from backend.app.llm.client import LLMUnavailable, call_tool
 from backend.app.llm.guards import guard_fidelity_checker, norm, substring_match
+from backend.app.llm.messages import load_catalog_message
 from backend.app.llm.prompts import load_prompt
 from backend.app.llm.schemas import (
     FidelityCheckerOutput,
@@ -31,30 +30,9 @@ logger = logging.getLogger("abhyas.llm.fidelity_checker")
 PROMPT_VERSION = "v1"
 
 
-def _find_messages_path() -> Path:
-    curr = Path(__file__).resolve().parent
-    for _ in range(6):
-        cand = curr / "content" / "messages_hi.yaml"
-        if cand.exists():
-            return cand
-        curr = curr.parent
-    return Path("content/messages_hi.yaml").resolve()
-
-
-_MESSAGES_PATH = _find_messages_path()
-
-
 def _load_message_template(key: str) -> str:
-    """Loads localized message template from messages_hi.yaml."""
-    if not _MESSAGES_PATH.exists():
-        raise FileNotFoundError(f"Messages file not found: {_MESSAGES_PATH}")
-    data = yaml.safe_load(_MESSAGES_PATH.read_text(encoding="utf-8"))
-    if not isinstance(data, dict) or key not in data:
-        raise KeyError(f"Missing message key: '{key}' in {_MESSAGES_PATH}")
-    entry = data[key]
-    if not isinstance(entry, dict) or "text" not in entry or not entry["text"]:
-        raise ValueError(f"Invalid or empty message entry for key: '{key}'")
-    return unicodedata.normalize("NFC", str(entry["text"]))
+    """Loads localized message template from messages catalog (shared helper)."""
+    return load_catalog_message(key)
 
 
 DEVANAGARI_ALLOWED_PUNCTUATION = set("।,!?;:\"'()-–—`'’‘“”./%॥[]{}")
