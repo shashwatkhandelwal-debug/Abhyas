@@ -87,6 +87,29 @@ class TokenBudgetTracker:
 # Global singleton token budget tracker
 budget_tracker = TokenBudgetTracker()
 
+# Shared singleton AsyncAnthropic client
+_anthropic_client: anthropic.AsyncAnthropic | None = None
+
+
+def get_anthropic_client() -> anthropic.AsyncAnthropic:
+    """Returns shared singleton AsyncAnthropic client."""
+    global _anthropic_client
+    if _anthropic_client is None:
+        _anthropic_client = anthropic.AsyncAnthropic(
+            api_key=settings.ANTHROPIC_API_KEY,
+            timeout=settings.LLM_TIMEOUT_SECONDS,
+        )
+    return _anthropic_client
+
+
+async def close_anthropic_client() -> None:
+    """Closes shared AsyncAnthropic client on shutdown."""
+    global _anthropic_client
+    if _anthropic_client is not None:
+        await _anthropic_client.close()
+        _anthropic_client = None
+
+
 # In-memory prompt cache
 _PROMPT_CACHE: dict[str, str] = {}
 
@@ -367,10 +390,7 @@ async def call_tool(
         raise TokenBudgetExceeded(f"Daily token budget of {budget_tracker.daily_budget} exceeded")
 
     # 3. Setup Anthropic client and tool parameters
-    client = anthropic.AsyncAnthropic(
-        api_key=settings.ANTHROPIC_API_KEY,
-        timeout=timeout_s,
-    )
+    client = get_anthropic_client()
 
     system_blocks: list[dict[str, Any]] = [
         {
@@ -402,7 +422,7 @@ async def call_tool(
                 "messages": messages,
                 "tools": tools_spec,
                 "tool_choice": tool_choice,
-                "extra_body": {"temperature": temperature},
+                "temperature": temperature,
             }
             response = await client.messages.create(**create_kwargs)
             latency_ms = int((time.perf_counter() - t0) * 1000)
@@ -541,10 +561,7 @@ async def verify_configured_models(force: bool = False) -> dict[str, bool]:
         ("CLAUDE_MODEL_BUILD", settings.CLAUDE_MODEL_BUILD),
     ]
 
-    client = anthropic.AsyncAnthropic(
-        api_key=settings.ANTHROPIC_API_KEY,
-        timeout=settings.LLM_TIMEOUT_SECONDS,
-    )
+    client = get_anthropic_client()
 
     results: dict[str, bool] = {}
     tested_models: dict[str, bool] = {}

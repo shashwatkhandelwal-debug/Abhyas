@@ -80,7 +80,7 @@ async def test_mock_tts_synthesizes_valid_wav() -> None:
 
     wav_bytes = await mock_tts.synthesize("नमस्ते, आज हम घटाव सीखेंगे।", voice)
     assert wav_bytes.startswith(b"RIFF")
-    dur = duration_s(wav_bytes)
+    dur = await duration_s(wav_bytes)
     assert 0.5 <= dur <= 5.0
 
 
@@ -92,7 +92,7 @@ async def test_mock_tts_child_pitch_shifted() -> None:
 
     wav_bytes = await mock_tts.synthesize("पैंतालीस!", voice)
     assert wav_bytes.startswith(b"RIFF")
-    dur = duration_s(wav_bytes)
+    dur = await duration_s(wav_bytes)
     assert dur > 0.1
 
 
@@ -156,7 +156,8 @@ async def test_sarvam_tts_failure_after_retries() -> None:
         await tts.synthesize("नमस्ते", voice)
 
 
-def test_tts_cache_operations() -> None:
+@pytest.mark.asyncio
+async def test_tts_cache_operations() -> None:
     """TTSCache computes keys, saves audio formats, and reads from cache."""
     with tempfile.TemporaryDirectory() as tmpdir:
         cache = TTSCache(cache_dir=tmpdir)
@@ -173,7 +174,7 @@ def test_tts_cache_operations() -> None:
         # Put synthetic WAV
         out_io = Path(__file__).parents[1] / "fixtures" / "audio" / "sample_5s.wav"
         wav_bytes = out_io.read_bytes()
-        paths = cache.put_wav(key, wav_bytes)
+        paths = await cache.put_wav(key, wav_bytes)
 
         assert "wav" in paths
         assert "ogg" in paths

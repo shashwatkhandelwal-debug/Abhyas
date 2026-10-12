@@ -61,7 +61,7 @@ class TTSCache:
                 logger.warning("Failed reading cached audio %s: %s", file, exc)
         return None
 
-    def put_wav(self, key: str, wav_bytes: bytes) -> dict[str, Path]:
+    async def put_wav(self, key: str, wav_bytes: bytes) -> dict[str, Path]:
         """Caches WAV and automatically generates & caches OGG and MP3 formats (spec/06 §6.3)."""
         paths: dict[str, Path] = {}
 
@@ -70,7 +70,7 @@ class TTSCache:
         paths["wav"] = wav_path
 
         try:
-            ogg_bytes = to_ogg_opus(wav_bytes)
+            ogg_bytes = await to_ogg_opus(wav_bytes)
             ogg_path = self._file_path(key, "ogg")
             ogg_path.write_bytes(ogg_bytes)
             paths["ogg"] = ogg_path
@@ -78,7 +78,7 @@ class TTSCache:
             logger.warning("Failed caching OGG for %s: %s", key, exc)
 
         try:
-            mp3_bytes = to_mp3(wav_bytes)
+            mp3_bytes = await to_mp3(wav_bytes)
             mp3_path = self._file_path(key, "mp3")
             mp3_path.write_bytes(mp3_bytes)
             paths["mp3"] = mp3_path

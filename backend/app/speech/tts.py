@@ -19,6 +19,7 @@ import httpx
 from backend.app.config import settings
 from backend.app.llm.hindi_numbers import to_words
 from backend.app.speech.audio import pitch_shift
+from backend.app.speech.client import get_speech_http_client
 from backend.app.speech.voices import VoiceSpec, get_voice
 
 logger = logging.getLogger("abhyas.speech.tts")
@@ -124,7 +125,7 @@ class MockTTS:
         raw_wav = out_io.getvalue()
         if abs(voice.pitch_factor - 1.0) > 0.001:
             try:
-                return pitch_shift(raw_wav, voice.pitch_factor)
+                return await pitch_shift(raw_wav, voice.pitch_factor)
             except Exception:
                 return raw_wav
 
@@ -218,11 +219,11 @@ class SarvamTTS:
         # 2. Chunk text if > 1500 chars (learn scripts)
         chunks = split_sentences_for_tts(prepared_text, max_chars=1500)
 
-        async with httpx.AsyncClient() as client:
-            wav_parts: list[bytes] = []
-            for chunk in chunks:
-                part = await self._synthesize_chunk(client, chunk, voice)
-                wav_parts.append(part)
+        client = get_speech_http_client()
+        wav_parts: list[bytes] = []
+        for chunk in chunks:
+            part = await self._synthesize_chunk(client, chunk, voice)
+            wav_parts.append(part)
 
         # Combine WAV parts if chunked
         if len(wav_parts) == 1:
@@ -232,7 +233,7 @@ class SarvamTTS:
 
         # 3. Apply pitch shift if child voice (voice.pitch_factor != 1.0)
         if abs(voice.pitch_factor - 1.0) > 0.001:
-            return pitch_shift(raw_wav, voice.pitch_factor)
+            return await pitch_shift(raw_wav, voice.pitch_factor)
 
         return raw_wav
 

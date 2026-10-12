@@ -23,10 +23,19 @@ from backend.app.llm.client import (
     TokenBudgetTracker,
     budget_tracker,
     call_tool,
+    close_anthropic_client,
+    get_anthropic_client,
     load_prompt,
     verify_configured_models,
     verify_production_models,
 )
+
+
+@pytest.fixture(autouse=True)
+def _reset_anthropic_singleton() -> None:
+    import backend.app.llm.client as client_mod
+
+    client_mod._anthropic_client = None
 
 
 @pytest.mark.asyncio
@@ -451,3 +460,12 @@ async def test_verify_models_build_rejected() -> None:
                 await verify_configured_models()
             assert "CLAUDE_MODEL_BUILD" in str(exc_info.value)
             assert "invalid-build-model" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_shared_anthropic_client() -> None:
+    """get_anthropic_client returns shared singleton and close_anthropic_client cleans up."""
+    client1 = get_anthropic_client()
+    client2 = get_anthropic_client()
+    assert client1 is client2
+    await close_anthropic_client()

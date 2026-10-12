@@ -21,6 +21,7 @@ from pydantic import BaseModel
 
 from backend.app.config import settings
 from backend.app.speech.audio import duration_s, split_for_stt
+from backend.app.speech.client import get_speech_http_client
 
 logger = logging.getLogger("abhyas.speech.stt")
 
@@ -192,22 +193,22 @@ class SarvamSTT:
         t0 = time.perf_counter()
 
         # Check if splitting is necessary (Sarvam limit < 30s)
-        dur = duration_s(wav16k)
+        dur = await duration_s(wav16k)
         if dur > 25.0:
-            clips = split_for_stt(wav16k, max_s=25.0)
+            clips = await split_for_stt(wav16k, max_s=25.0)
         else:
             clips = [wav16k]
 
-        async with httpx.AsyncClient() as client:
-            if len(clips) == 1:
-                text, conf = await self._transcribe_single_clip(client, clips[0], lang, keyterms)
-            else:
-                results = await asyncio.gather(
-                    *(self._transcribe_single_clip(client, clip, lang, keyterms) for clip in clips)
-                )
-                text_parts = [t for (t, _) in results if t.strip()]
-                text = " ".join(text_parts)
-                conf = sum(c for (_, c) in results) / len(results) if results else 0.0
+        client = get_speech_http_client()
+        if len(clips) == 1:
+            text, conf = await self._transcribe_single_clip(client, clips[0], lang, keyterms)
+        else:
+            results = await asyncio.gather(
+                *(self._transcribe_single_clip(client, clip, lang, keyterms) for clip in clips)
+            )
+            text_parts = [t for (t, _) in results if t.strip()]
+            text = " ".join(text_parts)
+            conf = sum(c for (_, c) in results) / len(results) if results else 0.0
 
         latency_ms = int((time.perf_counter() - t0) * 1000)
         norm_text = normalize_transcript_text(text)

@@ -1,17 +1,18 @@
-"""Audio processing utilities via ffmpeg subprocess (spec/06 §6.1).
+"""Audio processing utilities via async ffmpeg subprocess (spec/06 §6.1).
 
-All conversions use ffmpeg subprocess with stdin/stdout pipes.
+All conversions use non-blocking asyncio.create_subprocess_exec with stdin/stdout pipes,
+timeout enforcement, and process termination on timeout.
 Never persist teacher audio to disk.
 """
 
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 import os
 import re
 import shutil
-import subprocess
 import wave
 from pathlib import Path
 
@@ -81,6 +82,41 @@ def get_ffprobe_path() -> str:
     return "ffprobe"
 
 
+async def _run_subprocess_async(
+    cmd: list[str],
+    input_bytes: bytes | None = None,
+    timeout_s: float = 15.0,
+) -> tuple[int, bytes, bytes]:
+    """Runs a subprocess non-blockingly via asyncio.create_subprocess_exec.
+
+    Enforces timeout and kills the process on timeout, ensuring the event loop is never blocked.
+    """
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdin=asyncio.subprocess.PIPE if input_bytes is not None else None,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+    except Exception as exc:
+        raise AudioProcessingError(f"Failed to start subprocess '{cmd[0]}': {exc}") from exc
+
+    try:
+        stdout, stderr = await asyncio.wait_for(
+            proc.communicate(input=input_bytes),
+            timeout=timeout_s,
+        )
+        returncode = proc.returncode if proc.returncode is not None else -1
+        return returncode, stdout, stderr
+    except TimeoutError as exc:
+        try:
+            proc.kill()
+            await proc.wait()
+        except Exception:
+            pass
+        raise AudioProcessingError(f"Subprocess '{cmd[0]}' timed out after {timeout_s}s") from exc
+
+
 def validate_audio_duration(duration: float, max_s: float = MAX_INBOUND_AUDIO_S) -> None:
     """Validates that audio duration does not exceed limit (spec/06 §6.1)."""
     if duration > max_s:
@@ -89,12 +125,8 @@ def validate_audio_duration(duration: float, max_s: float = MAX_INBOUND_AUDIO_S)
         )
 
 
-def duration_s(audio_bytes: bytes) -> float:
-    """Returns duration of audio bytes in seconds (spec/06 §6.1)."""
-    if not audio_bytes:
-        return 0.0
-
-    # 1. Fast path for WAV headers using Python wave standard library
+def _get_wav_header_duration(audio_bytes: bytes) -> float | None:
+    """Fast-path extractor for duration from WAV headers."""
     if audio_bytes.startswith(b"RIFF") and b"WAVE" in audio_bytes[:16]:
         try:
             with wave.open(io.BytesIO(audio_bytes), "rb") as wf:
@@ -110,11 +142,23 @@ def duration_s(audio_bytes: bytes) -> float:
                     return float(frames) / float(rate)
         except Exception:
             pass
+    return None
 
-    # 2. Try ffprobe container duration
+
+async def duration_s(audio_bytes: bytes) -> float:
+    """Returns duration of audio bytes in seconds asynchronously (spec/06 §6.1)."""
+    if not audio_bytes:
+        return 0.0
+
+    # 1. Fast path for WAV headers using Python wave standard library
+    wav_dur = _get_wav_header_duration(audio_bytes)
+    if wav_dur is not None:
+        return wav_dur
+
+    # 2. Try ffprobe container duration via async subprocess
     ffprobe = get_ffprobe_path()
     try:
-        proc = subprocess.run(
+        retcode, stdout, _ = await _run_subprocess_async(
             [
                 ffprobe,
                 "-v",
@@ -125,29 +169,25 @@ def duration_s(audio_bytes: bytes) -> float:
                 "default=noprint_wrappers=1:nokey=1",
                 "pipe:0",
             ],
-            input=audio_bytes,
-            capture_output=True,
-            check=False,
-            timeout=10,
+            input_bytes=audio_bytes,
+            timeout_s=10.0,
         )
-        if proc.returncode == 0:
-            out = proc.stdout.decode("utf-8", errors="replace").strip()
+        if retcode == 0:
+            out = stdout.decode("utf-8", errors="replace").strip()
             if out and out != "N/A":
                 return float(out)
     except Exception:
         pass
 
-    # 3. Stream decode via ffmpeg null output (works for unseekable pipes)
+    # 3. Stream decode via ffmpeg null output (for unseekable pipes)
     ffmpeg = get_ffmpeg_path()
     try:
-        proc = subprocess.run(
+        retcode, _, stderr_bytes = await _run_subprocess_async(
             [ffmpeg, "-v", "info", "-i", "pipe:0", "-f", "null", "-"],
-            input=audio_bytes,
-            capture_output=True,
-            check=False,
-            timeout=10,
+            input_bytes=audio_bytes,
+            timeout_s=10.0,
         )
-        stderr = proc.stderr.decode("utf-8", errors="replace")
+        stderr = stderr_bytes.decode("utf-8", errors="replace")
         times = re.findall(r"time=(\d+):(\d+):(\d+(?:\.\d+)?)", stderr)
         if times:
             h, m, s = times[-1]
@@ -158,8 +198,16 @@ def duration_s(audio_bytes: bytes) -> float:
     raise AudioProcessingError("Could not determine audio duration from stream")
 
 
-def to_wav16k(audio_bytes: bytes, mime: str | None = None) -> bytes:
-    """Converts inbound audio to 16 kHz mono WAV for STT (spec/06 §6.1).
+def duration_s_sync(audio_bytes: bytes) -> float:
+    """Synchronous helper for duration_s."""
+    wav_dur = _get_wav_header_duration(audio_bytes)
+    if wav_dur is not None:
+        return wav_dur
+    return asyncio.run(duration_s(audio_bytes))
+
+
+async def to_wav16k(audio_bytes: bytes, mime: str | None = None) -> bytes:
+    """Converts inbound audio to 16 kHz mono WAV for STT asynchronously (spec/06 §6.1).
 
     Supports OGG/Opus (WhatsApp), WebM/Opus, MP4/AAC, MP3, etc.
     Never writes audio to disk.
@@ -183,25 +231,22 @@ def to_wav16k(audio_bytes: bytes, mime: str | None = None) -> bytes:
         "pipe:1",
     ]
 
-    try:
-        proc = subprocess.run(
-            cmd,
-            input=audio_bytes,
-            capture_output=True,
-            check=False,
-            timeout=15,
-        )
-    except Exception as exc:
-        raise AudioProcessingError(f"ffmpeg conversion to wav16k failed: {exc}") from exc
+    retcode, stdout, stderr = await _run_subprocess_async(
+        cmd, input_bytes=audio_bytes, timeout_s=15.0
+    )
+    if retcode != 0:
+        err = stderr.decode("utf-8", errors="replace").strip()
+        raise AudioProcessingError(f"ffmpeg to_wav16k failed (code {retcode}): {err}")
 
-    if proc.returncode != 0:
-        err = proc.stderr.decode("utf-8", errors="replace").strip()
-        raise AudioProcessingError(f"ffmpeg to_wav16k failed (code {proc.returncode}): {err}")
-
-    return proc.stdout
+    return stdout
 
 
-def to_ogg_opus(wav_bytes: bytes) -> bytes:
+def to_wav16k_sync(audio_bytes: bytes, mime: str | None = None) -> bytes:
+    """Synchronous helper for to_wav16k."""
+    return asyncio.run(to_wav16k(audio_bytes, mime))
+
+
+async def to_ogg_opus(wav_bytes: bytes) -> bytes:
     """Converts WAV audio to WhatsApp-compatible OGG/Opus mono 48 kHz (spec/06 §6.1)."""
     if not wav_bytes:
         raise AudioProcessingError("Cannot convert empty WAV bytes to OGG/Opus")
@@ -228,30 +273,22 @@ def to_ogg_opus(wav_bytes: bytes) -> bytes:
         "pipe:1",
     ]
 
-    try:
-        proc = subprocess.run(
-            cmd,
-            input=wav_bytes,
-            capture_output=True,
-            check=False,
-            timeout=15,
-        )
-    except Exception as exc:
-        raise AudioProcessingError(f"ffmpeg conversion to ogg_opus failed: {exc}") from exc
+    retcode, stdout, stderr = await _run_subprocess_async(
+        cmd, input_bytes=wav_bytes, timeout_s=15.0
+    )
+    if retcode != 0:
+        err = stderr.decode("utf-8", errors="replace").strip()
+        raise AudioProcessingError(f"ffmpeg to_ogg_opus failed (code {retcode}): {err}")
 
-    if proc.returncode != 0:
-        err = proc.stderr.decode("utf-8", errors="replace").strip()
-        raise AudioProcessingError(f"ffmpeg to_ogg_opus failed (code {proc.returncode}): {err}")
-
-    return proc.stdout
+    return stdout
 
 
-def to_web(wav_bytes: bytes) -> bytes:
+async def to_web(wav_bytes: bytes) -> bytes:
     """Converts WAV audio to web format (OGG/Opus) (spec/06 §6.1)."""
-    return to_ogg_opus(wav_bytes)
+    return await to_ogg_opus(wav_bytes)
 
 
-def to_mp3(wav_bytes: bytes) -> bytes:
+async def to_mp3(wav_bytes: bytes) -> bytes:
     """Converts WAV audio to MP3 32k for Safari/iOS web playback (spec/06 §6.1)."""
     if not wav_bytes:
         raise AudioProcessingError("Cannot convert empty WAV bytes to MP3")
@@ -270,26 +307,18 @@ def to_mp3(wav_bytes: bytes) -> bytes:
         "pipe:1",
     ]
 
-    try:
-        proc = subprocess.run(
-            cmd,
-            input=wav_bytes,
-            capture_output=True,
-            check=False,
-            timeout=15,
-        )
-    except Exception as exc:
-        raise AudioProcessingError(f"ffmpeg conversion to mp3 failed: {exc}") from exc
+    retcode, stdout, stderr = await _run_subprocess_async(
+        cmd, input_bytes=wav_bytes, timeout_s=15.0
+    )
+    if retcode != 0:
+        err = stderr.decode("utf-8", errors="replace").strip()
+        raise AudioProcessingError(f"ffmpeg to_mp3 failed (code {retcode}): {err}")
 
-    if proc.returncode != 0:
-        err = proc.stderr.decode("utf-8", errors="replace").strip()
-        raise AudioProcessingError(f"ffmpeg to_mp3 failed (code {proc.returncode}): {err}")
-
-    return proc.stdout
+    return stdout
 
 
-def pitch_shift(wav_bytes: bytes, factor: float) -> bytes:
-    """Applies pitch shift to WAV audio for child voice variation (spec/06 §6.1).
+async def pitch_shift(wav_bytes: bytes, factor: float) -> bytes:
+    """Applies pitch shift to WAV audio for child voice variation asynchronously (spec/06 §6.1).
 
     Uses ffmpeg filter: asetrate={sample_rate}*{factor},aresample={sample_rate},atempo={1/factor}.
     """
@@ -328,26 +357,18 @@ def pitch_shift(wav_bytes: bytes, factor: float) -> bytes:
         "pipe:1",
     ]
 
-    try:
-        proc = subprocess.run(
-            cmd,
-            input=wav_bytes,
-            capture_output=True,
-            check=False,
-            timeout=15,
-        )
-    except Exception as exc:
-        raise AudioProcessingError(f"ffmpeg pitch_shift failed: {exc}") from exc
+    retcode, stdout, stderr = await _run_subprocess_async(
+        cmd, input_bytes=wav_bytes, timeout_s=15.0
+    )
+    if retcode != 0:
+        err = stderr.decode("utf-8", errors="replace").strip()
+        raise AudioProcessingError(f"ffmpeg pitch_shift failed (code {retcode}): {err}")
 
-    if proc.returncode != 0:
-        err = proc.stderr.decode("utf-8", errors="replace").strip()
-        raise AudioProcessingError(f"ffmpeg pitch_shift failed (code {proc.returncode}): {err}")
-
-    return proc.stdout
+    return stdout
 
 
-def _detect_silence_intervals(wav_bytes: bytes) -> list[tuple[float, float]]:
-    """Detects silence intervals using ffmpeg silencedetect filter (spec/06 §6.1)."""
+async def _detect_silence_intervals(wav_bytes: bytes) -> list[tuple[float, float]]:
+    """Detects silence intervals asynchronously using ffmpeg silencedetect filter (spec/06 §6.1)."""
     ffmpeg = get_ffmpeg_path()
     cmd = [
         ffmpeg,
@@ -363,17 +384,11 @@ def _detect_silence_intervals(wav_bytes: bytes) -> list[tuple[float, float]]:
     ]
 
     try:
-        proc = subprocess.run(
-            cmd,
-            input=wav_bytes,
-            capture_output=True,
-            check=False,
-            timeout=20,
-        )
+        _, _, stderr_bytes = await _run_subprocess_async(cmd, input_bytes=wav_bytes, timeout_s=20.0)
     except Exception:
         return []
 
-    stderr = proc.stderr.decode("utf-8", errors="replace")
+    stderr = stderr_bytes.decode("utf-8", errors="replace")
     starts = [float(m) for m in re.findall(r"silence_start:\s*([0-9.]+)", stderr)]
     ends = [float(m) for m in re.findall(r"silence_end:\s*([0-9.]+)", stderr)]
 
@@ -384,8 +399,8 @@ def _detect_silence_intervals(wav_bytes: bytes) -> list[tuple[float, float]]:
     return intervals
 
 
-def split_for_stt(wav_bytes: bytes, max_s: float = 25.0) -> list[bytes]:
-    """Splits WAV audio into chunks <= max_s at silence boundaries (spec/06 §6.1).
+async def split_for_stt(wav_bytes: bytes, max_s: float = 25.0) -> list[bytes]:
+    """Splits WAV audio into chunks <= max_s at silence boundaries asynchronously (spec/06 §6.1).
 
     Uses silencedetect=noise=-35dB:d=0.4 to find nearest silence <= max_s.
     If no silence is found, makes a hard cut at max_s.
@@ -394,11 +409,11 @@ def split_for_stt(wav_bytes: bytes, max_s: float = 25.0) -> list[bytes]:
     if not wav_bytes:
         return []
 
-    dur = duration_s(wav_bytes)
+    dur = await duration_s(wav_bytes)
     if dur <= max_s:
         return [wav_bytes]
 
-    silence_intervals = _detect_silence_intervals(wav_bytes)
+    silence_intervals = await _detect_silence_intervals(wav_bytes)
     silence_midpoints = [(s + e) / 2.0 for (s, e) in silence_intervals]
 
     # Calculate split points
@@ -446,15 +461,11 @@ def split_for_stt(wav_bytes: bytes, max_s: float = 25.0) -> list[bytes]:
         ]
 
         try:
-            proc = subprocess.run(
-                cmd,
-                input=wav_bytes,
-                capture_output=True,
-                check=False,
-                timeout=15,
+            retcode, stdout, _ = await _run_subprocess_async(
+                cmd, input_bytes=wav_bytes, timeout_s=15.0
             )
-            if proc.returncode == 0 and len(proc.stdout) > 44:
-                chunks.append(proc.stdout)
+            if retcode == 0 and len(stdout) > 44:
+                chunks.append(stdout)
             else:
                 logger.warning("Failed cutting chunk %d (%s to %s)", i, t_start, t_end)
         except Exception as exc:

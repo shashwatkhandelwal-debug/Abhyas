@@ -62,7 +62,7 @@ async def audition() -> None:
             wav_path.write_bytes(wav_bytes)
 
             try:
-                ogg_bytes = to_ogg_opus(wav_bytes)
+                ogg_bytes = await to_ogg_opus(wav_bytes)
                 ogg_path = output_dir / f"{tag}_{speaker}.ogg"
                 ogg_path.write_bytes(ogg_bytes)
             except Exception:
