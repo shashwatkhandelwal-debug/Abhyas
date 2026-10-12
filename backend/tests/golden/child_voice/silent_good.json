@@ -1,0 +1,17 @@
+{
+  "role": "child_voice",
+  "input": {
+    "persona_id": "priya",
+    "kind": "silent",
+    "answer": null,
+    "prior_state": "misconception",
+    "new_state": "misconception",
+    "affect": "shy",
+    "item": {"type": "sub", "a": 52, "b": 17},
+    "allowed_numbers": [],
+    "forbidden": []
+  },
+  "output": {
+    "line_hi": ""
+  }
+}
