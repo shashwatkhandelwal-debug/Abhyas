@@ -52,18 +52,14 @@ class ConversationService:
         if inbound.teacher_id in self._pending_transcripts:
             pending_text = self._pending_transcripts[inbound.teacher_id]
             intent = match_intent(inbound.text, in_rehearsal=False, button_id=inbound.button_id)
-            if intent == Intent.CONFIRM_YES or inbound.button_id == "confirm_yes":
+            if intent == Intent.CONFIRM_YES or inbound.button_id in ("confirm_yes", "btn_yes"):
                 del self._pending_transcripts[inbound.teacher_id]
                 inbound.text = pending_text
                 inbound.button_id = None
                 inbound.kind = "text"
-            elif (
-                intent in (Intent.CONFIRM_NO, Intent.REPEAT)
-                or inbound.button_id == "confirm_no"
-                or (
-                    inbound.text
-                    and any(w in inbound.text for w in ["फिर से", "नहीं", "nahi", "no", "गलत"])
-                )
+            elif intent == Intent.CONFIRM_NO or inbound.button_id in (
+                "confirm_no",
+                "btn_retry_speak",
             ):
                 del self._pending_transcripts[inbound.teacher_id]
                 return [
@@ -73,6 +69,7 @@ class ConversationService:
                     )
                 ]
             else:
+                # Any other message clears the pending text AND is processed as normal new input (never swallowed)
                 del self._pending_transcripts[inbound.teacher_id]
 
         # 2. Process inbound audio if message kind is audio
@@ -108,7 +105,7 @@ class ConversationService:
             # Low confidence verification (spec/08 §8.3, CHANGES 254f622 Item 7)
             if transcript.confidence < settings.STT_MIN_CONFIDENCE and transcript.text.strip():
                 # In REHEARSE state: skip confirm and flag turn low_conf
-                active_scene = scene_store.get_active_for_teacher(inbound.teacher_id)
+                active_scene = await scene_store.get_active_for_teacher(inbound.teacher_id)
                 in_rehearsal = (active_scene is not None and active_scene.active) or (
                     inbound.metadata.get("state") == "REHEARSE"
                 )
@@ -124,8 +121,14 @@ class ConversationService:
                             kind="buttons",
                             text_hi=confirm_text,
                             buttons=[
-                                Button(id="confirm_yes", title_hi="हाँ"),
-                                Button(id="confirm_no", title_hi="फिर से बोलूँगी"),
+                                Button(
+                                    id="confirm_yes",
+                                    title_hi=get_message("btn_yes", address_form),
+                                ),
+                                Button(
+                                    id="confirm_no",
+                                    title_hi=get_message("btn_retry_speak", address_form),
+                                ),
                             ],
                         )
                     ]

@@ -40,6 +40,9 @@ _WBE = r"(?![\u0900-\u097Fa-zA-Z0-9_])"
 BUTTON_INTENT_MAP: dict[str, Intent] = {
     "confirm_yes": Intent.CONFIRM_YES,
     "confirm_no": Intent.CONFIRM_NO,
+    "btn_yes": Intent.CONFIRM_YES,
+    "btn_no": Intent.CONFIRM_NO,
+    "btn_retry_speak": Intent.CONFIRM_NO,
     "btn_agree": Intent.CONFIRM_YES,
     "btn_decline": Intent.CONFIRM_NO,
     "btn_understood": Intent.NEXT,
@@ -56,7 +59,6 @@ BUTTON_INTENT_MAP: dict[str, Intent] = {
 _STOP_EXACT_PATTERNS = [
     re.compile(r"^बस\s*[,।!]?\s*(हो\s*गया|करो|रहने\s*दो|इतना\s*ही|खत्म|समाप्त|अब)?$", re.IGNORECASE),
     re.compile(r"^बस\s*[,।!]?.*(खत्म|समाप्त|रोक)", re.IGNORECASE),
-    re.compile(r"^.*(यहीं|यही)\s*(रोक|खत्म|समाप्त)", re.IGNORECASE),
     re.compile(r"^(रुको|रुकिए|रुको\s*अब|रुको\s*बस)$", re.IGNORECASE),
     re.compile(r"^(खत्म|खत्म\s*करो|समाप्त)$", re.IGNORECASE),
     re.compile(r"^(stop|stop\s*now|stop\s*scene)$", re.IGNORECASE),

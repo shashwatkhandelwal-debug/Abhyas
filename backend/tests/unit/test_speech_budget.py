@@ -118,6 +118,11 @@ async def test_live_mode_records_spend(wav_5s: bytes) -> None:
 
     with (
         patch.object(settings, "SPEECH_PROVIDER_LIVE", True),
+        patch.object(
+            speech_budget,
+            "get_spend_totals_db",
+            side_effect=lambda: (speech_budget.daily_spend, speech_budget.total_spend),
+        ),
         tempfile.TemporaryDirectory() as tmpdir,
         patch("backend.app.speech.tts.tts_cache", TTSCache(cache_dir=tmpdir, use_db=False)),
     ):
@@ -210,11 +215,8 @@ async def test_stt_budget_exhaustion_raises_error(wav_5s: bytes) -> None:
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_cache_hit_results_in_zero_spend() -> None:
+async def test_cache_hit_results_in_zero_spend(wav_5s: bytes) -> None:
     """When audio is present in cache, TTS returns it immediately with zero spend and no API call."""
-    mock_tts = MockTTS()
-    sample_wav, _ = await mock_tts.synthesize("नमस्ते", get_voice("abhyas"))
-
     route = respx.post("https://api.sarvam.ai/text-to-speech").mock(
         return_value=httpx.Response(200, json={"audios": []})
     )
@@ -229,13 +231,14 @@ async def test_cache_hit_results_in_zero_spend() -> None:
         key = compute_cache_key(text, voice.provider_speaker, voice)
 
         # Put in cache beforehand
-        await test_cache.put_wav(key, sample_wav)
+        await test_cache.put_wav(key, wav_5s)
+        cached_audio = await test_cache.get(key, "ogg")
 
         with patch("backend.app.speech.tts.tts_cache", test_cache):
             tts = SarvamTTS(api_key="test-key")
             result, ckey = await tts.synthesize(text, voice)
 
-            assert result == sample_wav
+            assert result == cached_audio
             assert ckey == key
             # Zero spend recorded
             assert speech_budget.daily_spend == 0.0
@@ -262,3 +265,18 @@ async def test_prewarm_fixed_audio() -> None:
             assert await test_cache.has(k, "wav") is True
             assert await test_cache.has(k, "ogg") is True
             assert await test_cache.has(k, "mp3") is True
+
+
+@pytest.mark.asyncio
+async def test_spend_fails_closed_in_live_mode_on_db_query_failure() -> None:
+    """When SPEECH_PROVIDER_LIVE=true and DB spend query fails, can_spend returns False (fails closed)."""
+    tracker = SpeechBudgetTracker()
+
+    with (
+        patch.object(settings, "SPEECH_PROVIDER_LIVE", True),
+        patch.object(tracker, "get_daily_spend_db", return_value=None),
+        patch.object(tracker, "get_total_spend_db", return_value=None),
+    ):
+        # Even with 0 INR spend, DB query failure fails closed in live mode
+        can_proceed = await tracker.can_spend(0.01)
+        assert can_proceed is False

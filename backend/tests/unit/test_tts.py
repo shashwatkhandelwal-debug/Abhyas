@@ -3,6 +3,7 @@
 import base64
 import tempfile
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import httpx
@@ -213,3 +214,73 @@ def test_get_tts_provider_sarvam() -> None:
     ):
         provider = get_tts_provider()
         assert isinstance(provider, SarvamTTS)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_tts_cache_hit_with_use_db_makes_zero_provider_calls() -> None:
+    """With use_db=True, use_disk=False: second synthesize of same text makes zero provider calls."""
+    sample_wav = (Path(__file__).parents[1] / "fixtures" / "audio" / "sample_5s.wav").read_bytes()
+    b64_audio = base64.b64encode(sample_wav).decode("utf-8")
+
+    route = respx.post("https://api.sarvam.ai/text-to-speech").mock(
+        return_value=httpx.Response(200, json={"audios": [b64_audio]})
+    )
+
+    db_storage: dict[str, Any] = {}
+
+    class FakeSession:
+        async def __aenter__(self) -> "FakeSession":
+            return self
+
+        async def __aexit__(self, *args: Any) -> None:
+            pass
+
+        async def execute(self, stmt: Any) -> Any:
+            class FakeResult:
+                def __init__(self, row: Any) -> None:
+                    self._row = row
+
+                def scalar_one_or_none(self) -> Any:
+                    return self._row
+
+            for row in db_storage.values():
+                return FakeResult(row)
+            return FakeResult(None)
+
+        async def get(self, model: Any, key: str) -> Any:
+            return db_storage.get(key)
+
+        def add(self, obj: Any) -> None:
+            db_storage[obj.cache_key] = obj
+
+        async def commit(self) -> None:
+            pass
+
+        async def rollback(self) -> None:
+            pass
+
+    tts = SarvamTTS(api_key="test-key")
+    voice = VoiceSpec(provider_speaker="ritu", model="bulbul:v3")
+    text = "नमस्ते, यह परीक्षण है।"
+
+    from backend.app.speech import cache as cache_mod
+
+    test_cache = TTSCache(use_db=True)
+    test_cache.use_disk = False
+
+    with (
+        patch.object(cache_mod, "async_session_factory", return_value=FakeSession()),
+        patch.object(cache_mod, "tts_cache", test_cache),
+        patch("backend.app.speech.tts.tts_cache", test_cache),
+    ):
+        # 1st call: cache miss -> calls provider (call_count == 1)
+        res1, key1 = await tts.synthesize(text, voice)
+        assert route.call_count == 1
+        assert key1 in db_storage
+
+        # 2nd call: cache hit in Postgres tts_audio -> zero additional provider calls
+        res2, key2 = await tts.synthesize(text, voice)
+        assert route.call_count == 1  # Still 1! Zero provider calls
+        assert key1 == key2
+        assert res2 == db_storage[key1].ogg

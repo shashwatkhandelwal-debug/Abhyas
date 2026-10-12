@@ -79,13 +79,20 @@ class TTSCache:
                     stmt = select(TTSAudio).where(TTSAudio.cache_key == key)
                     result = await session.execute(stmt)
                     audio_row = result.scalar_one_or_none()
+                    await session.rollback()
                     if audio_row:
                         if fmt == "ogg" and audio_row.ogg:
                             return bytes(audio_row.ogg)
                         if fmt == "mp3" and audio_row.mp3:
                             return bytes(audio_row.mp3)
+                        if fmt == "wav":
+                            # In DB mode, delivered formats (ogg/mp3) serve as cached audio
+                            if audio_row.ogg:
+                                return bytes(audio_row.ogg)
+                            if audio_row.mp3:
+                                return bytes(audio_row.mp3)
             except Exception as exc:
-                logger.debug("Database TTS cache get query error: %s", exc)
+                logger.warning("Database TTS cache get query error: %s", exc)
 
         # 2. Try disk cache if in dev or fallback
         if self.use_disk:
@@ -158,7 +165,7 @@ class TTSCache:
                         session.add(record)
                     await session.commit()
             except Exception as exc:
-                logger.debug("Database TTS cache put error: %s", exc)
+                logger.error("Database TTS cache put error: %s", exc)
 
         return paths
 

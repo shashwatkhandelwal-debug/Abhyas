@@ -114,9 +114,13 @@ class MockTTS:
         if not text_hi or not text_hi.strip():
             return b"", cache_key
 
-        cached_wav = await tts_cache.get(cache_key, "wav")
-        if cached_wav is not None:
-            return cached_wav, cache_key
+        cached_audio = (
+            await tts_cache.get(cache_key, "ogg")
+            or await tts_cache.get(cache_key, "mp3")
+            or await tts_cache.get(cache_key, "wav")
+        )
+        if cached_audio is not None:
+            return cached_audio, cache_key
 
         clean_text = convert_digits_for_tts(text_hi)
         # Duration proportional to character count: ~0.06s per character, min 0.5s, max 10.0s
@@ -225,10 +229,14 @@ class SarvamTTS:
         if not text_hi or not text_hi.strip():
             return b"", cache_key
 
-        # Check cache before making API calls
-        cached_wav = await tts_cache.get(cache_key, "wav")
-        if cached_wav is not None:
-            return cached_wav, cache_key
+        # Check cache for delivered format (ogg/mp3/wav) before budget check or provider calls
+        cached_audio = (
+            await tts_cache.get(cache_key, "ogg")
+            or await tts_cache.get(cache_key, "mp3")
+            or await tts_cache.get(cache_key, "wav")
+        )
+        if cached_audio is not None:
+            return cached_audio, cache_key
 
         # Budget guard: if cap exceeded, fallback to Bhashini (if configured) -> lite mode (CHANGES 254f622 Item 2)
         if settings.SPEECH_PROVIDER_LIVE:
@@ -298,9 +306,13 @@ class BhashiniTTS:
         if not text_hi or not text_hi.strip():
             return b"", cache_key
 
-        cached_wav = await tts_cache.get(cache_key, "wav")
-        if cached_wav is not None:
-            return cached_wav, cache_key
+        cached_audio = (
+            await tts_cache.get(cache_key, "ogg")
+            or await tts_cache.get(cache_key, "mp3")
+            or await tts_cache.get(cache_key, "wav")
+        )
+        if cached_audio is not None:
+            return cached_audio, cache_key
 
         if settings.SPEECH_PROVIDER_LIVE:
             await speech_budget.record_spend("bhashini", "tts", len(text_hi), 0.0)

@@ -6,7 +6,6 @@ including tagged acts, child responses, generated lines, and stage timing metric
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -67,7 +66,7 @@ class InMemorySceneStore:
         self._scenes: dict[UUID, SceneRecord] = {}
         self._teacher_active_scenes: dict[UUID, UUID] = {}
 
-    def save(self, scene: SceneRecord) -> None:
+    async def save(self, scene: SceneRecord) -> None:
         """Persists or updates a scene record."""
         scene.updated_at = datetime.now(UTC)
         self._scenes[scene.scene_id] = scene
@@ -76,26 +75,43 @@ class InMemorySceneStore:
         elif self._teacher_active_scenes.get(scene.teacher_id) == scene.scene_id:
             del self._teacher_active_scenes[scene.teacher_id]
 
-    async def save_async(self, scene: SceneRecord) -> None:
-        """Async save (matches PostgresSceneStore interface)."""
-        self.save(scene)
+    def save_sync(self, scene: SceneRecord) -> None:
+        """Synchronous save for test setup or sync helpers."""
+        scene.updated_at = datetime.now(UTC)
+        self._scenes[scene.scene_id] = scene
+        if scene.active:
+            self._teacher_active_scenes[scene.teacher_id] = scene.scene_id
+        elif self._teacher_active_scenes.get(scene.teacher_id) == scene.scene_id:
+            del self._teacher_active_scenes[scene.teacher_id]
 
-    def get(self, scene_id: UUID) -> SceneRecord | None:
+    async def save_async(self, scene: SceneRecord) -> None:
+        await self.save(scene)
+
+    async def get(self, scene_id: UUID) -> SceneRecord | None:
         """Retrieves a scene record by ID."""
         return self._scenes.get(scene_id)
 
-    async def get_async(self, scene_id: UUID) -> SceneRecord | None:
-        return self.get(scene_id)
+    def get_sync(self, scene_id: UUID) -> SceneRecord | None:
+        return self._scenes.get(scene_id)
 
-    def get_active_for_teacher(self, teacher_id: UUID) -> SceneRecord | None:
+    async def get_async(self, scene_id: UUID) -> SceneRecord | None:
+        return await self.get(scene_id)
+
+    async def get_active_for_teacher(self, teacher_id: UUID) -> SceneRecord | None:
         """Retrieves currently active scene for a teacher, if any."""
         scene_id = self._teacher_active_scenes.get(teacher_id)
         if scene_id is not None:
             return self._scenes.get(scene_id)
         return None
 
+    def get_active_for_teacher_sync(self, teacher_id: UUID) -> SceneRecord | None:
+        scene_id = self._teacher_active_scenes.get(teacher_id)
+        if scene_id is not None:
+            return self._scenes.get(scene_id)
+        return None
+
     async def get_active_for_teacher_async(self, teacher_id: UUID) -> SceneRecord | None:
-        return self.get_active_for_teacher(teacher_id)
+        return await self.get_active_for_teacher(teacher_id)
 
     def clear(self) -> None:
         """Clears all stored scenes (for test isolation)."""
@@ -109,18 +125,9 @@ class PostgresSceneStore:
     def __init__(self, memory_fallback: InMemorySceneStore | None = None) -> None:
         self._memory = memory_fallback or InMemorySceneStore()
 
-    def save(self, scene: SceneRecord) -> None:
-        """Saves to memory store and dispatches background persistence if event loop is running."""
-        self._memory.save(scene)
-        try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(self.save_async(scene))
-        except RuntimeError:
-            pass
-
-    async def save_async(self, scene: SceneRecord) -> None:
-        """Persists Scene and Turn records to Postgres tables."""
-        self._memory.save(scene)
+    async def save(self, scene: SceneRecord) -> None:
+        """Awaits writes to in-memory cache and Postgres tables (no create_task fire-and-forget)."""
+        await self._memory.save(scene)
         if not settings.DATABASE_URL:
             return
 
@@ -175,19 +182,89 @@ class PostgresSceneStore:
                         session.add(db_turn)
                 await session.commit()
         except Exception as exc:
-            logger.debug("Failed persisting scene/turns to Postgres: %s", exc)
+            logger.warning("Failed persisting scene/turns to Postgres: %s", exc)
 
-    def get(self, scene_id: UUID) -> SceneRecord | None:
-        return self._memory.get(scene_id)
+    async def save_async(self, scene: SceneRecord) -> None:
+        await self.save(scene)
+
+    async def get(self, scene_id: UUID) -> SceneRecord | None:
+        """Reads Scene and Turn history from DB as source of truth after restart."""
+        if not settings.DATABASE_URL:
+            return await self._memory.get(scene_id)
+
+        try:
+            async with async_session_factory() as session:
+                db_scene = await session.get(Scene, scene_id)
+                if db_scene is None:
+                    return await self._memory.get(scene_id)
+
+                stmt = select(Turn).where(Turn.scene_id == scene_id).order_by(Turn.idx.asc())
+                res = await session.execute(stmt)
+                db_turns = res.scalars().all()
+
+                scene_state = SceneState.model_validate(db_scene.engine_state)
+                turns: list[TurnRecord] = []
+                for t in db_turns:
+                    turns.append(
+                        TurnRecord(
+                            turn_index=t.idx if t.idx is not None else 0,
+                            transcript=t.transcript or "",
+                            acts=t.acts or [],
+                            addressed_child=t.addressed_child,
+                            stage_ms=t.stage_ms or {},
+                            ended=(db_scene.status != "active" and t.idx == db_scene.teacher_turns),
+                            end_reason=db_scene.end_reason
+                            if (db_scene.status != "active" and t.idx == db_scene.teacher_turns)
+                            else None,
+                            created_at=t.created_at,
+                        )
+                    )
+
+                record = SceneRecord(
+                    scene_id=db_scene.id,
+                    teacher_id=db_scene.teacher_id,
+                    move_id=db_scene.move_id or "",
+                    scene_state=scene_state,
+                    turns=turns,
+                    active=(db_scene.status == "active"),
+                    created_at=db_scene.started_at,
+                    updated_at=db_scene.ended_at or db_scene.started_at,
+                )
+                self._memory.save_sync(record)
+                return record
+        except Exception as exc:
+            logger.warning("Failed reading scene %s from Postgres: %s", scene_id, exc)
+            return await self._memory.get(scene_id)
 
     async def get_async(self, scene_id: UUID) -> SceneRecord | None:
-        return self._memory.get(scene_id)
+        return await self.get(scene_id)
 
-    def get_active_for_teacher(self, teacher_id: UUID) -> SceneRecord | None:
-        return self._memory.get_active_for_teacher(teacher_id)
+    async def get_active_for_teacher(self, teacher_id: UUID) -> SceneRecord | None:
+        """Queries active scene for teacher directly from DB."""
+        if not settings.DATABASE_URL:
+            return await self._memory.get_active_for_teacher(teacher_id)
+
+        try:
+            async with async_session_factory() as session:
+                stmt = (
+                    select(Scene.id)
+                    .where(Scene.teacher_id == teacher_id, Scene.status == "active")
+                    .order_by(Scene.started_at.desc())
+                    .limit(1)
+                )
+                res = await session.execute(stmt)
+                active_id = res.scalar_one_or_none()
+                if active_id is not None:
+                    return await self.get(active_id)
+                return None
+        except Exception as exc:
+            logger.warning(
+                "Failed querying active scene for teacher %s from Postgres: %s", teacher_id, exc
+            )
+            return await self._memory.get_active_for_teacher(teacher_id)
 
     async def get_active_for_teacher_async(self, teacher_id: UUID) -> SceneRecord | None:
-        return self._memory.get_active_for_teacher(teacher_id)
+        return await self.get_active_for_teacher(teacher_id)
 
     def clear(self) -> None:
         self._memory.clear()
@@ -196,11 +273,9 @@ class PostgresSceneStore:
 # Aliased for backward compatibility with tests
 SceneStore = InMemorySceneStore
 
-# Singleton instance
+# Singleton instance: use PostgresSceneStore whenever DATABASE_URL is set
 scene_store: InMemorySceneStore | PostgresSceneStore = (
-    PostgresSceneStore()
-    if settings.DATABASE_URL and settings.ENVIRONMENT == "production"
-    else InMemorySceneStore()
+    PostgresSceneStore() if settings.DATABASE_URL else InMemorySceneStore()
 )
 
 

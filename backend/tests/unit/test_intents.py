@@ -19,9 +19,10 @@ def test_intent_rehearsal_stop_matching() -> None:
     assert match_intent("stop", in_rehearsal=True) == Intent.STOP_SCENE
     assert match_intent("bas", in_rehearsal=True) == Intent.STOP_SCENE
 
-    # "बस एक बंडल खोलो" is classroom teaching talk and MUST NOT match stop
+    # "बस एक बंडल खोलो" and "यहीं रोककर सोचो..." are classroom teaching talk and MUST NOT match stop
     assert match_intent("बस एक बंडल खोलो", in_rehearsal=True) is None
     assert match_intent("बस 5 तीलियाँ निकालो", in_rehearsal=True) is None
+    assert match_intent("यहीं रोककर सोचो, कितनी तीलियाँ बचीं?", in_rehearsal=True) is None
 
     # Outside rehearsal: stop keywords do NOT match stop_scene
     assert match_intent("बस", in_rehearsal=False) is None
@@ -91,6 +92,9 @@ def test_intent_button_ids() -> None:
     """Tests direct button id routing."""
     assert match_intent(button_id="confirm_yes") == Intent.CONFIRM_YES
     assert match_intent(button_id="confirm_no") == Intent.CONFIRM_NO
+    assert match_intent(button_id="btn_yes") == Intent.CONFIRM_YES
+    assert match_intent(button_id="btn_no") == Intent.CONFIRM_NO
+    assert match_intent(button_id="btn_retry_speak") == Intent.CONFIRM_NO
     assert match_intent(button_id="btn_skip") == Intent.SKIP
     assert match_intent(button_id="btn_continue") == Intent.NEXT
     assert match_intent(button_id="btn_replay") == Intent.REPEAT

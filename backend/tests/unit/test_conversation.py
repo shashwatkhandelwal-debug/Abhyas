@@ -226,20 +226,36 @@ async def test_conversation_service_low_conf_confirmation_flow(wav_5s: bytes) ->
     assert dispatcher_calls[0] == "43 में से 27"
     assert res2[0].text_hi == "प्रक्रिया पूरी हुई।"
 
-    # Step 3: Another low-conf audio, replied with "फिर से" -> discarded
+    # Step 3: Another low-conf audio, replied with btn_retry_speak -> discarded with stt_failed
     dispatcher_calls.clear()
     await service.handle(inbound_audio)
     inbound_no = InboundMessage(
         channel="whatsapp",
-        channel_msg_id="text-no",
+        channel_msg_id="btn-retry",
         teacher_id=teacher_id,
-        kind="text",
-        text="फिर से",
+        kind="button",
+        button_id="btn_retry_speak",
         received_at=datetime.now(UTC),
     )
     res_no = await service.handle(inbound_no)
     assert len(dispatcher_calls) == 0
     assert "आवाज़ साफ़ नहीं आई" in (res_no[0].text_hi or "")
+
+    # Step 4: Another low-conf audio, replied with normal greeting -> clears pending AND processes greeting
+    dispatcher_calls.clear()
+    await service.handle(inbound_audio)
+    inbound_other = InboundMessage(
+        channel="whatsapp",
+        channel_msg_id="text-other",
+        teacher_id=teacher_id,
+        kind="text",
+        text="मदद",
+        received_at=datetime.now(UTC),
+    )
+    res_other = await service.handle(inbound_other)
+    assert len(dispatcher_calls) == 1
+    assert dispatcher_calls[0] == "मदद"
+    assert res_other[0].text_hi == "प्रक्रिया पूरी हुई।"
 
 
 @pytest.mark.asyncio

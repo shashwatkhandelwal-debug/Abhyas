@@ -1,6 +1,7 @@
 """Unit tests for Bhashini STT and TTS providers via ULCA pipeline API (spec/06 §6.2, §6.3)."""
 
 import base64
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -9,6 +10,7 @@ import pytest
 import respx
 
 from backend.app.config import settings
+from backend.app.speech.cache import TTSCache
 from backend.app.speech.stt import (
     BhashiniSTT,
     ProviderNotConfigured,
@@ -72,6 +74,7 @@ async def test_bhashini_stt_success(wav_5s: bytes) -> None:
     assert transcript.ms >= 0
 
 
+
 @pytest.mark.asyncio
 @respx.mock
 async def test_bhashini_tts_success(wav_5s: bytes) -> None:
@@ -92,13 +95,16 @@ async def test_bhashini_tts_success(wav_5s: bytes) -> None:
         )
     )
 
-    tts = BhashiniTTS(api_key="test-bhashini-key", user_id="test-user")
-    voice = get_voice("abhyas")
-    result_wav, cache_key = await tts.synthesize("नमस्ते_भाषिनी", voice)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_cache = TTSCache(cache_dir=tmpdir, use_db=False)
+        with patch("backend.app.speech.tts.tts_cache", test_cache):
+            tts = BhashiniTTS(api_key="test-bhashini-key", user_id="test-user")
+            voice = get_voice("abhyas")
+            result_wav, cache_key = await tts.synthesize("नमस्ते_भाषिनी", voice)
 
-    assert result_wav.startswith(b"RIFF")
-    assert len(result_wav) == len(wav_5s)
-    assert len(cache_key) == 64
+            assert result_wav.startswith(b"RIFF")
+            assert len(result_wav) == len(wav_5s)
+            assert len(cache_key) == 64
 
 
 def test_get_stt_provider_bhashini() -> None:

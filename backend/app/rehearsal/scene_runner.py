@@ -112,7 +112,7 @@ class SceneRunner:
             self._move_cache[move_id] = load_move_card(move_id)
         return self._move_cache[move_id]
 
-    def create_scene(
+    async def create_scene(
         self,
         teacher_id: UUID,
         move_id: str = "NUM_SUB_REGROUP_BUNDLES",
@@ -177,7 +177,7 @@ class SceneRunner:
             move_id=move_id,
             scene_state=scene_state,
         )
-        self.store.save(record)
+        await self.store.save(record)
         return record
 
     async def turn(
@@ -188,7 +188,7 @@ class SceneRunner:
         synthesize_audio: bool = True,
     ) -> TurnResult:
         """Executes one teacher turn through the 5-stage rehearsal pipeline (spec/02 §2.2)."""
-        scene = self.store.get(scene_id)
+        scene = await self.store.get(scene_id)
         if not scene:
             raise ValueError(f"Scene with ID {scene_id} not found in store")
 
@@ -209,7 +209,7 @@ class SceneRunner:
             )
             scene.turns.append(turn_record)
             scene.active = False
-            self.store.save(scene)
+            await self.store.save(scene)
             return TurnResult(
                 turn=turn_record,
                 outbound=[
@@ -355,7 +355,7 @@ class SceneRunner:
                 )
             )
 
-        self.store.save(scene)
+        await self.store.save(scene)
         return TurnResult(turn=turn_record, outbound=outbound_messages)
 
 

@@ -79,50 +79,70 @@ class SpeechBudgetTracker:
             self.daily_spend = 0.0
             self.last_reset_date = today_ist
 
-    async def get_daily_spend_db(self) -> float | None:
-        """Queries Postgres for total spend incurred today in IST."""
+    async def get_spend_totals_db(self) -> tuple[float, float] | None:
+        """Queries Postgres for both daily and all-time speech spend in a single session."""
+        if not settings.DATABASE_URL:
+            return None
         try:
             now_ist = datetime.datetime.now(IST)
             start_ist = now_ist.replace(hour=0, minute=0, second=0, microsecond=0)
             start_utc = start_ist.astimezone(datetime.UTC)
 
             async with async_session_factory() as session:
-                stmt = select(func.coalesce(func.sum(SpeechSpend.cost_inr), 0.0)).where(
+                stmt_daily = select(func.coalesce(func.sum(SpeechSpend.cost_inr), 0.0)).where(
                     SpeechSpend.at >= start_utc
                 )
-                res = await session.execute(stmt)
-                return float(res.scalar() or 0.0)
+                stmt_total = select(func.coalesce(func.sum(SpeechSpend.cost_inr), 0.0))
+                res_daily = await session.execute(stmt_daily)
+                daily_val = float(res_daily.scalar() or 0.0)
+                res_total = await session.execute(stmt_total)
+                total_val = float(res_total.scalar() or 0.0)
+                await session.rollback()
+                return daily_val, total_val
         except Exception as exc:
-            logger.debug("Could not query daily speech spend from DB: %s", exc)
+            logger.warning("Could not query speech spend from DB: %s", exc)
             return None
+
+    async def get_daily_spend_db(self) -> float | None:
+        """Queries Postgres for total spend incurred today in IST."""
+        totals = await self.get_spend_totals_db()
+        return totals[0] if totals is not None else None
 
     async def get_total_spend_db(self) -> float | None:
         """Queries Postgres for all-time speech spend."""
-        try:
-            async with async_session_factory() as session:
-                stmt = select(func.coalesce(func.sum(SpeechSpend.cost_inr), 0.0))
-                res = await session.execute(stmt)
-                return float(res.scalar() or 0.0)
-        except Exception as exc:
-            logger.debug("Could not query total speech spend from DB: %s", exc)
-            return None
+        totals = await self.get_spend_totals_db()
+        return totals[1] if totals is not None else None
 
     async def can_spend(self, amount_inr: float) -> bool:
         """Checks if spending amount_inr is within daily and total budget caps in DB/memory."""
         # Query Postgres if available to ensure spend survives restarts (Item 1)
-        daily_db = await self.get_daily_spend_db()
-        total_db = await self.get_total_spend_db()
+        totals = await self.get_spend_totals_db()
+        daily_db = totals[0] if totals is not None else None
+        total_db = totals[1] if totals is not None else None
 
-        if daily_db is not None and total_db is not None:
+        if settings.SPEECH_PROVIDER_LIVE:
+            # In live mode: fails closed if DB query fails (no in-memory fallback)
+            if daily_db is None or total_db is None:
+                logger.error(
+                    "Database spend query failed in live mode (daily=%s, total=%s). Failing closed.",
+                    daily_db,
+                    total_db,
+                )
+                return False
             current_daily = daily_db
             current_total = total_db
-            # Synchronize local memory tracker
             self.daily_spend = current_daily
             self.total_spend = current_total
         else:
-            self._check_day_rollover()
-            current_daily = self.daily_spend
-            current_total = self.total_spend
+            if daily_db is not None and total_db is not None:
+                current_daily = daily_db
+                current_total = total_db
+                self.daily_spend = current_daily
+                self.total_spend = current_total
+            else:
+                self._check_day_rollover()
+                current_daily = self.daily_spend
+                current_total = self.total_spend
 
         if current_daily + amount_inr > settings.SPEECH_DAILY_BUDGET_INR:
             return False
@@ -158,7 +178,7 @@ class SpeechBudgetTracker:
                 session.add(record)
                 await session.commit()
         except Exception as exc:
-            logger.debug("Could not persist speech spend to DB: %s", exc)
+            logger.error("Could not persist speech spend to DB: %s", exc)
 
         # 2. Update local tracker
         self._check_day_rollover()

@@ -44,7 +44,7 @@ async def test_ravi_worked_example_end_to_end(scene_runner: SceneRunner) -> None
         state=ChildState.MISCONCEPTION,
     )
 
-    scene = scene_runner.create_scene(
+    scene = await scene_runner.create_scene(
         teacher_id=teacher_id,
         move_id="NUM_SUB_REGROUP_BUNDLES",
         item=item_52_17,
@@ -112,7 +112,7 @@ async def test_ravi_worked_example_end_to_end(scene_runner: SceneRunner) -> None
     assert turn3.child_responses[0].new_state == ChildState.CORRECT
 
     # Scene state is persisted and finished
-    saved_scene = scene_runner.store.get(scene_id)
+    saved_scene = await scene_runner.store.get(scene_id)
     assert saved_scene is not None
     assert len(saved_scene.turns) == 3
     # Scene ended since the child is now CORRECT
@@ -123,7 +123,7 @@ async def test_ravi_worked_example_end_to_end(scene_runner: SceneRunner) -> None
 async def test_scene_runner_stop_word_ends_scene_early(scene_runner: SceneRunner) -> None:
     """Stop keywords ('बस', 'रुको', 'खत्म', 'stop') cleanly terminate the scene early."""
     teacher_id = uuid4()
-    scene = scene_runner.create_scene(teacher_id=teacher_id)
+    scene = await scene_runner.create_scene(teacher_id=teacher_id)
     scene_id = scene.scene_id
 
     res = await scene_runner.turn(
@@ -136,7 +136,7 @@ async def test_scene_runner_stop_word_ends_scene_early(scene_runner: SceneRunner
     assert turn.end_reason == "teacher_stop"
     assert "फीडबैक" in (res.outbound[0].text_hi or "")
 
-    saved_scene = scene_runner.store.get(scene_id)
+    saved_scene = await scene_runner.store.get(scene_id)
     assert saved_scene is not None
     assert saved_scene.scene_state.ended is True
     assert saved_scene.active is False
@@ -146,7 +146,7 @@ async def test_scene_runner_stop_word_ends_scene_early(scene_runner: SceneRunner
 async def test_scene_runner_multi_child_turn(scene_runner: SceneRunner) -> None:
     """In a 3-child scene, addressing a specific child routes to that child."""
     teacher_id = uuid4()
-    scene = scene_runner.create_scene(teacher_id=teacher_id)
+    scene = await scene_runner.create_scene(teacher_id=teacher_id)
     scene_id = scene.scene_id
 
     # Turn addressed directly to Priya
@@ -159,3 +159,128 @@ async def test_scene_runner_multi_child_turn(scene_runner: SceneRunner) -> None:
     assert len(turn.child_responses) >= 1
     assert turn.child_responses[0].persona_id == "priya"
     assert turn.addressed_child == "priya"
+
+
+@pytest.mark.asyncio
+async def test_postgres_scene_store_roundtrip() -> None:
+    """Save scene + 3 turns to PostgresSceneStore -> new store instance -> get returns same scene and turns with stage_ms."""
+    import os
+    from unittest.mock import patch
+
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+    from sqlalchemy.pool import NullPool
+
+    from backend.app.config import settings
+    from backend.app.db.models import Teacher
+    from backend.app.rehearsal.scene_store import PostgresSceneStore, SceneRecord, TurnRecord
+    from backend.app.rule_engine.domain import (
+        ChildRuntime,
+        ChildState,
+        Domain,
+        Problem,
+        SceneState,
+    )
+
+    db_url = (
+        os.environ.get("TEST_DATABASE_URL")
+        or os.environ.get("DATABASE_URL")
+        or "postgresql+asyncpg://postgres:postgres@localhost:5432/abhyas_b"
+    )
+
+    test_engine = create_async_engine(db_url, poolclass=NullPool)
+    test_session_factory = async_sessionmaker(
+        bind=test_engine, class_=AsyncSession, expire_on_commit=False
+    )
+
+    with (
+        patch.object(settings, "DATABASE_URL", db_url),
+        patch("backend.app.rehearsal.scene_store.async_session_factory", test_session_factory),
+    ):
+        teacher_id = uuid4()
+        scene_id = uuid4()
+
+        # Insert required teacher parent row for foreign key
+        try:
+            async with test_session_factory() as session:
+                teacher = Teacher(
+                    id=teacher_id,
+                    name="परीक्षण शिक्षक",
+                    address_form="m",
+                    preferred_channel="whatsapp",
+                    onboarding_state="DONE",
+                    is_demo=True,
+                )
+                session.add(teacher)
+                await session.commit()
+        except Exception as exc:
+            pytest.skip(f"Postgres database at {db_url} not reachable: {exc}")
+
+        try:
+            store1 = PostgresSceneStore()
+            state = SceneState(
+                move_id="m01_place_value_intro",
+                domain=Domain.NUMERACY,
+                effective_acts=["ask_to_explain"],
+                target_causes=["cause_1"],
+                items=[Problem(type="sub", a=52, b=17)],
+                current_item=Problem(type="sub", a=52, b=17),
+                children=[
+                    ChildRuntime(
+                        persona_id="ravi",
+                        misconception="SUB_SMALLER_FROM_LARGER",
+                        temperament="confident",
+                        state=ChildState.MISCONCEPTION,
+                    )
+                ],
+                guess_lexicon={},
+                max_turns=5,
+            )
+
+            scene_record = SceneRecord(
+                scene_id=scene_id,
+                teacher_id=teacher_id,
+                move_id="m01_place_value_intro",
+                scene_state=state,
+                active=True,
+            )
+
+            # Add 3 turns with stage_ms
+            for i in range(1, 4):
+                turn = TurnRecord(
+                    turn_index=i,
+                    transcript=f"Turn transcript {i}",
+                    acts=["ask_to_explain"],
+                    addressed_child="ravi",
+                    stage_ms={"tagger_ms": 10 * i, "engine_ms": 5 * i, "total_ms": 50 * i},
+                    ended=(i == 3),
+                )
+                scene_record.turns.append(turn)
+
+            await store1.save(scene_record)
+
+            # Brand new store instance (clean in-memory cache)
+            store2 = PostgresSceneStore()
+            retrieved = await store2.get(scene_id)
+
+            assert retrieved is not None
+            assert retrieved.scene_id == scene_id
+            assert retrieved.teacher_id == teacher_id
+            assert retrieved.move_id == "m01_place_value_intro"
+            assert len(retrieved.turns) == 3
+            for i, t in enumerate(retrieved.turns, start=1):
+                assert t.turn_index == i
+                assert t.transcript == f"Turn transcript {i}"
+                assert t.addressed_child == "ravi"
+                assert t.stage_ms == {"tagger_ms": 10 * i, "engine_ms": 5 * i, "total_ms": 50 * i}
+
+        finally:
+            # Clean up test teacher (cascades and deletes test scene & turns)
+            try:
+                async with test_session_factory() as session:
+                    t = await session.get(Teacher, teacher_id)
+                    if t is not None:
+                        await session.delete(t)
+                        await session.commit()
+                await test_engine.dispose()
+            except Exception:
+                pass
