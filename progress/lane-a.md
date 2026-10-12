@@ -15,7 +15,7 @@ Database: None required (pure deterministic algorithms)
 - [x] T12 coach (P0: prompt v1, guard_coach enforcement, retry-once + feedback bank fallback, all 4 seed moves verification, review item creation)
 
 ## Deviations from spec
-None.
+- T12 coach fallback: If any negative act from a criterion's `negative_acts` (e.g. `tell_answer`) occurred in teacher turns, that criterion is scored 0 with evidence `""`. While not explicitly specified in spec/05 §5.6, this prevents rewarding ineffective teaching acts and enforces pedagogical alignment.
 
 ## Self-Reviews
 - Fix Forward Items 1-8:
@@ -65,13 +65,19 @@ None.
   4. Created 20 golden fixtures in `backend/tests/golden/child_voice/` providing both good (passing) and bad (failing) fixtures for every single `ResponseKind`.
   5. Authored comprehensive test suite in `backend/tests/unit/test_child_voice.py`: template fallback for all 10 kinds, golden fixtures verification (all 20 fixtures), role contract with AsyncMock (silent skip, single retry on guard failure, double-failure template fallback), and live guard pass rate verification (42 rule engine responses tested, 100% pass rate >= 90%).
   6. All 453 unit tests pass clean. `ruff check` clean, `ruff format` clean, `mypy --strict` clean with zero issues.
-- T12: Implemented coach role matching spec/05 §5.6 and T12 acceptance criteria:
-  1. Authored prompt template `backend/app/llm/prompts/coach.v1.md` with all 9 dynamic slots (`move_title_hi`, `effective_acts_hi`, `key_points_block`, `rubric_block`, `feedback_bank_block`, `transcript`, `acts_block`, `trajectory_block`, `retry_block`).
-  2. Implemented deterministic `fallback_coach_feedback` scoring criteria from act tags and child trajectories (2 if signal act + advanced, 1 if signal act without advancement, 0 otherwise, 0 if negative act). Extracts exact substring teacher speech quotes for scores > 0 and empty quotes for score 0. Picks strength_hi, change_hi, exact_words_hi from move's `feedback_bank`, and sanitizes exact_words_hi against correct answer leaks (e.g. 16 for 43-27 in `NUM_SUB_REGROUP_BUNDLES`). Sets confidence = 0.3 and needs_review = True.
-  3. Implemented async `coach_feedback` role runner with Claude smart model (`settings.CLAUDE_MODEL_SMART`), forced tool schema `CoachFeedbackOutput`, `guard_coach` enforcement, single retry on guard failure, and deterministic fallback on double failure or LLM exception.
-  4. Flagged `needs_review = True` and instantiated `ReviewItem(kind='rehearsal_score', ...)` when confidence < `settings.COACH_CONFIDENCE_THRESHOLD` (0.60).
-  5. Authored comprehensive unit tests in `backend/tests/unit/test_coach.py` (14 tests): fallback validity on all 4 seed moves (`NUM_SUB_REGROUP_BUNDLES`, `NUM_ADD_CARRY_BUNDLES`, `NUM_PLACE_VALUE_BUNDLES`, `LIT_MATRA_BLENDING`), trajectory and negative act scoring, word budget (<= 60 words across all 3 sentences), respectful register (आप/आपने, no तुम/तुमने), single-sentence integrity, answer leak prevention, retry/improvement tracking, LLM success, low confidence review item creation, single retry on guard failure, fallback on double failure, fallback on LLM exception, and multiple transcript input formats.
-  6. All 467 tests pass. `ruff check` clean, `ruff format` clean, `mypy --strict` clean with zero issues.
+- T12: Implemented coach role matching spec/05 §5.6, T12 acceptance criteria, and coordinator review changes:
+  1. Typed inputs: Defined `SceneTurn` and updated `coach_feedback` and `fallback_coach_feedback` signatures with typed `turns: list[SceneTurn]`, `acts: list[list[TeachingAct]]`, `trajectories: dict[str, list[ChildState]]`, `target_child_id: str`, `current_item_answer: int | str`. Removed all string parsing heuristics (`_to_transcript_str`, `_parse_act_tags`, `_check_child_advanced`, `_extract_item_answer`, `_extract_teacher_speech`).
+  2. Enforced `len(acts) == len(teacher_turns)` validation, raising `ValueError` on misalignment.
+  3. Added progression rank function `child_state_rank` in `rule_engine` (MISCONCEPTION=0 < CAN_EXPLAIN=1 < PARTIAL=2 < CORRECT=3). Advancement requires target child's rank to strictly increase; relapses do not count.
+  4. Removed unrelated evidence default (quotes only the exact teacher turn exhibiting the signal act; score 0 with empty quote otherwise).
+  5. Kept `CoachFeedbackOutput` strictly matching spec §5.6 without `needs_review`, returning separate `CoachResult(feedback, needs_review, review_reason, used_fallback)`.
+  6. Removed all DB imports/writes in `llm/`.
+  7. Narrowed exception handling: catches only `LLMUnavailable` (goes directly to fallback without retry), `ValidationError`, and client timeout/HTTP errors; programming errors (e.g. `TypeError`) propagate unswallowed.
+  8. Prompt hygiene: system prompt holds instructions and rubric only; transcript, acts, trajectories quarantined inside `<transcript>...</transcript>` tags in user prompt with data delimiter instructions.
+  9. Sanitizes answer leaks using localized messages loaded by key from `content/messages_hi.yaml` (`coach_exact_words_contrast_math`, `coach_exact_words_contrast_lit`).
+  10. `improved_since_last` is True ONLY when `previous_scores` is given and score on targeted criterion increased.
+  11. Documented deviation for negative acts override.
+  12. Authored 15 comprehensive unit tests in `backend/tests/unit/test_coach.py`. All 468 unit tests pass clean. `ruff check` clean, `ruff format` clean, `mypy --strict` clean with zero issues.
 
 
 
