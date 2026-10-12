@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from backend.app.rule_engine.domain import Problem, TeachingAct
+from backend.app.rule_engine.domain import SceneTurn as SceneTurn
 
 
 # ── 5.3 Intent Router ────────────────────────────────────────────────────────
@@ -52,6 +53,15 @@ class CoachFeedbackOutput(BaseModel):
     exact_words_hi: str
     improved_since_last: bool = False
     confidence: float = Field(ge=0.0, le=1.0)
+
+
+class CoachResult(BaseModel):
+    """Role result returned by coach_feedback, separating review metadata from LLM output."""
+
+    feedback: CoachFeedbackOutput
+    needs_review: bool
+    review_reason: str | None = None
+    used_fallback: bool = False
 
 
 # ── 5.7 Fidelity Checker ─────────────────────────────────────────────────────
