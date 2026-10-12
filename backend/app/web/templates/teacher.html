@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1F6F5C">
+  <meta name="description" content="प्राथमिक शिक्षकों का अभ्यास साथी — WhatsApp और वेब पर अभ्यास">
+  <title>अभ्यास — {{ teacher_name or "शिक्षिका" }}</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header (spec/09 §9.2) -->
+    <header class="chat-header">
+      <div class="header-left">
+        <a href="/teacher" class="brand-badge" aria-label="अभ्यास होम">
+          <svg class="brand-logo-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 19 C8 17, 16 17, 20 19 M7 7 L17 7 M5 12 L19 12"/>
+          </svg>
+          <span>अभ्यास</span>
+        </a>
+        <div class="header-titles">
+          <span class="header-move-title">{{ move_title or "दो अंकों की हासिल वाली घटाव" }}</span>
+          <span class="header-step-chip">{{ step_chip or "चरण 4/7 · अभ्यास" }}</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <button type="button" class="btn-icon" id="menu-toggle-btn" aria-label="मेनू खोलें" onclick="toggleMenu()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Header Menu Dropdown -->
+      <nav class="menu-dropdown" id="menu-dropdown" aria-label="मुख्य मेनू">
+        <a href="/teacher/progress" class="menu-item">प्रगति (Progress)</a>
+        <button type="button" class="menu-item" id="lite-mode-menu-btn" onclick="toggleLiteMode()">
+          {{ "लाइट मोड: चालू ✓" if lite_mode else "लाइट मोड: बंद" }}
+        </button>
+        <button type="button" class="menu-item" onclick="openHelpModal()">मदद व निर्देश</button>
+        <a href="/logout" class="menu-item danger">लॉग आउट</a>
+      </nav>
+    </header>
+
+    <!-- Network Alert Banner -->
+    <div id="network-banner" class="network-banner" role="status" aria-live="polite"></div>
+
+    <!-- REHEARSE Strip (Problem & 3 Children) (§9.2) -->
+    <div class="rehearse-strip" id="rehearse-strip">
+      <span class="board-problem" id="board-problem">{{ board_problem or "बोर्ड: 52 − 17" }}</span>
+      <div class="children-pills">
+        <span class="child-pill ravi active" title="रवि (कक्षा 2)">रवि</span>
+        <span class="child-pill priya" title="प्रिया (कक्षा 2)">प्रिया</span>
+        <span class="child-pill aman" title="अमन (कक्षा 2)">अमन</span>
+      </div>
+    </div>
+
+    <!-- Message Thread (WhatsApp-like) -->
+    <main class="chat-messages" id="chat-messages" role="log" aria-live="polite">
+      {% for msg in initial_messages %}
+      <div class="msg-row {{ 'inbound' if msg.direction == 'in' else 'outbound' }}" id="msg-{{ msg.id }}">
+        <div class="bubble">
+          {% if msg.direction == 'out' and msg.speaker %}
+          <div class="speaker-tag {{ msg.speaker|lower }}">
+            {% if msg.speaker == 'abhyas' %}अभ्यास
+            {% elif msg.speaker == 'coach' %}कोच
+            {% elif msg.speaker == 'model_teacher' %}आदर्श शिक्षिका
+            {% elif msg.speaker == 'ravi' %}रवि
+            {% elif msg.speaker == 'priya' %}प्रिया
+            {% elif msg.speaker == 'aman' %}अमन
+            {% else %}{{ msg.speaker }}{% endif %}
+          </div>
+          {% endif %}
+
+          {% if msg.text %}
+          <p class="bubble-text">{{ msg.text }}</p>
+          {% endif %}
+
+          {% if msg.audio_ref %}
+          <div class="bubble-audio">
+            <button type="button" class="btn-play" aria-label="आवाज़ सुनें" onclick="playAudioDirect(this, '{{ msg.audio_ref }}')">▶</button>
+            <span class="audio-duration">ऑडियो संदेश</span>
+          </div>
+          {% endif %}
+
+          <div class="bubble-meta">
+            <span>{{ msg.time_str or "अभी" }}</span>
+            <span class="status-icon">{{ "✓" if msg.direction == "in" else "" }}</span>
+          </div>
+        </div>
+
+        {% if msg.direction == 'out' and msg.buttons %}
+        <div class="quick-replies">
+          {% for btn in msg.buttons %}
+          <button type="button" class="reply-chip" onclick="handleSendButton('{{ btn.id }}', '{{ btn.title_hi }}')">
+            {{ btn.title_hi }}
+          </button>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+
+      <!-- Typing / Pending Indicator -->
+      <div id="pending-bubble" class="pending-bubble" role="status" aria-label="बच्चे सोच रहे हैं">
+        <div class="dot-flashing" aria-hidden="true"><span></span><span></span><span></span></div>
+        <span id="pending-text">रवि सोच रहा है…</span>
+      </div>
+    </main>
+
+    <!-- Demo Sample Chips (Shown in mock STT or demo mode) (§9.2) -->
+    {% if demo_mode %}
+    <section class="demo-helper-section" aria-label="नमूना उत्तर चिप्स">
+      <div class="demo-hint">बोलने की जगह लिखें (नमूना प्रश्न):</div>
+      <div class="demo-chips">
+        <button type="button" class="demo-chip">रवि, 52 में 2 में से 7 क्यों नहीं घट सकता?</button>
+        <button type="button" class="demo-chip">बंडल खोलकर दहाई से 10 तीलियाँ लो।</button>
+        <button type="button" class="demo-chip">शाबाश, अब 12 में से 7 घटाओ।</button>
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- Composer Section -->
+    <footer class="composer-wrapper">
+      <form class="composer-form" id="composer-form" autocomplete="off">
+        <input
+          type="text"
+          class="composer-input"
+          id="chat-input"
+          placeholder="यहाँ लिखें या माइक दबाकर बोलें…"
+          aria-label="संदेश लिखें"
+        >
+
+        <!-- Large Mic Button -->
+        <button
+          type="button"
+          class="btn-mic"
+          id="btn-mic"
+          aria-label="बोलकर रिकॉर्ड करें (दबाकर रखें)"
+          title="बोलकर रिकॉर्ड करें"
+        >
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+        </button>
+
+        <!-- Send Button -->
+        <button type="submit" class="btn-send" id="btn-send" aria-label="संदेश भेजें">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+
+        <!-- Live Recording Overlay -->
+        <div class="recording-overlay" id="recording-overlay">
+          <div class="recording-timer">
+            <span class="rec-blip"></span>
+            <span id="recording-timer">0:00</span>
+          </div>
+          <span class="slide-cancel-text">छोड़ने पर भेजा जाएगा</span>
+          <button type="button" class="btn-cancel-rec" id="btn-cancel-rec">रद्द करें ✕</button>
+        </div>
+      </form>
+    </footer>
+  </div>
+
+  <script src="/static/recorder.js"></script>
+  <script src="/static/chat.js"></script>
+  <script>
+    function toggleMenu() {
+      const m = document.getElementById('menu-dropdown');
+      if (m) m.classList.toggle('show');
+    }
+    window.addEventListener('click', (e) => {
+      const btn = document.getElementById('menu-toggle-btn');
+      const m = document.getElementById('menu-dropdown');
+      if (m && !m.contains(e.target) && !btn.contains(e.target)) {
+        m.classList.remove('show');
+      }
+    });
+
+    function openHelpModal() {
+      alert('अभ्यास साथी: हर सप्ताह 15 मिनट अभ्यास करें। आप बोलकर या लिखकर बात कर सकती हैं। सहायता के लिए अपने ARP से संपर्क करें।');
+    }
+
+    function playAudioDirect(btn, audioRef) {
+      let audio = btn._audio;
+      if (!audio) {
+        audio = new Audio('/api/audio/' + encodeURIComponent(audioRef) + '.ogg');
+        btn._audio = audio;
+        audio.onended = () => { btn.innerHTML = '▶'; };
+      }
+      if (audio.paused) {
+        audio.play().catch(console.error);
+        btn.innerHTML = '⏸';
+      } else {
+        audio.pause();
+        btn.innerHTML = '▶';
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#1F6F5C"/>
+  <circle cx="256" cy="192" r="72" fill="#FAF7F2" opacity="0.15"/>
+  <path d="M160 384 C210 352, 302 352, 352 384" stroke="#E0A100" stroke-width="14" stroke-linecap="round" fill="none"/>
+  <text x="256" y="260" font-family="'Noto Sans Devanagari', 'Mukta', sans-serif" font-size="90" font-weight="700" fill="#FFFFFF" text-anchor="middle">अभ्यास</text>
+</svg>
