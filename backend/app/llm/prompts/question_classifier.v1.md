@@ -1,5 +1,4 @@
-A government primary school teacher (teaching Classes 1–3, FLN) has asked a question:
-"{question}"
+A government primary school teacher (teaching Classes 1–3, FLN) has asked a question.
 
 Classify the teacher's question and determine if clarification is needed before retrieving guides:
 

@@ -425,15 +425,13 @@ def guard_question_classifier(output: QuestionClassifierOutput) -> tuple[bool, s
 # ── 7. guard_guide_answerer (§5.8) ───────────────────────────────────────────
 def guard_guide_answerer(
     output: GuideAnswererOutput,
-    retrieved_source_ids: list[str] | list[RetrievedChunk],
-    retrieved_chunks_text: str = "",
     *,
-    retrieved_chunks: list[RetrievedChunk] | None = None,
+    retrieved_chunks: list[RetrievedChunk],
 ) -> tuple[bool, str]:
     """Validate guide_answerer output (§5.8).
 
     Guards:
-    - source_ids non-empty and subset of retrieved_source_ids
+    - source_ids non-empty and subset of retrieved_chunks
     - answer <= MAX_GUIDE_ANSWER_WORDS (80)
     - every number in answer appears in cited chunks text
     - respectful register (no तुम/तुमने)
@@ -443,27 +441,7 @@ def guard_guide_answerer(
     if not output.source_ids:
         return False, "Guide answer must cite at least one source ID"
 
-    # Extract allowed IDs and chunks text from inputs
-    allowed_ids: list[str]
-    chunk_text_source = retrieved_chunks_text
-
-    if retrieved_chunks is not None:
-        allowed_ids = [c.chunk_id for c in retrieved_chunks]
-        if not chunk_text_source:
-            chunk_text_source = " ".join(
-                c.text for c in retrieved_chunks if c.chunk_id in output.source_ids
-            )
-    elif retrieved_source_ids and isinstance(retrieved_source_ids[0], RetrievedChunk):
-        chunks_list = [c for c in retrieved_source_ids if isinstance(c, RetrievedChunk)]
-        allowed_ids = [c.chunk_id for c in chunks_list]
-        if not chunk_text_source:
-            chunk_text_source = " ".join(
-                c.text for c in chunks_list if c.chunk_id in output.source_ids
-            )
-    else:
-        allowed_ids = [str(sid) for sid in retrieved_source_ids]
-
-    retrieved_set = set(allowed_ids)
+    retrieved_set = {c.chunk_id for c in retrieved_chunks}
     if not set(output.source_ids).issubset(retrieved_set):
         return (
             False,
@@ -489,11 +467,13 @@ def guard_guide_answerer(
         if tip_tokens & DISRESPECTFUL_WORDS:
             return False, "Disrespectful register: try_this_week must not use तुम/तुमने"
 
-    # Number integrity against retrieved chunks text
+    # Number integrity against cited chunks text
+    cited_chunks = [c for c in retrieved_chunks if c.chunk_id in output.source_ids]
+    cited_text = " ".join(c.text for c in cited_chunks)
+    cited_numbers = set(extract_numbers(cited_text))
     answer_numbers = extract_numbers(output.answer_hi)
-    chunks_numbers = set(extract_numbers(chunk_text_source))
     for num in answer_numbers:
-        if num not in chunks_numbers:
+        if num not in cited_numbers:
             return False, f"Unauthorized number {num} in guide answer"
 
     if not (0.0 <= output.confidence <= 1.0):

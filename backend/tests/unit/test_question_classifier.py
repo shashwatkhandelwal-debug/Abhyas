@@ -21,14 +21,11 @@ from backend.app.llm.schemas import (
 async def test_classify_question_pedagogy_success() -> None:
     """Classifies a pedagogy question into pedagogy with valid search query."""
     mock_output = {
-        "tool_name": "question_classifier",
-        "input": {
-            "category": "pedagogy",
-            "needs_clarification": False,
-            "clarifying_question_hi": "",
-            "search_query_hi": "हासिल वाले जोड़ की गतिविधि",
-            "confidence": 0.95,
-        },
+        "category": "pedagogy",
+        "needs_clarification": False,
+        "clarifying_question_hi": "",
+        "search_query_hi": "हासिल वाले जोड़ की गतिविधि",
+        "confidence": 0.95,
     }
 
     with patch(
@@ -49,14 +46,11 @@ async def test_classify_question_pedagogy_success() -> None:
 async def test_classify_question_needs_clarification() -> None:
     """Ambiguous question triggers needs_clarification with respectful clarifying question."""
     mock_output = {
-        "tool_name": "question_classifier",
-        "input": {
-            "category": "classroom_management",
-            "needs_clarification": True,
-            "clarifying_question_hi": "क्या आप बता सकती हैं कि बच्चे किस विषय में ध्यान नहीं देते?",
-            "search_query_hi": "",
-            "confidence": 0.88,
-        },
+        "category": "classroom_management",
+        "needs_clarification": True,
+        "clarifying_question_hi": "क्या आप बता सकती हैं कि बच्चे किस विषय में ध्यान नहीं देते?",
+        "search_query_hi": "",
+        "confidence": 0.88,
     }
 
     with patch(
@@ -71,6 +65,30 @@ async def test_classify_question_needs_clarification() -> None:
 
 
 @pytest.mark.asyncio
+async def test_classify_question_clarification_suppression_when_already_asked() -> None:
+    """If clarifying_already_asked is True, forces needs_clarification=False, empty clarifying_question_hi,
+    and sets search_query_hi to clean_question if empty."""
+    mock_output = {
+        "category": "classroom_management",
+        "needs_clarification": True,
+        "clarifying_question_hi": "क्या आप बता सकती हैं कि क्या समस्या आ रही है?",
+        "search_query_hi": "",
+        "confidence": 0.85,
+    }
+
+    with patch(
+        "backend.app.llm.roles.question_classifier.call_tool", new_callable=AsyncMock
+    ) as m_tool:
+        m_tool.return_value = mock_output
+        result = await classify_question("बच्चे ध्यान नहीं देते", clarifying_already_asked=True)
+
+        assert result.output.needs_clarification is False
+        assert result.output.clarifying_question_hi == ""
+        assert result.output.search_query_hi == "बच्चे ध्यान नहीं देते"
+        assert result.guarded is True
+
+
+@pytest.mark.asyncio
 async def test_classify_question_empty_input_fallback() -> None:
     """Empty question string triggers immediate clarification fallback without calling LLM."""
     with patch(
@@ -80,6 +98,7 @@ async def test_classify_question_empty_input_fallback() -> None:
 
         assert m_tool.call_count == 0
         assert result.output.needs_clarification is True
+        assert result.output.clarifying_question_hi == "कृपया अपना सवाल थोड़ा विस्तार से पूछें।"
         assert result.used_fallback is True
 
 
@@ -87,24 +106,18 @@ async def test_classify_question_empty_input_fallback() -> None:
 async def test_classify_question_retry_on_guard_failure() -> None:
     """Retries once if initial output fails guard (e.g. disrespectful register in clarifying question)."""
     invalid_out = {
-        "tool_name": "question_classifier",
-        "input": {
-            "category": "classroom_management",
-            "needs_clarification": True,
-            "clarifying_question_hi": "तुम बताओ कि बच्चे क्यों नहीं पढ़ते?",  # Disrespectful तुम
-            "search_query_hi": "",
-            "confidence": 0.9,
-        },
+        "category": "classroom_management",
+        "needs_clarification": True,
+        "clarifying_question_hi": "तुम बताओ कि बच्चे क्यों नहीं पढ़ते?",  # Disrespectful तुम
+        "search_query_hi": "",
+        "confidence": 0.9,
     }
     valid_out = {
-        "tool_name": "question_classifier",
-        "input": {
-            "category": "classroom_management",
-            "needs_clarification": True,
-            "clarifying_question_hi": "आप बता सकती हैं कि समस्या कब आती है?",
-            "search_query_hi": "",
-            "confidence": 0.9,
-        },
+        "category": "classroom_management",
+        "needs_clarification": True,
+        "clarifying_question_hi": "आप बता सकती हैं कि समस्या कब आती है?",
+        "search_query_hi": "",
+        "confidence": 0.9,
     }
 
     with patch(
@@ -121,13 +134,14 @@ async def test_classify_question_retry_on_guard_failure() -> None:
 
 @pytest.mark.asyncio
 async def test_classify_question_deterministic_fallback_on_llm_unavailable() -> None:
-    """Falls back to deterministic classification if LLM is unavailable."""
+    """Falls back to deterministic classification immediately if LLM is unavailable (no retry)."""
     with patch(
         "backend.app.llm.roles.question_classifier.call_tool", new_callable=AsyncMock
     ) as m_tool:
         m_tool.side_effect = LLMUnavailable("API error")
         result = await classify_question("कक्षा में तीलियों का उपयोग कैसे करें?")
 
+        assert m_tool.call_count == 1
         assert result.used_fallback is True
         assert result.output.category == "pedagogy"
         assert result.output.search_query_hi == "कक्षा में तीलियों का उपयोग कैसे करें?"

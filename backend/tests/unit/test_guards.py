@@ -28,6 +28,7 @@ from backend.app.llm.schemas import (
     KeyPointEvaluation,
     PageOCROutput,
     QuestionClassifierOutput,
+    RetrievedChunk,
 )
 from backend.app.rule_engine.domain import (
     ChildResponse,
@@ -627,90 +628,179 @@ def test_guard_question_classifier_fail_missing_search_query() -> None:
 
 # ── 7. guard_guide_answerer (§5.8) ───────────────────────────────────────────
 def test_guard_guide_answerer_pass_1() -> None:
-    chunks_text = "कक्षा 2 में 10-10 के बंडल बनाकर 52 संख्या सिखाई जाती है।"
+    chunks = [
+        RetrievedChunk(
+            chunk_id="chunk-1",
+            source_short_hi="गणित",
+            text="कक्षा 2 में 10-10 के बंडल बनाकर 52 संख्या सिखाई जाती है।",
+        ),
+        RetrievedChunk(
+            chunk_id="chunk-2",
+            source_short_hi="भाषा",
+            text="अन्य जानकारी",
+        ),
+    ]
     out = GuideAnswererOutput(
         answer_hi="आप बच्चों को 10-10 तीलियों के बंडल बनाकर 52 संख्या सिखा सकती हैं।",
         source_ids=["chunk-1"],
         try_this_week_hi="कक्षा में तीलियों के बंडल बनवाएँ।",
         confidence=0.85,
     )
-    valid, msg = guard_guide_answerer(out, ["chunk-1", "chunk-2"], chunks_text)
+    valid, msg = guard_guide_answerer(out, retrieved_chunks=chunks)
     assert valid is True
     assert msg == "Valid"
 
 
 def test_guard_guide_answerer_pass_2() -> None:
-    chunks_text = "बच्चों को खेल-खेल में वर्णमाला सिखाएँ।"
+    chunks = [
+        RetrievedChunk(
+            chunk_id="chunk-a",
+            source_short_hi="भाषा संदर्शिका",
+            text="बच्चों को खेल-खेल में वर्णमाला सिखाएँ।",
+        )
+    ]
     out = GuideAnswererOutput(
         answer_hi="आप बच्चों के साथ वर्णमाला का खेल खेल सकती हैं।",
         source_ids=["chunk-a"],
         try_this_week_hi="अक्षर कार्ड से खेलें।",
         confidence=0.9,
     )
-    valid, msg = guard_guide_answerer(out, ["chunk-a"], chunks_text)
+    valid, msg = guard_guide_answerer(out, retrieved_chunks=chunks)
     assert valid is True
     assert msg == "Valid"
 
 
 def test_guard_guide_answerer_pass_3() -> None:
-    chunks_text = "प्राथमिक स्तर पर गणित अभ्यास के 5 मुख्य चरण हैं।"
+    chunks = [
+        RetrievedChunk(
+            chunk_id="c1",
+            source_short_hi="गणित संदर्शिका",
+            text="प्राथमिक स्तर पर गणित अभ्यास के 5 मुख्य चरण हैं।",
+        ),
+        RetrievedChunk(
+            chunk_id="c2",
+            source_short_hi="शिक्षक संदर्शिका",
+            text="गणित अभ्यास में चरणबद्ध तरीके से आगे बढ़ें।",
+        ),
+        RetrievedChunk(
+            chunk_id="c3",
+            source_short_hi="परिशिष्ट",
+            text="अतिरिक्त विवरण",
+        ),
+    ]
     out = GuideAnswererOutput(
         answer_hi="आपके लिए यह समझना उपयोगी होगा कि गणित के 5 चरण होते हैं।",
         source_ids=["c1", "c2"],
         try_this_week_hi="पहला चरण लागू करें।",
         confidence=0.8,
     )
-    valid, msg = guard_guide_answerer(out, ["c1", "c2", "c3"], chunks_text)
+    valid, msg = guard_guide_answerer(out, retrieved_chunks=chunks)
     assert valid is True
     assert msg == "Valid"
 
 
 def test_guard_guide_answerer_fail_empty_sources() -> None:
+    chunks = [
+        RetrievedChunk(
+            chunk_id="c1",
+            source_short_hi="संदर्शिका",
+            text="कुछ जानकारी",
+        )
+    ]
     out = GuideAnswererOutput(
         answer_hi="आप ऐसा कर सकती हैं।",
         source_ids=[],
         try_this_week_hi="",
         confidence=0.8,
     )
-    valid, msg = guard_guide_answerer(out, ["c1"], "कुछ जानकारी")
+    valid, msg = guard_guide_answerer(out, retrieved_chunks=chunks)
     assert valid is False
     assert "source" in msg
 
 
 def test_guard_guide_answerer_fail_uncited_source() -> None:
+    chunks = [
+        RetrievedChunk(
+            chunk_id="c1",
+            source_short_hi="संदर्शिका",
+            text="कुछ जानकारी",
+        ),
+        RetrievedChunk(
+            chunk_id="c2",
+            source_short_hi="संदर्शिका",
+            text="कुछ जानकारी",
+        ),
+    ]
     out = GuideAnswererOutput(
         answer_hi="आप ऐसा कर सकती हैं।",
         source_ids=["hallucinated-chunk"],
         try_this_week_hi="",
         confidence=0.8,
     )
-    valid, msg = guard_guide_answerer(out, ["c1", "c2"], "कुछ जानकारी")
+    valid, msg = guard_guide_answerer(out, retrieved_chunks=chunks)
     assert valid is False
     assert "source" in msg or "hallucinated" in msg
 
 
 def test_guard_guide_answerer_fail_unauthorized_number() -> None:
-    chunks_text = "कक्षा में तीलियाँ गिनवाएँ।"
+    chunks = [
+        RetrievedChunk(
+            chunk_id="c1",
+            source_short_hi="संदर्शिका",
+            text="कक्षा में तीलियाँ गिनवाएँ।",
+        )
+    ]
     out = GuideAnswererOutput(
         answer_hi="आप बच्चों को 99 तीलियाँ गिनने के लिए कहें।",  # 99 not in chunks_text!
         source_ids=["c1"],
         try_this_week_hi="",
         confidence=0.8,
     )
-    valid, msg = guard_guide_answerer(out, ["c1"], chunks_text)
+    valid, msg = guard_guide_answerer(out, retrieved_chunks=chunks)
     assert valid is False
     assert "number" in msg or "99" in msg
 
 
+def test_guard_guide_answerer_fail_number_in_uncited_chunk_only() -> None:
+    """Number check only permits numbers in CITED chunks, not merely retrieved chunks."""
+    chunks = [
+        RetrievedChunk(
+            chunk_id="c1",
+            source_short_hi="संदर्शिका",
+            text="कक्षा में तीलियाँ गिनवाएँ।",
+        ),
+        RetrievedChunk(
+            chunk_id="c2",
+            source_short_hi="गणित",
+            text="कक्षा में 42 तीलियाँ गिनवाएँ।",  # 42 is in c2, but c2 is NOT cited!
+        ),
+    ]
+    out = GuideAnswererOutput(
+        answer_hi="आप बच्चों को 42 तीलियाँ गिनने के लिए कहें।",
+        source_ids=["c1"],  # only c1 is cited!
+        try_this_week_hi="",
+        confidence=0.8,
+    )
+    valid, msg = guard_guide_answerer(out, retrieved_chunks=chunks)
+    assert valid is False
+    assert "Unauthorized number 42" in msg
+
+
 def test_guard_guide_answerer_fail_disrespectful_register() -> None:
-    chunks_text = "तीलियाँ गिनवाएँ।"
+    chunks = [
+        RetrievedChunk(
+            chunk_id="c1",
+            source_short_hi="संदर्शिका",
+            text="तीलियाँ गिनवाएँ।",
+        )
+    ]
     out = GuideAnswererOutput(
         answer_hi="तुम बच्चों को तीलियाँ गिनने को कहो।",  # Disrespectful तुम
         source_ids=["c1"],
         try_this_week_hi="",
         confidence=0.8,
     )
-    valid, msg = guard_guide_answerer(out, ["c1"], chunks_text)
+    valid, msg = guard_guide_answerer(out, retrieved_chunks=chunks)
     assert valid is False
     assert "register" in msg or "आप" in msg or "तुम" in msg
 
@@ -1035,6 +1125,13 @@ def test_guard_question_classifier_additional_branches() -> None:
 
 
 def test_guard_guide_answerer_additional_branches() -> None:
+    chunks = [
+        RetrievedChunk(
+            chunk_id="c1",
+            source_short_hi="संदर्शिका",
+            text="शब्द कुछ जानकारी",
+        )
+    ]
     # Word budget exceeded (> 80 words)
     out_long = GuideAnswererOutput(
         answer_hi="आप " + "शब्द " * 85,
@@ -1042,7 +1139,7 @@ def test_guard_guide_answerer_additional_branches() -> None:
         try_this_week_hi="",
         confidence=0.8,
     )
-    valid_w, msg_w = guard_guide_answerer(out_long, ["c1"], "शब्द")
+    valid_w, msg_w = guard_guide_answerer(out_long, retrieved_chunks=chunks)
     assert valid_w is False
     assert "exceeds maximum word budget" in msg_w
 
@@ -1053,6 +1150,6 @@ def test_guard_guide_answerer_additional_branches() -> None:
         try_this_week_hi="",
         confidence=-0.5,
     )
-    valid_cf, msg_cf = guard_guide_answerer(out_conf, ["c1"], "कुछ जानकारी")
+    valid_cf, msg_cf = guard_guide_answerer(out_conf, retrieved_chunks=chunks)
     assert valid_cf is False
     assert "Confidence out of bounds" in msg_cf

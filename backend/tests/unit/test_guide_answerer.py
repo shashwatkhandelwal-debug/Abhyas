@@ -45,13 +45,10 @@ def sample_chunks() -> list[RetrievedChunk]:
 async def test_answer_guide_question_success(sample_chunks: list[RetrievedChunk]) -> None:
     """Answers question using retrieved excerpts and includes source citation and tip."""
     mock_output = {
-        "tool_name": "guide_answerer",
-        "input": {
-            "answer_hi": "घटाव सिखाते समय 10 तीलियों का एक बंडल खोलकर समझाएँ ताकि बच्चे स्थानीय मान समझ सकें।",
-            "source_ids": ["chunk_math_01"],
-            "try_this_week_hi": "कक्षा में बंडल खोलकर अभ्यास कराएँ।",
-            "confidence": 0.95,
-        },
+        "answer_hi": "घटाव सिखाते समय 10 तीलियों का एक बंडल खोलकर समझाएँ ताकि बच्चे स्थानीय मान समझ सकें।",
+        "source_ids": ["chunk_math_01"],
+        "try_this_week_hi": "कक्षा में बंडल खोलकर अभ्यास कराएँ।",
+        "confidence": 0.95,
     }
 
     with patch("backend.app.llm.roles.guide_answerer.call_tool", new_callable=AsyncMock) as m_tool:
@@ -123,18 +120,51 @@ async def test_answer_guide_question_empty_chunks_escalates() -> None:
 
 
 @pytest.mark.asyncio
+async def test_answer_guide_question_low_retrieval_score_escalates() -> None:
+    """If all retrieved chunks have scores below RETRIEVAL_MIN_SCORE, escalate immediately without calling LLM."""
+    low_score_chunks = [
+        RetrievedChunk(
+            chunk_id="chunk_low_01",
+            source_short_hi="गणित संदर्शिका",
+            section="संख्या ज्ञान",
+            page=12,
+            text="कुछ जानकारी",
+            score=0.15,  # < 0.25 (RETRIEVAL_MIN_SCORE)
+        ),
+        RetrievedChunk(
+            chunk_id="chunk_low_02",
+            source_short_hi="गणित संदर्शिका",
+            section="संख्या ज्ञान",
+            page=13,
+            text="अन्य जानकारी",
+            score=0.20,  # < 0.25
+        ),
+    ]
+
+    with patch("backend.app.llm.roles.guide_answerer.call_tool", new_callable=AsyncMock) as m_tool:
+        result = await answer_guide_question(
+            question="कठिन सवाल?",
+            category="pedagogy",
+            chunks=low_score_chunks,
+            address_form="f",
+        )
+
+        assert m_tool.call_count == 0
+        assert result.escalated is True
+        assert result.used_fallback is True
+        assert "ARP से पूछकर" in result.answer_text_hi
+
+
+@pytest.mark.asyncio
 async def test_answer_guide_question_low_confidence_escalates(
     sample_chunks: list[RetrievedChunk],
 ) -> None:
     """Confidence below threshold (< 0.6) escalates answer to ARP."""
     mock_output = {
-        "tool_name": "guide_answerer",
-        "input": {
-            "answer_hi": "मार्गदर्शिका में इस प्रश्न का स्पष्ट उत्तर नहीं है।",
-            "source_ids": ["chunk_math_01"],
-            "try_this_week_hi": "",
-            "confidence": 0.35,  # Below 0.60
-        },
+        "answer_hi": "मार्गदर्शिका में इस प्रश्न का स्पष्ट उत्तर नहीं है।",
+        "source_ids": ["chunk_math_01"],
+        "try_this_week_hi": "",
+        "confidence": 0.35,  # Below 0.60
     }
 
     with patch("backend.app.llm.roles.guide_answerer.call_tool", new_callable=AsyncMock) as m_tool:
@@ -156,22 +186,16 @@ async def test_answer_guide_question_retry_on_unauthorized_number(
 ) -> None:
     """Number not in source excerpt fails guard and triggers retry."""
     invalid_out = {
-        "tool_name": "guide_answerer",
-        "input": {
-            "answer_hi": "कक्षा में 99 तीलियाँ लेकर समझाएँ।",  # 99 not in excerpts
-            "source_ids": ["chunk_math_01"],
-            "try_this_week_hi": "",
-            "confidence": 0.9,
-        },
+        "answer_hi": "कक्षा में 99 तीलियाँ लेकर समझाएँ।",  # 99 not in excerpts
+        "source_ids": ["chunk_math_01"],
+        "try_this_week_hi": "",
+        "confidence": 0.9,
     }
     valid_out = {
-        "tool_name": "guide_answerer",
-        "input": {
-            "answer_hi": "कक्षा में 10 तीलियों का बंडल खोलकर समझाएँ।",  # 10 is in excerpts
-            "source_ids": ["chunk_math_01"],
-            "try_this_week_hi": "तीलियों का उपयोग करें।",
-            "confidence": 0.9,
-        },
+        "answer_hi": "कक्षा में 10 तीलियों का बंडल खोलकर समझाएँ।",  # 10 is in excerpts
+        "source_ids": ["chunk_math_01"],
+        "try_this_week_hi": "तीलियों का उपयोग करें।",
+        "confidence": 0.9,
     }
 
     with patch("backend.app.llm.roles.guide_answerer.call_tool", new_callable=AsyncMock) as m_tool:
@@ -192,7 +216,7 @@ async def test_answer_guide_question_retry_on_unauthorized_number(
 async def test_answer_guide_question_llm_unavailable_escalates(
     sample_chunks: list[RetrievedChunk],
 ) -> None:
-    """LLMUnavailable escalates safely to ARP."""
+    """LLMUnavailable escalates safely to ARP without retry."""
     with patch("backend.app.llm.roles.guide_answerer.call_tool", new_callable=AsyncMock) as m_tool:
         m_tool.side_effect = LLMUnavailable("API down")
         result = await answer_guide_question(
@@ -202,6 +226,7 @@ async def test_answer_guide_question_llm_unavailable_escalates(
             address_form="f",
         )
 
+        assert m_tool.call_count == 1
         assert result.escalated is True
         assert result.used_fallback is True
         assert "ARP से पूछकर" in result.answer_text_hi
@@ -233,5 +258,5 @@ def test_guide_answerer_goldens() -> None:
         assert data["role"] == "guide_answerer"
         out = GuideAnswererOutput.model_validate(data["output"])
         chunks = [RetrievedChunk.model_validate(c) for c in data["input"]["chunks"]]
-        is_valid, msg = guard_guide_answerer(out, retrieved_source_ids=chunks)
+        is_valid, msg = guard_guide_answerer(out, retrieved_chunks=chunks)
         assert is_valid is True, f"Golden fixture {f.name} failed guard: {msg}"

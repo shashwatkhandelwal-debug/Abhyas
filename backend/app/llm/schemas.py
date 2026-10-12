@@ -122,6 +122,7 @@ class RetrievedChunk(BaseModel):
     section: str = ""
     page: int | None = None
     text: str
+    score: float | None = None
 
 
 class GuideAnswererOutput(BaseModel):
