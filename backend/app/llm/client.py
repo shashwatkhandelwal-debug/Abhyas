@@ -1,26 +1,285 @@
 """Claude LLM Client wrapper interface and tool-forced caller (spec/05 §5.1).
 
-Task T08 implements full Anthropic API calling, caching, and MockLLM.
+Implements Anthropic Messages API calling, prompt caching, call logging,
+daily token budget guard (spec/12 §12.8), and deterministic MockLLM.
 """
 
+from __future__ import annotations
+
+import hashlib
+import json
+import logging
+import time
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
+
+import anthropic
+from anthropic import (
+    APIConnectionError,
+    APIStatusError,
+    APITimeoutError,
+    InternalServerError,
+    RateLimitError,
+)
+
+from backend.app.config import settings
+from backend.app.db.models import LLMCall
+from backend.app.db.session import async_session_factory
+
+logger = logging.getLogger("abhyas.llm.client")
 
 
 class LLMUnavailable(Exception):
-    """Raised when LLM call fails after retries (spec/05 §5.1)."""
+    """Raised when LLM call fails after retries or service is unavailable (spec/05 §5.1)."""
 
     pass
+
+
+class ModelConfigurationError(RuntimeError):
+    """Raised when a configured Claude model ID is invalid or rejected by Anthropic (spec/05 §5.1)."""
+
+    pass
+
+
+class TokenBudgetExceeded(LLMUnavailable):
+    """Raised when the daily token budget has been exceeded (spec/12 §12.8)."""
+
+    pass
+
+
+class TokenBudgetTracker:
+    """In-memory and DB-backed tracker for daily token budget (spec/12 §12.8)."""
+
+    def __init__(self, daily_budget: int | None = None) -> None:
+        self.daily_budget: int = daily_budget or settings.LLM_DAILY_TOKEN_BUDGET
+        self._current_date: str = datetime.now(UTC).strftime("%Y-%m-%d")
+        self._tokens_used_today: int = 0
+
+    def _check_and_reset_day(self) -> None:
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        if today != self._current_date:
+            self._current_date = today
+            self._tokens_used_today = 0
+
+    def record_usage(
+        self, input_tokens: int, output_tokens: int, cache_read_tokens: int = 0
+    ) -> None:
+        """Records token consumption for the current day."""
+        self._check_and_reset_day()
+        self._tokens_used_today += input_tokens + output_tokens + cache_read_tokens
+
+    def get_tokens_used_today(self) -> int:
+        """Returns total tokens consumed today."""
+        self._check_and_reset_day()
+        return self._tokens_used_today
+
+    def is_exceeded(self) -> bool:
+        """Returns True if today's token usage has reached or exceeded the budget."""
+        self._check_and_reset_day()
+        return self._tokens_used_today >= self.daily_budget
+
+    def reset(self) -> None:
+        """Resets the tracker counter for testing."""
+        self._tokens_used_today = 0
+
+
+# Global singleton token budget tracker
+budget_tracker = TokenBudgetTracker()
+
+# In-memory prompt cache
+_PROMPT_CACHE: dict[str, str] = {}
+
+
+def load_prompt(role: str, version: str = "v1") -> str:
+    """Loads prompt template for given role and version string.
+
+    Looks in backend/app/llm/prompts/{role}.{version}.md.
+    Falls back to Python constants if markdown file is absent.
+    """
+    cache_key = f"{role}:{version}"
+    if cache_key in _PROMPT_CACHE:
+        return _PROMPT_CACHE[cache_key]
+
+    prompt_dir = Path(__file__).parent / "prompts"
+    prompt_file = prompt_dir / f"{role}.{version}.md"
+    if prompt_file.is_file():
+        text = prompt_file.read_text(encoding="utf-8")
+        _PROMPT_CACHE[cache_key] = text
+        return text
+
+    # Try fallback to Python prompt modules
+    try:
+        import importlib
+
+        mod = importlib.import_module(f"backend.app.llm.prompts.{role}")
+        const_name = f"{role.upper()}_SYSTEM_PROMPT"
+        if hasattr(mod, const_name):
+            text = str(getattr(mod, const_name))
+            _PROMPT_CACHE[cache_key] = text
+            return text
+    except (ImportError, AttributeError):
+        pass
+
+    logger.warning("Prompt not found for %s.%s, using empty prompt", role, version)
+    return ""
+
+
+async def log_llm_call(
+    role: str,
+    prompt_version: str,
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    cache_read_tokens: int,
+    latency_ms: int,
+    outcome: str,
+) -> None:
+    """Logs an LLM call row to the database (spec/05 §5.1)."""
+    try:
+        async with async_session_factory() as session:
+            call_record = LLMCall(
+                role=role,
+                prompt_version=prompt_version,
+                model=model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cache_read_tokens=cache_read_tokens,
+                latency_ms=latency_ms,
+                outcome=outcome,
+            )
+            session.add(call_record)
+            await session.commit()
+    except Exception as exc:
+        # DB logging must never crash the application runtime
+        logger.debug("Failed to record llm_call to database: %s", exc)
+
+
+def _generate_schema_default(schema: dict[str, Any], role: str | None = None) -> dict[str, Any]:
+    """Generates schema-valid default data for MockLLM."""
+    # Role-specific tailored defaults that pass spec guards
+    if role == "intent_router":
+        return {"intent": "answer_for_step", "confidence": 0.95}
+    if role == "act_tagger":
+        return {
+            "acts": ["ask_to_explain"],
+            "addressed_child": "ravi",
+            "problem": None,
+            "quote": "रवि, 52 में से 17 कैसे घटाया? बताओ।",
+        }
+    if role == "child_voice":
+        return {"line_hi": "पैंतालीस!"}
+    if role == "coach":
+        return {
+            "scores": {"crit_explaining": 2},
+            "evidence": {"crit_explaining": "रवि, 52 में से 17 कैसे घटाया? बताओ।"},
+            "strength_hi": "आपने बच्चे से उसके सोचने का तरीका पूछा।",
+            "change_hi": "अगली बार बच्चे को तीलियों से करके देखने को कहें।",
+            "exact_words_hi": "बंडल और तीली लेकर देखो।",
+            "improved_since_last": True,
+            "confidence": 0.85,
+        }
+    if role == "fidelity_checker":
+        return {
+            "points": [{"id": "kp1", "status": "covered", "quote": "बंडल और तीली"}],
+            "misconceptions": [],
+            "confidence": 0.9,
+        }
+    if role == "question_classifier":
+        return {
+            "category": "pedagogy",
+            "needs_clarification": False,
+            "clarifying_question_hi": "",
+            "search_query_hi": "घटाव",
+            "confidence": 0.9,
+        }
+    if role == "guide_answerer":
+        return {
+            "answer_hi": "बच्चों को बंडल और तीलियों की मदद से दहाई-इकाई सिखाएं।",
+            "source_ids": ["chunk-1"],
+            "try_this_week_hi": "कक्षा में तीलियां इस्तेमाल करें।",
+            "confidence": 0.9,
+        }
+
+    # Recursive generator for arbitrary JSON schema
+    properties = schema.get("properties", {})
+    result: dict[str, Any] = {}
+    for key, prop in properties.items():
+        prop_type = prop.get("type")
+        if "enum" in prop and prop["enum"]:
+            result[key] = prop["enum"][0]
+        elif prop_type == "string":
+            result[key] = prop.get("default", "")
+        elif prop_type == "integer":
+            result[key] = prop.get("default", 0)
+        elif prop_type == "number":
+            result[key] = prop.get("default", 0.0)
+        elif prop_type == "boolean":
+            result[key] = prop.get("default", False)
+        elif prop_type == "array":
+            result[key] = prop.get("default", [])
+        elif prop_type == "object":
+            result[key] = _generate_schema_default(prop)
+        else:
+            result[key] = None
+    return result
 
 
 class MockLLM:
     """Mock LLM returning golden outputs or schema defaults (spec/05 §5.1).
 
     Selected when ANTHROPIC_API_KEY is empty or LLM_PROVIDER=mock.
-    Full fixture loader implemented by Lane B in task T08.
+    The whole product runs end-to-end on MockLLM.
     """
 
-    def __init__(self, golden_dir: str | None = None) -> None:
-        self.golden_dir = golden_dir
+    def __init__(self, golden_dir: Path | str | None = None) -> None:
+        if golden_dir is None:
+            self.golden_dir = Path(__file__).parents[2] / "tests" / "golden"
+        else:
+            self.golden_dir = Path(golden_dir)
+
+    def _find_golden_output(
+        self,
+        role: str,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any] | None:
+        """Looks for a golden fixture file matching the role and input."""
+        role_dir = self.golden_dir / role
+        if not role_dir.is_dir():
+            return None
+
+        # Try to find matching fixture
+        files = list(role_dir.glob("*.json"))
+        if not files:
+            return None
+
+        # If messages provided, compute hash
+        msg_str = json.dumps(messages, sort_keys=True) if messages else ""
+        content_hash = hashlib.sha256(msg_str.encode("utf-8")).hexdigest()[:8]
+
+        # Check for direct hash match or inspect files
+        for f in files:
+            if content_hash in f.stem:
+                try:
+                    data = json.loads(f.read_text(encoding="utf-8"))
+                    if isinstance(data, dict) and "output" in data:
+                        return data["output"]  # type: ignore
+                    elif isinstance(data, dict):
+                        return data
+                except Exception:
+                    continue
+
+        # If no specific match, use the first fixture
+        try:
+            data = json.loads(files[0].read_text(encoding="utf-8"))
+            if isinstance(data, dict) and "output" in data:
+                return data["output"]  # type: ignore
+            elif isinstance(data, dict):
+                return data
+        except Exception:
+            return None
+
+        return None
 
     async def call_tool(
         self,
@@ -29,10 +288,22 @@ class MockLLM:
         input_schema: dict[str, Any],
         system: str = "",
         messages: list[dict[str, Any]] | None = None,
+        prompt_version: str = "v1",
     ) -> dict[str, Any]:
         """Returns mock golden dictionary conforming to input_schema."""
-        # Simple schema-valid mock return default
-        return {}
+        golden = self._find_golden_output(role, messages)
+        if golden is not None:
+            return golden
+
+        return _generate_schema_default(input_schema, role=role)
+
+
+_mock_llm_instance = MockLLM()
+
+
+def get_mock_llm() -> MockLLM:
+    """Returns singleton MockLLM instance."""
+    return _mock_llm_instance
 
 
 async def call_tool(
@@ -45,11 +316,270 @@ async def call_tool(
     temperature: float = 0.0,
     max_tokens: int = 1024,
     timeout_s: float = 8.0,
+    prompt_version: str = "v1",
 ) -> dict[str, Any]:
     """Spec 05 §5.1: Call Claude Messages API with forced tool use.
 
     Uses Anthropic Messages API with tools=[{name, description, input_schema}]
     and tool_choice={"type": "tool", "name": tool_name}; returns the tool input dict.
-    Implemented by Lane B in task T08.
     """
-    raise NotImplementedError("spec/05 §5.1 — call_tool owned by Lane B (T08)")
+    # 1. Check if mock provider is active
+    if not settings.ANTHROPIC_API_KEY or settings.LLM_PROVIDER == "mock":
+        t0 = time.perf_counter()
+        result = await get_mock_llm().call_tool(
+            role=role,
+            tool_name=tool_name,
+            input_schema=input_schema,
+            system=system,
+            messages=messages,
+            prompt_version=prompt_version,
+        )
+        latency_ms = int((time.perf_counter() - t0) * 1000)
+        await log_llm_call(
+            role=role,
+            prompt_version=prompt_version,
+            model="mock",
+            input_tokens=0,
+            output_tokens=0,
+            cache_read_tokens=0,
+            latency_ms=latency_ms,
+            outcome="mock_success",
+        )
+        return result
+
+    # 2. Daily token budget guard (spec/12 §12.8)
+    if budget_tracker.is_exceeded():
+        logger.warning(
+            "LLM daily token budget exceeded: %d >= %d",
+            budget_tracker.get_tokens_used_today(),
+            budget_tracker.daily_budget,
+        )
+        await log_llm_call(
+            role=role,
+            prompt_version=prompt_version,
+            model=model,
+            input_tokens=0,
+            output_tokens=0,
+            cache_read_tokens=0,
+            latency_ms=0,
+            outcome="budget_exceeded",
+        )
+        raise TokenBudgetExceeded(f"Daily token budget of {budget_tracker.daily_budget} exceeded")
+
+    # 3. Setup Anthropic client and tool parameters
+    client = anthropic.AsyncAnthropic(
+        api_key=settings.ANTHROPIC_API_KEY,
+        timeout=timeout_s,
+    )
+
+    system_blocks: list[dict[str, Any]] = [
+        {
+            "type": "text",
+            "text": system,
+            "cache_control": {"type": "ephemeral"},
+        }
+    ]
+
+    tools_spec: list[dict[str, Any]] = [
+        {
+            "name": tool_name,
+            "description": f"Tool for role {role}",
+            "input_schema": input_schema,
+        }
+    ]
+    tool_choice: dict[str, Any] = {"type": "tool", "name": tool_name}
+
+    retries = 0
+    max_retries = settings.LLM_MAX_RETRIES
+
+    while True:
+        t0 = time.perf_counter()
+        try:
+            create_kwargs: dict[str, Any] = {
+                "model": model,
+                "max_tokens": max_tokens,
+                "system": system_blocks,
+                "messages": messages,
+                "tools": tools_spec,
+                "tool_choice": tool_choice,
+                "extra_body": {"temperature": temperature},
+            }
+            response = await client.messages.create(**create_kwargs)
+            latency_ms = int((time.perf_counter() - t0) * 1000)
+
+            # Extract usage
+            input_tokens = response.usage.input_tokens
+            output_tokens = response.usage.output_tokens
+            cache_read_tokens = getattr(response.usage, "cache_read_input_tokens", 0) or 0
+
+            # Record token usage
+            budget_tracker.record_usage(
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cache_read_tokens=cache_read_tokens,
+            )
+
+            # Extract tool use output
+            for content_block in response.content:
+                if (
+                    getattr(content_block, "type", None) == "tool_use"
+                    and getattr(content_block, "name", None) == tool_name
+                ):
+                    raw_input = getattr(content_block, "input", {})
+                    output_data: dict[str, Any] = raw_input if isinstance(raw_input, dict) else {}
+                    await log_llm_call(
+                        role=role,
+                        prompt_version=prompt_version,
+                        model=model,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        cache_read_tokens=cache_read_tokens,
+                        latency_ms=latency_ms,
+                        outcome="success",
+                    )
+                    return output_data
+
+            # If tool_use was not found
+            await log_llm_call(
+                role=role,
+                prompt_version=prompt_version,
+                model=model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cache_read_tokens=cache_read_tokens,
+                latency_ms=latency_ms,
+                outcome="no_tool_call",
+            )
+            raise LLMUnavailable(
+                f"Anthropic response did not contain expected tool_use block for {tool_name}"
+            )
+
+        except (
+            APITimeoutError,
+            APIConnectionError,
+            RateLimitError,
+            InternalServerError,
+        ) as err:
+            latency_ms = int((time.perf_counter() - t0) * 1000)
+            if retries < max_retries:
+                retries += 1
+                logger.warning(
+                    "LLM call retry %d/%d for role %s due to %s",
+                    retries,
+                    max_retries,
+                    role,
+                    err,
+                )
+                continue
+
+            outcome = "timeout" if isinstance(err, APITimeoutError) else "failed"
+            await log_llm_call(
+                role=role,
+                prompt_version=prompt_version,
+                model=model,
+                input_tokens=0,
+                output_tokens=0,
+                cache_read_tokens=0,
+                latency_ms=latency_ms,
+                outcome=outcome,
+            )
+            raise LLMUnavailable(f"LLM call failed after retries: {err}") from err
+
+        except APIStatusError as err:
+            latency_ms = int((time.perf_counter() - t0) * 1000)
+            if err.status_code >= 500 and retries < max_retries:
+                retries += 1
+                logger.warning(
+                    "LLM call 5xx retry %d/%d for role %s: %s",
+                    retries,
+                    max_retries,
+                    role,
+                    err,
+                )
+                continue
+
+            await log_llm_call(
+                role=role,
+                prompt_version=prompt_version,
+                model=model,
+                input_tokens=0,
+                output_tokens=0,
+                cache_read_tokens=0,
+                latency_ms=latency_ms,
+                outcome="failed",
+            )
+            raise LLMUnavailable(f"Anthropic API error: {err}") from err
+
+
+async def verify_configured_models(force: bool = False) -> dict[str, bool]:
+    """Mandatory startup check: verifies configured models in production mode (spec/05 §5.1).
+
+    In production mode only, verifies that each configured model ID:
+      - CLAUDE_MODEL_FAST
+      - CLAUDE_MODEL_SMART
+      - CLAUDE_MODEL_BUILD
+    works by making one minimal test call per model.
+    Fails fast with an explicit error naming the env var if rejected;
+    DO NOT auto-substitute model names.
+    """
+    if not force and settings.ENVIRONMENT != "production":
+        logger.info(
+            "Skipping model startup check in non-production environment: %s",
+            settings.ENVIRONMENT,
+        )
+        return {}
+
+    if not settings.ANTHROPIC_API_KEY:
+        raise ModelConfigurationError(
+            "ANTHROPIC_API_KEY is not configured in production mode. "
+            "Please configure ANTHROPIC_API_KEY in your environment."
+        )
+
+    model_env_vars = [
+        ("CLAUDE_MODEL_FAST", settings.CLAUDE_MODEL_FAST),
+        ("CLAUDE_MODEL_SMART", settings.CLAUDE_MODEL_SMART),
+        ("CLAUDE_MODEL_BUILD", settings.CLAUDE_MODEL_BUILD),
+    ]
+
+    client = anthropic.AsyncAnthropic(
+        api_key=settings.ANTHROPIC_API_KEY,
+        timeout=settings.LLM_TIMEOUT_SECONDS,
+    )
+
+    results: dict[str, bool] = {}
+    tested_models: dict[str, bool] = {}
+
+    for env_var, model_id in model_env_vars:
+        if not model_id or not model_id.strip():
+            raise ModelConfigurationError(
+                f"Configured model for {env_var} is empty. "
+                f"Please specify a valid Claude model ID in {env_var}."
+            )
+
+        if model_id in tested_models:
+            results[env_var] = tested_models[model_id]
+            continue
+
+        try:
+            logger.info("Testing model ID '%s' configured in %s...", model_id, env_var)
+            await client.messages.create(
+                model=model_id,
+                max_tokens=1,
+                messages=[{"role": "user", "content": "ping"}],
+            )
+            tested_models[model_id] = True
+            results[env_var] = True
+        except Exception as exc:
+            tested_models[model_id] = False
+            error_msg = (
+                f"Configured model '{model_id}' failed startup check for {env_var}: {exc}. "
+                f"Please check and fix the {env_var} environment variable. "
+                f"Do not auto-substitute model names."
+            )
+            logger.critical(error_msg)
+            raise ModelConfigurationError(error_msg) from exc
+
+    return results
+
+
+verify_production_models = verify_configured_models
