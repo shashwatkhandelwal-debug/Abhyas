@@ -3,7 +3,7 @@
 from enum import IntEnum, StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 from backend.app.content_models import (
     KeyPoint,
@@ -65,8 +65,8 @@ class Problem(BaseModel):
 class Step(BaseModel):
     """One reasoning step, engine-rendered (§4.1)."""
 
-    code: str  # e.g. "SUB_CANNOT", "SUB_SWAP", "REGROUP_OPEN_BUNDLE"
-    nums: list[int] = Field(default_factory=list)  # every number mentioned in this step
+    code: str = Field(validation_alias=AliasChoices("code", "rule_id"))
+    nums: list[int] = Field(default_factory=list, validation_alias=AliasChoices("nums", "numbers"))
     words: list[str] = Field(default_factory=list)  # every Hindi word token that must appear
     text_hi: str  # rendered template (digits as Arabic numerals)
 
@@ -86,6 +86,14 @@ class ChildState(IntEnum):
     CAN_EXPLAIN = 1  # still wrong, explains steps (reveals the bug)
     PARTIAL = 2  # correct with scaffold on current item; may relapse
     CORRECT = 3  # correct and explains why, on any item
+
+    @classmethod
+    def _missing_(cls, value: object) -> "ChildState | None":
+        if isinstance(value, str):
+            val_upper = value.strip().upper()
+            if val_upper in cls.__members__:
+                return cls[val_upper]
+        return None
 
 
 class ChildRuntime(BaseModel):
@@ -159,7 +167,7 @@ class ChildResponse(BaseModel):
     steps: list[Step] = Field(default_factory=list)
     prior_state: ChildState
     new_state: ChildState
-    affect: Literal["neutral", "confident", "encouraged", "upset", "shy", "distracted"]
+    affect: Literal["neutral", "confident", "encouraged", "upset", "shy", "distracted", "hesitant"]
     item: Problem
     allowed_numbers: set[int] = Field(default_factory=set)
     allowed_words: set[str] = Field(default_factory=set)

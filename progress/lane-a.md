@@ -11,11 +11,21 @@ Database: None required (pure deterministic algorithms)
 - [x] T07 Rule engine (types, transitions, RuleEngine.step, placement, 100% line coverage)
 - [x] T09 Guards (all 8 spec/05 guards, >= 3 pass/fail fixtures, 97% line coverage)
 - [x] T10 act_tagger (P0: prompt v1, content/act_examples_hi.yaml with 28 examples, keyword fallback, 8 golden fixtures, labelled dataset, 100% line coverage)
+- [x] T11 child_voice (P0: prompt v1, guard wiring, retry-once + template fallback, 20 golden good/bad fixtures across all 10 kinds, live guard pass >= 90% on rule engine outputs)
 
 ## Deviations from spec
 None.
 
 ## Self-Reviews
+- Fix Forward Items 1-8:
+  1. `hindi_numbers` / `guard_child_line`: Disambiguated "दो" (verb 'give' vs number 2). "दो" counts as a number only when next to another number or before a counting noun (बंडल, तीली, तीलियाँ, बच्चे, etc.); otherwise ignored. Verified with tests ("दीदी, मुझे तीली दो ना" → [], "दो बंडल" → [2], "नौ दो ग्यारह" → [9, 2, 11]).
+  2. `guard_child_line`: Out-of-character terms match whole words via regex `\b` for Latin (ai, assistant, rule, misconception) and Devanagari word tokens (गलती, नियम). Substrings like 'email' pass cleanly.
+  3. `TELL_ANSWER` fallback: Requires stated answer, filtering out questions ("रवि, सही उत्तर क्या है?" does not trigger tell_answer; "Ravi, answer 16 hai" triggers tell_answer).
+  4. `SCOLD` fallback: Removed neutral "ध्यान दो" from scold pattern; preserved "चुप रहो", "चुपचाप", "इतना भी नहीं आता", "गलत है ना".
+  5. Problem detection in fallback: Subtraction phrases ("X में से Y", "X - Y", "X माइनस Y", "X से Y घटाओ"), addition phrases ("X और Y जोड़ो", "X + Y", "X प्लस Y"), place value ("X बंडल और Y तीलियाँ"), and literacy words ("शब्द X", "X पढ़ो"), validated against `current_item.type` before setting problem.
+  6. "all" detection: Matched as whole word/phrase (`\b(?:all|everyone)\b` and token-bounded Devanagari phrases).
+  7. Deleted legacy prompt modules `backend/app/llm/prompts/*.py`; added versioned template loader `load_prompt` in `backend/app/llm/prompts/__init__.py`.
+  8. Added unit tests for items 1-8 and all 5 evaluator samples (s1-s5) in `backend/tests/unit/test_act_tagger.py`.
 - T05: Implemented `hindi_numbers.py` (extract_numbers for Arabic/Devanagari/words/Hinglish, to_words 0-199 with exhaustive 0-100 tests), `guards.norm` and `substring_match` with rapidfuzz, and `bugs/akshar.py` with standalone regex matching all spec test cases (किताब, गुड़िया, विद्यालय, आम, संतरा). All 217 tests in test_hindi_numbers and test_akshar pass; ruff and mypy strict clean.
 - T06: Implemented all 12 procedural bug rules across subtraction (3), addition (3), place value (3), and literacy (3) plus 4 paired correct functions, step templates, and registry. Every single cell in spec/04 §4.2 tables verified with 59 parametrised unit tests in `test_bugs.py`. Ruff and mypy strict clean.
 - T07: Implemented `RuleEngine.step` in strict accordance with spec/04 §4.4 (11-step pipeline + placement mode). Fully implemented `transitions.py` (ADVANCE table and NON_ADVANCING set), `domain.py` schemas (Problem, ChildRuntime, SceneState, TaggedTurn, ChildResponse, StepResult), and backward-compatible re-exports. Created comprehensive test suites: all 14 tests in spec/04 §4.5 passing in `test_rule_engine.py` (Ravi worked example, tell relapse, partial relapse, ineffective acts, shy/scold, priority selection, interjection, whole-class concrete, determinism, property-based non-advancing fuzz test, scene end, literacy reading, serialization), plus complete branch tests in `test_rule_engine_coverage.py`. Reached 100% line coverage across all modules in `rule_engine/` (710/710 statements). All 342 unit tests pass, ruff check clean, ruff format clean, mypy --strict clean.
@@ -47,6 +57,13 @@ None.
   6. Authored `backend/tests/golden/act_tagger/labelled.jsonl` with 20 labelled teacher turns.
   7. Tested fallback tagger across 16 diverse sentences; achieved 100% line coverage on `act_tagger.py` (98/98 statements).
   8. All 434 tests passing clean. `ruff check` clean, `ruff format` clean, `mypy --strict` clean with zero issues.
+- T11: Implemented child_voice role matching spec/05 §5.5 and T11 acceptance criteria:
+  1. Authored prompt template `backend/app/llm/prompts/child_voice.v1.md` matching §5.5 verbatim with actor framing, persona cards, affect, kind, and hard rules.
+  2. Implemented `voice_child_line` in `backend/app/llm/roles/child_voice.py` strictly implementing spec/05 §5.2 role contract pattern: SILENT kind skips LLM call and returns `""` immediately; non-silent kinds call Claude via `call_tool`, validate against `ChildVoiceOutput`, run `guard_child_line`, retry once with guard failure error message on failure, and fall back to deterministic `template_line` on double failure.
+  3. Implemented deterministic `template_line` covering all 10 `ResponseKind`s (ANSWER, EXPLAIN_BUG, SCAFFOLDED_CORRECT, RELAPSE, CORRECT_EXPLAINED, PARROT, SILENT, OFF_TOPIC, INTERJECT, CONFUSED) with `_format_steps` step-budgeting ensuring word count stays strictly <= `MAX_CHILD_LINE_WORDS` (25 words).
+  4. Created 20 golden fixtures in `backend/tests/golden/child_voice/` providing both good (passing) and bad (failing) fixtures for every single `ResponseKind`.
+  5. Authored comprehensive test suite in `backend/tests/unit/test_child_voice.py`: template fallback for all 10 kinds, golden fixtures verification (all 20 fixtures), role contract with AsyncMock (silent skip, single retry on guard failure, double-failure template fallback), and live guard pass rate verification (42 rule engine responses tested, 100% pass rate >= 90%).
+  6. All 453 unit tests pass clean. `ruff check` clean, `ruff format` clean, `mypy --strict` clean with zero issues.
 
 
 

@@ -510,7 +510,7 @@ def extract_numbers(text: str) -> list[int]:
         return []
 
     norm_text = unicodedata.normalize("NFC", text).strip()
-    spans: list[tuple[int, int, int]] = []  # (start, end, val)
+    spans: list[tuple[int, int, int, bool]] = []  # (start, end, val, is_ambiguous_two)
 
     # 1. First, check for compound hundreds like "एक सौ <number>" or "सौ <number>"
     hundred_patterns = [
@@ -522,18 +522,18 @@ def extract_numbers(text: str) -> list[int]:
             sub_word = m.group(1).lower() if not is_dev else m.group(1)
             val = VARIANTS_MAP.get(sub_word)
             if val is not None and 1 <= val < 100:
-                spans.append((m.start(), m.end(), 100 + val))
+                spans.append((m.start(), m.end(), 100 + val, False))
 
     # 2. Check for Arabic digits
     for m in re.finditer(r"\b\d+\b", norm_text):
-        spans.append((m.start(), m.end(), int(m.group(0))))
+        spans.append((m.start(), m.end(), int(m.group(0)), False))
 
     # 3. Check for Devanagari numerals
     for m in re.finditer(r"[" + DEVANAGARI_DIGITS + r"]+", norm_text):
         val_str = ""
         for ch in m.group(0):
             val_str += str(DEVANAGARI_DIGITS.index(ch))
-        spans.append((m.start(), m.end(), int(val_str)))
+        spans.append((m.start(), m.end(), int(val_str), False))
 
     # 4. Check for individual words (Hindi and Roman) sorted by length desc
     # Sort keys by length descending to match greedily
@@ -548,17 +548,73 @@ def extract_numbers(text: str) -> list[int]:
             flags = re.RegexFlag(0)
 
         for m in re.finditer(pattern, norm_text, flags=flags):
-            spans.append((m.start(), m.end(), VARIANTS_MAP[word]))
+            val = VARIANTS_MAP[word]
+            matched_raw = norm_text[m.start() : m.end()].lower()
+            is_ambiguous = val == 2 and matched_raw in {"दो", "do"}
+            spans.append((m.start(), m.end(), val, is_ambiguous))
 
     # Filter overlapping spans: keep earliest starting, and longer span on collision
     # Sort by start asc, length desc
     spans.sort(key=lambda x: (x[0], -(x[1] - x[0])))
 
-    results: list[int] = []
+    chosen_spans: list[tuple[int, int, int, bool]] = []
     last_end = -1
-    for start, end, val in spans:
+    for start, end, val, is_ambiguous in spans:
         if start >= last_end:
-            results.append(val)
+            chosen_spans.append((start, end, val, is_ambiguous))
             last_end = end
+
+    # Counting nouns that disambiguate "दो" as number 2
+    counting_nouns_pattern = re.compile(
+        r"^(?:"
+        r"बंडल|bundle|"
+        r"तीली|तीलियाँ|तीलीयाँ|तीलियों|stick|"
+        r"बच्च|child|kid|"
+        r"लोग|people|"
+        r"टॉफ़|टॉफ|toffee|"
+        r"किताब|book|"
+        r"आम|mango|"
+        r"सेब|apple|"
+        r"दहाई|tens|"
+        r"इकाई|ones|"
+        r"अंक|संख्या|digit|number|"
+        r"कदम|step|"
+        r"गेंद|ball|"
+        r"पेंसिल|pencil|"
+        r"पेन|pen|"
+        r"रुप|rupee|rs|"
+        r"पैसे|पैसा|paise|"
+        r"डिब्ब|box|"
+        r"सवाल|प्रश्न|question|"
+        r"फूल|flower|"
+        r"कंकड़|पत्थर|pebble|stone"
+        r")",
+        re.IGNORECASE,
+    )
+    connector_pattern = re.compile(
+        r"^[\s।,!\?;:\"\'\(\)\-–—\./]*(?:और|तथा|या|प्लस|माइनस|\+|\-|and|plus|minus)?[\s।,!\?;:\"\'\(\)\-–—\./]*$",
+        re.IGNORECASE,
+    )
+
+    results: list[int] = []
+    for i, (start, end, val, is_ambiguous) in enumerate(chosen_spans):
+        if is_ambiguous:
+            next_to_num = False
+            if i > 0:
+                sep_prev = norm_text[chosen_spans[i - 1][1] : start]
+                if connector_pattern.match(sep_prev):
+                    next_to_num = True
+            if not next_to_num and i < len(chosen_spans) - 1:
+                sep_next = norm_text[end : chosen_spans[i + 1][0]]
+                if connector_pattern.match(sep_next):
+                    next_to_num = True
+
+            after_text = norm_text[end:].lstrip(" \t\r\n।,!?;:\"'()-–—.")
+            before_counting_noun = bool(counting_nouns_pattern.match(after_text))
+
+            if not (next_to_num or before_counting_noun):
+                continue
+
+        results.append(val)
 
     return results

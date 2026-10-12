@@ -1,0 +1,21 @@
+{
+  "role": "child_voice",
+  "input": {
+    "persona_id": "ravi",
+    "kind": "scaffolded_correct",
+    "answer": 35,
+    "prior_state": "can_explain",
+    "new_state": "partial",
+    "affect": "encouraged",
+    "item": {"type": "sub", "a": 52, "b": 17},
+    "steps": [
+      {"rule_id": "SUB_UNITS_REGROUP", "text_hi": "12 में से 7 गया 5", "numbers": [12, 7, 5]},
+      {"rule_id": "SUB_TENS_REGROUP", "text_hi": "4 में से 1 गया 3", "numbers": [4, 1, 3]}
+    ],
+    "allowed_numbers": [12, 7, 5, 4, 1, 3, 35],
+    "forbidden": ["45"]
+  },
+  "output": {
+    "line_hi": "हम्म... 12 में से 7 घटाया 5, और 4 में से 1 गया 3, 35 आया!"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "role": "child_voice",
+  "input": {
+    "persona_id": "ravi",
+    "kind": "scaffolded_correct",
+    "answer": 35,
+    "prior_state": "can_explain",
+    "new_state": "partial",
+    "affect": "encouraged",
+    "item": {"type": "sub", "a": 52, "b": 17},
+    "steps": [],
+    "allowed_numbers": [35],
+    "forbidden": ["45"]
+  },
+  "output": {
+    "line_hi": "मैंने AI मॉडल से नियम समझकर 35 निकाला!"
+  }
+}
