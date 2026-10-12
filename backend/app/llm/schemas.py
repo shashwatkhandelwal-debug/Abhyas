@@ -52,6 +52,7 @@ class CoachFeedbackOutput(BaseModel):
     exact_words_hi: str
     improved_since_last: bool = False
     confidence: float = Field(ge=0.0, le=1.0)
+    needs_review: bool = False
 
 
 # ── 5.7 Fidelity Checker ─────────────────────────────────────────────────────

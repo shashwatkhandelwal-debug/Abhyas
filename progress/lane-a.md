@@ -12,6 +12,7 @@ Database: None required (pure deterministic algorithms)
 - [x] T09 Guards (all 8 spec/05 guards, >= 3 pass/fail fixtures, 97% line coverage)
 - [x] T10 act_tagger (P0: prompt v1, content/act_examples_hi.yaml with 28 examples, keyword fallback, 8 golden fixtures, labelled dataset, 100% line coverage)
 - [x] T11 child_voice (P0: prompt v1, guard wiring, retry-once + template fallback, 20 golden good/bad fixtures across all 10 kinds, live guard pass >= 90% on rule engine outputs)
+- [x] T12 coach (P0: prompt v1, guard_coach enforcement, retry-once + feedback bank fallback, all 4 seed moves verification, review item creation)
 
 ## Deviations from spec
 None.
@@ -64,6 +65,13 @@ None.
   4. Created 20 golden fixtures in `backend/tests/golden/child_voice/` providing both good (passing) and bad (failing) fixtures for every single `ResponseKind`.
   5. Authored comprehensive test suite in `backend/tests/unit/test_child_voice.py`: template fallback for all 10 kinds, golden fixtures verification (all 20 fixtures), role contract with AsyncMock (silent skip, single retry on guard failure, double-failure template fallback), and live guard pass rate verification (42 rule engine responses tested, 100% pass rate >= 90%).
   6. All 453 unit tests pass clean. `ruff check` clean, `ruff format` clean, `mypy --strict` clean with zero issues.
+- T12: Implemented coach role matching spec/05 §5.6 and T12 acceptance criteria:
+  1. Authored prompt template `backend/app/llm/prompts/coach.v1.md` with all 9 dynamic slots (`move_title_hi`, `effective_acts_hi`, `key_points_block`, `rubric_block`, `feedback_bank_block`, `transcript`, `acts_block`, `trajectory_block`, `retry_block`).
+  2. Implemented deterministic `fallback_coach_feedback` scoring criteria from act tags and child trajectories (2 if signal act + advanced, 1 if signal act without advancement, 0 otherwise, 0 if negative act). Extracts exact substring teacher speech quotes for scores > 0 and empty quotes for score 0. Picks strength_hi, change_hi, exact_words_hi from move's `feedback_bank`, and sanitizes exact_words_hi against correct answer leaks (e.g. 16 for 43-27 in `NUM_SUB_REGROUP_BUNDLES`). Sets confidence = 0.3 and needs_review = True.
+  3. Implemented async `coach_feedback` role runner with Claude smart model (`settings.CLAUDE_MODEL_SMART`), forced tool schema `CoachFeedbackOutput`, `guard_coach` enforcement, single retry on guard failure, and deterministic fallback on double failure or LLM exception.
+  4. Flagged `needs_review = True` and instantiated `ReviewItem(kind='rehearsal_score', ...)` when confidence < `settings.COACH_CONFIDENCE_THRESHOLD` (0.60).
+  5. Authored comprehensive unit tests in `backend/tests/unit/test_coach.py` (14 tests): fallback validity on all 4 seed moves (`NUM_SUB_REGROUP_BUNDLES`, `NUM_ADD_CARRY_BUNDLES`, `NUM_PLACE_VALUE_BUNDLES`, `LIT_MATRA_BLENDING`), trajectory and negative act scoring, word budget (<= 60 words across all 3 sentences), respectful register (आप/आपने, no तुम/तुमने), single-sentence integrity, answer leak prevention, retry/improvement tracking, LLM success, low confidence review item creation, single retry on guard failure, fallback on double failure, fallback on LLM exception, and multiple transcript input formats.
+  6. All 467 tests pass. `ruff check` clean, `ruff format` clean, `mypy --strict` clean with zero issues.
 
 
 
