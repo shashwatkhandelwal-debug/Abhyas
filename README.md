@@ -98,9 +98,24 @@ abhyas/
 
 ---
 
+## Sample Inputs (Evaluator Demo Mode)
+
+In demo mode (`?demo=1` or `DEMO_MODE=true`), tappable chips appear below the microphone composer in the teacher chat (`/teacher`). Evaluators can test the voice assistant and simulation without speaking Hindi by tapping a chip or sending the corresponding sample audio note (`eval/samples/audio/<id>.wav` or `.ogg` rendered via `make samples` / `python scripts/render_samples.py`):
+
+| Chip Label | Step | Prompt (Hindi) | Expected Behaviour |
+|---|---|---|---|
+| **रवि से पूछें** (`s1_ask_ravi`) | REHEARSE | "रवि, तुमने 43 में से 27 कैसे घटाया? मुझे एक-एक कदम बताओ।" | Act tagged `ask_to_explain` → Ravi moves to `CAN_EXPLAIN` and articulates his subtraction bug ("3 में से 7 नहीं घटता, तो 7 में से 3 घटाया… 24!", never reveals 16). |
+| **बंडल दिखाएँ** (`s2_bundles_all`) | REHEARSE | "सब लोग देखो, ये 4 बंडल और 3 खुली तीलियाँ हैं। 3 में से 7 नहीं निकलतीं, तो एक बंडल खोलते हैं। अब कितनी तीलियाँ हुईं?" | Act tagged `concrete_representation` to whole class → children transition toward `PARTIAL`; Ravi hesitantly answers 16; Aman may interject. |
+| **उत्तर बताएँ (Hinglish)** (`s3_tell_answer_hinglish`) | REHEARSE | "Aman, sahi answer 16 hai, yaad rakho." | Hinglish handled robustly. `tell_answer` act tagged → Aman merely parrots "16…?" without conceptual understanding (state unchanged). On subsequent transfer problem, Aman relapses to his bug (40). Coach later scores `no_telling` = 0 and suggests contrasting answers. |
+| **खुद समझाएँ** (`s4_explain_back`) | EXPLAIN_BACK | "इस तरीके में सबसे पहले बच्चे से पूछना है कि उसने कैसे घटाया। फिर दस-दस तीलियों के बंडल से संख्या बनवानी है, और जब इकाई में कम हो तो एक बंडल खोलना है। उत्तर खुद नहीं बताना।" | Fidelity checker scores key points: kp1, kp2, kp3, kp5 covered with verbatim quotes; kp4 missing → bot feedback specifically names the single missing pedagogical point. |
+| **बहु-कक्षा प्रश्न** (`s5_question_multigrade`) | any (ASK) | "मेरी कक्षा में पहली और दूसरी कक्षा के बच्चे साथ बैठते हैं। हासिल वाला घटाव दोनों को एक साथ कैसे कराऊँ?" | Classified as `classroom_management` → answer $\le$ 80 words strictly grounded in retrieved state guide chunks + one actionable thing to try this week; if ungrounded, escalated to ARP (visible on `/arp`). |
+
+---
+
 ## Key Principles & Guardrails
 
 - **Mistakes are computed, not improvised**: LLMs never invent mathematical or phonics mistakes. The rule engine determines the exact mistake; Claude only voices the line.
 - **Strict token guards**: Generated child speech lines are checked token-by-token against the rule engine output before hitting TTS.
 - **Privacy by default**: Audio files are deleted immediately after transcription. No individual scores go upward without explicit teacher consent. Trainer views aggregate only groups of $n \ge 10$.
 - **No magic numbers**: Every threshold is centralized in `backend/app/config.py`.
+

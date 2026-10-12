@@ -1,0 +1,57 @@
+[
+  {
+    "id": "s1_ask_ravi",
+    "step": "REHEARSE (move NUM_SUB_REGROUP_BUNDLES, any demo teacher in rehearsal)",
+    "chip_label": "रवि से पूछें",
+    "text_hi": "रवि, तुमने 43 में से 27 कैसे घटाया? मुझे एक-एक कदम बताओ।",
+    "audio_file": "s1_ask_ravi.wav",
+    "audio_ogg": "s1_ask_ravi.ogg",
+    "audio_relative_path": "eval/samples/audio/s1_ask_ravi.wav",
+    "source": "existing",
+    "expected_behavior": "Act tagged ask_to_explain → Ravi moves to CAN_EXPLAIN and explains his bug: '3 में से 7 नहीं घटता, तो 7 में से 3 घटाया… 24!' (never says 16)."
+  },
+  {
+    "id": "s2_bundles_all",
+    "step": "REHEARSE",
+    "chip_label": "बंडल दिखाएँ",
+    "text_hi": "सब लोग देखो, ये 4 बंडल और 3 खुली तीलियाँ हैं। 3 में से 7 नहीं निकलतीं, तो एक बंडल खोलते हैं। अब कितनी तीलियाँ हुईं?",
+    "audio_file": "s2_bundles_all.wav",
+    "audio_ogg": "s2_bundles_all.ogg",
+    "audio_relative_path": "eval/samples/audio/s2_bundles_all.wav",
+    "source": "existing",
+    "expected_behavior": "concrete_representation to the whole class → all children reach PARTIAL; Ravi answers 16 hesitantly; Aman may interject off-topic."
+  },
+  {
+    "id": "s3_tell_answer_hinglish",
+    "step": "REHEARSE",
+    "chip_label": "उत्तर बताएँ (Hinglish)",
+    "text_hi": "Aman, sahi answer 16 hai, yaad rakho.",
+    "audio_file": "s3_tell_answer_hinglish.wav",
+    "audio_ogg": "s3_tell_answer_hinglish.ogg",
+    "audio_relative_path": "eval/samples/audio/s3_tell_answer_hinglish.wav",
+    "source": "existing",
+    "expected_behavior": "Hinglish handled. tell_answer → Aman parrots '16…?' without understanding (state unchanged). If the evaluator then says 'अमन, अब 61 में से 28 करो', Aman relapses to his bug (40). Coach later scores 'no telling' = 0 and suggests contrasting answers."
+  },
+  {
+    "id": "s4_explain_back",
+    "step": "EXPLAIN_BACK",
+    "chip_label": "खुद समझाएँ",
+    "text_hi": "इस तरीके में सबसे पहले बच्चे से पूछना है कि उसने कैसे घटाया। फिर दस-दस तीलियों के बंडल से संख्या बनवानी है, और जब इकाई में कम हो तो एक बंडल खोलना है। उत्तर खुद नहीं बताना।",
+    "audio_file": "s4_explain_back.wav",
+    "audio_ogg": "s4_explain_back.ogg",
+    "audio_relative_path": "eval/samples/audio/s4_explain_back.wav",
+    "source": "existing",
+    "expected_behavior": "Fidelity: kp1, kp2, kp3, kp5 covered with quotes; kp4 missing → reply names the one missing point."
+  },
+  {
+    "id": "s5_question_multigrade",
+    "step": "any (ASK)",
+    "chip_label": "बहु-कक्षा प्रश्न",
+    "text_hi": "मेरी कक्षा में पहली और दूसरी कक्षा के बच्चे साथ बैठते हैं। हासिल वाला घटाव दोनों को एक साथ कैसे कराऊँ?",
+    "audio_file": "s5_question_multigrade.wav",
+    "audio_ogg": "s5_question_multigrade.ogg",
+    "audio_relative_path": "eval/samples/audio/s5_question_multigrade.wav",
+    "source": "existing",
+    "expected_behavior": "Classified classroom_management → answer ≤ 80 words citing a source chunk + one thing to try this week; if no good chunk, escalated to ARP (visible on arp.demo)."
+  }
+]

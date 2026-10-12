@@ -8,13 +8,22 @@ Database: Mock/offline (no DB required)
 ## Tasks
 - [x] T37 Demo data & worked example script (user testing kit, Ravi script, eval samples)
 - [x] T38 Golden fixtures (>=5 per runtime role)
-- [ ] T39 Evaluator samples audio render
+- [x] T39 Evaluator samples audio render
 - [ ] T40 Source ingestion & chunking
 - [ ] T41 Latency benchmark
 - [ ] T42 Kappa harness
 - [ ] T43 Guard report
 - [ ] T44 Realism report & blind pairs
 - [ ] T45 Content pipeline (generate/review/publish)
+
+## Deliverables in T39
+- `scripts/render_samples.py`: Rendering pipeline for `eval/samples/samples.yaml` supporting Sarvam TTS (adult voice), human pre-recordings (`eval/samples/recorded/`), and synthetic speech placeholder fallback, with CLI options (`--mock`, `--force`).
+- `eval/samples/audio/`: Rendered audio files for all 5 evaluator samples in both `.wav` and `.ogg` formats (`s1` through `s5`).
+- `eval/samples/demo_chips.json`: Structured manifest of demo chips with step, Devanagari chip labels, NFC-normalized prompts, audio references, and expected behaviors.
+- `README.md`: Added Section 3 Evaluator Sample Inputs table per spec/13 §13.1.
+- `content/tests/test_render_samples.py`: 5 automated tests for sample YAML loading, synthetic WAV validity, mock rendering, human recorded override, and CLI execution.
+- `content/tests/conftest.py`: Pytest configuration for clean path resolution.
+
 
 ## Deliverables in T38
 - `backend/tests/golden/act_tagger/`: Golden fixtures covering teacher pedagogical acts and bad variants with invalid quotes.
@@ -41,6 +50,7 @@ Database: Mock/offline (no DB required)
 None. All artifacts conform strictly to spec/05 §5.11, spec/10, spec/11, and spec/14.
 
 ## Self-Reviews
+- T39 Self-Review: Implemented `scripts/render_samples.py` to synthesize evaluator sample inputs into `eval/samples/audio/` (.wav & .ogg) via Sarvam TTS / recordings / synthetic audio with duration proportional to text. Generated `eval/samples/demo_chips.json` manifest with Devanagari chip labels. Updated `README.md` per spec/13 §13.1. All 21 content tests pass cleanly; ruff and mypy pass.
 - T38 Self-Review: Validated all 7 runtime LLM roles have >= 5 golden fixtures in `backend/tests/golden/<role>/`. Each fixture checked against Pydantic output schemas, NFC normalization, and runtime guards. Bad variants verified to fail either schema validation or guard criteria. All tests pass cleanly (15/15).
 - T37 Self-Review: Verified against spec/11 §11.6, spec/10 §10.3, and spec/04 §4.5. All files NFC normalized, zero PII, 16/16 content tests passing cleanly, ruff check and ruff format clean.
 
