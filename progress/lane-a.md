@@ -13,11 +13,28 @@ Database: None required (pure deterministic algorithms)
 - [x] T10 act_tagger (P0: prompt v1, content/act_examples_hi.yaml with 28 examples, keyword fallback, 8 golden fixtures, labelled dataset, 100% line coverage)
 - [x] T11 child_voice (P0: prompt v1, guard wiring, retry-once + template fallback, 20 golden good/bad fixtures across all 10 kinds, live guard pass >= 90% on rule engine outputs)
 - [x] T12 coach (P0: prompt v1, guard_coach enforcement, retry-once + feedback bank fallback, all 4 seed moves verification, review item creation)
+- [x] T13 fidelity_checker (P0: prompt v1, keyword fallback, guard_fidelity_checker, reply composition, 7 golden fixtures, 100% unit tests pass)
 
 ## Deviations from spec
 - T12 coach fallback: If any negative act from a criterion's `negative_acts` (e.g. `tell_answer`) occurred in teacher turns, that criterion is scored 0 with evidence `""`. While not explicitly specified in spec/05 §5.6, this prevents rewarding ineffective teaching acts and enforces pedagogical alignment.
 
 ## Self-Reviews
+- T12 Follow-ups:
+  1. Evidence quote per teacher turn: updated `guard_coach` to verify quotes against each teacher turn separately using `any(substring_match(quote, line) for line in teacher_lines)`, preventing multi-turn straddling. Added unit test.
+  2. `_load_contrast_message`: raises `KeyError` on missing message keys (or `ValueError` on empty entries) instead of returning `""`. Added unit test.
+  3. `improved_since_last`: accepts `previous_target_criterion_id: str | None = None` directly in `coach_feedback` and `fallback_coach_feedback`, avoiding fragile fuzzy matching on `change_hi`. Added unit test.
+  4. `load_prompt`: raises `FileNotFoundError` immediately if prompt file is missing, eliminating stub fallback. Added unit test.
+  5. `SceneTurn.speaker` validation: validates speaker against `{"teacher"} | {c.persona_id for c in move.scenario.children}`, raising `ValueError` on unknown speakers. Added unit test.
+- T13 fidelity_checker:
+  1. Authored prompt template `backend/app/llm/prompts/fidelity_checker.v1.md` matching spec/05 §5.7 with `{key_points_block}` slot and rules for covered/partial/missing quotes and misconceptions.
+  2. Defined Pydantic schemas in `backend/app/llm/schemas.py`: `KeyPointPointOutput` (aliased as `KeyPointEvaluation`), `FidelityCheckerOutput`, and `FidelityResult` with review metadata.
+  3. Implemented `guard_fidelity_checker` in `backend/app/llm/guards.py` verifying 1:1 key point IDs, no duplicates, non-empty transcript substrings for covered/partial, empty quote for missing, <= 3 misconceptions (<= 25 words each), and confidence in [0.0, 1.0].
+  4. Implemented deterministic keyword fallback `fallback_fidelity` in `backend/app/llm/roles/fidelity_checker.py`: >= 50% keyword overlap -> covered, >= 25% -> partial, < 25% -> missing, with confidence 0.3. Verified across all 4 seed moves.
+  5. Implemented reply composition `compose_fidelity_reply`: "धन्यवाद! आपने {n_covered} में से {n_total} मुख्य बातें कहीं।", appending first missing must_have reminder and first misconception notice. All text NFC-normalized.
+  6. Implemented async role runner `check_fidelity` with Claude smart model, retry on guard failure, fallback on `LLMUnavailable` or double failure, and prompt hygiene enclosing transcript inside `<transcript>` tags with data delimiter instructions.
+  7. Created 7 golden fixtures (3 pass, 4 fail) in `backend/tests/golden/fidelity_checker/`.
+  8. Authored 23 unit tests in `backend/tests/unit/test_fidelity_checker.py`. All 496 unit tests pass, ruff check clean, ruff format clean, mypy --strict clean with zero issues.
+
 - Fix Forward Items 1-8:
   1. `hindi_numbers` / `guard_child_line`: Disambiguated "दो" (verb 'give' vs number 2). "दो" counts as a number only when next to another number or before a counting noun (बंडल, तीली, तीलियाँ, बच्चे, etc.); otherwise ignored. Verified with tests ("दीदी, मुझे तीली दो ना" → [], "दो बंडल" → [2], "नौ दो ग्यारह" → [9, 2, 11]).
   2. `guard_child_line`: Out-of-character terms match whole words via regex `\b` for Latin (ai, assistant, rule, misconception) and Devanagari word tokens (गलती, नियम). Substrings like 'email' pass cleanly.

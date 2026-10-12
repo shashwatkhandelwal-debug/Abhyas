@@ -48,13 +48,15 @@ _MESSAGES_PATH = _find_messages_path()
 
 def _load_contrast_message(key: str) -> str:
     """Loads localized exact words contrast fallback from messages_hi.yaml."""
-    if _MESSAGES_PATH.exists():
-        data = yaml.safe_load(_MESSAGES_PATH.read_text(encoding="utf-8"))
-        if isinstance(data, dict):
-            entry = data.get(key)
-            if isinstance(entry, dict) and "text" in entry:
-                return unicodedata.normalize("NFC", str(entry["text"]))
-    return ""
+    if not _MESSAGES_PATH.exists():
+        raise FileNotFoundError(f"Messages file not found: {_MESSAGES_PATH}")
+    data = yaml.safe_load(_MESSAGES_PATH.read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or key not in data:
+        raise KeyError(f"Missing message key: '{key}' in {_MESSAGES_PATH}")
+    entry = data[key]
+    if not isinstance(entry, dict) or "text" not in entry or not entry["text"]:
+        raise ValueError(f"Invalid or empty message entry for key: '{key}'")
+    return unicodedata.normalize("NFC", str(entry["text"]))
 
 
 def _is_rubric_rewarding_not_telling(move: MoveCard) -> bool:
@@ -129,6 +131,16 @@ def _format_feedback_bank(feedback_bank: dict[str, FeedbackItem]) -> str:
     return "\n".join(lines)
 
 
+def _validate_turns(move: MoveCard, turns: list[SceneTurn]) -> None:
+    """Validates that all turn speakers belong to teacher or scenario children."""
+    valid_speakers = {"teacher"} | {c.persona_id for c in move.scenario.children}
+    for turn in turns:
+        if turn.speaker not in valid_speakers:
+            raise ValueError(
+                f"Invalid speaker '{turn.speaker}' in SceneTurn. Expected one of: {valid_speakers}"
+            )
+
+
 def fallback_coach_feedback(
     move: MoveCard,
     turns: list[SceneTurn],
@@ -137,8 +149,9 @@ def fallback_coach_feedback(
     target_child_id: str,
     current_item_answer: int | str,
     attempt: int = 1,
-    previous_change_hi: str | None = None,
+    previous_target_criterion_id: str | None = None,
     previous_scores: dict[str, int] | None = None,
+    previous_change_hi: str | None = None,
 ) -> CoachFeedbackOutput:
     """Deterministic fallback coach feedback matching spec/05 §5.6.
 
@@ -147,6 +160,7 @@ def fallback_coach_feedback(
     Advancement is determined strictly via child_state_rank(target_child).
     Evidence quotes must come strictly from the turn exhibiting the signal act.
     """
+    _validate_turns(move, turns)
     teacher_turns = [t for t in turns if t.speaker == "teacher"]
     if len(acts) != len(teacher_turns):
         raise ValueError(
@@ -219,9 +233,9 @@ def fallback_coach_feedback(
 
     # improved_since_last: True ONLY if previous_scores provided and score on targeted criterion went up
     improved_since_last = False
-    if previous_scores and previous_change_hi:
+    targeted_crit_id: str | None = previous_target_criterion_id
+    if not targeted_crit_id and previous_change_hi:
         norm_prev_change = norm(previous_change_hi)
-        targeted_crit_id: str | None = None
         for cid, item in move.feedback_bank.items():
             item_norm = norm(item.change_hi)
             if (
@@ -231,9 +245,9 @@ def fallback_coach_feedback(
             ):
                 targeted_crit_id = cid
                 break
-        if targeted_crit_id and targeted_crit_id in previous_scores:
-            if scores.get(targeted_crit_id, 0) > previous_scores[targeted_crit_id]:
-                improved_since_last = True
+    if targeted_crit_id and previous_scores and targeted_crit_id in previous_scores:
+        if scores.get(targeted_crit_id, 0) > previous_scores[targeted_crit_id]:
+            improved_since_last = True
 
     return CoachFeedbackOutput(
         scores=scores,
@@ -254,14 +268,16 @@ async def coach_feedback(
     target_child_id: str,
     current_item_answer: int | str,
     attempt: int = 1,
-    previous_change_hi: str | None = None,
+    previous_target_criterion_id: str | None = None,
     previous_scores: dict[str, int] | None = None,
+    previous_change_hi: str | None = None,
 ) -> CoachResult:
     """Generates coach feedback for a rehearsal scene matching spec/05 §5.6.
 
     Invokes Claude smart model with forced tool schema, validates with guard_coach,
     retries once on failure with previous output + guard error, and falls back to deterministic scoring.
     """
+    _validate_turns(move, turns)
     teacher_turns = [t for t in turns if t.speaker == "teacher"]
     if len(acts) != len(teacher_turns):
         raise ValueError(
@@ -272,10 +288,7 @@ async def coach_feedback(
     rubric_criterion_ids = [c.id for c in move.rubric.criteria]
     rubric_rewards_not_telling = _is_rubric_rewarding_not_telling(move)
 
-    try:
-        system_template = load_prompt("coach", PROMPT_VERSION)
-    except FileNotFoundError:
-        system_template = "You evaluate teacher rehearsal. Return coach_feedback tool call."
+    system_template = load_prompt("coach", PROMPT_VERSION)
 
     system_prompt = system_template.format(
         move_title_hi=move.title_hi,
@@ -304,8 +317,13 @@ async def coach_feedback(
         f"Child trajectories:\n{traj_text}\n"
         f"Target child: {target_child_id}\n"
     )
-    if attempt > 1 and previous_change_hi:
-        user_content += f'\nLast attempt you asked the teacher to change: "{previous_change_hi}". Note whether she made this change.'
+    prev_text = previous_change_hi
+    if not prev_text and previous_target_criterion_id:
+        fb_item = move.feedback_bank.get(previous_target_criterion_id)
+        if fb_item:
+            prev_text = fb_item.change_hi
+    if attempt > 1 and prev_text:
+        user_content += f'\nLast attempt you asked the teacher to change: "{prev_text}". Note whether she made this change.'
 
     messages: list[dict[str, Any]] = [{"role": "user", "content": user_content}]
 
@@ -386,8 +404,9 @@ async def coach_feedback(
         target_child_id=target_child_id,
         current_item_answer=current_item_answer,
         attempt=attempt,
-        previous_change_hi=previous_change_hi,
+        previous_target_criterion_id=previous_target_criterion_id,
         previous_scores=previous_scores,
+        previous_change_hi=previous_change_hi,
     )
     return CoachResult(
         feedback=fb,

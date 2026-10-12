@@ -65,7 +65,7 @@ class CoachResult(BaseModel):
 
 
 # ── 5.7 Fidelity Checker ─────────────────────────────────────────────────────
-class KeyPointEvaluation(BaseModel):
+class KeyPointPointOutput(BaseModel):
     """Single key point evaluation item for fidelity_checker (spec/05 §5.7)."""
 
     id: str
@@ -73,12 +73,25 @@ class KeyPointEvaluation(BaseModel):
     quote: str = ""
 
 
+KeyPointEvaluation = KeyPointPointOutput
+
+
 class FidelityCheckerOutput(BaseModel):
     """Output schema for fidelity_checker role (spec/05 §5.7)."""
 
-    points: list[KeyPointEvaluation]
+    points: list[KeyPointPointOutput]
     misconceptions: list[str] = Field(default_factory=list)
     confidence: float = Field(ge=0.0, le=1.0)
+
+
+class FidelityResult(BaseModel):
+    """Role result returned by check_fidelity, separating review metadata from LLM output."""
+
+    output: FidelityCheckerOutput
+    reply_hi: str
+    needs_review: bool
+    review_reason: str | None = None
+    used_fallback: bool = False
 
 
 # ── 5.8 Ask Any Time Roles ───────────────────────────────────────────────────

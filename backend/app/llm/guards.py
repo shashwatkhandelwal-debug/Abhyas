@@ -266,13 +266,15 @@ def guard_coach(
         if score not in (0, 1, 2):
             return False, f"Score for {crit_id} must be in {{0, 1, 2}}, got {score}"
 
-    teacher_speech = " ".join(teacher_lines)
     for crit_id, score in output.scores.items():
         if score > 0:
             quote = output.evidence.get(crit_id, "").strip()
             if not quote:
                 return False, f"Evidence quote missing for criterion {crit_id} with score {score}"
-            if not substring_match(quote, teacher_speech, min_fuzzy=settings.QUOTE_FUZZY_MIN):
+            if not any(
+                substring_match(quote, line, min_fuzzy=settings.QUOTE_FUZZY_MIN)
+                for line in teacher_lines
+            ):
                 return (
                     False,
                     f"Evidence quote for {crit_id} not in teacher transcript: '{quote}'",
@@ -337,30 +339,43 @@ def guard_coach(
 # ── 5. guard_fidelity_checker (§5.7) ─────────────────────────────────────────
 def guard_fidelity_checker(
     output: FidelityCheckerOutput,
-    transcript: str,
-    key_point_ids: list[str],
+    expected_point_ids: list[str] | str,
+    transcript: str | list[str],
 ) -> tuple[bool, str]:
     """Validate fidelity_checker explain-it-back output (§5.7).
 
     Guards:
-    - one entry per key point id, no extras
+    - one entry per key point id, no extras, no duplicates
     - covered | partial require quote that is normalised substring of transcript
     - missing requires empty quote
     - misconceptions <= 3, each <= 25 words
     - confidence in [0.0, 1.0]
     """
+    if isinstance(expected_point_ids, str) and isinstance(transcript, list):
+        # Allow either parameter order (output, transcript, expected_point_ids) or (output, expected_point_ids, transcript)
+        transcript_str: str = expected_point_ids
+        point_id_list: list[str] = transcript
+    else:
+        point_id_list = (
+            expected_point_ids if isinstance(expected_point_ids, list) else [expected_point_ids]
+        )
+        transcript_str = transcript if isinstance(transcript, str) else "\n".join(transcript)
+
     point_ids = [p.id for p in output.points]
-    if len(point_ids) != len(key_point_ids) or set(point_ids) != set(key_point_ids):
+    if len(point_ids) != len(set(point_ids)):
+        return False, f"Duplicate key point IDs in output: {point_ids}"
+
+    if len(point_ids) != len(point_id_list) or set(point_ids) != set(point_id_list):
         return (
             False,
-            f"Evaluated key points do not match expected IDs: expected {set(key_point_ids)}, got {set(point_ids)}",
+            f"Evaluated key points do not match expected IDs: expected {set(point_id_list)}, got {set(point_ids)}",
         )
 
     for p in output.points:
         if p.status in ("covered", "partial"):
             if not p.quote.strip():
                 return False, f"Key point {p.id} marked {p.status} without supporting quote"
-            if not substring_match(p.quote, transcript, min_fuzzy=settings.QUOTE_FUZZY_MIN):
+            if not substring_match(p.quote, transcript_str, min_fuzzy=settings.QUOTE_FUZZY_MIN):
                 return False, f"quote for point {p.id} not found in transcript: '{p.quote}'"
         elif p.status == "missing":
             if p.quote.strip():

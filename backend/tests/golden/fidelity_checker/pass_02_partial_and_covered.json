@@ -1,0 +1,23 @@
+{
+  "role": "fidelity_checker",
+  "input": {
+    "transcript": "मैंने बच्चों से बातचीत की और बंडल खोलकर खुली तीलियाँ दिखाईं।",
+    "expected_point_ids": ["kp_explain", "kp_concrete"]
+  },
+  "output": {
+    "points": [
+      {
+        "id": "kp_explain",
+        "status": "partial",
+        "quote": "बच्चों से बातचीत की"
+      },
+      {
+        "id": "kp_concrete",
+        "status": "covered",
+        "quote": "बंडल खोलकर खुली तीलियाँ दिखाईं"
+      }
+    ],
+    "misconceptions": [],
+    "confidence": 0.85
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "role": "fidelity_checker",
+  "input": {
+    "transcript": "मैंने बोर्ड पर सवाल लिखा।",
+    "expected_point_ids": ["kp_explain"]
+  },
+  "output": {
+    "points": [
+      {
+        "id": "kp_explain",
+        "status": "missing",
+        "quote": "सवाल लिखा"
+      }
+    ],
+    "misconceptions": [],
+    "confidence": 0.85
+  }
+}

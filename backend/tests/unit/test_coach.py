@@ -12,6 +12,7 @@ from backend.app.llm.client import LLMUnavailable
 from backend.app.llm.guards import guard_coach
 from backend.app.llm.roles.coach import (
     CoachResult,
+    _load_contrast_message,
     coach_feedback,
     fallback_coach_feedback,
 )
@@ -589,3 +590,147 @@ async def test_coach_feedback_guard_failure_retry_includes_previous_output() -> 
         retry_msg = retry_call_args[1]["messages"][-1]["content"]
         assert "Your previous feedback failed validation" in retry_msg
         assert "Previous tool output:" in retry_msg
+
+
+# ── 8. T12 Follow-Up Tests ───────────────────────────────────────────────────
+
+
+def test_guard_coach_rejects_evidence_straddling_turns() -> None:
+    """Evidence quote cannot straddle across two separate teacher turns."""
+    out = CoachFeedbackOutput(
+        scores={"crit_explain": 1},
+        evidence={"crit_explain": "कैसे किया मुझे"},
+        strength_hi="आपने बहुत अच्छा प्रयास किया।",
+        change_hi="अगली बार बंडल का उपयोग करें।",
+        exact_words_hi="रवि, तीलियाँ गिनकर बताओ।",
+        confidence=0.8,
+    )
+    # Teacher turns are separated; quote "कैसे किया मुझे" straddles turn 1 and turn 2
+    teacher_lines = ["रवि तुमने कैसे किया?", "मुझे समझाओ।"]
+    is_valid, err = guard_coach(
+        output=out,
+        rubric_criterion_ids=["crit_explain"],
+        teacher_lines=teacher_lines,
+        rubric_rewards_not_telling=False,
+        current_item_answer=16,
+    )
+    assert not is_valid
+    assert "not in teacher transcript" in err
+
+    # But if quote is fully within turn 0, it passes
+    out_valid = CoachFeedbackOutput(
+        scores={"crit_explain": 1},
+        evidence={"crit_explain": "तुमने कैसे किया"},
+        strength_hi="आपने बहुत अच्छा प्रयास किया।",
+        change_hi="अगली बार बंडल का उपयोग करें।",
+        exact_words_hi="रवि, तीलियाँ गिनकर बताओ।",
+        confidence=0.8,
+    )
+    is_valid_2, _ = guard_coach(
+        output=out_valid,
+        rubric_criterion_ids=["crit_explain"],
+        teacher_lines=teacher_lines,
+        rubric_rewards_not_telling=False,
+        current_item_answer=16,
+    )
+    assert is_valid_2
+
+
+def test_load_contrast_message_raises_key_error_on_missing_key() -> None:
+    """_load_contrast_message must raise KeyError when key is missing, never returning empty string."""
+    with pytest.raises(KeyError, match="Missing message key"):
+        _load_contrast_message("unknown_contrast_key_xyz")
+
+
+def test_improved_since_last_with_previous_target_criterion_id() -> None:
+    """previous_target_criterion_id directly determines improved_since_last."""
+    move = _load_move("NUM_SUB_REGROUP_BUNDLES")
+    turns = [
+        SceneTurn(speaker="teacher", text_hi="रवि, तुमने कैसे घटाया? समझाओ।"),
+        SceneTurn(speaker="ravi", text_hi="24 आया!"),
+    ]
+    acts = [[TeachingAct.ASK_TO_EXPLAIN]]
+    trajectories = {"ravi": [ChildState.MISCONCEPTION, ChildState.CAN_EXPLAIN]}
+
+    # Score on crit_explain in fallback will be 1 (target child progressed to CAN_EXPLAIN, but needs rank progression for 2)
+    # Previous score on crit_explain was 0 -> improved
+    fb_improved = fallback_coach_feedback(
+        move=move,
+        turns=turns,
+        acts=acts,
+        trajectories=trajectories,
+        target_child_id="ravi",
+        current_item_answer=16,
+        attempt=2,
+        previous_target_criterion_id="crit_explain",
+        previous_scores={
+            "crit_explain": 0,
+            "crit_concrete": 0,
+            "crit_no_telling": 0,
+            "crit_all_children": 0,
+        },
+    )
+    assert fb_improved.improved_since_last is True
+
+    # Previous score was 2 (current score is 2) -> not improved
+    fb_not_improved = fallback_coach_feedback(
+        move=move,
+        turns=turns,
+        acts=acts,
+        trajectories=trajectories,
+        target_child_id="ravi",
+        current_item_answer=16,
+        attempt=2,
+        previous_target_criterion_id="crit_explain",
+        previous_scores={
+            "crit_explain": 2,
+            "crit_concrete": 0,
+            "crit_no_telling": 0,
+            "crit_all_children": 0,
+        },
+    )
+    assert fb_not_improved.improved_since_last is False
+
+
+def test_invalid_speaker_raises_value_error() -> None:
+    """Turns with speakers not in {'teacher'} | scenario children raise ValueError."""
+    move = _load_move("NUM_SUB_REGROUP_BUNDLES")
+    turns = [
+        SceneTurn(speaker="invalid_speaker", text_hi="नमस्ते"),
+    ]
+    acts: list[list[TeachingAct]] = []
+    trajectories = {"ravi": [ChildState.MISCONCEPTION]}
+
+    with pytest.raises(ValueError, match="Invalid speaker 'invalid_speaker'"):
+        fallback_coach_feedback(
+            move=move,
+            turns=turns,
+            acts=acts,
+            trajectories=trajectories,
+            target_child_id="ravi",
+            current_item_answer=16,
+        )
+
+
+@pytest.mark.asyncio
+async def test_coach_feedback_raises_file_not_found_if_prompt_missing() -> None:
+    """coach_feedback must raise FileNotFoundError immediately if prompt file is missing."""
+    move = _load_move("NUM_SUB_REGROUP_BUNDLES")
+    turns = [
+        SceneTurn(speaker="teacher", text_hi="रवि, बताओ।"),
+    ]
+    acts = [[TeachingAct.ASK_TO_EXPLAIN]]
+    trajectories = {"ravi": [ChildState.MISCONCEPTION]}
+
+    with patch(
+        "backend.app.llm.roles.coach.load_prompt", side_effect=FileNotFoundError("Prompt missing")
+    ):
+        with pytest.raises(FileNotFoundError, match="Prompt missing"):
+            await coach_feedback(
+                move=move,
+                turns=turns,
+                acts=acts,
+                trajectories=trajectories,
+                target_child_id="ravi",
+                current_item_answer=16,
+            )
