@@ -8,7 +8,7 @@ Database: `abhyas_b` (waits for Docker Desktop)
 ## Tasks
 - [x] T08 LLM client + MockLLM
 - [x] T15 Audio utils
-- [ ] T16 STT
+- [x] T16 STT
 - [ ] T17 TTS + voices
 - [ ] T18 Core service skeleton
 - [ ] T19 SceneRunner
