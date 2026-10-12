@@ -328,6 +328,7 @@ def test_improved_since_last_only_when_targeted_score_increased() -> None:
         target_child_id="ravi",
         current_item_answer=16,
         attempt=2,
+        previous_target_criterion_id="crit_explain",
         previous_change_hi=target_change,
         previous_scores=None,
     )
@@ -342,6 +343,7 @@ def test_improved_since_last_only_when_targeted_score_increased() -> None:
         target_child_id="ravi",
         current_item_answer=16,
         attempt=2,
+        previous_target_criterion_id="crit_explain",
         previous_change_hi=target_change,
         previous_scores={"crit_explain": 0},
     )
@@ -356,10 +358,26 @@ def test_improved_since_last_only_when_targeted_score_increased() -> None:
         target_child_id="ravi",
         current_item_answer=16,
         attempt=2,
+        previous_target_criterion_id="crit_explain",
         previous_change_hi=target_change,
         previous_scores={"crit_explain": 2},
     )
     assert fb_same.improved_since_last is False
+
+    # Case D: previous_change_hi provided but previous_target_criterion_id is None -> False (no fuzzy matching)
+    fb_no_target_id = fallback_coach_feedback(
+        move=move,
+        turns=turns,
+        acts=acts,
+        trajectories=trajectories,
+        target_child_id="ravi",
+        current_item_answer=16,
+        attempt=2,
+        previous_target_criterion_id=None,
+        previous_change_hi=target_change,
+        previous_scores={"crit_explain": 0},
+    )
+    assert fb_no_target_id.improved_since_last is False
 
 
 # ── 8. Error Propagation & Narrow Exceptions ──────────────────────────────────

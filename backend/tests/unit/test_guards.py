@@ -463,7 +463,9 @@ def test_guard_fidelity_checker_pass_1() -> None:
         misconceptions=[],
         confidence=0.9,
     )
-    valid, msg = guard_fidelity_checker(out, transcript, ["kp1", "kp2", "kp3"])
+    valid, msg = guard_fidelity_checker(
+        out, expected_point_ids=["kp1", "kp2", "kp3"], transcript=transcript
+    )
     assert valid is True
     assert msg == "Valid"
 
@@ -478,7 +480,9 @@ def test_guard_fidelity_checker_pass_2() -> None:
         misconceptions=["अध्यापिका ने बंडल-तीली का उपयोग नहीं किया"],
         confidence=0.85,
     )
-    valid, msg = guard_fidelity_checker(out, transcript, ["kp1", "kp2"])
+    valid, msg = guard_fidelity_checker(
+        out, expected_point_ids=["kp1", "kp2"], transcript=transcript
+    )
     assert valid is True
     assert msg == "Valid"
 
@@ -492,7 +496,7 @@ def test_guard_fidelity_checker_pass_3() -> None:
         misconceptions=[],
         confidence=0.75,
     )
-    valid, msg = guard_fidelity_checker(out, transcript, ["kp1"])
+    valid, msg = guard_fidelity_checker(out, expected_point_ids=["kp1"], transcript=transcript)
     assert valid is True
     assert msg == "Valid"
 
@@ -506,7 +510,9 @@ def test_guard_fidelity_checker_fail_missing_key_point() -> None:
         misconceptions=[],
         confidence=0.8,
     )
-    valid, msg = guard_fidelity_checker(out, transcript, ["kp1", "kp2"])
+    valid, msg = guard_fidelity_checker(
+        out, expected_point_ids=["kp1", "kp2"], transcript=transcript
+    )
     assert valid is False
     assert "key point" in msg or "points" in msg
 
@@ -520,7 +526,7 @@ def test_guard_fidelity_checker_fail_quote_not_in_transcript() -> None:
         misconceptions=[],
         confidence=0.8,
     )
-    valid, msg = guard_fidelity_checker(out, transcript, ["kp1"])
+    valid, msg = guard_fidelity_checker(out, expected_point_ids=["kp1"], transcript=transcript)
     assert valid is False
     assert "quote" in msg
 
@@ -534,7 +540,7 @@ def test_guard_fidelity_checker_fail_missing_status_with_quote() -> None:
         misconceptions=[],
         confidence=0.8,
     )
-    valid, msg = guard_fidelity_checker(out, transcript, ["kp1"])
+    valid, msg = guard_fidelity_checker(out, expected_point_ids=["kp1"], transcript=transcript)
     assert valid is False
     assert "missing" in msg or "quote" in msg
 
@@ -972,7 +978,9 @@ def test_guard_fidelity_checker_additional_branches() -> None:
         misconceptions=[],
         confidence=0.8,
     )
-    valid_nq, msg_nq = guard_fidelity_checker(out_no_quote, transcript, ["kp1"])
+    valid_nq, msg_nq = guard_fidelity_checker(
+        out_no_quote, expected_point_ids=["kp1"], transcript=transcript
+    )
     assert valid_nq is False
     assert "without supporting quote" in msg_nq
 
@@ -982,7 +990,9 @@ def test_guard_fidelity_checker_additional_branches() -> None:
         misconceptions=["गलती 1", "गलती 2", "गलती 3", "गलती 4"],
         confidence=0.8,
     )
-    valid_tm, msg_tm = guard_fidelity_checker(out_too_many_m, transcript, ["kp1"])
+    valid_tm, msg_tm = guard_fidelity_checker(
+        out_too_many_m, expected_point_ids=["kp1"], transcript=transcript
+    )
     assert valid_tm is False
     assert "Too many misconceptions" in msg_tm
 
@@ -992,7 +1002,9 @@ def test_guard_fidelity_checker_additional_branches() -> None:
         misconceptions=["गलती " * 30],
         confidence=0.8,
     )
-    valid_lm, msg_lm = guard_fidelity_checker(out_long_m, transcript, ["kp1"])
+    valid_lm, msg_lm = guard_fidelity_checker(
+        out_long_m, expected_point_ids=["kp1"], transcript=transcript
+    )
     assert valid_lm is False
     assert "Misconception exceeds 25 words" in msg_lm
 
@@ -1002,7 +1014,9 @@ def test_guard_fidelity_checker_additional_branches() -> None:
         misconceptions=[],
         confidence=-0.1,
     )
-    valid_cf, msg_cf = guard_fidelity_checker(out_conf, transcript, ["kp1"])
+    valid_cf, msg_cf = guard_fidelity_checker(
+        out_conf, expected_point_ids=["kp1"], transcript=transcript
+    )
     assert valid_cf is False
     assert "Confidence out of bounds" in msg_cf
 

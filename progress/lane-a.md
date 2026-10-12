@@ -95,9 +95,10 @@ Database: None required (pure deterministic algorithms)
   10. `improved_since_last` is True ONLY when `previous_scores` is given and score on targeted criterion increased.
   11. Documented deviation for negative acts override.
   12. Authored 15 comprehensive unit tests in `backend/tests/unit/test_coach.py`. All 468 unit tests pass clean. `ruff check` clean, `ruff format` clean, `mypy --strict` clean with zero issues.
-
-
-
-
-
-
+- T13 follow-up fixes (CHANGES d6b8340):
+  1. `guard_fidelity_checker` in `backend/app/llm/guards.py`: Fixed keyword-only signature `guard_fidelity_checker(output: FidelityCheckerOutput, *, expected_point_ids: list[str], transcript: str) -> tuple[bool, str]`. Deleted all isinstance argument-swapping. Updated all callers in `roles/fidelity_checker.py`, `test_fidelity_checker.py`, and `test_guards.py`.
+  2. `compose_fidelity_reply` in `backend/app/llm/roles/fidelity_checker.py`: Removed hard-coded Hindi strings. Loaded templates from `content/messages_hi.yaml` using keys `fidelity_reply_summary`, `fidelity_reply_missing`, and `fidelity_reply_misconception`.
+  3. Misconceptions guard in `backend/app/llm/roles/fidelity_checker.py`: Implemented `validate_misconception` validating Devanagari only, no "तुम" or "तुमने", <= 25 words. In `check_fidelity`, invalid misconceptions are dropped with a warning, not failing the whole output or triggering fallback.
+  4. Coach cleanups in `backend/app/llm/roles/coach.py`: Removed fuzzy `change_hi` -> criterion matching completely. `improved_since_last` now uses `previous_target_criterion_id` only; `previous_change_hi` is used only as prompt text.
+  5. Schema and Config cleanups: Renamed `KeyPointPointOutput` back to `KeyPointEvaluation` in `schemas.py`, `roles/fidelity_checker.py`, and all test usages (dropped the alias). Used `settings.FIDELITY_CONFIDENCE_THRESHOLD` (default 0.60) instead of coach's threshold.
+  6. All 516 unit tests passing clean (1 skipped integration test without DB). `ruff check` clean, `ruff format --check` clean, `mypy --strict` clean.

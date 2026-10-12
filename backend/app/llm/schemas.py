@@ -65,7 +65,7 @@ class CoachResult(BaseModel):
 
 
 # ── 5.7 Fidelity Checker ─────────────────────────────────────────────────────
-class KeyPointPointOutput(BaseModel):
+class KeyPointEvaluation(BaseModel):
     """Single key point evaluation item for fidelity_checker (spec/05 §5.7)."""
 
     id: str
@@ -73,13 +73,10 @@ class KeyPointPointOutput(BaseModel):
     quote: str = ""
 
 
-KeyPointEvaluation = KeyPointPointOutput
-
-
 class FidelityCheckerOutput(BaseModel):
     """Output schema for fidelity_checker role (spec/05 §5.7)."""
 
-    points: list[KeyPointPointOutput]
+    points: list[KeyPointEvaluation]
     misconceptions: list[str] = Field(default_factory=list)
     confidence: float = Field(ge=0.0, le=1.0)
 

@@ -231,22 +231,17 @@ def fallback_coach_feedback(
         domain_str=domain_str,
     )
 
-    # improved_since_last: True ONLY if previous_scores provided and score on targeted criterion went up
+    # improved_since_last: True ONLY if previous_target_criterion_id provided and score on it went up
     improved_since_last = False
-    targeted_crit_id: str | None = previous_target_criterion_id
-    if not targeted_crit_id and previous_change_hi:
-        norm_prev_change = norm(previous_change_hi)
-        for cid, item in move.feedback_bank.items():
-            item_norm = norm(item.change_hi)
-            if (
-                item_norm == norm_prev_change
-                or item_norm in norm_prev_change
-                or norm_prev_change in item_norm
-            ):
-                targeted_crit_id = cid
-                break
-    if targeted_crit_id and previous_scores and targeted_crit_id in previous_scores:
-        if scores.get(targeted_crit_id, 0) > previous_scores[targeted_crit_id]:
+    if (
+        previous_target_criterion_id
+        and previous_scores
+        and previous_target_criterion_id in previous_scores
+    ):
+        if (
+            scores.get(previous_target_criterion_id, 0)
+            > previous_scores[previous_target_criterion_id]
+        ):
             improved_since_last = True
 
     return CoachFeedbackOutput(

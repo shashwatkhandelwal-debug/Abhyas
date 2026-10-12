@@ -6,26 +6,97 @@ Claude smart model with guard validation and deterministic keyword fallback.
 
 import json
 import logging
+import re
 import unicodedata
+from pathlib import Path
 from typing import Any, Literal
 
 import httpx
+import yaml
 from pydantic import ValidationError
 
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
 from backend.app.llm.client import LLMUnavailable, call_tool
-from backend.app.llm.guards import guard_fidelity_checker, substring_match
+from backend.app.llm.guards import guard_fidelity_checker, norm, substring_match
 from backend.app.llm.prompts import load_prompt
 from backend.app.llm.schemas import (
     FidelityCheckerOutput,
     FidelityResult,
-    KeyPointPointOutput,
+    KeyPointEvaluation,
 )
 
 logger = logging.getLogger("abhyas.llm.fidelity_checker")
 
 PROMPT_VERSION = "v1"
+
+
+def _find_messages_path() -> Path:
+    curr = Path(__file__).resolve().parent
+    for _ in range(6):
+        cand = curr / "content" / "messages_hi.yaml"
+        if cand.exists():
+            return cand
+        curr = curr.parent
+    return Path("content/messages_hi.yaml").resolve()
+
+
+_MESSAGES_PATH = _find_messages_path()
+
+
+def _load_message_template(key: str) -> str:
+    """Loads localized message template from messages_hi.yaml."""
+    if not _MESSAGES_PATH.exists():
+        raise FileNotFoundError(f"Messages file not found: {_MESSAGES_PATH}")
+    data = yaml.safe_load(_MESSAGES_PATH.read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or key not in data:
+        raise KeyError(f"Missing message key: '{key}' in {_MESSAGES_PATH}")
+    entry = data[key]
+    if not isinstance(entry, dict) or "text" not in entry or not entry["text"]:
+        raise ValueError(f"Invalid or empty message entry for key: '{key}'")
+    return unicodedata.normalize("NFC", str(entry["text"]))
+
+
+DEVANAGARI_ALLOWED_PUNCTUATION = set("।,!?;:\"'()-–—`'’‘“”./%॥[]{}")
+ZW_CHARS = {"\u200c", "\u200d"}
+DISRESPECTFUL_MISCONCEPTION_RE = re.compile(r"(?<![\u0900-\u097F])(?:तुम|तुमने)(?![\u0900-\u097F])")
+
+
+def validate_misconception(m: str) -> bool:
+    """Validates a single misconception string matching spec/05 §5.7 and T13.
+
+    Rules:
+    - Devanagari only: characters must be Devanagari (\u0900-\u097f), digits, whitespace, or punctuation.
+      Must contain at least one Devanagari character and no non-Devanagari letters.
+    - No "तुम" or "तुमने" (respectful register).
+    - <= 25 words.
+    """
+    stripped = m.strip()
+    if not stripped:
+        return False
+
+    words = stripped.split()
+    if len(words) > 25:
+        return False
+
+    # Check for तुम or तुमने
+    tokens = set(norm(stripped).split())
+    if "तुम" in tokens or "तुमने" in tokens:
+        return False
+    if DISRESPECTFUL_MISCONCEPTION_RE.search(stripped):
+        return False
+
+    # Devanagari only
+    has_devanagari = False
+    for c in stripped:
+        if "\u0900" <= c <= "\u097f":
+            has_devanagari = True
+        elif c.isspace() or c.isdigit() or c in DEVANAGARI_ALLOWED_PUNCTUATION or c in ZW_CHARS:
+            continue
+        else:
+            return False
+
+    return has_devanagari
 
 
 def _format_key_points(move: MoveCard) -> str:
@@ -42,14 +113,15 @@ def _format_key_points(move: MoveCard) -> str:
 def compose_fidelity_reply(move: MoveCard, output: FidelityCheckerOutput) -> str:
     """Composes teacher-facing feedback message from fidelity evaluation (§5.7).
 
-    Reply composition (code, not LLM):
-    "धन्यवाद! आपने {n_covered} में से {n_total} मुख्य बातें कहीं।"
-    + if any must_have missing: "\nएक बात और याद रखें: {first missing must_have text_hi}"
-    + if misconception: "\nध्यान दें: {misconceptions[0]}"
+    Templates loaded from content/messages_hi.yaml:
+    - fidelity_reply_summary: "धन्यवाद! आपने {n_covered} में से {n_total} मुख्य बातें कहीं।"
+    - fidelity_reply_missing: "एक बात और याद रखें: {text}"
+    - fidelity_reply_misconception: "ध्यान दें: {text}"
     """
     n_total = len(move.key_points)
     n_covered = sum(1 for p in output.points if p.status == "covered")
-    parts = [f"धन्यवाद! आपने {n_covered} में से {n_total} मुख्य बातें कहीं।"]
+    summary_tmpl = _load_message_template("fidelity_reply_summary")
+    parts = [summary_tmpl.format(n_covered=n_covered, n_total=n_total)]
 
     # Check for missing must_have key points
     missing_must_haves = [
@@ -58,10 +130,12 @@ def compose_fidelity_reply(move: MoveCard, output: FidelityCheckerOutput) -> str
         if kp.must_have and any(p.id == kp.id and p.status == "missing" for p in output.points)
     ]
     if missing_must_haves:
-        parts.append(f"एक बात और याद रखें: {missing_must_haves[0].text_hi}")
+        missing_tmpl = _load_message_template("fidelity_reply_missing")
+        parts.append(missing_tmpl.format(text=missing_must_haves[0].text_hi))
 
     if output.misconceptions:
-        parts.append(f"ध्यान दें: {output.misconceptions[0]}")
+        misc_tmpl = _load_message_template("fidelity_reply_misconception")
+        parts.append(misc_tmpl.format(text=output.misconceptions[0]))
 
     return unicodedata.normalize("NFC", "\n".join(parts))
 
@@ -78,7 +152,7 @@ def fallback_fidelity(move: MoveCard, transcript: str) -> FidelityCheckerOutput:
     Confidence: 0.3.
     """
     norm_transcript = unicodedata.normalize("NFC", transcript)
-    points: list[KeyPointPointOutput] = []
+    points: list[KeyPointEvaluation] = []
 
     for kp in move.key_points:
         keywords = kp.keywords_hi
@@ -101,7 +175,7 @@ def fallback_fidelity(move: MoveCard, transcript: str) -> FidelityCheckerOutput:
             status = "missing"
             quote = ""
 
-        points.append(KeyPointPointOutput(id=kp.id, status=status, quote=quote))
+        points.append(KeyPointEvaluation(id=kp.id, status=status, quote=quote))
 
     return FidelityCheckerOutput(
         points=points,
@@ -150,7 +224,15 @@ async def check_fidelity(move: MoveCard, transcript: str) -> FidelityResult:
             parsed = FidelityCheckerOutput.model_validate(tool_input)
             for p in parsed.points:
                 p.quote = unicodedata.normalize("NFC", p.quote)
-            parsed.misconceptions = [unicodedata.normalize("NFC", m) for m in parsed.misconceptions]
+
+            valid_misconceptions: list[str] = []
+            for raw_m in parsed.misconceptions:
+                norm_m = unicodedata.normalize("NFC", raw_m)
+                if validate_misconception(norm_m):
+                    valid_misconceptions.append(norm_m)
+                else:
+                    logger.warning("Dropping invalid misconception from fidelity output: %r", raw_m)
+            parsed.misconceptions = valid_misconceptions
 
             is_valid, err_msg = guard_fidelity_checker(
                 output=parsed,
@@ -159,9 +241,9 @@ async def check_fidelity(move: MoveCard, transcript: str) -> FidelityResult:
             )
 
             if is_valid:
-                needs_review = parsed.confidence < settings.COACH_CONFIDENCE_THRESHOLD
+                needs_review = parsed.confidence < settings.FIDELITY_CONFIDENCE_THRESHOLD
                 review_reason = (
-                    f"Fidelity confidence {parsed.confidence:.2f} below threshold {settings.COACH_CONFIDENCE_THRESHOLD:.2f}"
+                    f"Fidelity confidence {parsed.confidence:.2f} below threshold {settings.FIDELITY_CONFIDENCE_THRESHOLD:.2f}"
                     if needs_review
                     else None
                 )
@@ -169,7 +251,7 @@ async def check_fidelity(move: MoveCard, transcript: str) -> FidelityResult:
                     logger.warning(
                         "Fidelity confidence (%.2f < %.2f); flagged needs_review",
                         parsed.confidence,
-                        settings.COACH_CONFIDENCE_THRESHOLD,
+                        settings.FIDELITY_CONFIDENCE_THRESHOLD,
                     )
                 reply_hi = compose_fidelity_reply(move, parsed)
                 return FidelityResult(
@@ -219,4 +301,5 @@ __all__ = [
     "check_fidelity",
     "compose_fidelity_reply",
     "fallback_fidelity",
+    "validate_misconception",
 ]

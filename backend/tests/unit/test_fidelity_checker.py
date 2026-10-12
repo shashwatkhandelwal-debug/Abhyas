@@ -15,11 +15,12 @@ from backend.app.llm.roles.fidelity_checker import (
     check_fidelity,
     compose_fidelity_reply,
     fallback_fidelity,
+    validate_misconception,
 )
 from backend.app.llm.schemas import (
     FidelityCheckerOutput,
     FidelityResult,
-    KeyPointPointOutput,
+    KeyPointEvaluation,
 )
 
 
@@ -100,13 +101,13 @@ def test_guard_fidelity_checker_duplicate_ids() -> None:
     """Duplicate key point IDs in output must fail the guard."""
     out = FidelityCheckerOutput(
         points=[
-            KeyPointPointOutput(id="kp1", status="covered", quote="रवि बताओ"),
-            KeyPointPointOutput(id="kp1", status="covered", quote="रवि बताओ"),
+            KeyPointEvaluation(id="kp1", status="covered", quote="रवि बताओ"),
+            KeyPointEvaluation(id="kp1", status="covered", quote="रवि बताओ"),
         ],
         misconceptions=[],
         confidence=0.8,
     )
-    is_valid, err = guard_fidelity_checker(out, ["kp1"], "रवि बताओ")
+    is_valid, err = guard_fidelity_checker(out, expected_point_ids=["kp1"], transcript="रवि बताओ")
     assert not is_valid
     assert "Duplicate" in err
 
@@ -115,12 +116,14 @@ def test_guard_fidelity_checker_missing_and_extra_ids() -> None:
     """Output key point IDs must match expected IDs 1:1."""
     out = FidelityCheckerOutput(
         points=[
-            KeyPointPointOutput(id="kp1", status="covered", quote="रवि"),
+            KeyPointEvaluation(id="kp1", status="covered", quote="रवि"),
         ],
         misconceptions=[],
         confidence=0.8,
     )
-    is_valid, err = guard_fidelity_checker(out, ["kp1", "kp2"], "रवि बताओ")
+    is_valid, err = guard_fidelity_checker(
+        out, expected_point_ids=["kp1", "kp2"], transcript="रवि बताओ"
+    )
     assert not is_valid
     assert "do not match expected IDs" in err
 
@@ -129,12 +132,12 @@ def test_guard_fidelity_checker_covered_missing_quote() -> None:
     """Covered or partial point without a quote must fail the guard."""
     out = FidelityCheckerOutput(
         points=[
-            KeyPointPointOutput(id="kp1", status="covered", quote=""),
+            KeyPointEvaluation(id="kp1", status="covered", quote=""),
         ],
         misconceptions=[],
         confidence=0.8,
     )
-    is_valid, err = guard_fidelity_checker(out, ["kp1"], "रवि बताओ")
+    is_valid, err = guard_fidelity_checker(out, expected_point_ids=["kp1"], transcript="रवि बताओ")
     assert not is_valid
     assert "without supporting quote" in err
 
@@ -143,12 +146,14 @@ def test_guard_fidelity_checker_quote_not_in_transcript() -> None:
     """Quote not found in transcript must fail the guard."""
     out = FidelityCheckerOutput(
         points=[
-            KeyPointPointOutput(id="kp1", status="covered", quote="तीलियाँ खोलो"),
+            KeyPointEvaluation(id="kp1", status="covered", quote="तीलियाँ खोलो"),
         ],
         misconceptions=[],
         confidence=0.8,
     )
-    is_valid, err = guard_fidelity_checker(out, ["kp1"], "रवि तुम बताओ")
+    is_valid, err = guard_fidelity_checker(
+        out, expected_point_ids=["kp1"], transcript="रवि तुम बताओ"
+    )
     assert not is_valid
     assert "not found in transcript" in err
 
@@ -157,12 +162,14 @@ def test_guard_fidelity_checker_missing_with_quote() -> None:
     """Key point marked missing must have an empty quote."""
     out = FidelityCheckerOutput(
         points=[
-            KeyPointPointOutput(id="kp1", status="missing", quote="कुछ लिखा"),
+            KeyPointEvaluation(id="kp1", status="missing", quote="कुछ लिखा"),
         ],
         misconceptions=[],
         confidence=0.8,
     )
-    is_valid, err = guard_fidelity_checker(out, ["kp1"], "कुछ लिखा हुआ था")
+    is_valid, err = guard_fidelity_checker(
+        out, expected_point_ids=["kp1"], transcript="कुछ लिखा हुआ था"
+    )
     assert not is_valid
     assert "contains quote" in err
 
@@ -170,21 +177,25 @@ def test_guard_fidelity_checker_missing_with_quote() -> None:
 def test_guard_fidelity_checker_misconceptions_limits() -> None:
     """At most 3 misconceptions, each <= 25 words."""
     out_too_many = FidelityCheckerOutput(
-        points=[KeyPointPointOutput(id="kp1", status="missing", quote="")],
+        points=[KeyPointEvaluation(id="kp1", status="missing", quote="")],
         misconceptions=["m1", "m2", "m3", "m4"],
         confidence=0.8,
     )
-    is_valid_tm, err_tm = guard_fidelity_checker(out_too_many, ["kp1"], "कुछ")
+    is_valid_tm, err_tm = guard_fidelity_checker(
+        out_too_many, expected_point_ids=["kp1"], transcript="कुछ"
+    )
     assert not is_valid_tm
     assert "Too many misconceptions" in err_tm
 
     long_m = " ".join(["शब्द"] * 26)
     out_too_long = FidelityCheckerOutput(
-        points=[KeyPointPointOutput(id="kp1", status="missing", quote="")],
+        points=[KeyPointEvaluation(id="kp1", status="missing", quote="")],
         misconceptions=[long_m],
         confidence=0.8,
     )
-    is_valid_tl, err_tl = guard_fidelity_checker(out_too_long, ["kp1"], "कुछ")
+    is_valid_tl, err_tl = guard_fidelity_checker(
+        out_too_long, expected_point_ids=["kp1"], transcript="कुछ"
+    )
     assert not is_valid_tl
     assert "exceeds 25 words" in err_tl
 
@@ -192,11 +203,11 @@ def test_guard_fidelity_checker_misconceptions_limits() -> None:
 def test_guard_fidelity_checker_confidence_bounds() -> None:
     """Confidence must be between 0.0 and 1.0."""
     out = FidelityCheckerOutput(
-        points=[KeyPointPointOutput(id="kp1", status="missing", quote="")],
+        points=[KeyPointEvaluation(id="kp1", status="missing", quote="")],
         misconceptions=[],
         confidence=1.0,
     )
-    is_valid, _ = guard_fidelity_checker(out, ["kp1"], "कुछ")
+    is_valid, _ = guard_fidelity_checker(out, expected_point_ids=["kp1"], transcript="कुछ")
     assert is_valid
 
 
@@ -207,7 +218,7 @@ def test_compose_fidelity_reply_all_covered() -> None:
     """When all points are covered and no misconceptions, only the thank you line is generated."""
     move = _load_move("NUM_SUB_REGROUP_BUNDLES")
     points = [
-        KeyPointPointOutput(id=kp.id, status="covered", quote="quote") for kp in move.key_points
+        KeyPointEvaluation(id=kp.id, status="covered", quote="quote") for kp in move.key_points
     ]
     out = FidelityCheckerOutput(points=points, misconceptions=[], confidence=0.9)
     reply = compose_fidelity_reply(move, out)
@@ -225,12 +236,12 @@ def test_compose_fidelity_reply_missing_must_have() -> None:
     assert len(must_have_kps) > 0, "Move should have at least one must_have key point"
     first_must = must_have_kps[0]
 
-    points: list[KeyPointPointOutput] = []
+    points: list[KeyPointEvaluation] = []
     for kp in move.key_points:
         if kp.id == first_must.id:
-            points.append(KeyPointPointOutput(id=kp.id, status="missing", quote=""))
+            points.append(KeyPointEvaluation(id=kp.id, status="missing", quote=""))
         else:
-            points.append(KeyPointPointOutput(id=kp.id, status="covered", quote="quote"))
+            points.append(KeyPointEvaluation(id=kp.id, status="covered", quote="quote"))
 
     out = FidelityCheckerOutput(points=points, misconceptions=[], confidence=0.8)
     reply = compose_fidelity_reply(move, out)
@@ -243,7 +254,7 @@ def test_compose_fidelity_reply_with_misconception() -> None:
     """When misconceptions are present, append the attention note."""
     move = _load_move("NUM_SUB_REGROUP_BUNDLES")
     points = [
-        KeyPointPointOutput(id=kp.id, status="covered", quote="quote") for kp in move.key_points
+        KeyPointEvaluation(id=kp.id, status="covered", quote="quote") for kp in move.key_points
     ]
     out = FidelityCheckerOutput(
         points=points,
@@ -262,12 +273,12 @@ def test_compose_fidelity_reply_both_missing_must_have_and_misconception() -> No
     must_have_kps = [kp for kp in move.key_points if kp.must_have]
     first_must = must_have_kps[0]
 
-    points: list[KeyPointPointOutput] = []
+    points: list[KeyPointEvaluation] = []
     for kp in move.key_points:
         if kp.id == first_must.id:
-            points.append(KeyPointPointOutput(id=kp.id, status="missing", quote=""))
+            points.append(KeyPointEvaluation(id=kp.id, status="missing", quote=""))
         else:
-            points.append(KeyPointPointOutput(id=kp.id, status="covered", quote="quote"))
+            points.append(KeyPointEvaluation(id=kp.id, status="covered", quote="quote"))
 
     out = FidelityCheckerOutput(
         points=points,
@@ -295,7 +306,9 @@ def test_fallback_fidelity_all_seed_moves() -> None:
         # Transcript with no keywords -> all missing
         out_empty = fallback_fidelity(move, "आज मौसम बहुत ठंडा है।")
         expected_ids = [kp.id for kp in move.key_points]
-        valid, msg = guard_fidelity_checker(out_empty, expected_ids, "आज मौसम बहुत ठंडा है।")
+        valid, msg = guard_fidelity_checker(
+            out_empty, expected_point_ids=expected_ids, transcript="आज मौसम बहुत ठंडा है।"
+        )
         assert valid, f"Empty fallback failed guard on {move.id}: {msg}"
         assert out_empty.confidence == 0.3
         assert out_empty.misconceptions == []
@@ -307,7 +320,9 @@ def test_fallback_fidelity_all_seed_moves() -> None:
             all_kw.extend(kp.keywords_hi)
         full_transcript = " ".join(all_kw)
         out_full = fallback_fidelity(move, full_transcript)
-        valid_f, msg_f = guard_fidelity_checker(out_full, expected_ids, full_transcript)
+        valid_f, msg_f = guard_fidelity_checker(
+            out_full, expected_point_ids=expected_ids, transcript=full_transcript
+        )
         assert valid_f, f"Full fallback failed guard on {move.id}: {msg_f}"
         if all_kw:
             assert any(p.status == "covered" for p in out_full.points)
@@ -556,3 +571,74 @@ async def test_check_fidelity_does_not_swallow_type_error() -> None:
     ):
         with pytest.raises(TypeError, match="Unexpected code bug"):
             await check_fidelity(move, "परीक्षण")
+
+
+# ── 6. Misconceptions Validation & Dropping ───────────────────────────────────
+
+
+def test_validate_misconception_devanagari_only() -> None:
+    """Misconceptions must contain Devanagari only; English/Latin is rejected."""
+    assert validate_misconception("अध्यापिका ने बंडल-तीली का उपयोग नहीं किया") is True
+    assert validate_misconception("बच्चों को सीधा उत्तर नहीं बताना चाहिए।") is True
+    assert validate_misconception("52 में से 17 घटाते समय तीली नहीं दी") is True
+
+    # English / Latin letters rejected
+    assert validate_misconception("Teacher told the answer directly") is False
+    assert validate_misconception("सीधा answer दे दिया") is False
+    assert validate_misconception("") is False
+    assert validate_misconception("   ") is False
+    assert validate_misconception("12345") is False
+
+
+def test_validate_misconception_no_disrespectful_pronouns() -> None:
+    """Misconceptions must not contain 'तुम' or 'तुमने'."""
+    assert validate_misconception("तुमने बच्चों को सीधा उत्तर बताया") is False
+    assert validate_misconception("तुम ऐसा मत करो") is False
+    assert validate_misconception("अध्यापिका ने बच्चों से पूछा") is True
+
+
+def test_validate_misconception_word_limit() -> None:
+    """Misconceptions must be <= 25 words."""
+    words_25 = " ".join(["बात"] * 25)
+    assert validate_misconception(words_25) is True
+
+    words_26 = " ".join(["बात"] * 26)
+    assert validate_misconception(words_26) is False
+
+
+@pytest.mark.asyncio
+async def test_check_fidelity_drops_invalid_misconception_without_fallback() -> None:
+    """Invalid misconceptions are dropped, not triggering fallback or failing the whole output."""
+    move = _load_move("NUM_SUB_REGROUP_BUNDLES")
+    transcript = "इस तरीके में हम बच्चे से पूछते हैं कि उसने कैसे सोचा और तीलियाँ गिनवाते हैं।"
+
+    mock_tool_output: dict[str, Any] = {
+        "points": [
+            {"id": "kp1", "status": "covered", "quote": "बच्चे से पूछते हैं कि उसने कैसे सोचा"},
+            {"id": "kp2", "status": "covered", "quote": "तीलियाँ गिनवाते हैं"},
+            {"id": "kp3", "status": "missing", "quote": ""},
+            {"id": "kp4", "status": "missing", "quote": ""},
+            {"id": "kp5", "status": "missing", "quote": ""},
+        ],
+        "misconceptions": [
+            "Teacher did not wait for the child",  # Invalid: English -> dropped
+            "तुमने सीधा उत्तर दिया",  # Invalid: 'तुमने' -> dropped
+            "सीधा उत्तर नहीं बताना चाहिए",  # Valid: kept
+        ],
+        "confidence": 0.85,
+    }
+
+    with patch(
+        "backend.app.llm.roles.fidelity_checker.call_tool", new_callable=AsyncMock
+    ) as mock_call:
+        mock_call.return_value = mock_tool_output
+        res = await check_fidelity(move, transcript)
+
+        # Output succeeded without fallback
+        assert res.used_fallback is False
+        assert res.needs_review is False
+        # Invalid misconceptions dropped, valid one retained
+        assert res.output.misconceptions == ["सीधा उत्तर नहीं बताना चाहिए"]
+        assert "ध्यान दें: सीधा उत्तर नहीं बताना चाहिए" in res.reply_hi
+        assert "Teacher" not in res.reply_hi
+        assert "तुमने" not in res.reply_hi
