@@ -90,6 +90,9 @@ scene_turn_limit:
 scene_all_correct:
   text: "वाह! तीनों बच्चे समझ गए।"
   audio: true
+scene_ended_neutral:
+  text: "चलिए, अब फीडबैक देखते हैं।"
+  audio: false
 feedback_header:
   text: "आपके अभ्यास पर सुझाव:"
   audio: false
@@ -180,6 +183,9 @@ stt_failed:
 stt_confirm:
   text: "मैंने सुना: \"{text}\" — सही है?"
   audio: false
+stt_budget_type_please:
+  text: "अभी आवाज़ सुविधा बंद है, कृपया लिखकर भेजें।"
+  audio: false
 audio_too_long:
   text: "यह संदेश बहुत लंबा है। कृपया 1 मिनट से छोटा भेजें।"
   audio: false
@@ -266,3 +272,12 @@ state_FEEDBACK: {text: "सुझाव", audio: false}
 state_TRY_IN_CLASS: {text: "कक्षा में आज़माना", audio: false}
 state_REFLECT_PEER: {text: "साथी की सूची", audio: false}
 state_REFLECT_SELF: {text: "अपने अनुभव बताना", audio: false}
+
+# ── Coach exact words fallbacks ──────────────────────────────
+coach_exact_words_contrast_math:
+  text: "दोनों के उत्तर देखो, तीलियाँ गिनकर बताओ कि कौन-सा सही है और क्यों?"
+  audio: false
+coach_exact_words_contrast_lit:
+  text: "दोनों के पढ़े शब्द सुनो, अक्षर मिलाकर बताओ कि कौन-सा सही है?"
+  audio: false
+
