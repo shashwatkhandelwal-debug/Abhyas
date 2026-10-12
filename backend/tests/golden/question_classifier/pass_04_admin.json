@@ -1,0 +1,13 @@
+{
+  "role": "question_classifier",
+  "input": {
+    "question": "इस महीने की छुट्टी का आवेदन मानव संपदा पोर्टल पर कैसे दर्ज करें?"
+  },
+  "output": {
+    "category": "admin",
+    "needs_clarification": false,
+    "clarifying_question_hi": "",
+    "search_query_hi": "मानव संपदा पोर्टल छुट्टी आवेदन",
+    "confidence": 0.96
+  }
+}

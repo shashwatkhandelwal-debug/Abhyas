@@ -54,6 +54,7 @@ eval/samples/audio/*
 !content/audio/**/*.ogg
 !content/audio/**/*.wav
 tmp_audio/
+tts_cache/
 
 # Unit test / coverage
 htmlcov/

@@ -1,0 +1,13 @@
+{
+  "role": "question_classifier",
+  "input": {
+    "question": "कल मौसम कैसा रहेगा और बारिश कब होगी?"
+  },
+  "output": {
+    "category": "out_of_scope",
+    "needs_clarification": false,
+    "clarifying_question_hi": "",
+    "search_query_hi": "",
+    "confidence": 0.99
+  }
+}

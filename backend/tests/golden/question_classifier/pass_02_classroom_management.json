@@ -1,0 +1,13 @@
+{
+  "role": "question_classifier",
+  "input": {
+    "question": "मेरी कक्षा में दो कक्षाओं के बच्चे एक साथ बैठते हैं, समूह कार्य कैसे कराएँ?"
+  },
+  "output": {
+    "category": "classroom_management",
+    "needs_clarification": false,
+    "clarifying_question_hi": "",
+    "search_query_hi": "बहु-कक्षा समूह कार्य शिक्षण विधियाँ",
+    "confidence": 0.92
+  }
+}

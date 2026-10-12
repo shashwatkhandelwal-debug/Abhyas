@@ -1,0 +1,13 @@
+{
+  "role": "question_classifier",
+  "input": {
+    "question": "कक्षा 2 में हासिल वाले जोड़ के लिए कौन सी गतिविधि कराएँ?"
+  },
+  "output": {
+    "category": "pedagogy",
+    "needs_clarification": false,
+    "clarifying_question_hi": "",
+    "search_query_hi": "हासिल जोड़ गतिविधि कक्षा 2",
+    "confidence": 0.95
+  }
+}

@@ -159,3 +159,46 @@ def test_ravi_worked_example_document() -> None:
     assert "contrast_answers" in text
     assert "tell_answer" in text
     assert "PARROT" in text or "RELAPSE" in text
+
+
+# Keys where the bot speaks in its own (female) voice — text_m not needed.
+_BOT_SELF_REFERENCE_ALLOWLIST = frozenset(
+    [
+        "ask_escalated",  # "बताती हूँ" — bot self
+        "ask_out_of_scope",  # "कर सकती हूँ" — bot self
+        "unclear",  # "समझ नहीं पाई" — bot self
+        "unsupported_type",  # "समझ सकती हूँ" — bot self
+        "child_silent",  # child described → uses text_boy, not text_m
+        "speaker_model_teacher",  # label "आदर्श शिक्षिका" — fixed label
+    ]
+)
+
+_FEMININE_PATTERN = re.compile(
+    r"रही\b|सकती\b|चाहती\b|\bगई\b|थीं\b|ूँगी\b|ाऊँगी\b|पाई\b|पहुँचीं\b|चाहेंगी\b|चाहेंगी\b"
+)
+
+
+def test_messages_hi_gender_coverage() -> None:
+    """Every teacher-addressed message containing feminine verb endings must have text_m.
+    Bot self-reference keys (where the bot's female voice is correct) are allowlisted.
+    """
+    catalog_file = Path("content/messages_hi.yaml")
+    assert catalog_file.exists(), "content/messages_hi.yaml must exist"
+
+    with open(catalog_file, encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+
+    missing_text_m: list[str] = []
+    for key, entry in data.items():
+        if not isinstance(entry, dict):
+            continue
+        if key in _BOT_SELF_REFERENCE_ALLOWLIST:
+            continue
+        text = entry.get("text", "")
+        if isinstance(text, str) and _FEMININE_PATTERN.search(text):
+            if "text_m" not in entry:
+                missing_text_m.append(key)
+
+    assert not missing_text_m, (
+        f"These message keys have feminine verb endings but no text_m: {missing_text_m}"
+    )

@@ -22,6 +22,7 @@ from backend.app.llm.schemas import (
     IntentRouterOutput,
     PageOCROutput,
     QuestionClassifierOutput,
+    RetrievedChunk,
 )
 from backend.app.rule_engine.domain import (
     ChildResponse,
@@ -177,12 +178,14 @@ def guard_child_line(
             f"Line exceeds max word count ({len(words)} > {settings.MAX_CHILD_LINE_WORDS})",
         )
 
-    # 5. Stays in character
-    disallowed_terms = ["ai", "assistant", "गलती", "misconception", "rule", "नियम"]
-    line_lower = line_hi.lower()
-    for term in disallowed_terms:
-        if term in line_lower:
-            return False, f"Line contains out-of-character term '{term}'"
+    # 5. Stays in character: match whole words for Latin and Devanagari tokens
+    latin_disallowed = re.compile(r"\b(?:ai|assistant|rule|misconception)\b", re.IGNORECASE)
+    if match := latin_disallowed.search(line_hi):
+        return False, f"Line contains out-of-character term '{match.group(0)}'"
+
+    devanagari_disallowed = re.compile(r"(?<![\u0900-\u097F\w])(?:गलती|नियम)(?![\u0900-\u097F\w])")
+    if match := devanagari_disallowed.search(line_hi):
+        return False, f"Line contains out-of-character term '{match.group(0)}'"
 
     # Reject excessive English words (> 3 words)
     eng_tokens = re.findall(r"\b[a-zA-Z]+\b", line_hi)
@@ -235,43 +238,10 @@ def guard_child_line(
 
 
 # ── 4. guard_coach (§5.6) ────────────────────────────────────────────────────
-def _extract_teacher_speech(transcript: str) -> str:
-    """Extracts only the teacher's lines from a dialogue transcript."""
-    teacher_lines: list[str] = []
-    for raw_line in transcript.splitlines():
-        line = raw_line.strip()
-        if not line:
-            continue
-        line_lower = line.lower()
-        if "teacher:" in line_lower or "टीचर:" in line or "टीचर :" in line:
-            parts = re.split(r"(?:teacher|टीचर)\s*[:：]", line, flags=re.IGNORECASE)
-            if len(parts) > 1:
-                teacher_lines.append(parts[1].strip())
-        elif ":" in line and any(
-            role in line_lower
-            for role in [
-                "ravi",
-                "priya",
-                "aman",
-                "रवि",
-                "प्रिया",
-                "अमन",
-                "child",
-                "बच्चा",
-            ]
-        ):
-            # Explicit child speaker line, ignore
-            continue
-        else:
-            # Unprefixed transcript line or plain teacher text
-            teacher_lines.append(line)
-    return " ".join(teacher_lines)
-
-
 def guard_coach(
     output: CoachFeedbackOutput,
     rubric_criterion_ids: list[str],
-    teacher_transcript: str,
+    teacher_lines: list[str],
     rubric_rewards_not_telling: bool,
     current_item_answer: int | str | None,
 ) -> tuple[bool, str]:
@@ -297,13 +267,15 @@ def guard_coach(
         if score not in (0, 1, 2):
             return False, f"Score for {crit_id} must be in {{0, 1, 2}}, got {score}"
 
-    teacher_speech = _extract_teacher_speech(teacher_transcript)
     for crit_id, score in output.scores.items():
         if score > 0:
             quote = output.evidence.get(crit_id, "").strip()
             if not quote:
                 return False, f"Evidence quote missing for criterion {crit_id} with score {score}"
-            if not substring_match(quote, teacher_speech, min_fuzzy=settings.QUOTE_FUZZY_MIN):
+            if not any(
+                substring_match(quote, line, min_fuzzy=settings.QUOTE_FUZZY_MIN)
+                for line in teacher_lines
+            ):
                 return (
                     False,
                     f"Evidence quote for {crit_id} not in teacher transcript: '{quote}'",
@@ -368,23 +340,27 @@ def guard_coach(
 # ── 5. guard_fidelity_checker (§5.7) ─────────────────────────────────────────
 def guard_fidelity_checker(
     output: FidelityCheckerOutput,
+    *,
+    expected_point_ids: list[str],
     transcript: str,
-    key_point_ids: list[str],
 ) -> tuple[bool, str]:
     """Validate fidelity_checker explain-it-back output (§5.7).
 
     Guards:
-    - one entry per key point id, no extras
+    - one entry per key point id, no extras, no duplicates
     - covered | partial require quote that is normalised substring of transcript
     - missing requires empty quote
     - misconceptions <= 3, each <= 25 words
     - confidence in [0.0, 1.0]
     """
     point_ids = [p.id for p in output.points]
-    if len(point_ids) != len(key_point_ids) or set(point_ids) != set(key_point_ids):
+    if len(point_ids) != len(set(point_ids)):
+        return False, f"Duplicate key point IDs in output: {point_ids}"
+
+    if len(point_ids) != len(expected_point_ids) or set(point_ids) != set(expected_point_ids):
         return (
             False,
-            f"Evaluated key points do not match expected IDs: expected {set(key_point_ids)}, got {set(point_ids)}",
+            f"Evaluated key points do not match expected IDs: expected {set(expected_point_ids)}, got {set(point_ids)}",
         )
 
     for p in output.points:
@@ -432,6 +408,9 @@ def guard_question_classifier(output: QuestionClassifierOutput) -> tuple[bool, s
         words = output.clarifying_question_hi.split()
         if len(words) > 20:
             return False, f"clarifying_question exceeds 20 words ({len(words)} > 20)"
+        clar_tokens = set(norm(output.clarifying_question_hi).split())
+        if clar_tokens & DISRESPECTFUL_WORDS:
+            return False, "Disrespectful register: clarifying question must not use तुम/तुमने"
 
     if output.category in ("pedagogy", "classroom_management") and not output.needs_clarification:
         if not output.search_query_hi.strip():
@@ -446,22 +425,23 @@ def guard_question_classifier(output: QuestionClassifierOutput) -> tuple[bool, s
 # ── 7. guard_guide_answerer (§5.8) ───────────────────────────────────────────
 def guard_guide_answerer(
     output: GuideAnswererOutput,
-    retrieved_source_ids: list[str],
-    retrieved_chunks_text: str,
+    *,
+    retrieved_chunks: list[RetrievedChunk],
 ) -> tuple[bool, str]:
     """Validate guide_answerer output (§5.8).
 
     Guards:
-    - source_ids non-empty and subset of retrieved_source_ids
+    - source_ids non-empty and subset of retrieved_chunks
     - answer <= MAX_GUIDE_ANSWER_WORDS (80)
     - every number in answer appears in cited chunks text
     - respectful register (no तुम/तुमने)
+    - try_this_week_hi <= 20 words and respectful register
     - confidence in [0.0, 1.0]
     """
     if not output.source_ids:
         return False, "Guide answer must cite at least one source ID"
 
-    retrieved_set = set(retrieved_source_ids)
+    retrieved_set = {c.chunk_id for c in retrieved_chunks}
     if not set(output.source_ids).issubset(retrieved_set):
         return (
             False,
@@ -479,11 +459,21 @@ def guard_guide_answerer(
     if ans_tokens & DISRESPECTFUL_WORDS:
         return False, "Disrespectful register: guide answer must not use तुम/तुमने"
 
-    # Number integrity against retrieved chunks text
+    if output.try_this_week_hi:
+        tip_words = output.try_this_week_hi.split()
+        if len(tip_words) > 20:
+            return False, f"try_this_week exceeds 20 words ({len(tip_words)} > 20)"
+        tip_tokens = set(norm(output.try_this_week_hi).split())
+        if tip_tokens & DISRESPECTFUL_WORDS:
+            return False, "Disrespectful register: try_this_week must not use तुम/तुमने"
+
+    # Number integrity against cited chunks text
+    cited_chunks = [c for c in retrieved_chunks if c.chunk_id in output.source_ids]
+    cited_text = " ".join(c.text for c in cited_chunks)
+    cited_numbers = set(extract_numbers(cited_text))
     answer_numbers = extract_numbers(output.answer_hi)
-    chunks_numbers = set(extract_numbers(retrieved_chunks_text))
     for num in answer_numbers:
-        if num not in chunks_numbers:
+        if num not in cited_numbers:
             return False, f"Unauthorized number {num} in guide answer"
 
     if not (0.0 <= output.confidence <= 1.0):

@@ -28,6 +28,7 @@ from backend.app.llm.schemas import (
     KeyPointEvaluation,
     PageOCROutput,
     QuestionClassifierOutput,
+    RetrievedChunk,
 )
 from backend.app.rule_engine.domain import (
     ChildResponse,
@@ -294,6 +295,42 @@ def test_guard_child_line_fail_out_of_character() -> None:
     assert "out-of-character" in msg or "AI" in msg or "गलती" in msg
 
 
+def test_guard_child_line_out_of_character_whole_words() -> None:
+    resp = ChildResponse(
+        persona_id="ravi",
+        kind=ResponseKind.ANSWER,
+        answer=24,
+        prior_state=ChildState.MISCONCEPTION,
+        new_state=ChildState.MISCONCEPTION,
+        affect="confident",
+        item=Problem(type="sub", a=43, b=27),
+        allowed_numbers={24},
+    )
+    # Substring 'ai' in English word 'email' should NOT trigger guard
+    valid, _ = guard_child_line("दीदी, मेरा email चेक करो 24", resp)
+    assert valid is True
+
+    # Whole word 'AI' MUST trigger guard
+    valid, msg = guard_child_line("दीदी, मैंने AI से पूछा 24", resp)
+    assert valid is False
+    assert "out-of-character" in msg.lower()
+
+    # Whole word 'misconception' MUST trigger guard
+    valid, msg = guard_child_line("दीदी, misconception हुआ 24", resp)
+    assert valid is False
+    assert "out-of-character" in msg.lower()
+
+    # Whole Devanagari token 'गलती' MUST trigger guard
+    valid, msg = guard_child_line("दीदी, मेरी गलती थी 24", resp)
+    assert valid is False
+    assert "out-of-character" in msg.lower()
+
+    # Whole Devanagari token 'नियम' MUST trigger guard
+    valid, msg = guard_child_line("दीदी, नियम से 24 आया", resp)
+    assert valid is False
+    assert "out-of-character" in msg.lower()
+
+
 def test_guard_child_line_fail_off_topic_with_number() -> None:
     resp = ChildResponse(
         persona_id="aman",
@@ -311,7 +348,7 @@ def test_guard_child_line_fail_off_topic_with_number() -> None:
 
 # ── 4. guard_coach (§5.6) ────────────────────────────────────────────────────
 def test_guard_coach_pass_1() -> None:
-    transcript = "टीचर: रवि, तुमने 52 में से 17 कैसे घटाया? मुझे बताओ।"
+    teacher_lines = ["रवि, तुमने 52 में से 17 कैसे घटाया? मुझे बताओ।"]
     fb = CoachFeedbackOutput(
         scores={"crit_explaining": 2, "crit_concrete": 0},
         evidence={"crit_explaining": "तुमने 52 में से 17 कैसे घटाया? मुझे बताओ।", "crit_concrete": ""},
@@ -320,13 +357,13 @@ def test_guard_coach_pass_1() -> None:
         exact_words_hi="10-10 तीलियों के बंडल बनाकर 52 तीलियाँ गिनो।",
         confidence=0.85,
     )
-    valid, msg = guard_coach(fb, ["crit_explaining", "crit_concrete"], transcript, False, 35)
+    valid, msg = guard_coach(fb, ["crit_explaining", "crit_concrete"], teacher_lines, False, 35)
     assert valid is True
     assert msg == "Valid"
 
 
 def test_guard_coach_pass_2() -> None:
-    transcript = "टीचर: रवि, 43 में से 27 घटाकर बताओ।"
+    teacher_lines = ["रवि, 43 में से 27 घटाकर बताओ।"]
     fb = CoachFeedbackOutput(
         scores={"c1": 0, "c2": 0},
         evidence={"c1": "", "c2": ""},
@@ -335,13 +372,13 @@ def test_guard_coach_pass_2() -> None:
         exact_words_hi="रवि, तुमने यह कैसे सोचा, मुझे समझाओ।",
         confidence=0.7,
     )
-    valid, msg = guard_coach(fb, ["c1", "c2"], transcript, False, 16)
+    valid, msg = guard_coach(fb, ["c1", "c2"], teacher_lines, False, 16)
     assert valid is True
     assert msg == "Valid"
 
 
 def test_guard_coach_pass_3() -> None:
-    transcript = "टीचर: बहुत अच्छा! दोनों उत्तर बोर्ड पर रखकर देखो।"
+    teacher_lines = ["बहुत अच्छा! दोनों उत्तर बोर्ड पर रखकर देखो।"]
     fb = CoachFeedbackOutput(
         scores={"c_contrast": 2},
         evidence={"c_contrast": "दोनों उत्तर बोर्ड पर रखकर देखो।"},
@@ -350,13 +387,13 @@ def test_guard_coach_pass_3() -> None:
         exact_words_hi="प्रिया, तुम भी बताओ कि तुम्हारा क्या सोचना है।",
         confidence=0.9,
     )
-    valid, msg = guard_coach(fb, ["c_contrast"], transcript, True, 16)
+    valid, msg = guard_coach(fb, ["c_contrast"], teacher_lines, True, 16)
     assert valid is True
     assert msg == "Valid"
 
 
 def test_guard_coach_fail_missing_rubric_key() -> None:
-    transcript = "टीचर: बताओ कैसे किया?"
+    teacher_lines = ["बताओ कैसे किया?"]
     fb = CoachFeedbackOutput(
         scores={"c1": 2},
         evidence={"c1": "बताओ कैसे किया?"},
@@ -365,28 +402,28 @@ def test_guard_coach_fail_missing_rubric_key() -> None:
         exact_words_hi="कीलियाँ गिनो।",
         confidence=0.8,
     )
-    valid, msg = guard_coach(fb, ["c1", "c2"], transcript, False, 35)
+    valid, msg = guard_coach(fb, ["c1", "c2"], teacher_lines, False, 35)
     assert valid is False
     assert "criteria" in msg or "key" in msg
 
 
 def test_guard_coach_fail_quote_not_in_teacher_transcript() -> None:
-    transcript = "टीचर: शाबाश रवि!\nरवि: 45 आया!"
+    teacher_lines = ["शाबाश रवि!"]
     fb = CoachFeedbackOutput(
         scores={"c1": 2},
-        evidence={"c1": "45 आया!"},  # This is child line, not teacher line!
+        evidence={"c1": "45 आया!"},  # This is child line, not in teacher lines!
         strength_hi="आपने अच्छा काम किया।",
         change_hi="अगली बार बंडल लाएँ।",
         exact_words_hi="बंडल खोलो।",
         confidence=0.8,
     )
-    valid, msg = guard_coach(fb, ["c1"], transcript, False, 35)
+    valid, msg = guard_coach(fb, ["c1"], teacher_lines, False, 35)
     assert valid is False
     assert "evidence" in msg or "transcript" in msg
 
 
 def test_guard_coach_fail_disrespectful_register() -> None:
-    transcript = "टीचर: रवि कैसे किया?"
+    teacher_lines = ["रवि कैसे किया?"]
     fb = CoachFeedbackOutput(
         scores={"c1": 1},
         evidence={"c1": "रवि कैसे किया?"},
@@ -395,13 +432,13 @@ def test_guard_coach_fail_disrespectful_register() -> None:
         exact_words_hi="बंडल खोलो।",
         confidence=0.8,
     )
-    valid, msg = guard_coach(fb, ["c1"], transcript, False, 35)
+    valid, msg = guard_coach(fb, ["c1"], teacher_lines, False, 35)
     assert valid is False
     assert "register" in msg or "आप" in msg or "तुम" in msg
 
 
 def test_guard_coach_fail_leaked_answer() -> None:
-    transcript = "टीचर: कैसे किया?"
+    teacher_lines = ["कैसे किया?"]
     fb = CoachFeedbackOutput(
         scores={"c1": 1},
         evidence={"c1": "कैसे किया?"},
@@ -410,7 +447,7 @@ def test_guard_coach_fail_leaked_answer() -> None:
         exact_words_hi="रवि, इसका सही उत्तर 35 है, लिख लो।",  # Leaks correct answer 35!
         confidence=0.8,
     )
-    valid, msg = guard_coach(fb, ["c1"], transcript, True, 35)
+    valid, msg = guard_coach(fb, ["c1"], teacher_lines, True, 35)
     assert valid is False
     assert "answer" in msg or "leak" in msg or "35" in msg
 
@@ -427,7 +464,9 @@ def test_guard_fidelity_checker_pass_1() -> None:
         misconceptions=[],
         confidence=0.9,
     )
-    valid, msg = guard_fidelity_checker(out, transcript, ["kp1", "kp2", "kp3"])
+    valid, msg = guard_fidelity_checker(
+        out, expected_point_ids=["kp1", "kp2", "kp3"], transcript=transcript
+    )
     assert valid is True
     assert msg == "Valid"
 
@@ -442,7 +481,9 @@ def test_guard_fidelity_checker_pass_2() -> None:
         misconceptions=["अध्यापिका ने बंडल-तीली का उपयोग नहीं किया"],
         confidence=0.85,
     )
-    valid, msg = guard_fidelity_checker(out, transcript, ["kp1", "kp2"])
+    valid, msg = guard_fidelity_checker(
+        out, expected_point_ids=["kp1", "kp2"], transcript=transcript
+    )
     assert valid is True
     assert msg == "Valid"
 
@@ -456,7 +497,7 @@ def test_guard_fidelity_checker_pass_3() -> None:
         misconceptions=[],
         confidence=0.75,
     )
-    valid, msg = guard_fidelity_checker(out, transcript, ["kp1"])
+    valid, msg = guard_fidelity_checker(out, expected_point_ids=["kp1"], transcript=transcript)
     assert valid is True
     assert msg == "Valid"
 
@@ -470,7 +511,9 @@ def test_guard_fidelity_checker_fail_missing_key_point() -> None:
         misconceptions=[],
         confidence=0.8,
     )
-    valid, msg = guard_fidelity_checker(out, transcript, ["kp1", "kp2"])
+    valid, msg = guard_fidelity_checker(
+        out, expected_point_ids=["kp1", "kp2"], transcript=transcript
+    )
     assert valid is False
     assert "key point" in msg or "points" in msg
 
@@ -484,7 +527,7 @@ def test_guard_fidelity_checker_fail_quote_not_in_transcript() -> None:
         misconceptions=[],
         confidence=0.8,
     )
-    valid, msg = guard_fidelity_checker(out, transcript, ["kp1"])
+    valid, msg = guard_fidelity_checker(out, expected_point_ids=["kp1"], transcript=transcript)
     assert valid is False
     assert "quote" in msg
 
@@ -498,7 +541,7 @@ def test_guard_fidelity_checker_fail_missing_status_with_quote() -> None:
         misconceptions=[],
         confidence=0.8,
     )
-    valid, msg = guard_fidelity_checker(out, transcript, ["kp1"])
+    valid, msg = guard_fidelity_checker(out, expected_point_ids=["kp1"], transcript=transcript)
     assert valid is False
     assert "missing" in msg or "quote" in msg
 
@@ -585,90 +628,179 @@ def test_guard_question_classifier_fail_missing_search_query() -> None:
 
 # ── 7. guard_guide_answerer (§5.8) ───────────────────────────────────────────
 def test_guard_guide_answerer_pass_1() -> None:
-    chunks_text = "कक्षा 2 में 10-10 के बंडल बनाकर 52 संख्या सिखाई जाती है।"
+    chunks = [
+        RetrievedChunk(
+            chunk_id="chunk-1",
+            source_short_hi="गणित",
+            text="कक्षा 2 में 10-10 के बंडल बनाकर 52 संख्या सिखाई जाती है।",
+        ),
+        RetrievedChunk(
+            chunk_id="chunk-2",
+            source_short_hi="भाषा",
+            text="अन्य जानकारी",
+        ),
+    ]
     out = GuideAnswererOutput(
         answer_hi="आप बच्चों को 10-10 तीलियों के बंडल बनाकर 52 संख्या सिखा सकती हैं।",
         source_ids=["chunk-1"],
         try_this_week_hi="कक्षा में तीलियों के बंडल बनवाएँ।",
         confidence=0.85,
     )
-    valid, msg = guard_guide_answerer(out, ["chunk-1", "chunk-2"], chunks_text)
+    valid, msg = guard_guide_answerer(out, retrieved_chunks=chunks)
     assert valid is True
     assert msg == "Valid"
 
 
 def test_guard_guide_answerer_pass_2() -> None:
-    chunks_text = "बच्चों को खेल-खेल में वर्णमाला सिखाएँ।"
+    chunks = [
+        RetrievedChunk(
+            chunk_id="chunk-a",
+            source_short_hi="भाषा संदर्शिका",
+            text="बच्चों को खेल-खेल में वर्णमाला सिखाएँ।",
+        )
+    ]
     out = GuideAnswererOutput(
         answer_hi="आप बच्चों के साथ वर्णमाला का खेल खेल सकती हैं।",
         source_ids=["chunk-a"],
         try_this_week_hi="अक्षर कार्ड से खेलें।",
         confidence=0.9,
     )
-    valid, msg = guard_guide_answerer(out, ["chunk-a"], chunks_text)
+    valid, msg = guard_guide_answerer(out, retrieved_chunks=chunks)
     assert valid is True
     assert msg == "Valid"
 
 
 def test_guard_guide_answerer_pass_3() -> None:
-    chunks_text = "प्राथमिक स्तर पर गणित अभ्यास के 5 मुख्य चरण हैं।"
+    chunks = [
+        RetrievedChunk(
+            chunk_id="c1",
+            source_short_hi="गणित संदर्शिका",
+            text="प्राथमिक स्तर पर गणित अभ्यास के 5 मुख्य चरण हैं।",
+        ),
+        RetrievedChunk(
+            chunk_id="c2",
+            source_short_hi="शिक्षक संदर्शिका",
+            text="गणित अभ्यास में चरणबद्ध तरीके से आगे बढ़ें।",
+        ),
+        RetrievedChunk(
+            chunk_id="c3",
+            source_short_hi="परिशिष्ट",
+            text="अतिरिक्त विवरण",
+        ),
+    ]
     out = GuideAnswererOutput(
         answer_hi="आपके लिए यह समझना उपयोगी होगा कि गणित के 5 चरण होते हैं।",
         source_ids=["c1", "c2"],
         try_this_week_hi="पहला चरण लागू करें।",
         confidence=0.8,
     )
-    valid, msg = guard_guide_answerer(out, ["c1", "c2", "c3"], chunks_text)
+    valid, msg = guard_guide_answerer(out, retrieved_chunks=chunks)
     assert valid is True
     assert msg == "Valid"
 
 
 def test_guard_guide_answerer_fail_empty_sources() -> None:
+    chunks = [
+        RetrievedChunk(
+            chunk_id="c1",
+            source_short_hi="संदर्शिका",
+            text="कुछ जानकारी",
+        )
+    ]
     out = GuideAnswererOutput(
         answer_hi="आप ऐसा कर सकती हैं।",
         source_ids=[],
         try_this_week_hi="",
         confidence=0.8,
     )
-    valid, msg = guard_guide_answerer(out, ["c1"], "कुछ जानकारी")
+    valid, msg = guard_guide_answerer(out, retrieved_chunks=chunks)
     assert valid is False
     assert "source" in msg
 
 
 def test_guard_guide_answerer_fail_uncited_source() -> None:
+    chunks = [
+        RetrievedChunk(
+            chunk_id="c1",
+            source_short_hi="संदर्शिका",
+            text="कुछ जानकारी",
+        ),
+        RetrievedChunk(
+            chunk_id="c2",
+            source_short_hi="संदर्शिका",
+            text="कुछ जानकारी",
+        ),
+    ]
     out = GuideAnswererOutput(
         answer_hi="आप ऐसा कर सकती हैं।",
         source_ids=["hallucinated-chunk"],
         try_this_week_hi="",
         confidence=0.8,
     )
-    valid, msg = guard_guide_answerer(out, ["c1", "c2"], "कुछ जानकारी")
+    valid, msg = guard_guide_answerer(out, retrieved_chunks=chunks)
     assert valid is False
     assert "source" in msg or "hallucinated" in msg
 
 
 def test_guard_guide_answerer_fail_unauthorized_number() -> None:
-    chunks_text = "कक्षा में तीलियाँ गिनवाएँ।"
+    chunks = [
+        RetrievedChunk(
+            chunk_id="c1",
+            source_short_hi="संदर्शिका",
+            text="कक्षा में तीलियाँ गिनवाएँ।",
+        )
+    ]
     out = GuideAnswererOutput(
         answer_hi="आप बच्चों को 99 तीलियाँ गिनने के लिए कहें।",  # 99 not in chunks_text!
         source_ids=["c1"],
         try_this_week_hi="",
         confidence=0.8,
     )
-    valid, msg = guard_guide_answerer(out, ["c1"], chunks_text)
+    valid, msg = guard_guide_answerer(out, retrieved_chunks=chunks)
     assert valid is False
     assert "number" in msg or "99" in msg
 
 
+def test_guard_guide_answerer_fail_number_in_uncited_chunk_only() -> None:
+    """Number check only permits numbers in CITED chunks, not merely retrieved chunks."""
+    chunks = [
+        RetrievedChunk(
+            chunk_id="c1",
+            source_short_hi="संदर्शिका",
+            text="कक्षा में तीलियाँ गिनवाएँ।",
+        ),
+        RetrievedChunk(
+            chunk_id="c2",
+            source_short_hi="गणित",
+            text="कक्षा में 42 तीलियाँ गिनवाएँ।",  # 42 is in c2, but c2 is NOT cited!
+        ),
+    ]
+    out = GuideAnswererOutput(
+        answer_hi="आप बच्चों को 42 तीलियाँ गिनने के लिए कहें।",
+        source_ids=["c1"],  # only c1 is cited!
+        try_this_week_hi="",
+        confidence=0.8,
+    )
+    valid, msg = guard_guide_answerer(out, retrieved_chunks=chunks)
+    assert valid is False
+    assert "Unauthorized number 42" in msg
+
+
 def test_guard_guide_answerer_fail_disrespectful_register() -> None:
-    chunks_text = "तीलियाँ गिनवाएँ।"
+    chunks = [
+        RetrievedChunk(
+            chunk_id="c1",
+            source_short_hi="संदर्शिका",
+            text="तीलियाँ गिनवाएँ।",
+        )
+    ]
     out = GuideAnswererOutput(
         answer_hi="तुम बच्चों को तीलियाँ गिनने को कहो।",  # Disrespectful तुम
         source_ids=["c1"],
         try_this_week_hi="",
         confidence=0.8,
     )
-    valid, msg = guard_guide_answerer(out, ["c1"], chunks_text)
+    valid, msg = guard_guide_answerer(out, retrieved_chunks=chunks)
     assert valid is False
     assert "register" in msg or "आप" in msg or "तुम" in msg
 
@@ -848,7 +980,7 @@ def test_guard_child_line_additional_branches() -> None:
 
 
 def test_guard_coach_additional_branches() -> None:
-    transcript = "टीचर: बहुत अच्छा! आपने सवाल पूछा।"
+    teacher_lines = ["बहुत अच्छा! आपने सवाल पूछा।"]
     # Invalid score value
     fb_score = CoachFeedbackOutput.model_construct(
         scores={"c1": 3},  # invalid score
@@ -858,7 +990,7 @@ def test_guard_coach_additional_branches() -> None:
         exact_words_hi="बंडल गिनो।",
         confidence=0.8,
     )
-    valid_sc, msg_sc = guard_coach(fb_score, ["c1"], transcript, False, 10)
+    valid_sc, msg_sc = guard_coach(fb_score, ["c1"], teacher_lines, False, 10)
     assert valid_sc is False
     assert "Score for c1 must be in {0, 1, 2}" in msg_sc
 
@@ -871,7 +1003,7 @@ def test_guard_coach_additional_branches() -> None:
         exact_words_hi="बंडल गिनो।",
         confidence=0.8,
     )
-    valid_nq, msg_nq = guard_coach(fb_no_quote, ["c1"], transcript, False, 10)
+    valid_nq, msg_nq = guard_coach(fb_no_quote, ["c1"], teacher_lines, False, 10)
     assert valid_nq is False
     assert "Evidence quote missing" in msg_nq
 
@@ -884,7 +1016,7 @@ def test_guard_coach_additional_branches() -> None:
         exact_words_hi="बंडल गिनो।",
         confidence=0.8,
     )
-    valid_wb, msg_wb = guard_coach(fb_words, ["c1"], transcript, False, 10)
+    valid_wb, msg_wb = guard_coach(fb_words, ["c1"], teacher_lines, False, 10)
     assert valid_wb is False
     assert "exceeds word budget" in msg_wb
 
@@ -897,7 +1029,7 @@ def test_guard_coach_additional_branches() -> None:
         exact_words_hi="बंडल गिनो।",
         confidence=0.8,
     )
-    valid_ms, msg_ms = guard_coach(fb_multi, ["c1"], transcript, False, 10)
+    valid_ms, msg_ms = guard_coach(fb_multi, ["c1"], teacher_lines, False, 10)
     assert valid_ms is False
     assert "must be a single sentence" in msg_ms
 
@@ -910,7 +1042,7 @@ def test_guard_coach_additional_branches() -> None:
         exact_words_hi="कमल बोलो।",
         confidence=0.8,
     )
-    valid_ls, msg_ls = guard_coach(fb_leak_str, ["c1"], transcript, True, "कमल")
+    valid_ls, msg_ls = guard_coach(fb_leak_str, ["c1"], teacher_lines, True, "कमल")
     assert valid_ls is False
     assert "leaked correct answer" in msg_ls
 
@@ -923,7 +1055,7 @@ def test_guard_coach_additional_branches() -> None:
         exact_words_hi="बंडल गिनो।",
         confidence=1.5,
     )
-    valid_cf, msg_cf = guard_coach(fb_conf, ["c1"], transcript, False, 10)
+    valid_cf, msg_cf = guard_coach(fb_conf, ["c1"], teacher_lines, False, 10)
     assert valid_cf is False
     assert "Confidence out of bounds" in msg_cf
 
@@ -936,7 +1068,9 @@ def test_guard_fidelity_checker_additional_branches() -> None:
         misconceptions=[],
         confidence=0.8,
     )
-    valid_nq, msg_nq = guard_fidelity_checker(out_no_quote, transcript, ["kp1"])
+    valid_nq, msg_nq = guard_fidelity_checker(
+        out_no_quote, expected_point_ids=["kp1"], transcript=transcript
+    )
     assert valid_nq is False
     assert "without supporting quote" in msg_nq
 
@@ -946,7 +1080,9 @@ def test_guard_fidelity_checker_additional_branches() -> None:
         misconceptions=["गलती 1", "गलती 2", "गलती 3", "गलती 4"],
         confidence=0.8,
     )
-    valid_tm, msg_tm = guard_fidelity_checker(out_too_many_m, transcript, ["kp1"])
+    valid_tm, msg_tm = guard_fidelity_checker(
+        out_too_many_m, expected_point_ids=["kp1"], transcript=transcript
+    )
     assert valid_tm is False
     assert "Too many misconceptions" in msg_tm
 
@@ -956,7 +1092,9 @@ def test_guard_fidelity_checker_additional_branches() -> None:
         misconceptions=["गलती " * 30],
         confidence=0.8,
     )
-    valid_lm, msg_lm = guard_fidelity_checker(out_long_m, transcript, ["kp1"])
+    valid_lm, msg_lm = guard_fidelity_checker(
+        out_long_m, expected_point_ids=["kp1"], transcript=transcript
+    )
     assert valid_lm is False
     assert "Misconception exceeds 25 words" in msg_lm
 
@@ -966,7 +1104,9 @@ def test_guard_fidelity_checker_additional_branches() -> None:
         misconceptions=[],
         confidence=-0.1,
     )
-    valid_cf, msg_cf = guard_fidelity_checker(out_conf, transcript, ["kp1"])
+    valid_cf, msg_cf = guard_fidelity_checker(
+        out_conf, expected_point_ids=["kp1"], transcript=transcript
+    )
     assert valid_cf is False
     assert "Confidence out of bounds" in msg_cf
 
@@ -985,6 +1125,13 @@ def test_guard_question_classifier_additional_branches() -> None:
 
 
 def test_guard_guide_answerer_additional_branches() -> None:
+    chunks = [
+        RetrievedChunk(
+            chunk_id="c1",
+            source_short_hi="संदर्शिका",
+            text="शब्द कुछ जानकारी",
+        )
+    ]
     # Word budget exceeded (> 80 words)
     out_long = GuideAnswererOutput(
         answer_hi="आप " + "शब्द " * 85,
@@ -992,7 +1139,7 @@ def test_guard_guide_answerer_additional_branches() -> None:
         try_this_week_hi="",
         confidence=0.8,
     )
-    valid_w, msg_w = guard_guide_answerer(out_long, ["c1"], "शब्द")
+    valid_w, msg_w = guard_guide_answerer(out_long, retrieved_chunks=chunks)
     assert valid_w is False
     assert "exceeds maximum word budget" in msg_w
 
@@ -1003,6 +1150,6 @@ def test_guard_guide_answerer_additional_branches() -> None:
         try_this_week_hi="",
         confidence=-0.5,
     )
-    valid_cf, msg_cf = guard_guide_answerer(out_conf, ["c1"], "कुछ जानकारी")
+    valid_cf, msg_cf = guard_guide_answerer(out_conf, retrieved_chunks=chunks)
     assert valid_cf is False
     assert "Confidence out of bounds" in msg_cf

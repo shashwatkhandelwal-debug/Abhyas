@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from backend.app.rule_engine.domain import Problem, TeachingAct
+from backend.app.rule_engine.domain import SceneTurn as SceneTurn
 
 
 # ── 5.3 Intent Router ────────────────────────────────────────────────────────
@@ -54,6 +55,15 @@ class CoachFeedbackOutput(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
 
 
+class CoachResult(BaseModel):
+    """Role result returned by coach_feedback, separating review metadata from LLM output."""
+
+    feedback: CoachFeedbackOutput
+    needs_review: bool
+    review_reason: str | None = None
+    used_fallback: bool = False
+
+
 # ── 5.7 Fidelity Checker ─────────────────────────────────────────────────────
 class KeyPointEvaluation(BaseModel):
     """Single key point evaluation item for fidelity_checker (spec/05 §5.7)."""
@@ -71,6 +81,16 @@ class FidelityCheckerOutput(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
 
 
+class FidelityResult(BaseModel):
+    """Role result returned by check_fidelity, separating review metadata from LLM output."""
+
+    output: FidelityCheckerOutput
+    reply_hi: str
+    needs_review: bool
+    review_reason: str | None = None
+    used_fallback: bool = False
+
+
 # ── 5.8 Ask Any Time Roles ───────────────────────────────────────────────────
 class QuestionClassifierOutput(BaseModel):
     """Output schema for question_classifier role (spec/05 §5.8)."""
@@ -82,6 +102,29 @@ class QuestionClassifierOutput(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
 
 
+QuestionClassificationOutput = QuestionClassifierOutput
+
+
+class QuestionClassificationResult(BaseModel):
+    """Runtime result returned by question_classifier role."""
+
+    output: QuestionClassifierOutput
+    guarded: bool = True
+    guard_error: str | None = None
+    used_fallback: bool = False
+
+
+class RetrievedChunk(BaseModel):
+    """Retrieved reference document chunk for guide_answerer (§5.8)."""
+
+    chunk_id: str
+    source_short_hi: str
+    section: str = ""
+    page: int | None = None
+    text: str
+    score: float | None = None
+
+
 class GuideAnswererOutput(BaseModel):
     """Output schema for guide_answerer role (spec/05 §5.8)."""
 
@@ -89,6 +132,21 @@ class GuideAnswererOutput(BaseModel):
     source_ids: list[str] = Field(default_factory=list)
     try_this_week_hi: str = ""
     confidence: float = Field(ge=0.0, le=1.0)
+
+
+GuideAnswerOutput = GuideAnswererOutput
+
+
+class GuideAnswerResult(BaseModel):
+    """Runtime result returned by guide_answerer role."""
+
+    output: GuideAnswererOutput
+    answer_text_hi: str
+    escalated: bool = False
+    sources_cited: list[RetrievedChunk] = Field(default_factory=list)
+    guarded: bool = True
+    guard_error: str | None = None
+    used_fallback: bool = False
 
 
 # ── 5.9 Build-Time Roles ─────────────────────────────────────────────────────

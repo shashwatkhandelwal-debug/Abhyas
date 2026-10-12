@@ -1,0 +1,25 @@
+{
+  "role": "fidelity_checker",
+  "input": {
+    "transcript": "मैंने बोर्ड पर सवाल लिखकर सीधा उत्तर बता दिया।",
+    "expected_point_ids": ["kp_explain", "kp_concrete"]
+  },
+  "output": {
+    "points": [
+      {
+        "id": "kp_explain",
+        "status": "missing",
+        "quote": ""
+      },
+      {
+        "id": "kp_concrete",
+        "status": "missing",
+        "quote": ""
+      }
+    ],
+    "misconceptions": [
+      "शिक्षक ने बिना समझाए सीधा उत्तर बता दिया"
+    ],
+    "confidence": 0.9
+  }
+}
