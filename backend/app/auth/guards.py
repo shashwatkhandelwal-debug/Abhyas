@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.session import SESSION_COOKIE_NAME, verify_session_token
+from backend.app.config import settings
 from backend.app.db.models import AppUser
 from backend.app.db.session import get_db_session
 
@@ -17,11 +18,14 @@ async def get_current_user_optional(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> AppUser | None:
-    """Returns authenticated AppUser if valid session cookie or bearer token exists, else None."""
+    """Returns authenticated AppUser if valid session cookie exists.
+
+    Authorization: Bearer header is permitted ONLY in non-production environments (test suites).
+    """
     token: str | None = request.cookies.get(SESSION_COOKIE_NAME)
 
-    # Also support Authorization: Bearer token for API testing
-    if not token:
+    # Allow Authorization: Bearer token ONLY when ENVIRONMENT != "production" (test suites)
+    if not token and settings.ENVIRONMENT != "production":
         auth_header = request.headers.get("authorization")
         if auth_header and auth_header.lower().startswith("bearer "):
             token = auth_header[7:].strip()

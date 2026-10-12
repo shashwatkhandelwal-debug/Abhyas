@@ -1,39 +1,43 @@
 """In-memory sliding window rate limiter for login attempts (spec/07 §7.4: 5/min/IP)."""
 
-import time
 from collections import defaultdict
+import time
 
 from fastapi import HTTPException, Request, status
 
-MAX_LOGIN_ATTEMPTS_PER_MINUTE = 5
-WINDOW_SECONDS = 60.0
+from backend.app.config import settings
+
+MAX_LOGIN_ATTEMPTS_PER_MINUTE = settings.MAX_LOGIN_ATTEMPTS_PER_MINUTE
+LOGIN_RATE_LIMIT_WINDOW_SECONDS = settings.LOGIN_RATE_LIMIT_WINDOW_SECONDS
 
 # Store list of attempt timestamps per IP
 _login_attempts: dict[str, list[float]] = defaultdict(list)
 
 
 def get_client_ip(request: Request) -> str:
-    """Extracts client IP, respecting X-Forwarded-For if behind reverse proxy."""
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        # First IP in chain is original client
-        return forwarded.split(",")[0].strip()
-    if request.client and request.client.host:
-        return request.client.host
-    return "127.0.0.1"
+    """Extracts client IP, respecting X-Forwarded-For ONLY if direct client is a trusted proxy."""
+    direct_ip = request.client.host if request.client and request.client.host else "127.0.0.1"
+    trusted_proxies = {ip.strip() for ip in settings.TRUSTED_PROXY_IPS.split(",") if ip.strip()}
+
+    if direct_ip in trusted_proxies:
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            # First IP in chain is original client
+            return forwarded.split(",")[0].strip()
+    return direct_ip
 
 
 def check_login_rate_limit(request: Request) -> None:
-    """Enforces 5 attempts per minute per IP limit on login route."""
+    """Enforces rate limit per IP on login route using settings constants."""
     ip = get_client_ip(request)
     now = time.monotonic()
-    cutoff = now - WINDOW_SECONDS
+    cutoff = now - float(settings.LOGIN_RATE_LIMIT_WINDOW_SECONDS)
 
     # Prune old timestamps
     attempts = [t for t in _login_attempts[ip] if t > cutoff]
     _login_attempts[ip] = attempts
 
-    if len(attempts) >= MAX_LOGIN_ATTEMPTS_PER_MINUTE:
+    if len(attempts) >= settings.MAX_LOGIN_ATTEMPTS_PER_MINUTE:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="बहुत अधिक लॉगिन प्रयास। कृपया 1 मिनट बाद पुनः प्रयास करें (Too many login attempts. Please try again after 1 minute.)",

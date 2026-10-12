@@ -281,3 +281,98 @@ async def test_logout_clears_cookie(auth_app: FastAPI) -> None:
         res = await client.post("/logout", headers={"Accept": "application/json"})
         assert res.status_code == 200
         assert res.json()["ok"] is True
+
+
+def test_rate_limiter_rejects_spoofed_x_forwarded_for_from_untrusted_client() -> None:
+    """Spoofed X-Forwarded-For from an untrusted client does not bypass or reset rate limiting."""
+    reset_login_rate_limits()
+    untrusted_ip = "198.51.100.42"
+
+    # 5 attempts with varying spoofed X-Forwarded-For headers from untrusted host
+    for i in range(5):
+        req = Request(
+            scope={
+                "type": "http",
+                "client": (untrusted_ip, 50000 + i),
+                "headers": [(b"x-forwarded-for", f"10.0.0.{i}".encode())],
+                "path": "/login",
+            }
+        )
+        check_login_rate_limit(req)
+
+    # 6th attempt with another spoofed header should be blocked based on actual client host
+    req_blocked = Request(
+        scope={
+            "type": "http",
+            "client": (untrusted_ip, 50099),
+            "headers": [(b"x-forwarded-for", b"10.0.0.99")],
+            "path": "/login",
+        }
+    )
+    with pytest.raises(HTTPException) as exc:
+        check_login_rate_limit(req_blocked)
+    assert exc.value.status_code == 429
+    reset_login_rate_limits()
+
+
+def test_rate_limiter_trusted_proxy_resolves_forwarded_ip() -> None:
+    """Trusted proxy client (e.g. 127.0.0.1) properly resolves X-Forwarded-For client IP."""
+    reset_login_rate_limits()
+    trusted_proxy_ip = "127.0.0.1"
+
+    # 5 attempts from forwarded client 203.0.113.195
+    for i in range(5):
+        req = Request(
+            scope={
+                "type": "http",
+                "client": (trusted_proxy_ip, 60000 + i),
+                "headers": [(b"x-forwarded-for", b"203.0.113.195")],
+                "path": "/login",
+            }
+        )
+        check_login_rate_limit(req)
+
+    # 6th attempt from same forwarded client raises 429
+    req_blocked = Request(
+        scope={
+            "type": "http",
+            "client": (trusted_proxy_ip, 60099),
+            "headers": [(b"x-forwarded-for", b"203.0.113.195")],
+            "path": "/login",
+        }
+    )
+    with pytest.raises(HTTPException) as exc:
+        check_login_rate_limit(req_blocked)
+    assert exc.value.status_code == 429
+    reset_login_rate_limits()
+
+
+@pytest.mark.asyncio
+async def test_bearer_token_rejected_in_production_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Bearer-token auth is rejected/ignored when ENVIRONMENT == 'production'."""
+    from backend.app.auth.guards import get_current_user_optional
+    from backend.app.config import settings
+
+    token = create_session_token({"user_id": str(uuid.uuid4()), "username": "t1", "role": "teacher"})
+    req = Request(
+        scope={
+            "type": "http",
+            "headers": [(b"authorization", f"Bearer {token}".encode())],
+            "path": "/api/chat/messages",
+        }
+    )
+    mock_db = AsyncMock()
+
+    # In test/dev mode, bearer is allowed
+    monkeypatch.setattr(settings, "ENVIRONMENT", "test")
+    # Will attempt DB lookup (mock_db.execute)
+    await get_current_user_optional(req, mock_db)
+    assert mock_db.execute.called
+
+    # In production mode, bearer header is ignored completely -> returns None
+    mock_db.reset_mock()
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    user = await get_current_user_optional(req, mock_db)
+    assert user is None
+    assert not mock_db.execute.called
+
