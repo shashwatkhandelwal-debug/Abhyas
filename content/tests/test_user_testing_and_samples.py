@@ -164,11 +164,11 @@ def test_ravi_worked_example_document() -> None:
 # Keys where the bot speaks in its own (female) voice — text_m not needed.
 _BOT_SELF_REFERENCE_ALLOWLIST = frozenset(
     [
-        "ask_escalated",          # "बताती हूँ" — bot self
-        "ask_out_of_scope",       # "कर सकती हूँ" — bot self
-        "unclear",                # "समझ नहीं पाई" — bot self
-        "unsupported_type",       # "समझ सकती हूँ" — bot self
-        "child_silent",           # child described → uses text_boy, not text_m
+        "ask_escalated",  # "बताती हूँ" — bot self
+        "ask_out_of_scope",  # "कर सकती हूँ" — bot self
+        "unclear",  # "समझ नहीं पाई" — bot self
+        "unsupported_type",  # "समझ सकती हूँ" — bot self
+        "child_silent",  # child described → uses text_boy, not text_m
         "speaker_model_teacher",  # label "आदर्श शिक्षिका" — fixed label
     ]
 )
