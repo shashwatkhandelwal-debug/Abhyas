@@ -90,6 +90,9 @@ scene_turn_limit:
 scene_all_correct:
   text: "वाह! तीनों बच्चे समझ गए।"
   audio: true
+scene_ended_neutral:
+  text: "चलिए, अब फीडबैक देखते हैं।"
+  audio: false
 feedback_header:
   text: "आपके अभ्यास पर सुझाव:"
   audio: false
@@ -179,6 +182,9 @@ stt_failed:
   audio: false
 stt_confirm:
   text: "मैंने सुना: \"{text}\" — सही है?"
+  audio: false
+stt_budget_type_please:
+  text: "अभी आवाज़ सुविधा बंद है, कृपया लिखकर भेजें।"
   audio: false
 audio_too_long:
   text: "यह संदेश बहुत लंबा है। कृपया 1 मिनट से छोटा भेजें।"

@@ -1,5 +1,6 @@
 """FastAPI application entrypoint for Abhyas backend (§1)."""
 
+import importlib
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -17,11 +18,35 @@ logging.basicConfig(
 logger = logging.getLogger("abhyas")
 
 
+async def _cleanup_clients() -> None:
+    """Closes shared singletons (Anthropic and speech HTTP clients) if initialized."""
+    try:
+        llm_mod = importlib.import_module("backend.app.llm.client")
+        close_anthropic = getattr(llm_mod, "close_anthropic_client", None)
+        if callable(close_anthropic):
+            res = close_anthropic()
+            if hasattr(res, "__await__"):
+                await res
+    except Exception as e:
+        logger.debug("LLM client cleanup skipped: %s", e)
+
+    try:
+        speech_mod = importlib.import_module("backend.app.speech.client")
+        close_speech = getattr(speech_mod, "close_speech_http_client", None)
+        if callable(close_speech):
+            res = close_speech()
+            if hasattr(res, "__await__"):
+                await res
+    except Exception as e:
+        logger.debug("Speech client cleanup skipped: %s", e)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Starting Abhyas Backend (Env: %s)", settings.ENVIRONMENT)
     yield
     logger.info("Shutting down Abhyas Backend")
+    await _cleanup_clients()
 
 
 app = FastAPI(
@@ -33,7 +58,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[settings.PUBLIC_BASE_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

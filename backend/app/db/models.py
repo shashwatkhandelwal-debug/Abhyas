@@ -641,6 +641,25 @@ class LLMCall(Base):
     )
 
 
+class SpeechSpend(Base):
+    __tablename__ = "speech_spend"
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('stt', 'tts')",
+            name="check_speech_spend_kind",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    provider: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    units: Mapped[int] = mapped_column(Integer, nullable=False)
+    cost_inr: Mapped[float] = mapped_column(Float, nullable=False)
+
+
 class TTSCache(Base):
     __tablename__ = "tts_cache"
 
@@ -649,6 +668,17 @@ class TTSCache(Base):
     text_hi: Mapped[str | None] = mapped_column(Text, nullable=True)
     mime: Mapped[str | None] = mapped_column(Text, nullable=True)
     bytes: Mapped[bytes | None] = mapped_column(BYTEA, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
+class TTSAudio(Base):
+    __tablename__ = "tts_audio"
+
+    cache_key: Mapped[str] = mapped_column(Text, primary_key=True)
+    ogg: Mapped[bytes | None] = mapped_column(BYTEA, nullable=True)
+    mp3: Mapped[bytes | None] = mapped_column(BYTEA, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )

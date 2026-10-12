@@ -39,6 +39,8 @@ def test_all_models_present_in_metadata() -> None:
         "template_send",
         "llm_call",
         "tts_cache",
+        "speech_spend",
+        "tts_audio",
         "agg_module_batch",
     }
     actual_tables = set(Base.metadata.tables.keys())
@@ -53,8 +55,12 @@ def test_alembic_migration_revisions_chain() -> None:
     heads = script.get_heads()
     assert len(heads) == 1
     head_rev = heads[0]
-    assert head_rev == "6a7a8609f2ce"
+    assert head_rev == "b2d91f8c7e3a"
 
     rev = script.get_revision(head_rev)
     assert rev is not None
-    assert rev.down_revision is None
+    assert rev.down_revision == "6a7a8609f2ce"
+
+    base_rev = script.get_revision("6a7a8609f2ce")
+    assert base_rev is not None
+    assert base_rev.down_revision is None
