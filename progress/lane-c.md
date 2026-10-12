@@ -6,19 +6,21 @@ Port: 8003
 Database: `abhyas_c` (waits for Docker Desktop)
 
 ## Tasks
-- [ ] T23 Scheduled jobs
-- [ ] T24 Templates & 24-h window
-- [ ] T30 Review console
-- [ ] T31 Calibration interface
-- [ ] T32 ARP digest & observation form
-- [ ] T33 Trainer view & export
-- [ ] T34 Admin app
-- [ ] T35 Logging & observability
-- [ ] T36 Seed expansion
-- [ ] T37 Demo data & worked example script
+- [x] T25 Auth & demo users (spec/09 §9.7, spec/14)
+- [ ] T26 Web channel API (spec/07 §7.3)
+- [ ] T27 Teacher chat PWA (spec/09 §9.2)
+- [ ] T28 WhatsApp channel (spec/07 §7.2)
+- [ ] T29 Progress, consent, delete (spec/09 §9.2)
+- [ ] T30 First hosted deploy (spec/14)
+- [ ] T31 Demo data (spec/03 §3.5)
+- [ ] T32 ARP digest (spec/09 §9.3)
+- [ ] T33 Trainer view + aggregates (spec/09 §9.4)
+- [ ] T34 Coach review console (spec/09 §9.5)
+- [ ] T35 Admin console (spec/09 §9.6)
+- [ ] T36 Sankul mode (spec/08 §8.7)
 
 ## Deviations from spec
 None.
 
 ## Self-Reviews
-- None yet.
+- T25 completed: Passlib/bcrypt password hashing, signed HttpOnly sessions (itsdangerous, 12h expiry), role route guards for teacher/arp/trainer/coach/admin, sliding window login rate limiter (5/min/IP), double-submit cookie CSRF protection, demo seed users across all 5 roles in `seed.py`.

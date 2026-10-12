@@ -1,0 +1,283 @@
+"""Unit tests for authentication, session handling, CSRF, and rate limiting (T25)."""
+
+import uuid
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+from fastapi import FastAPI, HTTPException, Request
+from httpx import ASGITransport, AsyncClient
+
+from backend.app.auth.csrf import (
+    CSRF_COOKIE_NAME,
+    CSRF_HEADER_NAME,
+    generate_csrf_token,
+    verify_csrf_token,
+)
+from backend.app.auth.guards import require_role
+from backend.app.auth.rate_limit import (
+    MAX_LOGIN_ATTEMPTS_PER_MINUTE,
+    check_login_rate_limit,
+    reset_login_rate_limits,
+)
+from backend.app.auth.router import router as auth_router
+from backend.app.auth.session import (
+    SESSION_COOKIE_NAME,
+    create_session_token,
+    verify_session_token,
+)
+from backend.app.db.models import AppUser
+from backend.app.db.session import get_db_session
+
+# ── Session Token Tests ───────────────────────────────────────────────────
+
+
+def test_session_token_roundtrip() -> None:
+    payload = {"user_id": str(uuid.uuid4()), "username": "teacher.demo1", "role": "teacher"}
+    token = create_session_token(payload)
+    decoded = verify_session_token(token)
+    assert decoded is not None
+    assert decoded["username"] == "teacher.demo1"
+    assert decoded["role"] == "teacher"
+
+
+def test_session_token_invalid_signature() -> None:
+    token = create_session_token({"user_id": "123"})
+    bad_token = token + "corrupted"
+    assert verify_session_token(bad_token) is None
+
+
+def test_session_token_expired() -> None:
+    token = create_session_token({"user_id": "123"})
+    # Verify with max_age=-1 to simulate expiration
+    assert verify_session_token(token, max_age=-1) is None
+
+
+# ── CSRF Protection Tests ─────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_csrf_safe_methods_bypass() -> None:
+    req = Request(
+        scope={
+            "type": "http",
+            "method": "GET",
+            "headers": [],
+            "path": "/test",
+        }
+    )
+    # Should not raise
+    await verify_csrf_token(req)
+
+
+@pytest.mark.asyncio
+async def test_csrf_cookie_missing_raises_403() -> None:
+    req = Request(
+        scope={
+            "type": "http",
+            "method": "POST",
+            "headers": [],
+            "path": "/test",
+        }
+    )
+    with pytest.raises(HTTPException) as exc:
+        await verify_csrf_token(req)
+    assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_csrf_header_match_succeeds() -> None:
+    token = generate_csrf_token()
+    req = Request(
+        scope={
+            "type": "http",
+            "method": "POST",
+            "headers": [
+                (b"cookie", f"{CSRF_COOKIE_NAME}={token}".encode()),
+                (CSRF_HEADER_NAME.encode(), token.encode()),
+            ],
+            "path": "/test",
+        }
+    )
+    await verify_csrf_token(req)
+
+
+@pytest.mark.asyncio
+async def test_csrf_mismatch_raises_403() -> None:
+    token1 = generate_csrf_token()
+    token2 = generate_csrf_token()
+    req = Request(
+        scope={
+            "type": "http",
+            "method": "POST",
+            "headers": [
+                (b"cookie", f"{CSRF_COOKIE_NAME}={token1}".encode()),
+                (CSRF_HEADER_NAME.encode(), token2.encode()),
+            ],
+            "path": "/test",
+        }
+    )
+    with pytest.raises(HTTPException) as exc:
+        await verify_csrf_token(req)
+    assert exc.value.status_code == 403
+
+
+# ── Rate Limiter Tests (5/min/IP) ──────────────────────────────────────────
+
+
+def test_login_rate_limiter() -> None:
+    reset_login_rate_limits()
+    req = Request(
+        scope={
+            "type": "http",
+            "client": ("192.168.1.10", 12345),
+            "headers": [],
+            "path": "/login",
+        }
+    )
+
+    # 5 attempts should succeed
+    for _ in range(MAX_LOGIN_ATTEMPTS_PER_MINUTE):
+        check_login_rate_limit(req)
+
+    # 6th attempt should raise 429
+    with pytest.raises(HTTPException) as exc:
+        check_login_rate_limit(req)
+    assert exc.value.status_code == 429
+    reset_login_rate_limits()
+
+
+# ── Role Guard Tests ─────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_require_role_matches() -> None:
+    guard = require_role("arp")
+    user = AppUser(
+        id=uuid.uuid4(),
+        username="arp.demo",
+        password_hash="hash",
+        role="arp",
+    )
+    res = await guard(current_user=user)
+    assert res.role == "arp"
+
+
+@pytest.mark.asyncio
+async def test_require_role_admin_always_allowed() -> None:
+    guard = require_role("teacher")
+    admin_user = AppUser(
+        id=uuid.uuid4(),
+        username="admin.demo",
+        password_hash="hash",
+        role="admin",
+    )
+    res = await guard(current_user=admin_user)
+    assert res.role == "admin"
+
+
+@pytest.mark.asyncio
+async def test_require_role_unauthorized_role_raises_403() -> None:
+    guard = require_role("arp", "trainer")
+    teacher_user = AppUser(
+        id=uuid.uuid4(),
+        username="teacher.demo1",
+        password_hash="hash",
+        role="teacher",
+    )
+    with pytest.raises(HTTPException) as exc:
+        await guard(current_user=teacher_user)
+    assert exc.value.status_code == 403
+
+
+# ── Login Endpoints Integration Tests ────────────────────────────────────
+
+
+@pytest.fixture
+def auth_app() -> FastAPI:
+    app = FastAPI()
+    app.include_router(auth_router)
+    return app
+
+
+@pytest.mark.asyncio
+async def test_get_login_page(auth_app: FastAPI) -> None:
+    async with AsyncClient(transport=ASGITransport(app=auth_app), base_url="http://test") as client:
+        res = await client.get("/login")
+        assert res.status_code == 200
+        assert "अभ्यास" in res.text
+        assert "csrf_token" in res.text
+        assert CSRF_COOKIE_NAME in res.cookies
+
+
+@pytest.mark.asyncio
+async def test_login_json_success(auth_app: FastAPI) -> None:
+    from backend.app.auth.passwords import hash_password
+
+    mock_db = AsyncMock()
+    user_id = uuid.uuid4()
+    teacher_id = uuid.uuid4()
+    user = AppUser(
+        id=user_id,
+        username="teacher.demo1",
+        password_hash=hash_password("abhyas-demo-2026"),
+        role="teacher",
+        display_name="डेमो शिक्षिका 1",
+        teacher_id=teacher_id,
+    )
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = user
+    mock_db.execute.return_value = mock_result
+
+    auth_app.dependency_overrides[get_db_session] = lambda: mock_db
+
+    reset_login_rate_limits()
+    async with AsyncClient(transport=ASGITransport(app=auth_app), base_url="http://test") as client:
+        res = await client.post(
+            "/login",
+            json={"username": "teacher.demo1", "password": "abhyas-demo-2026"},
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["ok"] is True
+        assert data["user"]["role"] == "teacher"
+        assert data["redirect"] == "/teacher"
+        assert SESSION_COOKIE_NAME in res.cookies
+
+    auth_app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_login_json_bad_password(auth_app: FastAPI) -> None:
+    from backend.app.auth.passwords import hash_password
+
+    mock_db = AsyncMock()
+    user = AppUser(
+        id=uuid.uuid4(),
+        username="teacher.demo1",
+        password_hash=hash_password("correct-password"),
+        role="teacher",
+    )
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = user
+    mock_db.execute.return_value = mock_result
+
+    auth_app.dependency_overrides[get_db_session] = lambda: mock_db
+
+    reset_login_rate_limits()
+    async with AsyncClient(transport=ASGITransport(app=auth_app), base_url="http://test") as client:
+        res = await client.post(
+            "/login",
+            json={"username": "teacher.demo1", "password": "wrong-password"},
+        )
+        assert res.status_code == 401
+
+    auth_app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_logout_clears_cookie(auth_app: FastAPI) -> None:
+    async with AsyncClient(transport=ASGITransport(app=auth_app), base_url="http://test") as client:
+        client.cookies.set(SESSION_COOKIE_NAME, "dummy-session-token")
+        res = await client.post("/logout", headers={"Accept": "application/json"})
+        assert res.status_code == 200
+        assert res.json()["ok"] is True
