@@ -269,9 +269,9 @@ state_REFLECT_SELF: {text: "अपने अनुभव बताना", audio
 
 # ── Coach exact words fallbacks ──────────────────────────────
 coach_exact_words_contrast_math:
-  text: "दोनों उत्तर स्लेट पर रखकर पूछिए: तीलियाँ गिनकर बताओ, कौन-सा तरीका सही है?"
+  text: "दोनों के उत्तर देखो, तीलियाँ गिनकर बताओ कि कौन-सा सही है और क्यों?"
   audio: false
 coach_exact_words_contrast_lit:
-  text: "दोनों बच्चों के उत्तर स्लेट पर लिखकर पूछिए: कौन-सा शब्द सही है?"
+  text: "दोनों के पढ़े शब्द सुनो, अक्षर मिलाकर बताओ कि कौन-सा सही है?"
   audio: false
 
