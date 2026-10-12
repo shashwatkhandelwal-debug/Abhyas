@@ -32,3 +32,15 @@ None.
 - Cost control: Added speech budget tracker (daily & total caps), STT 15s increment pricing, TTS character pricing, lite-mode fallback, cache hits with zero spend, pre-warming helper, and Bhashini ULCA pipeline adapter.
 - T18: Implemented MessageCatalog loader with startup validation & gender variants, per-teacher asyncio locks, and ConversationService with graceful degradation.
 - T19: Implemented SceneRunner orchestrating the 5-stage pipeline (stop keywords -> act_tagger -> RuleEngine -> child_voice guarded -> TTS -> persistence) with stage_ms timings and full multi-turn integration test running the Ravi worked example end-to-end.
+- Review Items 1-11 (CHANGES 254f622):
+  1. Speech spend & LLM token usage survive restarts via DB queries in IST (Asia/Kolkata); Bhashini cost tracked at 0.0 INR.
+  2. Cap-hit fallback order: Sarvam cap reached -> Bhashini (if configured) -> lite mode; STT cap caught in ConversationService replying with stt_budget_type_please.
+  3. TTS cache survives deploys via Postgres tts_audio table; local disk cache kept as fallback; prewarming via script/admin.
+  4. TTS cache key single source of truth: synthesize() returns (wav_bytes, cache_key); VoiceSpec has gender: Literal['f', 'm']; Bhashini gender mapping direct.
+  5. Scenes & turns persist to Postgres scene and turn tables; InMemorySceneStore retained behind SceneStore protocol.
+  6. Intent matching in backend/app/core/intents.py per spec/08 §8.3 (NFC + lowercase, word-boundary whole/prefix match).
+  7. Low-confidence confirmation: store pending transcript per teacher; 'हाँ' accepts, 'फिर से' discards; in REHEARSE skips confirm and flags turn low_conf.
+  8. No hardcoded Hindi in conversation.py or scene_runner.py: catalog keys used for scene_all_correct, scene_ended_neutral, stt_failed, stt_confirm, stt_budget_type_please.
+  9. Removed echo fallback in ConversationService: fails fast with RuntimeError if session_dispatcher is None in production.
+  10. SceneRunner: concurrent child TTS with asyncio.gather, last 4 child lines in context, logs unknown acts, removed hardcoded 52-17 fallback.
+  11. locks.py: ref-counted idle per-teacher lock pruning, single Render instance docstring note.

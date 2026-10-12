@@ -1,0 +1,233 @@
+"""Intent classification and keyword matching (spec/08 §8.3, CHANGES 254f622 Item 6).
+
+Implements NFC-normalized, word-boundary, whole-message and prefix matching for
+global intents and rehearsal stop commands per spec/08 §8.3.
+"""
+
+from __future__ import annotations
+
+import logging
+import re
+import unicodedata
+from enum import StrEnum
+
+logger = logging.getLogger("abhyas.core.intents")
+
+
+class Intent(StrEnum):
+    """Canonical system intents (spec/08 §8.3)."""
+
+    HELP = "help"
+    STOP_SCENE = "stop_scene"
+    NEXT = "next"
+    SKIP = "skip"
+    REPEAT = "repeat"
+    ASK = "ask"
+    LITE_TOGGLE = "lite_toggle"
+    PROGRESS = "progress"
+    CONSENT = "consent"
+    DELETE = "delete"
+    GREETING = "greeting"
+    CONFIRM_YES = "confirm_yes"
+    CONFIRM_NO = "confirm_no"
+
+
+# Boundary regex for Devanagari (\u0900-\u097F) and Latin/alphanumeric words
+_WB = r"(?<![\u0900-\u097Fa-zA-Z0-9_])"
+_WBE = r"(?![\u0900-\u097Fa-zA-Z0-9_])"
+
+# Button IDs mapped directly to intents (spec/08 §8.3 Rule 1)
+BUTTON_INTENT_MAP: dict[str, Intent] = {
+    "confirm_yes": Intent.CONFIRM_YES,
+    "confirm_no": Intent.CONFIRM_NO,
+    "btn_agree": Intent.CONFIRM_YES,
+    "btn_decline": Intent.CONFIRM_NO,
+    "btn_understood": Intent.NEXT,
+    "btn_replay": Intent.REPEAT,
+    "btn_skip": Intent.SKIP,
+    "btn_continue": Intent.NEXT,
+    "btn_next_move": Intent.NEXT,
+    "btn_progress": Intent.PROGRESS,
+}
+
+# Stop scene regex: whole message or explicit stop phrases (spec/08 §8.3 Rule 2)
+# "बस", "बस, हो गया", "stop", "रुको" ARE stops.
+# "बस एक बंडल खोलो" is NOT a stop ("बस" used as "only/just").
+_STOP_EXACT_PATTERNS = [
+    re.compile(r"^बस\s*[,।!]?\s*(हो\s*गया|करो|रहने\s*दो|इतना\s*ही|खत्म|समाप्त|अब)?$", re.IGNORECASE),
+    re.compile(r"^बस\s*[,।!]?.*(खत्म|समाप्त|रोक)", re.IGNORECASE),
+    re.compile(r"^.*(यहीं|यही)\s*(रोक|खत्म|समाप्त)", re.IGNORECASE),
+    re.compile(r"^(रुको|रुकिए|रुको\s*अब|रुको\s*बस)$", re.IGNORECASE),
+    re.compile(r"^(खत्म|खत्म\s*करो|समाप्त)$", re.IGNORECASE),
+    re.compile(r"^(stop|stop\s*now|stop\s*scene)$", re.IGNORECASE),
+    re.compile(r"^bas(\s*[,!]?\s*(ho\s*gaya|khatam|rok))?$", re.IGNORECASE),
+    re.compile(r"^(rok|roko)$", re.IGNORECASE),
+]
+
+_HELP_PATTERN = re.compile(
+    rf"^{_WB}(मदद|help|menu|मेनू){_WBE}(\s+(चाहिए|karo|करो|menu))?$",
+    re.IGNORECASE,
+)
+
+_NEXT_PATTERN = re.compile(
+    rf"^{_WB}(आगे|अगला|अगली|शुरू|next|start|aage|shuru){_WBE}(\s+(बढ़ें|बढ़ें|करो|chalo))?$",
+    re.IGNORECASE,
+)
+
+_SKIP_PATTERN = re.compile(
+    rf"^{_WB}(छोड़ें|छोड़ें|छोड़ो|छोड़ो|skip|chhodo|chodo){_WBE}$",
+    re.IGNORECASE,
+)
+
+_REPEAT_PATTERN = re.compile(
+    rf"^{_WB}(फिर\s*से|दोबारा|repeat|phir\s*se|wapas){_WBE}(\s+(सुनें|सुनना|bologe))?$",
+    re.IGNORECASE,
+)
+
+_ASK_PREFIX_PATTERN = re.compile(
+    rf"^{_WB}(सवाल|प्रश्न|question|sawal){_WBE}([:\s\-\?].*|$)",
+    re.IGNORECASE,
+)
+
+_LITE_TOGGLE_PATTERN = re.compile(
+    rf"^{_WB}(लाइट\s*मोड|लाइट|lite\s*mode|lite){_WBE}$",
+    re.IGNORECASE,
+)
+
+_PROGRESS_PATTERN = re.compile(
+    rf"^{_WB}(मेरी\s*प्रगति|प्रगति|progress){_WBE}$",
+    re.IGNORECASE,
+)
+
+_CONSENT_PATTERN = re.compile(
+    rf"^{_WB}(सहमति|सहमति\s*बदलें|consent){_WBE}$",
+    re.IGNORECASE,
+)
+
+_DELETE_PATTERN = re.compile(
+    rf"^{_WB}(मेरा\s*डेटा\s*हटाएँ|मेरा\s*डाटा\s*हटाएं|मेरा\s*डेटा\s*हटाएं|मेरा\s*डाटा\s*हटाएँ|delete\s*my\s*data){_WBE}$",
+    re.IGNORECASE,
+)
+
+_CONFIRM_YES_PATTERN = re.compile(
+    rf"^{_WB}(हाँ|हा|haan|yes|सही|सही\s*है|sahii?){_WBE}[.!]?$",
+    re.IGNORECASE,
+)
+
+_CONFIRM_NO_PATTERN = re.compile(
+    rf"^{_WB}(नहीं|नही|nahi|no|फिर\s*से\s*बोलूँगी|फिर\s*से\s*बोलूंगी|गलत){_WBE}[.!]?$",
+    re.IGNORECASE,
+)
+
+_GREETING_PATTERN = re.compile(
+    rf"^{_WB}(नमस्ते|नमस्कार|hello|hi|hey){_WBE}(\s+(जी|madam|sir))?[.!]?$",
+    re.IGNORECASE,
+)
+
+
+def normalize_intent_text(text: str) -> str:
+    """Normalizes text for intent matching (spec/08 §8.3).
+
+    Applies Unicode NFC normalization, trims whitespace, and collapses spacing.
+    """
+    if not text:
+        return ""
+    norm = unicodedata.normalize("NFC", text).strip()
+    norm = re.sub(r"\s+", " ", norm)
+    return norm
+
+
+def match_intent(
+    text: str | None = None,
+    in_rehearsal: bool = False,
+    button_id: str | None = None,
+) -> Intent | None:
+    """Matches text and/or button_id to a canonical system Intent (spec/08 §8.3).
+
+    Order of evaluation:
+    1. Direct button id match.
+    2. In rehearsal: check stop keywords.
+    3. Global keywords: help, next, skip, repeat, ask, lite_toggle, progress, consent, delete.
+    4. Confirmation / greeting matches.
+    """
+    # 1. Button ID match
+    if button_id:
+        if button_id in BUTTON_INTENT_MAP:
+            return BUTTON_INTENT_MAP[button_id]
+
+    if not text:
+        return None
+
+    cleaned = normalize_intent_text(text)
+    if not cleaned:
+        return None
+
+    # Strip trailing punctuation for clean matching
+    cleaned_punct = re.sub(r"[\s।,!\.?]+$", "", cleaned)
+
+    # 2. Rehearsal stop check (REHEARSE state only)
+    if in_rehearsal:
+        for pat in _STOP_EXACT_PATTERNS:
+            if pat.match(cleaned) or pat.match(cleaned_punct):
+                return Intent.STOP_SCENE
+
+    # 3. Global keywords in priority order (spec/08 §8.3)
+    if _HELP_PATTERN.match(cleaned) or _HELP_PATTERN.match(cleaned_punct):
+        return Intent.HELP
+
+    if _SKIP_PATTERN.match(cleaned) or _SKIP_PATTERN.match(cleaned_punct):
+        return Intent.SKIP
+
+    if _REPEAT_PATTERN.match(cleaned) or _REPEAT_PATTERN.match(cleaned_punct):
+        return Intent.REPEAT
+
+    if _ASK_PREFIX_PATTERN.match(cleaned):
+        return Intent.ASK
+
+    if _LITE_TOGGLE_PATTERN.match(cleaned) or _LITE_TOGGLE_PATTERN.match(cleaned_punct):
+        return Intent.LITE_TOGGLE
+
+    if _PROGRESS_PATTERN.match(cleaned) or _PROGRESS_PATTERN.match(cleaned_punct):
+        return Intent.PROGRESS
+
+    if _CONSENT_PATTERN.match(cleaned) or _CONSENT_PATTERN.match(cleaned_punct):
+        return Intent.CONSENT
+
+    if _DELETE_PATTERN.match(cleaned) or _DELETE_PATTERN.match(cleaned_punct):
+        return Intent.DELETE
+
+    if _NEXT_PATTERN.match(cleaned) or _NEXT_PATTERN.match(cleaned_punct):
+        return Intent.NEXT
+
+    # 4. Confirmation intents
+    if _CONFIRM_YES_PATTERN.match(cleaned) or _CONFIRM_YES_PATTERN.match(cleaned_punct):
+        return Intent.CONFIRM_YES
+
+    if _CONFIRM_NO_PATTERN.match(cleaned) or _CONFIRM_NO_PATTERN.match(cleaned_punct):
+        return Intent.CONFIRM_NO
+
+    # 5. Greetings
+    if _GREETING_PATTERN.match(cleaned) or _GREETING_PATTERN.match(cleaned_punct):
+        return Intent.GREETING
+
+    return None
+
+
+def extract_ask_query(text: str) -> str:
+    """Extracts the underlying question after an ASK keyword prefix."""
+    cleaned = normalize_intent_text(text)
+    match = _ASK_PREFIX_PATTERN.match(cleaned)
+    if match:
+        remainder = cleaned[match.end(1) :].strip()
+        remainder = re.sub(r"^[:\s\-\?]+", "", remainder).strip()
+        return remainder
+    return cleaned
+
+
+__all__ = [
+    "Intent",
+    "match_intent",
+    "normalize_intent_text",
+    "extract_ask_query",
+    "BUTTON_INTENT_MAP",
+]

@@ -96,8 +96,8 @@ def split_sentences_for_tts(text_hi: str, max_chars: int = 1500) -> list[str]:
 class TTSProvider(Protocol):
     """Protocol for TTS providers (spec/06 §6.3)."""
 
-    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> bytes:
-        """Synthesizes Hindi text to WAV 22.05 kHz mono audio bytes."""
+    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> tuple[bytes, str]:
+        """Synthesizes Hindi text to WAV 22.05 kHz mono audio bytes and returns (wav_bytes, cache_key)."""
         ...
 
 
@@ -108,8 +108,16 @@ class MockTTS:
     to text length (so latency calculations and audio players work).
     """
 
-    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> bytes:
-        """Synthesizes mock WAV audio."""
+    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> tuple[bytes, str]:
+        """Synthesizes mock WAV audio and returns (wav_bytes, cache_key)."""
+        cache_key = compute_cache_key(text_hi, voice.provider_speaker, voice)
+        if not text_hi or not text_hi.strip():
+            return b"", cache_key
+
+        cached_wav = await tts_cache.get(cache_key, "wav")
+        if cached_wav is not None:
+            return cached_wav, cache_key
+
         clean_text = convert_digits_for_tts(text_hi)
         # Duration proportional to character count: ~0.06s per character, min 0.5s, max 10.0s
         duration_s = max(0.5, min(10.0, len(clean_text) * 0.06))
@@ -127,11 +135,12 @@ class MockTTS:
         raw_wav = out_io.getvalue()
         if abs(voice.pitch_factor - 1.0) > 0.001:
             try:
-                return await pitch_shift(raw_wav, voice.pitch_factor)
+                raw_wav = await pitch_shift(raw_wav, voice.pitch_factor)
             except Exception:
-                return raw_wav
+                pass
 
-        return raw_wav
+        await tts_cache.put_wav(cache_key, raw_wav)
+        return raw_wav, cache_key
 
 
 class SarvamTTS:
@@ -210,27 +219,35 @@ class SarvamTTS:
 
         raise TTSUnavailable(f"Sarvam TTS failed after retries: {last_error}") from last_error
 
-    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> bytes:
+    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> tuple[bytes, str]:
         """Synthesizes Hindi text to WAV 22.05 kHz mono audio bytes (spec/06 §6.3)."""
+        cache_key = compute_cache_key(text_hi, voice.provider_speaker, voice)
         if not text_hi or not text_hi.strip():
-            return b""
+            return b"", cache_key
 
         # Check cache before making API calls
-        cache_key = compute_cache_key(text_hi, voice.provider_speaker, voice)
-        cached_wav = tts_cache.get(cache_key, "wav")
+        cached_wav = await tts_cache.get(cache_key, "wav")
         if cached_wav is not None:
-            return cached_wav
+            return cached_wav, cache_key
 
-        # Budget guard: if cap exceeded, fall back to lite mode (empty audio, text-only reply)
+        # Budget guard: if cap exceeded, fallback to Bhashini (if configured) -> lite mode (CHANGES 254f622 Item 2)
         if settings.SPEECH_PROVIDER_LIVE:
             cost = calculate_tts_cost(text_hi)
-            if not speech_budget.can_spend(cost):
+            if not await speech_budget.can_spend(cost):
                 logger.warning(
-                    "TTS budget exceeded (cost %.4f INR). Returning empty audio for lite-mode fallback.",
+                    "Sarvam TTS budget exceeded (cost %.4f INR). Checking Bhashini fallback...",
                     cost,
                 )
-                return b""
-            speech_budget.record_spend(cost)
+                if settings.BHASHINI_API_KEY:
+                    try:
+                        bhashini = BhashiniTTS()
+                        return await bhashini.synthesize(text_hi, voice)
+                    except Exception as exc:
+                        logger.warning(
+                            "Bhashini fallback failed: %s. Falling back to lite mode.", exc
+                        )
+                return b"", cache_key
+            await speech_budget.record_spend("sarvam", "tts", len(text_hi), cost)
 
         # 1. Convert numerals in child lines / text to Hindi words (spec/06 §6.3)
         prepared_text = convert_digits_for_tts(text_hi)
@@ -257,7 +274,7 @@ class SarvamTTS:
         # Store synthesized audio in cache
         await tts_cache.put_wav(cache_key, raw_wav)
 
-        return raw_wav
+        return raw_wav, cache_key
 
 
 class BhashiniTTS:
@@ -275,30 +292,23 @@ class BhashiniTTS:
         if not self.api_key:
             raise TTSUnavailable("Bhashini TTS is not configured (BHASHINI_API_KEY missing)")
 
-    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> bytes:
+    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> tuple[bytes, str]:
         """Synthesizes Hindi text to WAV audio via Bhashini ULCA pipeline."""
+        cache_key = compute_cache_key(text_hi, voice.provider_speaker, voice)
         if not text_hi or not text_hi.strip():
-            return b""
+            return b"", cache_key
 
-        cache_key = compute_cache_key(text_hi, "bhashini", voice)
-        cached_wav = tts_cache.get(cache_key, "wav")
+        cached_wav = await tts_cache.get(cache_key, "wav")
         if cached_wav is not None:
-            return cached_wav
+            return cached_wav, cache_key
 
         if settings.SPEECH_PROVIDER_LIVE:
-            cost = calculate_tts_cost(text_hi)
-            if not speech_budget.can_spend(cost):
-                logger.warning("Bhashini TTS budget cap exceeded. Falling back to lite mode.")
-                return b""
-            speech_budget.record_spend(cost)
+            await speech_budget.record_spend("bhashini", "tts", len(text_hi), 0.0)
 
         prepared_text = convert_digits_for_tts(text_hi)
         client = get_speech_http_client()
-        gender = (
-            "female"
-            if voice.provider_speaker in {"ritu", "neha", "pooja", "suhani", "shweta"}
-            else "male"
-        )
+        # Item 4: remove hardcoded speaker list, use voice.gender directly
+        gender = "female" if voice.gender == "f" else "male"
 
         payload = {
             "pipelineTasks": [
@@ -343,7 +353,7 @@ class BhashiniTTS:
             raw_wav = await pitch_shift(raw_wav, voice.pitch_factor)
 
         await tts_cache.put_wav(cache_key, raw_wav)
-        return raw_wav
+        return raw_wav, cache_key
 
 
 def _concat_wav_bytes(wav_chunks: list[bytes]) -> bytes:

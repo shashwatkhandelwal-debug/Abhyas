@@ -86,8 +86,9 @@ async def test_mock_tts_synthesizes_valid_wav() -> None:
     mock_tts = MockTTS()
     voice = get_voice("abhyas")
 
-    wav_bytes = await mock_tts.synthesize("नमस्ते, आज हम घटाव सीखेंगे।", voice)
+    wav_bytes, ckey = await mock_tts.synthesize("नमस्ते, आज हम घटाव सीखेंगे।", voice)
     assert wav_bytes.startswith(b"RIFF")
+    assert len(ckey) == 64
     dur = await duration_s(wav_bytes)
     assert 0.5 <= dur <= 5.0
 
@@ -98,7 +99,7 @@ async def test_mock_tts_child_pitch_shifted() -> None:
     mock_tts = MockTTS()
     voice = get_voice("child_ravi")  # pitch 1.22
 
-    wav_bytes = await mock_tts.synthesize("पैंतालीस!", voice)
+    wav_bytes, ckey = await mock_tts.synthesize("पैंतालीस!", voice)
     assert wav_bytes.startswith(b"RIFF")
     dur = await duration_s(wav_bytes)
     assert dur > 0.1
@@ -107,10 +108,10 @@ async def test_mock_tts_child_pitch_shifted() -> None:
 @pytest.mark.asyncio
 @respx.mock
 async def test_sarvam_tts_success() -> None:
-    """SarvamTTS calls API, decodes base64 WAV audio, and returns valid bytes."""
+    """SarvamTTS calls API, decodes base64 WAV audio, and returns valid bytes and cache key."""
     # Create minimal 1-second WAV
     mock_tts = MockTTS()
-    sample_wav = await mock_tts.synthesize("नमस्ते", get_voice("abhyas"))
+    sample_wav, _ = await mock_tts.synthesize("नमस्ते", get_voice("abhyas"))
     b64_audio = base64.b64encode(sample_wav).decode("utf-8")
 
     respx.post("https://api.sarvam.ai/text-to-speech").mock(
@@ -122,10 +123,11 @@ async def test_sarvam_tts_success() -> None:
 
     tts = SarvamTTS(api_key="test-key")
     voice = VoiceSpec(provider_speaker="ritu", model="bulbul:v3", pace=0.95, pitch_factor=1.0)
-    result = await tts.synthesize("नमस्ते", voice)
+    result, ckey = await tts.synthesize("नमस्ते_नया", voice)
 
     assert result.startswith(b"RIFF")
     assert len(result) == len(sample_wav)
+    assert len(ckey) == 64
 
 
 @pytest.mark.asyncio
@@ -133,7 +135,7 @@ async def test_sarvam_tts_success() -> None:
 async def test_sarvam_tts_retry_on_500() -> None:
     """SarvamTTS retries on 500 error and recovers."""
     mock_tts = MockTTS()
-    sample_wav = await mock_tts.synthesize("नमस्ते", get_voice("abhyas"))
+    sample_wav, _ = await mock_tts.synthesize("नमस्ते", get_voice("abhyas"))
     b64_audio = base64.b64encode(sample_wav).decode("utf-8")
 
     route = respx.post("https://api.sarvam.ai/text-to-speech")
@@ -144,7 +146,7 @@ async def test_sarvam_tts_retry_on_500() -> None:
 
     tts = SarvamTTS(api_key="test-key")
     voice = VoiceSpec(provider_speaker="ritu", model="bulbul:v3")
-    result = await tts.synthesize("नमस्ते", voice)
+    result, ckey = await tts.synthesize("नमस्ते_retry", voice)
 
     assert result.startswith(b"RIFF")
     assert route.call_count == 2
@@ -161,14 +163,14 @@ async def test_sarvam_tts_failure_after_retries() -> None:
     tts = SarvamTTS(api_key="test-key")
     voice = VoiceSpec(provider_speaker="ritu", model="bulbul:v3")
     with pytest.raises(TTSUnavailable):
-        await tts.synthesize("नमस्ते", voice)
+        await tts.synthesize("अनपेक्षित_त्रुटि_पाठ", voice)
 
 
 @pytest.mark.asyncio
 async def test_tts_cache_operations() -> None:
     """TTSCache computes keys, saves audio formats, and reads from cache."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        cache = TTSCache(cache_dir=tmpdir)
+        cache = TTSCache(cache_dir=tmpdir, use_db=False)
         voice = get_voice("child_ravi")
         text = "रवि ने 45 कहा।"
 
@@ -176,8 +178,8 @@ async def test_tts_cache_operations() -> None:
         assert len(key) == 64  # sha256 hex string
 
         # Initially empty
-        assert cache.has(key, "wav") is False
-        assert cache.get(key, "wav") is None
+        assert await cache.has(key, "wav") is False
+        assert await cache.get(key, "wav") is None
 
         # Put synthetic WAV
         out_io = Path(__file__).parents[1] / "fixtures" / "audio" / "sample_5s.wav"
@@ -188,11 +190,11 @@ async def test_tts_cache_operations() -> None:
         assert "ogg" in paths
         assert "mp3" in paths
 
-        assert cache.has(key, "wav") is True
-        assert cache.has(key, "ogg") is True
-        assert cache.has(key, "mp3") is True
+        assert await cache.has(key, "wav") is True
+        assert await cache.has(key, "ogg") is True
+        assert await cache.has(key, "mp3") is True
 
-        retrieved_wav = cache.get(key, "wav")
+        retrieved_wav = await cache.get(key, "wav")
         assert retrieved_wav == wav_bytes
 
 

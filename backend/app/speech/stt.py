@@ -23,7 +23,7 @@ from pydantic import BaseModel
 from backend.app.config import settings
 from backend.app.speech.audio import duration_s, split_for_stt, trim_silence
 from backend.app.speech.client import get_speech_http_client
-from backend.app.speech.spend import speech_budget
+from backend.app.speech.spend import SpeechBudgetExceededError, speech_budget
 
 logger = logging.getLogger("abhyas.speech.stt")
 
@@ -199,7 +199,18 @@ class SarvamSTT:
 
         # Check if splitting is necessary (Sarvam limit < 30s)
         dur = await duration_s(wav16k)
-        speech_budget.check_and_record_stt(dur)
+        try:
+            await speech_budget.check_and_record_stt(dur, provider="sarvam")
+        except SpeechBudgetExceededError:
+            if settings.BHASHINI_API_KEY:
+                try:
+                    logger.info("Sarvam STT budget exceeded, falling back to Bhashini STT")
+                    bhashini = BhashiniSTT()
+                    return await bhashini.transcribe(wav16k, lang=lang, keyterms=keyterms)
+                except Exception as bhash_exc:
+                    logger.warning("Bhashini STT fallback failed: %s", bhash_exc)
+                    raise
+            raise
 
         if dur > 25.0:
             clips = await split_for_stt(wav16k, max_s=25.0)
@@ -324,7 +335,7 @@ class BhashiniSTT:
         t0 = time.perf_counter()
         wav16k = await trim_silence(wav16k)
         dur = await duration_s(wav16k)
-        speech_budget.check_and_record_stt(dur)
+        await speech_budget.check_and_record_stt(dur, provider="bhashini")
 
         client = get_speech_http_client()
         b64_audio = base64.b64encode(wav16k).decode("utf-8")

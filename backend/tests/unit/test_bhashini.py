@@ -94,10 +94,11 @@ async def test_bhashini_tts_success(wav_5s: bytes) -> None:
 
     tts = BhashiniTTS(api_key="test-bhashini-key", user_id="test-user")
     voice = get_voice("abhyas")
-    result_wav = await tts.synthesize("नमस्ते", voice)
+    result_wav, cache_key = await tts.synthesize("नमस्ते_भाषिनी", voice)
 
     assert result_wav.startswith(b"RIFF")
     assert len(result_wav) == len(wav_5s)
+    assert len(cache_key) == 64
 
 
 def test_get_stt_provider_bhashini() -> None:

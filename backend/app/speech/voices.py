@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel
@@ -16,12 +17,13 @@ logger = logging.getLogger("abhyas.speech.voices")
 
 
 class VoiceSpec(BaseModel):
-    """Specification of voice model, speaker, pacing, and pitch factor (spec/06 §6.3)."""
+    """Specification of voice model, speaker, pacing, pitch factor, and gender (spec/06 §6.3)."""
 
     provider_speaker: str
     model: str = "bulbul:v3"
     pace: float = 1.0
     pitch_factor: float = 1.0
+    gender: Literal["f", "m"] = "f"
 
 
 # Default canonical voice catalog (spec/06 §6.3)
@@ -32,6 +34,7 @@ VOICE_CATALOG: dict[str, VoiceSpec] = {
         model="bulbul:v3",
         pace=0.95,
         pitch_factor=1.0,
+        gender="f",
     ),
     # Coach feedback
     "coach": VoiceSpec(
@@ -39,6 +42,7 @@ VOICE_CATALOG: dict[str, VoiceSpec] = {
         model="bulbul:v3",
         pace=0.95,
         pitch_factor=1.0,
+        gender="f",
     ),
     # Model rehearsal teacher
     "model_teacher": VoiceSpec(
@@ -46,6 +50,7 @@ VOICE_CATALOG: dict[str, VoiceSpec] = {
         model="bulbul:v3",
         pace=1.0,
         pitch_factor=1.0,
+        gender="f",
     ),
     # Confident boy (Ravi)
     "child_ravi": VoiceSpec(
@@ -53,6 +58,7 @@ VOICE_CATALOG: dict[str, VoiceSpec] = {
         model="bulbul:v3",
         pace=1.15,
         pitch_factor=1.22,
+        gender="m",
     ),
     # Shy girl (Priya)
     "child_priya": VoiceSpec(
@@ -60,6 +66,7 @@ VOICE_CATALOG: dict[str, VoiceSpec] = {
         model="bulbul:v3",
         pace=0.90,
         pitch_factor=1.18,
+        gender="f",
     ),
     # Distracted boy (Aman)
     "child_aman": VoiceSpec(
@@ -67,6 +74,7 @@ VOICE_CATALOG: dict[str, VoiceSpec] = {
         model="bulbul:v3",
         pace=1.05,
         pitch_factor=1.25,
+        gender="m",
     ),
 }
 

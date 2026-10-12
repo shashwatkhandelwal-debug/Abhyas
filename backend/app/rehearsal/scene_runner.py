@@ -11,6 +11,7 @@ Coordinates the multi-stage pipeline:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from pathlib import Path
@@ -20,6 +21,8 @@ import yaml
 from pydantic import BaseModel
 
 from backend.app.content_models import PersonaCard
+from backend.app.core.intents import Intent, match_intent
+from backend.app.core.messages import get_message
 from backend.app.core.types import OutboundMessage
 from backend.app.llm.roles.act_tagger import tag_act
 from backend.app.llm.roles.child_voice import voice_child_line
@@ -41,13 +44,10 @@ from backend.app.rule_engine.domain import (
     TeachingAct,
 )
 from backend.app.rule_engine.engine import RuleEngine
-from backend.app.speech.cache import compute_cache_key
 from backend.app.speech.tts import TTSProvider, get_tts_provider
 from backend.app.speech.voices import get_voice
 
 logger = logging.getLogger("abhyas.rehearsal.scene_runner")
-
-STOP_KEYWORDS = ["बस", "रुको", "खत्म", "stop", "pause", "bas", "rok", "roko"]
 
 
 class TurnResult(BaseModel):
@@ -123,7 +123,7 @@ class SceneRunner:
         """Initializes a new rehearsal scene for a teacher."""
         move = self.get_move(move_id)
 
-        # Parse scenario items
+        # Parse scenario items from move card
         items: list[Problem] = []
         for raw_item in move.scenario.items:
             t = raw_item.get("type", "sub")
@@ -137,10 +137,13 @@ class SceneRunner:
                     word=raw_item.get("word"),
                 )
             )
-        if not items:
-            items = [Problem(type="sub", a=52, b=17)]
 
-        current_item = item or items[0]
+        if item is not None:
+            current_item = item
+        elif items:
+            current_item = items[0]
+        else:
+            raise ValueError(f"Move '{move_id}' has no scenario items defined in move card")
 
         # Construct child runtimes if not provided
         if children is None:
@@ -192,9 +195,8 @@ class SceneRunner:
         scene_state = scene.scene_state
         move = self.get_move(scene_state.move_id)
 
-        # Stage 0: Stop keyword check
-        text_lower = transcript.strip().lower()
-        if any(w in text_lower for w in STOP_KEYWORDS):
+        # Stage 0: Stop keyword check (CHANGES 254f622 Item 6 & Item 8)
+        if match_intent(transcript, in_rehearsal=True) == Intent.STOP_SCENE:
             scene_state.ended = True
             scene_state.end_reason = "teacher_stop"
             turn_record = TurnRecord(
@@ -213,7 +215,7 @@ class SceneRunner:
                 outbound=[
                     OutboundMessage(
                         kind="text",
-                        text_hi="अभ्यास यहीं समाप्त होता है। अब हम आपका फीडबैक देखते हैं।",
+                        text_hi=get_message("scene_ended_neutral", address_form),
                         speaker="coach",
                     )
                 ],
@@ -231,14 +233,14 @@ class SceneRunner:
         )
         tagger_ms = int((time.perf_counter() - t_stage1) * 1000)
 
-        # Stage 2: RuleEngine
+        # Stage 2: RuleEngine (log unknown acts, CHANGES 254f622 Item 10)
         t_stage2 = time.perf_counter()
         act_enums: list[TeachingAct] = []
         for a in tag_out.acts:
             try:
                 act_enums.append(TeachingAct(a))
             except ValueError:
-                pass
+                logger.warning("Unknown teaching act encountered from tagger: %s", a)
 
         tagged_turn = TaggedTurn(
             acts=act_enums,
@@ -248,15 +250,16 @@ class SceneRunner:
         step_result = RuleEngine.step(scene_state, tagged_turn)
         engine_ms = int((time.perf_counter() - t_stage2) * 1000)
 
-        # Stage 3: child_voice & guarding
+        # Stage 3: child_voice & guarding (keep last 4 child lines in context, CHANGES 254f622 Item 10)
         t_stage3 = time.perf_counter()
         child_lines: list[ChildLineRecord] = []
-        last_4 = [
+        all_past_lines = [
             line.line_hi
-            for past_turn in scene.turns[-2:]
+            for past_turn in scene.turns
             for line in past_turn.child_lines
             if line.line_hi
         ]
+        last_4 = all_past_lines[-4:]
 
         for resp in step_result.responses:
             persona = self.personas.get(resp.persona_id)
@@ -280,56 +283,38 @@ class SceneRunner:
             )
         voice_ms = int((time.perf_counter() - t_stage3) * 1000)
 
-        # Stage 4: TTS synthesis
+        # Stage 4: TTS synthesis running concurrently (CHANGES 254f622 Item 4 & 10)
         t_stage4 = time.perf_counter()
         outbound_messages: list[OutboundMessage] = []
 
-        for line_rec in child_lines:
+        async def _synthesize_line(line_rec: ChildLineRecord) -> OutboundMessage | None:
             if not line_rec.line_hi.strip():
-                continue
+                return None
 
             voice_spec = get_voice(line_rec.voice_id)
             if synthesize_audio:
                 try:
-                    wav_bytes = await self.tts.synthesize(line_rec.line_hi, voice_spec)
+                    wav_bytes, ckey = await self.tts.synthesize(line_rec.line_hi, voice_spec)
                     if wav_bytes:
-                        ckey = compute_cache_key(
-                            line_rec.line_hi, voice_spec.provider_speaker, voice_spec
-                        )
                         line_rec.audio_ref = ckey
-                        outbound_messages.append(
-                            OutboundMessage(
-                                kind="audio",
-                                text_hi=line_rec.line_hi,
-                                audio_ref=ckey,
-                                speaker=line_rec.persona_id,
-                            )
-                        )
-                    else:
-                        outbound_messages.append(
-                            OutboundMessage(
-                                kind="text",
-                                text_hi=line_rec.line_hi,
-                                speaker=line_rec.persona_id,
-                            )
+                        return OutboundMessage(
+                            kind="audio",
+                            text_hi=line_rec.line_hi,
+                            audio_ref=ckey,
+                            speaker=line_rec.persona_id,
                         )
                 except Exception as exc:
                     logger.warning("TTS failed for child line, sending text only: %s", exc)
-                    outbound_messages.append(
-                        OutboundMessage(
-                            kind="text",
-                            text_hi=line_rec.line_hi,
-                            speaker=line_rec.persona_id,
-                        )
-                    )
-            else:
-                outbound_messages.append(
-                    OutboundMessage(
-                        kind="text",
-                        text_hi=line_rec.line_hi,
-                        speaker=line_rec.persona_id,
-                    )
-                )
+
+            return OutboundMessage(
+                kind="text",
+                text_hi=line_rec.line_hi,
+                speaker=line_rec.persona_id,
+            )
+
+        if child_lines:
+            tts_results = await asyncio.gather(*(_synthesize_line(line) for line in child_lines))
+            outbound_messages.extend([m for m in tts_results if m is not None])
 
         tts_ms = int((time.perf_counter() - t_stage4) * 1000)
 
@@ -356,11 +341,16 @@ class SceneRunner:
         scene.turns.append(turn_record)
         if step_result.ended:
             scene.active = False
-            # Append scene completion outbound note
+            # Append scene completion outbound note from catalog (CHANGES 254f622 Item 8)
+            end_msg_key = (
+                "scene_all_correct"
+                if step_result.end_reason == "all_correct"
+                else "scene_ended_neutral"
+            )
             outbound_messages.append(
                 OutboundMessage(
                     kind="text",
-                    text_hi="शाबाश! बच्चों ने सही उत्तर समझ लिया है। अब हम आपका फीडबैक देखते हैं।",
+                    text_hi=get_message(end_msg_key, address_form),
                     speaker="coach",
                 )
             )

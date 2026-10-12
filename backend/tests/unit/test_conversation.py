@@ -3,11 +3,12 @@
 import asyncio
 from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
 
+from backend.app.config import settings
 from backend.app.core.conversation import ConversationService
 from backend.app.core.locks import TeacherLockManager
 from backend.app.core.messages import (
@@ -15,7 +16,7 @@ from backend.app.core.messages import (
     get_catalog,
     get_message,
 )
-from backend.app.core.types import InboundMessage
+from backend.app.core.types import InboundMessage, OutboundMessage
 from backend.app.speech.stt import MockSTT, STTUnavailable, Transcript
 
 FIXTURES_DIR = Path(__file__).parents[1] / "fixtures" / "audio"
@@ -147,7 +148,7 @@ async def test_conversation_service_audio_failure_graceful_degradation(wav_5s: b
 
 @pytest.mark.asyncio
 async def test_conversation_service_low_confidence_stt(wav_5s: bytes) -> None:
-    """When STT returns confidence below STT_MIN_CONFIDENCE, asks user for confirmation."""
+    """When STT returns confidence below STT_MIN_CONFIDENCE, asks user for confirmation using stt_confirm."""
     low_conf_stt = AsyncMock()
     low_conf_stt.transcribe.return_value = Transcript(
         text="घटाव का सवाल",
@@ -170,25 +171,153 @@ async def test_conversation_service_low_confidence_stt(wav_5s: bytes) -> None:
     outbound = await service.handle(inbound)
     assert len(outbound) == 1
     assert outbound[0].kind == "buttons"
-    assert "क्या आपने 'घटाव का सवाल' कहा?" in (outbound[0].text_hi or "")
+    assert "मैंने सुना:" in (outbound[0].text_hi or "")
+    assert "घटाव का सवाल" in (outbound[0].text_hi or "")
     button_ids = [b.id for b in outbound[0].buttons]
     assert "confirm_yes" in button_ids
     assert "confirm_no" in button_ids
 
 
 @pytest.mark.asyncio
-async def test_conversation_service_stop_word() -> None:
-    """Inbound stop keyword pauses practice session gracefully."""
-    service = ConversationService()
+async def test_conversation_service_low_conf_confirmation_flow(wav_5s: bytes) -> None:
+    """'हाँ' accepts pending transcript; 'फिर से' discards it (CHANGES 254f622 Item 7)."""
+    low_conf_stt = AsyncMock()
+    low_conf_stt.transcribe.return_value = Transcript(
+        text="43 में से 27",
+        confidence=0.25,
+        language="hi-IN",
+        provider="sarvam",
+        ms=100,
+    )
+
+    dispatcher_calls: list[str] = []
+
+    async def mock_dispatcher(msg: InboundMessage) -> list[OutboundMessage]:
+        dispatcher_calls.append(msg.text or "")
+        return [OutboundMessage(kind="text", text_hi="प्रक्रिया पूरी हुई।")]
+
+    service = ConversationService(stt_provider=low_conf_stt, session_dispatcher=mock_dispatcher)
+    teacher_id = uuid4()
+
+    # Step 1: Send low-conf audio
+    inbound_audio = InboundMessage(
+        channel="whatsapp",
+        channel_msg_id="audio-1",
+        teacher_id=teacher_id,
+        kind="audio",
+        audio_bytes=wav_5s,
+        received_at=datetime.now(UTC),
+    )
+    res1 = await service.handle(inbound_audio)
+    assert "मैंने सुना:" in (res1[0].text_hi or "")
+    assert len(dispatcher_calls) == 0
+
+    # Step 2: Teacher replies "हाँ" -> pending transcript accepted and dispatched
+    inbound_yes = InboundMessage(
+        channel="whatsapp",
+        channel_msg_id="text-yes",
+        teacher_id=teacher_id,
+        kind="text",
+        text="हाँ",
+        received_at=datetime.now(UTC),
+    )
+    res2 = await service.handle(inbound_yes)
+    assert len(dispatcher_calls) == 1
+    assert dispatcher_calls[0] == "43 में से 27"
+    assert res2[0].text_hi == "प्रक्रिया पूरी हुई।"
+
+    # Step 3: Another low-conf audio, replied with "फिर से" -> discarded
+    dispatcher_calls.clear()
+    await service.handle(inbound_audio)
+    inbound_no = InboundMessage(
+        channel="whatsapp",
+        channel_msg_id="text-no",
+        teacher_id=teacher_id,
+        kind="text",
+        text="फिर से",
+        received_at=datetime.now(UTC),
+    )
+    res_no = await service.handle(inbound_no)
+    assert len(dispatcher_calls) == 0
+    assert "आवाज़ साफ़ नहीं आई" in (res_no[0].text_hi or "")
+
+
+@pytest.mark.asyncio
+async def test_conversation_service_rehearse_skips_confirmation(wav_5s: bytes) -> None:
+    """In REHEARSE state: skip confirmation prompt and flag turn low_conf (CHANGES 254f622 Item 7)."""
+    low_conf_stt = AsyncMock()
+    low_conf_stt.transcribe.return_value = Transcript(
+        text="रवि, तीली खोलो",
+        confidence=0.20,
+        language="hi-IN",
+        provider="sarvam",
+        ms=100,
+    )
+
+    dispatched_msgs: list[InboundMessage] = []
+
+    async def mock_dispatcher(msg: InboundMessage) -> list[OutboundMessage]:
+        dispatched_msgs.append(msg)
+        return [OutboundMessage(kind="text", text_hi="ठीक है")]
+
+    service = ConversationService(stt_provider=low_conf_stt, session_dispatcher=mock_dispatcher)
+    teacher_id = uuid4()
+
+    inbound = InboundMessage(
+        channel="whatsapp",
+        channel_msg_id="audio-rehearse",
+        teacher_id=teacher_id,
+        kind="audio",
+        audio_bytes=wav_5s,
+        metadata={"state": "REHEARSE"},
+        received_at=datetime.now(UTC),
+    )
+
+    outbound = await service.handle(inbound)
+    assert len(dispatched_msgs) == 1
+    assert dispatched_msgs[0].text == "रवि, तीली खोलो"
+    assert dispatched_msgs[0].metadata.get("low_conf") is True
+    assert outbound[0].text_hi == "ठीक है"
+
+
+@pytest.mark.asyncio
+async def test_conversation_service_stt_budget_exceeded(wav_5s: bytes) -> None:
+    """When STT budget exceeded, replies with stt_budget_type_please (CHANGES 254f622 Item 2)."""
+    from backend.app.speech.spend import SpeechBudgetExceededError
+
+    budget_stt = AsyncMock()
+    budget_stt.transcribe.side_effect = SpeechBudgetExceededError("STT cap reached")
+
+    service = ConversationService(stt_provider=budget_stt)
     inbound = InboundMessage(
         channel="web",
-        channel_msg_id="msg-5",
+        channel_msg_id="msg-budget",
         teacher_id=uuid4(),
-        kind="text",
-        text="बस, यहीं रोकें",
+        kind="audio",
+        audio_bytes=wav_5s,
         received_at=datetime.now(UTC),
     )
 
     outbound = await service.handle(inbound)
     assert len(outbound) == 1
-    assert "रोक" in (outbound[0].text_hi or "")
+    assert "लिखकर भेजें" in (outbound[0].text_hi or "")
+
+
+@pytest.mark.asyncio
+async def test_conversation_service_prod_fails_without_dispatcher() -> None:
+    """In production, fail fast if session_dispatcher is None (CHANGES 254f622 Item 9)."""
+    service = ConversationService(session_dispatcher=None)
+    inbound = InboundMessage(
+        channel="web",
+        channel_msg_id="msg-prod",
+        teacher_id=uuid4(),
+        kind="text",
+        text="कोई संदेश",
+        received_at=datetime.now(UTC),
+    )
+
+    with patch.object(settings, "ENVIRONMENT", "production"):
+        with pytest.raises(
+            RuntimeError, match="ConversationService requires a session_dispatcher in production"
+        ):
+            await service.handle(inbound)

@@ -1,10 +1,10 @@
-"""Speech cost control, budget tracking, and usage limits (spec/06 §6.4).
+"""Speech cost control, budget tracking, and usage limits (spec/06 §6.4, CHANGES 254f622).
 
-Provides:
-- STT / TTS cost calculation formulas in INR.
-- Daily (SPEECH_DAILY_BUDGET_INR) and total (SPEECH_TOTAL_BUDGET_INR) budget guard.
-- Aggressive caching and pre-warming helpers.
-- Lite-mode fallback (text-only reply) when budget cap is reached.
+Persists speech spend into the speech_spend table in Postgres.
+Survives application restarts by querying today's spend in IST (Asia/Kolkata)
+and all-time spend against configured INR budgets.
+Supports provider fallback: Sarvam cap reached -> Bhashini (if configured) -> lite mode.
+Bhashini is free (records cost 0 INR).
 """
 
 from __future__ import annotations
@@ -15,16 +15,23 @@ import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 import yaml
+from sqlalchemy import func, select
 
 from backend.app.config import settings
+from backend.app.db.models import SpeechSpend
+from backend.app.db.session import async_session_factory
 
 if TYPE_CHECKING:
     from backend.app.speech.cache import TTSCache
     from backend.app.speech.tts import TTSProvider
 
 logger = logging.getLogger("abhyas.speech.spend")
+
+IST = ZoneInfo("Asia/Kolkata")
 
 
 class SpeechBudgetExceededError(Exception):
@@ -58,78 +65,154 @@ def calculate_tts_cost(text: str) -> float:
 
 @dataclass
 class SpeechBudgetTracker:
-    """Tracks daily and total speech spend against configured INR budgets (spec/06 §6.4)."""
+    """Tracks daily (IST) and total speech spend against configured INR budgets."""
 
     daily_spend: float = 0.0
     total_spend: float = 0.0
-    last_reset_date: datetime.date = field(default_factory=datetime.date.today)
+    last_reset_date: datetime.date = field(
+        default_factory=lambda: datetime.datetime.now(IST).date()
+    )
 
     def _check_day_rollover(self) -> None:
-        today = datetime.date.today()
-        if today > self.last_reset_date:
+        today_ist = datetime.datetime.now(IST).date()
+        if today_ist > self.last_reset_date:
             self.daily_spend = 0.0
-            self.last_reset_date = today
+            self.last_reset_date = today_ist
 
-    def can_spend(self, amount_inr: float) -> bool:
-        """Checks if spending amount_inr is within daily and total budget caps."""
-        self._check_day_rollover()
-        if self.daily_spend + amount_inr > settings.SPEECH_DAILY_BUDGET_INR:
+    async def get_daily_spend_db(self) -> float | None:
+        """Queries Postgres for total spend incurred today in IST."""
+        try:
+            now_ist = datetime.datetime.now(IST)
+            start_ist = now_ist.replace(hour=0, minute=0, second=0, microsecond=0)
+            start_utc = start_ist.astimezone(datetime.UTC)
+
+            async with async_session_factory() as session:
+                stmt = select(func.coalesce(func.sum(SpeechSpend.cost_inr), 0.0)).where(
+                    SpeechSpend.at >= start_utc
+                )
+                res = await session.execute(stmt)
+                return float(res.scalar() or 0.0)
+        except Exception as exc:
+            logger.debug("Could not query daily speech spend from DB: %s", exc)
+            return None
+
+    async def get_total_spend_db(self) -> float | None:
+        """Queries Postgres for all-time speech spend."""
+        try:
+            async with async_session_factory() as session:
+                stmt = select(func.coalesce(func.sum(SpeechSpend.cost_inr), 0.0))
+                res = await session.execute(stmt)
+                return float(res.scalar() or 0.0)
+        except Exception as exc:
+            logger.debug("Could not query total speech spend from DB: %s", exc)
+            return None
+
+    async def can_spend(self, amount_inr: float) -> bool:
+        """Checks if spending amount_inr is within daily and total budget caps in DB/memory."""
+        # Query Postgres if available to ensure spend survives restarts (Item 1)
+        daily_db = await self.get_daily_spend_db()
+        total_db = await self.get_total_spend_db()
+
+        if daily_db is not None and total_db is not None:
+            current_daily = daily_db
+            current_total = total_db
+            # Synchronize local memory tracker
+            self.daily_spend = current_daily
+            self.total_spend = current_total
+        else:
+            self._check_day_rollover()
+            current_daily = self.daily_spend
+            current_total = self.total_spend
+
+        if current_daily + amount_inr > settings.SPEECH_DAILY_BUDGET_INR:
             return False
-        if self.total_spend + amount_inr > settings.SPEECH_TOTAL_BUDGET_INR:
+        if current_total + amount_inr > settings.SPEECH_TOTAL_BUDGET_INR:
             return False
         return True
 
-    def record_spend(self, amount_inr: float) -> None:
-        """Records spend towards daily and total caps."""
+    async def record_spend(
+        self,
+        provider: str,
+        kind: str,
+        units: int,
+        amount_inr: float,
+    ) -> None:
+        """Records spend in speech_spend table in Postgres and updates in-memory tracker."""
+        # Bhashini is free: record cost 0 for it (Item 1)
+        if provider.lower() == "bhashini":
+            effective_cost = 0.0
+        else:
+            effective_cost = round(amount_inr, 4)
+
+        # 1. Persist to Postgres speech_spend table
+        try:
+            async with async_session_factory() as session:
+                record = SpeechSpend(
+                    id=uuid4(),
+                    at=datetime.datetime.now(datetime.UTC),
+                    provider=provider,
+                    kind=kind,
+                    units=units,
+                    cost_inr=effective_cost,
+                )
+                session.add(record)
+                await session.commit()
+        except Exception as exc:
+            logger.debug("Could not persist speech spend to DB: %s", exc)
+
+        # 2. Update local tracker
         self._check_day_rollover()
-        self.daily_spend = round(self.daily_spend + amount_inr, 4)
-        self.total_spend = round(self.total_spend + amount_inr, 4)
+        self.daily_spend = round(self.daily_spend + effective_cost, 4)
+        self.total_spend = round(self.total_spend + effective_cost, 4)
         logger.info(
-            "Speech spend recorded: +%.4f INR (daily: %.4f / %.1f, total: %.4f / %.1f)",
-            amount_inr,
+            "Speech spend recorded: [%s:%s] units=%d +%.4f INR (daily: %.4f / %.1f, total: %.4f / %.1f)",
+            provider,
+            kind,
+            units,
+            effective_cost,
             self.daily_spend,
             settings.SPEECH_DAILY_BUDGET_INR,
             self.total_spend,
             settings.SPEECH_TOTAL_BUDGET_INR,
         )
 
-    def check_and_record_stt(self, duration_s: float) -> float:
-        """Verifies budget and records STT spend if live mode is enabled.
-
-        Returns cost incurred (0.0 if not live).
-        Raises SpeechBudgetExceededError if cap exceeded.
-        """
+    async def check_and_record_stt(self, duration_s: float, provider: str = "sarvam") -> float:
+        """Verifies budget and records STT spend if live mode is enabled."""
         if not settings.SPEECH_PROVIDER_LIVE:
             return 0.0
+        if provider.lower() == "bhashini":
+            await self.record_spend("bhashini", "stt", int(duration_s), 0.0)
+            return 0.0
+
         cost = calculate_stt_cost(duration_s)
-        if not self.can_spend(cost):
+        if not await self.can_spend(cost):
             raise SpeechBudgetExceededError(
                 f"STT spend {cost:.4f} INR exceeds budget (daily: {self.daily_spend:.2f}/{settings.SPEECH_DAILY_BUDGET_INR}, total: {self.total_spend:.2f}/{settings.SPEECH_TOTAL_BUDGET_INR})"
             )
-        self.record_spend(cost)
+        await self.record_spend(provider, "stt", int(duration_s), cost)
         return cost
 
-    def check_and_record_tts(self, text: str) -> float:
-        """Verifies budget and records TTS spend if live mode is enabled.
-
-        Returns cost incurred (0.0 if not live).
-        Raises SpeechBudgetExceededError if cap exceeded.
-        """
+    async def check_and_record_tts(self, text: str, provider: str = "sarvam") -> float:
+        """Verifies budget and records TTS spend if live mode is enabled."""
         if not settings.SPEECH_PROVIDER_LIVE:
             return 0.0
+        if provider.lower() == "bhashini":
+            await self.record_spend("bhashini", "tts", len(text), 0.0)
+            return 0.0
+
         cost = calculate_tts_cost(text)
-        if not self.can_spend(cost):
+        if not await self.can_spend(cost):
             raise SpeechBudgetExceededError(
                 f"TTS spend {cost:.4f} INR exceeds budget (daily: {self.daily_spend:.2f}/{settings.SPEECH_DAILY_BUDGET_INR}, total: {self.total_spend:.2f}/{settings.SPEECH_TOTAL_BUDGET_INR})"
             )
-        self.record_spend(cost)
+        await self.record_spend(provider, "tts", len(text), cost)
         return cost
 
     def reset(self) -> None:
-        """Resets tracked daily and total spend (for tests and administrative reset)."""
+        """Resets tracked daily and total spend in memory."""
         self.daily_spend = 0.0
         self.total_spend = 0.0
-        self.last_reset_date = datetime.date.today()
+        self.last_reset_date = datetime.datetime.now(IST).date()
 
 
 speech_budget = SpeechBudgetTracker()
@@ -141,12 +224,7 @@ async def prewarm_fixed_audio(
     catalog_path: Path | str | None = None,
     extra_lines: list[tuple[str, str]] | None = None,
 ) -> list[str]:
-    """Pre-warms TTS audio cache for static messages in messages_hi.yaml and extra lines (spec/06 §6.4).
-
-    Synthesizes fixed messages where audio: true using the configured or mock TTS provider,
-    ensuring live production sessions hit the cache with zero latency and 0 INR spend.
-    Returns list of cache keys generated/verified.
-    """
+    """Pre-warms TTS audio cache via explicit script/action (never automatic on startup, Item 3)."""
     from backend.app.speech.cache import compute_cache_key, tts_cache
     from backend.app.speech.tts import get_tts_provider
     from backend.app.speech.voices import get_voice
@@ -178,28 +256,27 @@ async def prewarm_fixed_audio(
                     text_content = val.get(field_name)
                     if not text_content or not isinstance(text_content, str):
                         continue
-                    # Skip templated lines with placeholders (e.g., {name})
                     if "{" in text_content and "}" in text_content:
                         continue
 
                     ckey = compute_cache_key(
                         text_content, default_voice.provider_speaker, default_voice
                     )
-                    if not active_cache.has(ckey, "wav"):
-                        wav_bytes = await active_tts.synthesize(text_content, default_voice)
+                    if not await active_cache.has(ckey, "wav"):
+                        wav_bytes, _ = await active_tts.synthesize(text_content, default_voice)
                         if wav_bytes:
                             await active_cache.put_wav(ckey, wav_bytes)
                     keys_prewarmed.append(ckey)
         except Exception as exc:
             logger.warning("Error reading message catalog for prewarming: %s", exc)
 
-    # 2. Prewarm any extra lines (e.g. learn scripts, model rehearsal lines)
+    # 2. Prewarm any extra lines
     if extra_lines:
         for voice_id, line in extra_lines:
             voice = get_voice(voice_id)
             ckey = compute_cache_key(line, voice.provider_speaker, voice)
-            if not active_cache.has(ckey, "wav"):
-                wav_bytes = await active_tts.synthesize(line, voice)
+            if not await active_cache.has(ckey, "wav"):
+                wav_bytes, _ = await active_tts.synthesize(line, voice)
                 if wav_bytes:
                     await active_cache.put_wav(ckey, wav_bytes)
             keys_prewarmed.append(ckey)

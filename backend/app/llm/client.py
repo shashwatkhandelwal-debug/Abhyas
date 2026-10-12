@@ -10,6 +10,7 @@ import hashlib
 import json
 import logging
 import time
+import zoneinfo
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -22,12 +23,45 @@ from anthropic import (
     InternalServerError,
     RateLimitError,
 )
+from sqlalchemy import func, select
 
 from backend.app.config import settings
 from backend.app.db.models import LLMCall
 from backend.app.db.session import async_session_factory
 
 logger = logging.getLogger("abhyas.llm.client")
+
+IST = zoneinfo.ZoneInfo("Asia/Kolkata")
+
+
+def get_start_of_day_ist_utc() -> datetime:
+    """Returns the start of current day in IST (Asia/Kolkata) as a UTC datetime."""
+    now_ist = datetime.now(IST)
+    start_of_day_ist = now_ist.replace(hour=0, minute=0, second=0, microsecond=0)
+    return start_of_day_ist.astimezone(UTC)
+
+
+async def get_daily_token_usage_db() -> int | None:
+    """Queries total tokens used today in IST from llm_call table (CHANGES 254f622 Item 1)."""
+    try:
+        start_utc = get_start_of_day_ist_utc()
+        async with async_session_factory() as session:
+            stmt = select(
+                func.coalesce(
+                    func.sum(
+                        func.coalesce(LLMCall.input_tokens, 0)
+                        + func.coalesce(LLMCall.output_tokens, 0)
+                        + func.coalesce(LLMCall.cache_read_tokens, 0)
+                    ),
+                    0,
+                )
+            ).where(LLMCall.created_at >= start_utc)
+            result = await session.execute(stmt)
+            val = result.scalar_one_or_none()
+            return int(val) if val is not None else 0
+    except Exception as exc:
+        logger.debug("Failed querying daily token usage from DB: %s", exc)
+        return None
 
 
 class LLMUnavailable(Exception):
@@ -49,18 +83,26 @@ class TokenBudgetExceeded(LLMUnavailable):
 
 
 class TokenBudgetTracker:
-    """In-memory and DB-backed tracker for daily token budget (spec/12 §12.8)."""
+    """In-memory and DB-backed tracker for daily token budget in IST (spec/12 §12.8, CHANGES 254f622 Item 1)."""
 
     def __init__(self, daily_budget: int | None = None) -> None:
         self.daily_budget: int = daily_budget or settings.LLM_DAILY_TOKEN_BUDGET
-        self._current_date: str = datetime.now(UTC).strftime("%Y-%m-%d")
+        self._current_date: str = datetime.now(IST).strftime("%Y-%m-%d")
         self._tokens_used_today: int = 0
 
     def _check_and_reset_day(self) -> None:
-        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        today = datetime.now(IST).strftime("%Y-%m-%d")
         if today != self._current_date:
             self._current_date = today
             self._tokens_used_today = 0
+
+    async def sync_from_db(self) -> int:
+        """Fetches total tokens consumed today in IST from DB and updates in-memory count."""
+        self._check_and_reset_day()
+        db_usage = await get_daily_token_usage_db()
+        if db_usage is not None:
+            self._tokens_used_today = db_usage
+        return self._tokens_used_today
 
     def record_usage(
         self, input_tokens: int, output_tokens: int, cache_read_tokens: int = 0
@@ -70,7 +112,7 @@ class TokenBudgetTracker:
         self._tokens_used_today += input_tokens + output_tokens + cache_read_tokens
 
     def get_tokens_used_today(self) -> int:
-        """Returns total tokens consumed today."""
+        """Returns total tokens consumed today in IST."""
         self._check_and_reset_day()
         return self._tokens_used_today
 
@@ -82,6 +124,7 @@ class TokenBudgetTracker:
     def reset(self) -> None:
         """Resets the tracker counter for testing."""
         self._tokens_used_today = 0
+        self._current_date = datetime.now(IST).strftime("%Y-%m-%d")
 
 
 # Global singleton token budget tracker
@@ -370,7 +413,8 @@ async def call_tool(
         )
         return result
 
-    # 2. Daily token budget guard (spec/12 §12.8)
+    # 2. Daily token budget guard (spec/12 §12.8, CHANGES 254f622 Item 1)
+    await budget_tracker.sync_from_db()
     if budget_tracker.is_exceeded():
         logger.warning(
             "LLM daily token budget exceeded: %d >= %d",

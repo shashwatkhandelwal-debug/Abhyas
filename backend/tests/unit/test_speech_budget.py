@@ -70,31 +70,33 @@ def test_calculate_tts_cost() -> None:
     assert calculate_tts_cost(text_100) == 0.30
 
 
-def test_speech_budget_tracker_limits() -> None:
+@pytest.mark.asyncio
+async def test_speech_budget_tracker_limits() -> None:
     """Tracker accurately tracks spend and blocks when caps are reached."""
     tracker = SpeechBudgetTracker()
     assert tracker.daily_spend == 0.0
     assert tracker.total_spend == 0.0
 
     # Can spend within daily limit
-    assert tracker.can_spend(10.0) is True
-    tracker.record_spend(10.0)
+    assert await tracker.can_spend(10.0) is True
+    await tracker.record_spend("sarvam", "tts", 100, 10.0)
     assert tracker.daily_spend == 10.0
     assert tracker.total_spend == 10.0
 
     # Attempting to exceed daily cap (50.0 INR default)
-    assert tracker.can_spend(41.0) is False
-    assert tracker.can_spend(40.0) is True
+    assert await tracker.can_spend(41.0) is False
+    assert await tracker.can_spend(40.0) is True
 
 
-def test_mock_by_default() -> None:
+@pytest.mark.asyncio
+async def test_mock_by_default() -> None:
     """SPEECH_PROVIDER_LIVE is False by default; check_and_record incurs 0 cost."""
     assert settings.SPEECH_PROVIDER_LIVE is False
-    stt_cost = speech_budget.check_and_record_stt(30.0)
+    stt_cost = await speech_budget.check_and_record_stt(30.0)
     assert stt_cost == 0.0
     assert speech_budget.daily_spend == 0.0
 
-    tts_cost = speech_budget.check_and_record_tts("नमस्ते")
+    tts_cost = await speech_budget.check_and_record_tts("नमस्ते")
     assert tts_cost == 0.0
     assert speech_budget.daily_spend == 0.0
 
@@ -104,7 +106,7 @@ def test_mock_by_default() -> None:
 async def test_live_mode_records_spend(wav_5s: bytes) -> None:
     """When SPEECH_PROVIDER_LIVE is True, STT and TTS record real spend."""
     mock_tts = MockTTS()
-    sample_wav = await mock_tts.synthesize("नमस्ते", get_voice("abhyas"))
+    sample_wav, _ = await mock_tts.synthesize("नमस्ते", get_voice("abhyas"))
     b64_audio = base64.b64encode(sample_wav).decode("utf-8")
 
     respx.post("https://api.sarvam.ai/speech-to-text").mock(
@@ -117,7 +119,7 @@ async def test_live_mode_records_spend(wav_5s: bytes) -> None:
     with (
         patch.object(settings, "SPEECH_PROVIDER_LIVE", True),
         tempfile.TemporaryDirectory() as tmpdir,
-        patch("backend.app.speech.tts.tts_cache", TTSCache(cache_dir=tmpdir)),
+        patch("backend.app.speech.tts.tts_cache", TTSCache(cache_dir=tmpdir, use_db=False)),
     ):
         stt = SarvamSTT(api_key="test-key")
         _ = await stt.transcribe(wav_5s)
@@ -133,7 +135,7 @@ async def test_live_mode_records_spend(wav_5s: bytes) -> None:
 @pytest.mark.asyncio
 @respx.mock
 async def test_tts_budget_exhaustion_triggers_lite_mode() -> None:
-    """When TTS budget cap is reached, SarvamTTS returns empty audio (lite mode) with no API call."""
+    """When TTS budget cap is reached, SarvamTTS falls back to lite mode (empty bytes) when Bhashini not set."""
     route = respx.post("https://api.sarvam.ai/text-to-speech").mock(
         return_value=httpx.Response(200, json={"audios": [""]})
     )
@@ -141,13 +143,14 @@ async def test_tts_budget_exhaustion_triggers_lite_mode() -> None:
     with (
         patch.object(settings, "SPEECH_PROVIDER_LIVE", True),
         patch.object(settings, "SPEECH_DAILY_BUDGET_INR", 1.0),
+        patch.object(settings, "BHASHINI_API_KEY", ""),
         tempfile.TemporaryDirectory() as tmpdir,
-        patch("backend.app.speech.tts.tts_cache", TTSCache(cache_dir=tmpdir)),
+        patch("backend.app.speech.tts.tts_cache", TTSCache(cache_dir=tmpdir, use_db=False)),
     ):
         # Exhaust budget
-        speech_budget.record_spend(1.0)
+        await speech_budget.record_spend("sarvam", "tts", 100, 1.0)
         tts = SarvamTTS(api_key="test-key")
-        result = await tts.synthesize("नमस्ते शिक्षक जी", get_voice("abhyas"))
+        result, _ = await tts.synthesize("नमस्ते शिक्षक जी", get_voice("abhyas"))
 
         # Returns empty bytes (text-only reply)
         assert result == b""
@@ -156,11 +159,48 @@ async def test_tts_budget_exhaustion_triggers_lite_mode() -> None:
 
 
 @pytest.mark.asyncio
+@respx.mock
+async def test_cap_hit_order_fallback_to_bhashini(wav_5s: bytes) -> None:
+    """Cap-hit order: Sarvam cap reached -> Bhashini (if configured) -> lite mode (CHANGES 254f622 Item 2)."""
+    b64_audio = base64.b64encode(wav_5s).decode("utf-8")
+    respx.post("https://dhruva-api.bhashini.gov.in/services/inference/pipeline").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "pipelineResponse": [
+                    {
+                        "taskType": "tts",
+                        "audio": [{"audioContent": b64_audio}],
+                    }
+                ]
+            },
+        )
+    )
+
+    with (
+        patch.object(settings, "SPEECH_PROVIDER_LIVE", True),
+        patch.object(settings, "SPEECH_DAILY_BUDGET_INR", 1.0),
+        patch.object(settings, "BHASHINI_API_KEY", "test-bhashini-key"),
+        patch.object(settings, "BHASHINI_USER_ID", "test-user"),
+        tempfile.TemporaryDirectory() as tmpdir,
+        patch("backend.app.speech.tts.tts_cache", TTSCache(cache_dir=tmpdir, use_db=False)),
+    ):
+        await speech_budget.record_spend("sarvam", "tts", 100, 1.0)
+        tts = SarvamTTS(api_key="test-key")
+        result, ckey = await tts.synthesize("नमस्ते शिक्षक जी", get_voice("abhyas"))
+
+        # Successfully synthesizes via Bhashini fallback
+        assert result.startswith(b"RIFF")
+        assert len(result) == len(wav_5s)
+
+
+@pytest.mark.asyncio
 async def test_stt_budget_exhaustion_raises_error(wav_5s: bytes) -> None:
-    """When STT budget cap is reached, SarvamSTT raises SpeechBudgetExceededError."""
+    """When STT budget cap is reached and Bhashini not set, raises SpeechBudgetExceededError."""
     with (
         patch.object(settings, "SPEECH_PROVIDER_LIVE", True),
         patch.object(settings, "SPEECH_DAILY_BUDGET_INR", 0.05),
+        patch.object(settings, "BHASHINI_API_KEY", ""),
     ):
         # 5s audio cost is 0.125 INR, which exceeds 0.05 INR cap
         stt = SarvamSTT(api_key="test-key")
@@ -173,7 +213,7 @@ async def test_stt_budget_exhaustion_raises_error(wav_5s: bytes) -> None:
 async def test_cache_hit_results_in_zero_spend() -> None:
     """When audio is present in cache, TTS returns it immediately with zero spend and no API call."""
     mock_tts = MockTTS()
-    sample_wav = await mock_tts.synthesize("नमस्ते", get_voice("abhyas"))
+    sample_wav, _ = await mock_tts.synthesize("नमस्ते", get_voice("abhyas"))
 
     route = respx.post("https://api.sarvam.ai/text-to-speech").mock(
         return_value=httpx.Response(200, json={"audios": []})
@@ -183,7 +223,7 @@ async def test_cache_hit_results_in_zero_spend() -> None:
         patch.object(settings, "SPEECH_PROVIDER_LIVE", True),
         tempfile.TemporaryDirectory() as tmpdir,
     ):
-        test_cache = TTSCache(cache_dir=tmpdir)
+        test_cache = TTSCache(cache_dir=tmpdir, use_db=False)
         voice = get_voice("abhyas")
         text = "नमस्ते"
         key = compute_cache_key(text, voice.provider_speaker, voice)
@@ -193,9 +233,10 @@ async def test_cache_hit_results_in_zero_spend() -> None:
 
         with patch("backend.app.speech.tts.tts_cache", test_cache):
             tts = SarvamTTS(api_key="test-key")
-            result = await tts.synthesize(text, voice)
+            result, ckey = await tts.synthesize(text, voice)
 
             assert result == sample_wav
+            assert ckey == key
             # Zero spend recorded
             assert speech_budget.daily_spend == 0.0
             # Zero API calls made
@@ -206,7 +247,7 @@ async def test_cache_hit_results_in_zero_spend() -> None:
 async def test_prewarm_fixed_audio() -> None:
     """prewarm_fixed_audio populates the cache with static audio lines."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        test_cache = TTSCache(cache_dir=tmpdir)
+        test_cache = TTSCache(cache_dir=tmpdir, use_db=False)
         mock_tts = MockTTS()
 
         prewarmed_keys = await prewarm_fixed_audio(
@@ -218,6 +259,6 @@ async def test_prewarm_fixed_audio() -> None:
         assert len(prewarmed_keys) > 0
         # All prewarmed keys exist in cache as wav, ogg, mp3
         for k in prewarmed_keys:
-            assert test_cache.has(k, "wav") is True
-            assert test_cache.has(k, "ogg") is True
-            assert test_cache.has(k, "mp3") is True
+            assert await test_cache.has(k, "wav") is True
+            assert await test_cache.has(k, "ogg") is True
+            assert await test_cache.has(k, "mp3") is True
