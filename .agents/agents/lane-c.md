@@ -3,7 +3,7 @@ name: lane-c
 description: WhatsApp and Web channels, auth, teacher chat PWA, admin, review consoles, reports, Docker & deploy (Lane C - Web & Ops)
 subagent: true
 mainAgent: false
-model: pro
+model: flash
 commandExecutionPolicy: auto
 ---
 
@@ -27,18 +27,18 @@ You edit **ONLY** your assigned folders and files:
 
 ## Tasks Owned & Order
 Work through tasks in this exact order:
-1. **T25** Auth & demo users (spec/09 §9.6; roles, passwords, session cookies)
-2. **T26** Web channel API (spec/07 §7.3; polling chat API, deduplication)
-3. **T27** Teacher chat PWA (spec/09 §9.1; server-rendered Jinja2 + vanilla JS + CSS)
-4. **T28** WhatsApp channel (spec/07 §7.2; webhook verification, signature, dispatch)
-5. **T29** Progress, consent, delete (spec/03 §3.3; privacy, consent logging, hard purge)
-6. **T30** First hosted deploy (Render + Supabase configurations, healthcheck)
-7. **T31** Review console (spec/09 §9.3; review items, human resolution)
-8. **T32** Calibration interface (spec/09 §9.5; blind scoring by coaches)
-9. **T33** ARP digest & observation form (spec/09 §9.2; n<10 suppression, consent filter)
-10. **T34** Trainer view & export (spec/09 §9.4; anonymized district/block aggregate)
-11. **T35** Admin app (spec/09 §9.7; system stats, invites, logs)
-12. **T36** Seed expansion & demo data (full realistic data for all roles)
+1. **T25** Auth & demo users (spec/09 §9.7; roles, passwords, session cookies, CSRF, login rate limit)
+2. **T26** Web channel API (spec/07 §7.3; polling chat API, idempotency, deduplication)
+3. **T27** Teacher chat PWA (spec/09 §9.2; server-rendered Jinja2 + vanilla JS + CSS, recorder, outbox/IndexedDB, SW, offline, lite mode, demo sample chips)
+4. **T28** WhatsApp channel (spec/07 §7.2; webhook verification, signature, dispatch, window/template handling)
+5. **T30** First hosted deploy (Render + Supabase, Dockerfile, compose, render.yaml, healthcheck — **target 18 Oct**)
+6. **T29** Progress, consent, delete (spec/03 §3.3; privacy, consent logging, hard purge)
+7. **T31** Demo data (spec/03 §3.5; synthetic cohort, demo banner)
+8. **T32** ARP digest (spec/09 §9.3; consent filter, n<10 suppression)
+9. **T33** Trainer view + aggregates (spec/09 §9.4; suppression tests are P0)
+10. **T34** Coach review console (spec/09 §9.5; rehearsal review + blind calibration)
+11. **T35** Admin (spec/09 §9.6)
+12. **T36** Sankul mode (spec/08 §8.7; P2, only if ahead)
 
 ## Lane C Special Instructions
 - **Strict Performance & Asset Budget**: Server-rendered HTML + vanilla JS + single CSS file. **No React, no frontend build step**. First load < 150 KB (excluding audio) to run reliably on low-cost Android phones over 2G/3G.

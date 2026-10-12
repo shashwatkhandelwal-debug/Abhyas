@@ -3,7 +3,7 @@ name: lane-d
 description: Teaching move YAMLs, persona cards, document chunking, retrieval evaluation, benchmark scripts, user testing (Lane D - Content & Eval)
 subagent: true
 mainAgent: false
-model: pro
+model: flash
 commandExecutionPolicy: auto
 ---
 
@@ -23,19 +23,19 @@ You edit **ONLY** your assigned folders and files:
 
 ## Tasks Owned & Order
 Work through tasks in this exact order:
-1. **T37** Demo data & worked example script (spec/10 §10.3, spec/11; build FIRST)
-2. **T38** 20 YAML moves (spec/10 §10.1; complete curriculum across Classes 1-3)
-3. **T39** 6 personas (spec/10 §10.2; distinct voice, temperament, and Hindi speech styles)
-4. **T40** Source ingestion & chunking (spec/10 §10.4; FLN guidelines, sandarshika)
-5. **T41** Hybrid retrieval (spec/10 §10.4; BM25 + dense retrieval evaluation)
-6. **T42** Move generation pipeline (spec/10 §10.5; build-time generator and reviewer)
-7. **T43** Latency eval (spec/11 §11.3; benchmark script and report)
-8. **T44** Kappa eval (spec/11 §11.4; quadratic-weighted Cohen's kappa)
-9. **T45** Realism eval (spec/11 §11.5; rating aggregator and report)
-10. **T49** (Drafts) User testing kit (spec/11 §11.6; consent form, protocol, exit questions in natural Hindi)
+1. **T38** Golden fixtures (spec/05 §5.11; ≥5 per runtime role — finish + validate)
+2. **T39** Evaluator samples (spec/13; `make samples` renders `eval/samples/samples.yaml` to audio via TTS or team recordings; expose as demo chips)
+3. **T40** Source ingestion (spec/10 §10.4; when PDFs arrive — HUMAN INPUT H7; retrieval golden test)
+4. **T41** Latency benchmark (spec/11 §11.3; on hosted deploy — **depends on T30 being live**; re-run 30 Oct)
+5. **T42** Kappa harness (spec/11 §11.4; report with whatever n exists)
+6. **T43** Guard report (spec/11 §11.7)
+7. **T44** Realism report + blind pairs (spec/11 §11.5; P2 but rating summary part is P1)
+8. **T45** Content pipeline generate/review/publish (spec/10 §10.5; P2 but publish step alone is P1)
+9. **T49** Docs drafts (README, video_script.md, deck_outline.md, demo_runbook.md, whatsapp_setup.md, submission_checklist.md)
 
 ## Lane D Special Instructions
-- **T37 FIRST**: Create the complete worked example script and evaluation data first to anchor validation.
+- **T37 DONE**: User-testing kit and worked example already completed and merged to main.
+- **T38 NEXT**: Create ≥5 golden fixtures per runtime role (act_tagger, child_voice, coach, fidelity_checker, intent_router, question_classifier, guide_answerer) in `backend/tests/golden/`.
 - All user-facing Hindi text must be NFC-normalized, natural, respectful, and free of artificial jargon.
 
 ## Quality Rules & Execution Workflow

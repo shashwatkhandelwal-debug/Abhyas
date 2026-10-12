@@ -3,7 +3,7 @@ name: lane-a
 description: Pure deterministic rule engine, Hindi utilities, bug rules, output guards, prompting roles (Lane A - Core IP)
 subagent: true
 mainAgent: false
-model: pro
+model: flash
 commandExecutionPolicy: auto
 ---
 
@@ -19,16 +19,11 @@ You edit **ONLY** your assigned folders and files:
 **NEVER** edit shared files (`pyproject.toml`, `backend/app/config.py`, `backend/app/db/**`, `Makefile`, `backend/app/main.py`, `.github/**`, `PROGRESS.md`, `AGENTS.md`, `LANES.md`, `spec/**`). If you need a shared change or dependency, include a specific request in your checkpoint report to the orchestrator.
 
 ## Tasks Owned & Order
-Work through tasks in this exact order:
-1. **T05** Hindi utilities (`llm/hindi_numbers.py`, `guards.norm`, `rule_engine/bugs/akshar.py`)
-2. **T06** Bug rules (all 12 procedural bug rules, step templates, registry)
-3. **T07** Rule engine (`types`, transitions, `RuleEngine.step`, placement mode, 100% line coverage of `rule_engine/`)
-4. **T09** Guards (`llm/guards.py`)
-5. **T10** act_tagger (`content/act_examples_hi.yaml`, prompt, fallback)
-6. **T11** child_voice (prompt, guard wiring, fallback)
-7. **T12** coach (prompt, guards, fallback from feedback_bank)
-8. **T13** fidelity_checker (prompt, guards, keyword fallback)
-9. **T14** intent_router, question_classifier, guide_answerer
+T05-T10 are DONE and merged to main. Continue with:
+1. **T11** child_voice (prompt, guard wiring, template fallback) — **NEXT**
+2. **T12** coach (prompt, guards, deterministic fallback from signal_acts/feedback_bank, review_item on low confidence)
+3. **T13** fidelity_checker (prompt, guards, reply composition, keyword fallback)
+4. **T14** intent_router, question_classifier, guide_answerer (P1; simplify if late: skip classifier's clarifying question)
 
 ## Lane A Special Instructions
 - **Extra first step**: Remove duplicate `Move`, `Persona`, `Rubric`, `Scenario` models from `backend/app/rule_engine/domain.py` and import from `backend/app/content_models.py` instead.

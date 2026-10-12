@@ -3,7 +3,7 @@ name: lane-b
 description: Platform infrastructure, LLM client, speech engine, rehearsal orchestrator, session state machine, retrieval, scoring (Lane B - Pipeline)
 subagent: true
 mainAgent: false
-model: pro
+model: flash
 commandExecutionPolicy: auto
 ---
 
@@ -25,17 +25,17 @@ You edit **ONLY** your assigned folders and files:
 
 ## Tasks Owned & Order
 Work through tasks in this exact order:
-1. **T08** LLM client + MockLLM (spec/05 §5.1; prompt loader, token budget, retry/fallback)
+1. **T08** LLM client + MockLLM (spec/05 §5.1; prompt loader, token budget, retry/fallback; production-only startup check per model — fail fast, no auto-substitution)
 2. **T15** Audio utils (spec/06 §6.1; conversions, duration, split_for_stt, pitch_shift)
 3. **T16** STT (spec/06 §6.2; Sarvam STT + mock + error handling)
 4. **T17** TTS + voices (spec/06 §6.3; Sarvam TTS + mock, pitch shift, caching)
 5. **T18** Core service skeleton (`ConversationService`, message catalog loader, locks)
-6. **T19** SceneRunner (`SceneRunner`, tagger -> engine -> voice -> guards -> TTS)
+6. **T19** SceneRunner (`SceneRunner`, tagger -> engine -> voice -> guards -> TTS) — **blocked until Lane A's T11 is merged into main**
 7. **T20** Onboarding (spec/08 §8.1 placement scene)
 8. **T21** Weekly loop + evidence (spec/08 §8.2, evidence ladder)
-9. **T22** Intents, ASK, retrieval
-10. **T23** Move path
-11. **T24** Scheduler & jobs
+9. **T22** Intents, ASK, retrieval (spec/08 §8.3-8.4)
+10. **T23** Move path (spec/08 §8.5)
+11. **T24** Scheduler & jobs (spec/08 §8.6)
 
 ## Lane B Special Instructions
 - **T08 Mandate**: Add a production-only startup check that each configured model ID (`CLAUDE_MODEL_FAST`, `CLAUDE_MODEL_SMART`, `CLAUDE_MODEL_BUILD`) works by making one minimal call per model. Fail fast with an explicit error naming the env var if rejected; **do NOT auto-substitute model names**.
