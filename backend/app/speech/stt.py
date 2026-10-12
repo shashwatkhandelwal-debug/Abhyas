@@ -7,6 +7,7 @@ MockSTT with fixture matching, and fallback error handling.
 from __future__ import annotations
 
 import asyncio
+import base64
 import hashlib
 import json
 import logging
@@ -20,8 +21,9 @@ import httpx
 from pydantic import BaseModel
 
 from backend.app.config import settings
-from backend.app.speech.audio import duration_s, split_for_stt
+from backend.app.speech.audio import duration_s, split_for_stt, trim_silence
 from backend.app.speech.client import get_speech_http_client
+from backend.app.speech.spend import speech_budget
 
 logger = logging.getLogger("abhyas.speech.stt")
 
@@ -192,8 +194,13 @@ class SarvamSTT:
 
         t0 = time.perf_counter()
 
+        # Trim leading and trailing silence
+        wav16k = await trim_silence(wav16k)
+
         # Check if splitting is necessary (Sarvam limit < 30s)
         dur = await duration_s(wav16k)
+        speech_budget.check_and_record_stt(dur)
+
         if dur > 25.0:
             clips = await split_for_stt(wav16k, max_s=25.0)
         else:
@@ -290,10 +297,18 @@ class MockSTT:
 
 
 class BhashiniSTT:
-    """Bhashini STT provider stub (roadmap / optional) (spec/06 §6.2)."""
+    """Bhashini STT provider via ULCA pipeline API (spec/06 §6.2)."""
 
-    def __init__(self) -> None:
-        if not settings.BHASHINI_API_KEY:
+    def __init__(
+        self,
+        api_key: str | None = None,
+        user_id: str | None = None,
+        pipeline_url: str = "https://dhruva-api.bhashini.gov.in/services/inference/pipeline",
+    ) -> None:
+        self.api_key = api_key or settings.BHASHINI_API_KEY
+        self.user_id = user_id or settings.BHASHINI_USER_ID
+        self.pipeline_url = pipeline_url
+        if not self.api_key:
             raise ProviderNotConfigured("Bhashini STT is not configured (BHASHINI_API_KEY missing)")
 
     async def transcribe(
@@ -302,7 +317,68 @@ class BhashiniSTT:
         lang: str = "hi-IN",
         keyterms: list[str] | None = None,
     ) -> Transcript:
-        raise ProviderNotConfigured("Bhashini STT integration pending credentials")
+        """Transcribes 16kHz mono WAV audio to Hindi text via Bhashini ULCA pipeline."""
+        if not wav16k:
+            return Transcript(text="", confidence=0.0, language=lang, provider="bhashini", ms=0)
+
+        t0 = time.perf_counter()
+        wav16k = await trim_silence(wav16k)
+        dur = await duration_s(wav16k)
+        speech_budget.check_and_record_stt(dur)
+
+        client = get_speech_http_client()
+        b64_audio = base64.b64encode(wav16k).decode("utf-8")
+        source_lang = lang.split("-")[0] if "-" in lang else lang
+
+        payload = {
+            "pipelineTasks": [
+                {
+                    "taskType": "asr",
+                    "config": {
+                        "language": {"sourceLanguage": source_lang},
+                        "serviceId": "ai4bharat/conformer-hi-gpu--gpu",
+                    },
+                }
+            ],
+            "inputData": {
+                "audio": [{"audioContent": b64_audio}],
+            },
+        }
+        headers = {
+            "Authorization": self.api_key,
+            "userID": self.user_id,
+            "ulcaApiKey": self.api_key,
+            "Content-Type": "application/json",
+        }
+
+        try:
+            resp = await client.post(
+                self.pipeline_url,
+                json=payload,
+                headers=headers,
+                timeout=settings.STT_TIMEOUT_S,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            pipeline_response = data.get("pipelineResponse", [])
+            raw_text = ""
+            if pipeline_response:
+                outputs = pipeline_response[0].get("output", [])
+                if outputs:
+                    raw_text = outputs[0].get("source", "")
+        except Exception as exc:
+            raise STTUnavailable(f"Bhashini STT request failed: {exc}") from exc
+
+        latency_ms = int((time.perf_counter() - t0) * 1000)
+        norm_text = normalize_transcript_text(raw_text)
+        conf = calculate_confidence(norm_text)
+        return Transcript(
+            text=norm_text,
+            confidence=conf,
+            language=lang,
+            provider="bhashini",
+            ms=latency_ms,
+        )
 
 
 class GoogleSTT:

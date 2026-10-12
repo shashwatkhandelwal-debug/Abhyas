@@ -472,3 +472,36 @@ async def split_for_stt(wav_bytes: bytes, max_s: float = 25.0) -> list[bytes]:
             logger.warning("Error cutting chunk %d: %s", i, exc)
 
     return chunks if chunks else [wav_bytes]
+
+
+async def trim_silence(wav_bytes: bytes) -> bytes:
+    """Trims leading and trailing silence from WAV audio (spec/06 §6.1)."""
+    if not wav_bytes or len(wav_bytes) <= 44:
+        return wav_bytes
+
+    ffmpeg = get_ffmpeg_path()
+    cmd = [
+        ffmpeg,
+        "-v",
+        "error",
+        "-i",
+        "pipe:0",
+        "-af",
+        "silenceremove=start_periods=1:start_duration=0.1:start_threshold=-40dB:detection=peak,areverse,silenceremove=start_periods=1:start_duration=0.1:start_threshold=-40dB:detection=peak,areverse",
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        "-f",
+        "wav",
+        "pipe:1",
+    ]
+
+    try:
+        retcode, stdout, _ = await _run_subprocess_async(cmd, input_bytes=wav_bytes, timeout_s=15.0)
+        if retcode == 0 and len(stdout) > 44:
+            return stdout
+    except Exception:
+        pass
+
+    return wav_bytes

@@ -11,7 +11,7 @@ import respx
 
 from backend.app.config import settings
 from backend.app.speech.audio import duration_s
-from backend.app.speech.cache import TTSCache, compute_cache_key
+from backend.app.speech.cache import TTSCache, compute_cache_key, tts_cache
 from backend.app.speech.tts import (
     MockTTS,
     SarvamTTS,
@@ -26,6 +26,14 @@ from backend.app.speech.voices import (
     get_voice,
     load_voices,
 )
+
+
+@pytest.fixture(autouse=True)
+def isolate_tts_cache(tmp_path: Path) -> None:
+    original_dir = tts_cache.cache_dir
+    tts_cache.cache_dir = tmp_path
+    yield
+    tts_cache.cache_dir = original_dir
 
 
 def test_convert_digits_for_tts() -> None:

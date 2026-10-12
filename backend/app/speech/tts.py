@@ -19,7 +19,9 @@ import httpx
 from backend.app.config import settings
 from backend.app.llm.hindi_numbers import to_words
 from backend.app.speech.audio import pitch_shift
+from backend.app.speech.cache import compute_cache_key, tts_cache
 from backend.app.speech.client import get_speech_http_client
+from backend.app.speech.spend import calculate_tts_cost, speech_budget
 from backend.app.speech.voices import VoiceSpec, get_voice
 
 logger = logging.getLogger("abhyas.speech.tts")
@@ -213,6 +215,23 @@ class SarvamTTS:
         if not text_hi or not text_hi.strip():
             return b""
 
+        # Check cache before making API calls
+        cache_key = compute_cache_key(text_hi, voice.provider_speaker, voice)
+        cached_wav = tts_cache.get(cache_key, "wav")
+        if cached_wav is not None:
+            return cached_wav
+
+        # Budget guard: if cap exceeded, fall back to lite mode (empty audio, text-only reply)
+        if settings.SPEECH_PROVIDER_LIVE:
+            cost = calculate_tts_cost(text_hi)
+            if not speech_budget.can_spend(cost):
+                logger.warning(
+                    "TTS budget exceeded (cost %.4f INR). Returning empty audio for lite-mode fallback.",
+                    cost,
+                )
+                return b""
+            speech_budget.record_spend(cost)
+
         # 1. Convert numerals in child lines / text to Hindi words (spec/06 §6.3)
         prepared_text = convert_digits_for_tts(text_hi)
 
@@ -233,8 +252,97 @@ class SarvamTTS:
 
         # 3. Apply pitch shift if child voice (voice.pitch_factor != 1.0)
         if abs(voice.pitch_factor - 1.0) > 0.001:
-            return await pitch_shift(raw_wav, voice.pitch_factor)
+            raw_wav = await pitch_shift(raw_wav, voice.pitch_factor)
 
+        # Store synthesized audio in cache
+        await tts_cache.put_wav(cache_key, raw_wav)
+
+        return raw_wav
+
+
+class BhashiniTTS:
+    """Bhashini TTS provider via ULCA pipeline API (spec/06 §6.3)."""
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+        user_id: str | None = None,
+        pipeline_url: str = "https://dhruva-api.bhashini.gov.in/services/inference/pipeline",
+    ) -> None:
+        self.api_key = api_key or settings.BHASHINI_API_KEY
+        self.user_id = user_id or settings.BHASHINI_USER_ID
+        self.pipeline_url = pipeline_url
+        if not self.api_key:
+            raise TTSUnavailable("Bhashini TTS is not configured (BHASHINI_API_KEY missing)")
+
+    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> bytes:
+        """Synthesizes Hindi text to WAV audio via Bhashini ULCA pipeline."""
+        if not text_hi or not text_hi.strip():
+            return b""
+
+        cache_key = compute_cache_key(text_hi, "bhashini", voice)
+        cached_wav = tts_cache.get(cache_key, "wav")
+        if cached_wav is not None:
+            return cached_wav
+
+        if settings.SPEECH_PROVIDER_LIVE:
+            cost = calculate_tts_cost(text_hi)
+            if not speech_budget.can_spend(cost):
+                logger.warning("Bhashini TTS budget cap exceeded. Falling back to lite mode.")
+                return b""
+            speech_budget.record_spend(cost)
+
+        prepared_text = convert_digits_for_tts(text_hi)
+        client = get_speech_http_client()
+        gender = (
+            "female"
+            if voice.provider_speaker in {"ritu", "neha", "pooja", "suhani", "shweta"}
+            else "male"
+        )
+
+        payload = {
+            "pipelineTasks": [
+                {
+                    "taskType": "tts",
+                    "config": {
+                        "language": {"sourceLanguage": "hi"},
+                        "serviceId": "ai4bharat/indic-tts-hi--gpu",
+                        "gender": gender,
+                    },
+                }
+            ],
+            "inputData": {
+                "input": [{"source": prepared_text}],
+            },
+        }
+        headers = {
+            "Authorization": self.api_key,
+            "userID": self.user_id,
+            "ulcaApiKey": self.api_key,
+            "Content-Type": "application/json",
+        }
+
+        try:
+            resp = await client.post(
+                self.pipeline_url,
+                json=payload,
+                headers=headers,
+                timeout=settings.LLM_TIMEOUT_SECONDS,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            pipeline_response = data.get("pipelineResponse", [])
+            if not pipeline_response or not pipeline_response[0].get("audio"):
+                raise TTSUnavailable("Bhashini TTS returned empty audio response")
+            b64_audio = pipeline_response[0]["audio"][0].get("audioContent", "")
+            raw_wav = base64.b64decode(b64_audio)
+        except Exception as exc:
+            raise TTSUnavailable(f"Bhashini TTS request failed: {exc}") from exc
+
+        if abs(voice.pitch_factor - 1.0) > 0.001:
+            raw_wav = await pitch_shift(raw_wav, voice.pitch_factor)
+
+        await tts_cache.put_wav(cache_key, raw_wav)
         return raw_wav
 
 
@@ -273,6 +381,9 @@ def get_tts_provider() -> TTSProvider:
     if settings.TTS_PROVIDER == "sarvam":
         return SarvamTTS()
 
+    if settings.TTS_PROVIDER == "bhashini":
+        return BhashiniTTS()
+
     return MockTTS()
 
 
@@ -282,6 +393,7 @@ __all__ = [
     "TTSProvider",
     "MockTTS",
     "SarvamTTS",
+    "BhashiniTTS",
     "get_tts_provider",
     "convert_digits_for_tts",
     "split_sentences_for_tts",
