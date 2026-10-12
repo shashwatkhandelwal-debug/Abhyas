@@ -1,0 +1,16 @@
+{
+  "role": "act_tagger",
+  "input": {
+    "transcript": "बच्चों 10-10 तीलियों के बंडल बनाकर गिनो।",
+    "move_title_hi": "हासिल वाला घटाव (बंडल और तीली)",
+    "current_item_text": "52 - 17",
+    "children_list": "ravi (रवि), priya (प्रिया), aman (अमन)",
+    "scene_persona_ids": ["ravi", "priya", "aman"]
+  },
+  "output": {
+    "acts": ["concrete_representation"],
+    "addressed_child": "all",
+    "problem": null,
+    "quote": "10-10 तीलियों के बंडल बनाकर गिनो"
+  }
+}

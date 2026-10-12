@@ -1,0 +1,16 @@
+{
+  "role": "act_tagger",
+  "input": {
+    "transcript": "रवि पहले 12 में से 7 करके दिखाओ।",
+    "move_title_hi": "हासिल वाला घटाव (बंडल और तीली)",
+    "current_item_text": "52 - 17",
+    "children_list": "ravi (रवि), priya (प्रिया), aman (अमन)",
+    "scene_persona_ids": ["ravi", "priya", "aman"]
+  },
+  "output": {
+    "acts": ["probe_simpler_case"],
+    "addressed_child": "ravi",
+    "problem": null,
+    "quote": "पहले 12 में से 7 करके दिखाओ"
+  }
+}

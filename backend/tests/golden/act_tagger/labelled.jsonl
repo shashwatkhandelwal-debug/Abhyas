@@ -1,0 +1,20 @@
+{"transcript": "रवि तुमने 52 में से 17 कैसे घटाया समझाओ।", "expected_acts": ["ask_to_explain"], "addressed_child": "ravi"}
+{"transcript": "प्रिया तुमने 35 उत्तर कैसे सोचा मुझे बताओ।", "expected_acts": ["ask_to_explain"], "addressed_child": "priya"}
+{"transcript": "बच्चों 10-10 तीलियों के बंडल बनाकर गिनो।", "expected_acts": ["concrete_representation"], "addressed_child": "all"}
+{"transcript": "रवि तीलियों के 5 बंडल और 2 खुली तीलियाँ लो।", "expected_acts": ["concrete_representation"], "addressed_child": "ravi"}
+{"transcript": "रवि पहले 12 में से 7 करके दिखाओ।", "expected_acts": ["probe_simpler_case"], "addressed_child": "ravi"}
+{"transcript": "पहले छोटी संख्या लेते हैं, 10 में से 4 निकालो।", "expected_acts": ["probe_simpler_case"], "addressed_child": null}
+{"transcript": "रवि ने 45 कहा और प्रिया ने 35 कहा, दोनों उत्तर देखो किसका सही है?", "expected_acts": ["contrast_answers"], "addressed_child": "all"}
+{"transcript": "दोनों उत्तर बोर्ड पर रखकर तुलना करो।", "expected_acts": ["contrast_answers"], "addressed_child": null}
+{"transcript": "देखो मैं करके दिखाती हूँ, पहले 10 का बंडल खोलेंगे।", "expected_acts": ["model_step_aloud"], "addressed_child": null}
+{"transcript": "धीरे-धीरे करके देखो जैसे मैं बताती हूँ।", "expected_acts": ["model_step_aloud"], "addressed_child": null}
+{"transcript": "रवि सही उत्तर 35 है, लिख लो।", "expected_acts": ["tell_answer"], "addressed_child": "ravi"}
+{"transcript": "इसका सही उत्तर 16 आता है।", "expected_acts": ["tell_answer"], "addressed_child": null}
+{"transcript": "रवि फिर से बताओ क्या आएगा?", "expected_acts": ["repeat_question"], "addressed_child": "ravi"}
+{"transcript": "मैंने पूछा कि कुल कितनी तीलियाँ बची हैं?", "expected_acts": ["repeat_question"], "addressed_child": null}
+{"transcript": "शाबाश रवि तुमने बहुत अच्छी कोशिश की!", "expected_acts": ["praise_effort"], "addressed_child": "ravi"}
+{"transcript": "प्रिया तुम्हारी यह सोच बहुत अच्छी थी।", "expected_acts": ["praise_effort"], "addressed_child": "priya"}
+{"transcript": "इतना भी नहीं आता, चुपचाप बैठो!", "expected_acts": ["scold"], "addressed_child": null}
+{"transcript": "अमन तुम रवि की मदद करो और समझाओ।", "expected_acts": ["involve_peer"], "addressed_child": "aman"}
+{"transcript": "अक्षरों की आवाज़ निकालो, म... े... ला...", "expected_acts": ["phonics_sound_out"], "addressed_child": null}
+{"transcript": "अब सब बच्चे 43 में से 27 घटाकर दिखाओ।", "expected_acts": ["give_new_problem"], "addressed_child": "all"}

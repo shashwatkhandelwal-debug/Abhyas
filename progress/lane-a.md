@@ -10,6 +10,7 @@ Database: None required (pure deterministic algorithms)
 - [x] T06 Bug rules (all 12 rules, step templates, registry)
 - [x] T07 Rule engine (types, transitions, RuleEngine.step, placement, 100% line coverage)
 - [x] T09 Guards (all 8 spec/05 guards, >= 3 pass/fail fixtures, 97% line coverage)
+- [x] T10 act_tagger (P0: prompt v1, content/act_examples_hi.yaml with 28 examples, keyword fallback, 8 golden fixtures, labelled dataset, 100% line coverage)
 
 ## Deviations from spec
 None.
@@ -37,6 +38,16 @@ None.
   - Test suite written test-first with >= 3 pass and >= 3 fail fixtures per guard (62 tests total in `test_guards.py`).
   - Achieved 97% line coverage on `backend/app/llm/guards.py` (226/234 statements).
   - All 408 unit tests pass clean. `ruff check` clean, `ruff format` clean, `mypy --strict` clean with zero issues.
+- T10: Implemented act_tagger role matching spec/05 §5.4 and T10 acceptance criteria:
+  1. Prompt v1 authored in `backend/app/llm/prompts/act_tagger.v1.md` with dynamic slot substitution and worked examples block.
+  2. Created `content/act_examples_hi.yaml` with 28 worked examples across all 14 teaching acts (2 per act), including the Ravi worked example.
+  3. Implemented deterministic, rule_engine-independent keyword fallback tagger in `backend/app/llm/roles/act_tagger.py` (regex matching, earliest-occurrence child address resolution, and problem number extraction).
+  4. Implemented async `tag_act` with spec/05 §5.2 role contract pattern (build_input -> call_tool -> validate -> guard -> retry once on error -> fallback).
+  5. Authored 8 golden fixtures conforming to schema in `backend/tests/golden/act_tagger/` (all verified passing guard_act_tagger).
+  6. Authored `backend/tests/golden/act_tagger/labelled.jsonl` with 20 labelled teacher turns.
+  7. Tested fallback tagger across 16 diverse sentences; achieved 100% line coverage on `act_tagger.py` (98/98 statements).
+  8. All 434 tests passing clean. `ruff check` clean, `ruff format` clean, `mypy --strict` clean with zero issues.
+
 
 
 

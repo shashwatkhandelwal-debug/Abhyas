@@ -1,0 +1,16 @@
+{
+  "role": "act_tagger",
+  "input": {
+    "transcript": "देखो मैं करके दिखाती हूँ, पहले 12 में से 7 तीलियाँ अलग करेंगे।",
+    "move_title_hi": "हासिल वाला घटाव (बंडल और तीली)",
+    "current_item_text": "52 - 17",
+    "children_list": "ravi (रवि), priya (प्रिया), aman (अमन)",
+    "scene_persona_ids": ["ravi", "priya", "aman"]
+  },
+  "output": {
+    "acts": ["model_step_aloud"],
+    "addressed_child": null,
+    "problem": null,
+    "quote": "मैं करके दिखाती हूँ"
+  }
+}

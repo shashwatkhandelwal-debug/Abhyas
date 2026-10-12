@@ -1,0 +1,199 @@
+# content/act_examples_hi.yaml
+# Worked examples for teaching acts in Hindi primary FLN classrooms (spec/05 §5.4).
+# Fixed taxonomy of 14 acts: >= 2 examples per act (28 total), including the Ravi worked example.
+
+- act: ask_to_explain
+  teacher_line_hi: "रवि, तुमने 52 में से 17 कैसे घटाया? मुझे एक-एक कदम समझाओ।"
+  quote: "कैसे घटाया? मुझे एक-एक कदम समझाओ"
+  addressed_child: ravi
+  context_hi: "हासिल वाला घटाव (52 - 17) - रवि worked example टर्न 1"
+  explanation_hi: "शिक्षिका बच्चे से उसकी सोच और गणना का तरीका पूछती है।"
+
+- act: ask_to_explain
+  teacher_line_hi: "प्रिया, तुमने 35 उत्तर कैसे सोचा, मुझे बताओ तो?"
+  quote: "कैसे सोचा, मुझे बताओ"
+  addressed_child: priya
+  context_hi: "जोड़ या घटाव का प्रश्न"
+  explanation_hi: "शिक्षिका बच्ची से उसका तर्क स्पष्ट करने को कहती है।"
+
+- act: concrete_representation
+  teacher_line_hi: "रवि, ये देखो—5 बंडल और 2 खुली तीलियाँ यानी 52। चलो एक बंडल खोलकर तीलियाँ गिनते हैं।"
+  quote: "5 बंडल और 2 खुली तीलियाँ यानी 52। चलो एक बंडल खोलकर तीलियाँ गिनते हैं"
+  addressed_child: ravi
+  context_hi: "हासिल वाला घटाव - रवि worked example टर्न 2"
+  explanation_hi: "शिक्षिका तीलियों और बंडल (मूर्त सामग्री) का उपयोग करके अवधारणा समझाती है।"
+
+- act: concrete_representation
+  teacher_line_hi: "बच्चों, 10-10 कंकड़ों की ढेरी बनाकर गिनो कि कुल कितने हुए।"
+  quote: "10-10 कंकड़ों की ढेरी बनाकर गिनो"
+  addressed_child: all
+  context_hi: "गिनती और बंडल बनाना"
+  explanation_hi: "मूर्त वस्तुओं (कंकड़) का उपयोग करके समूह बनवाना।"
+
+- act: probe_simpler_case
+  teacher_line_hi: "अच्छा रवि, 52 में से 17 करने से पहले, मुझे 12 में से 7 घटाकर दिखाओ।"
+  quote: "पहले, मुझे 12 में से 7 घटाकर दिखाओ"
+  addressed_child: ravi
+  context_hi: "इकाई के घटाव की सरल उप-समस्या देना"
+  explanation_hi: "जटिल समस्या से पहले उसी नियम का सरल उदाहरण प्रस्तुत करना।"
+
+- act: probe_simpler_case
+  teacher_line_hi: "बड़ी संख्या से पहले छोटी संख्या लेते हैं—पहले 10 तीलियों में से 4 निकालो।"
+  quote: "पहले 10 तीलियों में से 4 निकालो"
+  addressed_child: null
+  context_hi: "सरल संख्या से शुरुआत"
+  explanation_hi: "अवधारणा की जाँच के लिए सरलतर केस का उपयोग।"
+
+- act: contrast_answers
+  teacher_line_hi: "रवि ने 45 कहा और प्रिया ने 35 कहा, दोनों उत्तर बोर्ड पर देखो—किसका उत्तर सही लगता है?"
+  quote: "रवि ने 45 कहा और प्रिया ने 35 कहा, दोनों उत्तर बोर्ड पर देखो"
+  addressed_child: all
+  context_hi: "दो भिन्न उत्तरों की तुलना"
+  explanation_hi: "कक्षा के सामने दो अलग उत्तर रखकर बच्चों से तुलना और विचार विमर्श कराना।"
+
+- act: contrast_answers
+  teacher_line_hi: "अमन का कहना है 20 और प्रिया कह रही है 25, दोनों अपने बंडल मिलाकर बताओ किसका सही है।"
+  quote: "दोनों अपने बंडल मिलाकर बताओ किसका सही है"
+  addressed_child: all
+  context_hi: "उत्तरों का विरोधाभास और सत्यापन"
+  explanation_hi: "सहपाठियों के भिन्न उत्तरों का आमना-सामना कराना।"
+
+- act: model_step_aloud
+  teacher_line_hi: "देखो, मैं करके दिखाती हूँ—पहले 2 में से 7 नहीं गया, तो मैंने एक दहाई यानी 10 खोला, अब 12 हो गया।"
+  quote: "मैं करके दिखाती हूँ—पहले 2 में से 7 नहीं गया, तो मैंने एक दहाई यानी 10 खोला"
+  addressed_child: null
+  context_hi: "शिक्षिका द्वारा बोलकर कदम-दर-कदम प्रदर्शन"
+  explanation_hi: "शिक्षिका अपनी सोच को बोलकर बच्चों के सामने प्रदर्शित करती है।"
+
+- act: model_step_aloud
+  teacher_line_hi: "ध्यान से सुनो, पहले मैं अक्षर जोड़ती हूँ—क... म... ल... बना कमल। अब तुम करो।"
+  quote: "पहले मैं अक्षर जोड़ती हूँ—क... म... ल... बना कमल"
+  addressed_child: null
+  context_hi: "अक्षर ध्वनि जोड़ना"
+  explanation_hi: "शिक्षक स्वयं ध्वनि मिलाकर आदर्श उदाहरण प्रस्तुत करता है।"
+
+- act: tell_answer
+  teacher_line_hi: "रवि, 52 में से 17 घटाने पर सही उत्तर 35 आता है, 45 नहीं।"
+  quote: "सही उत्तर 35 आता है"
+  addressed_child: ravi
+  context_hi: "उत्तर सीधे बता देना"
+  explanation_hi: "शिक्षिका बिना किसी खोज या अभ्यास के सीधे सही उत्तर बोल देती है।"
+
+- act: tell_answer
+  teacher_line_hi: "इसका उत्तर 16 है, अपनी कॉपी में 16 लिख लो।"
+  quote: "इसका उत्तर 16 है"
+  addressed_child: null
+  context_hi: "सीधा उत्तर बताना"
+  explanation_hi: "बच्चे को प्रक्रिया सिखाए बिना उत्तर लिखा देना।"
+
+- act: repeat_question
+  teacher_line_hi: "रवि, फिर से बताओ 52 में से 17 घटाकर क्या आएगा?"
+  quote: "फिर से बताओ 52 में से 17 घटाकर क्या आएगा"
+  addressed_child: ravi
+  context_hi: "बिना किसी नई मदद के प्रश्न दोहराना"
+  explanation_hi: "सवाल को बिना किसी संकेत या मचान (scaffolding) के दोबारा पूछना।"
+
+- act: repeat_question
+  teacher_line_hi: "मैंने पूछा कि यहाँ कुल कितनी तीलियाँ बची हैं?"
+  quote: "यहाँ कुल कितनी तीलियाँ बची हैं"
+  addressed_child: null
+  context_hi: "सवाल दोहराना"
+  explanation_hi: "वही प्रश्न बिना सहायता दोहराया गया।"
+
+- act: praise_effort
+  teacher_line_hi: "शाबाश रवि, तुमने बंडल खोलकर बहुत अच्छी कोशिश की!"
+  quote: "तुमने बंडल खोलकर बहुत अच्छी कोशिश की"
+  addressed_child: ravi
+  context_hi: "प्रक्रिया व प्रयास की सराहना"
+  explanation_hi: "बच्चे के विशिष्ट प्रयास और विधि की प्रशंसा करना।"
+
+- act: praise_effort
+  teacher_line_hi: "प्रिया, तुम्हारी यह सोच बहुत अच्छी थी कि पहले इकाई देखी जाए।"
+  quote: "तुम्हारी यह सोच बहुत अच्छी थी"
+  addressed_child: priya
+  context_hi: "सोच की प्रशंसा"
+  explanation_hi: "रणनीति और मेहनत को रेखांकित कर प्रोत्साहित करना।"
+
+- act: praise_generic
+  teacher_line_hi: "शाबाश! बहुत बढ़िया!"
+  quote: "शाबाश! बहुत बढ़िया"
+  addressed_child: null
+  context_hi: "सामान्य प्रशंसा"
+  explanation_hi: "बिना किसी प्रक्रिया या प्रयास के विवरण के सामान्य तारीफ़।"
+
+- act: praise_generic
+  teacher_line_hi: "वेरी गुड बच्चों, सबने अच्छा किया।"
+  quote: "वेरी गुड बच्चों"
+  addressed_child: all
+  context_hi: "सामान्य प्रशंसा"
+  explanation_hi: "कक्षा के लिए सामान्य प्रोत्साहन।"
+
+- act: scold
+  teacher_line_hi: "इतनी बार बताया फिर भी गलत कर रहे हो? चुपचाप बैठो!"
+  quote: "इतनी बार बताया फिर भी गलत कर रहे हो? चुपचाप बैठो"
+  addressed_child: null
+  context_hi: "कठोर शब्द व डाँटना"
+  explanation_hi: "बच्चे को हतोत्साहित करने वाली या कठोर भाषा।"
+
+- act: scold
+  teacher_line_hi: "तुम्हारा ध्यान कहाँ रहता है, इतना आसान सवाल भी नहीं आता?"
+  quote: "तुम्हारा ध्यान कहाँ रहता है, इतना आसान सवाल भी नहीं आता"
+  addressed_child: null
+  context_hi: "डाँट"
+  explanation_hi: "बच्चे के आत्मसम्मान को चोट पहुँचाने वाला कथन।"
+
+- act: involve_peer
+  teacher_line_hi: "अमन, तुम रवि की मदद करो और बताओ कि बंडल कैसे खोला था।"
+  quote: "अमन, तुम रवि की मदद करो और बताओ"
+  addressed_child: aman
+  context_hi: "सहपाठी की सहायता लेना"
+  explanation_hi: "एक बच्चे से दूसरे बच्चे की सीखने में मदद करने को कहना।"
+
+- act: involve_peer
+  teacher_line_hi: "प्रिया, तुम अमन को समझाओ कि तुमने तीलियाँ कैसे गिनीं।"
+  quote: "प्रिया, तुम अमन को समझाओ"
+  addressed_child: priya
+  context_hi: "सहपाठी शिक्षण"
+  explanation_hi: "छात्रों को आपस में सिखाने का अवसर देना।"
+
+- act: phonics_sound_out
+  teacher_line_hi: "बोलो म... े... मे... ल... ा... ला... मे-ला, मेला!"
+  quote: "म... े... मे... ल... ा... ला... मे-ला"
+  addressed_child: null
+  context_hi: "ध्वनियों को तोड़कर व मिलाकर पढ़ना"
+  explanation_hi: "अक्षरों व मात्राओं की अलग-अलग ध्वनियाँ निकलवाना और मिलाना।"
+
+- act: phonics_sound_out
+  teacher_line_hi: "पहले 'घ' की आवाज़ निकालो, फिर 'र' की, दोनों मिलाकर क्या बना?"
+  quote: "पहले 'घ' की आवाज़ निकालो, फिर 'र' की"
+  addressed_child: null
+  context_hi: "वर्ण ध्वनि वाचन"
+  explanation_hi: "वर्णों की ध्वनियों को अलग-अलग उच्चारित करवाकर शब्द बनाना।"
+
+- act: off_task
+  teacher_line_hi: "अरे बाहर देखो, आज तो बारिश शुरू हो गई है।"
+  quote: "बाहर देखो, आज तो बारिश शुरू हो गई है"
+  addressed_child: all
+  context_hi: "पाठ से असंबंधित बातचीत"
+  explanation_hi: "कक्षा के शिक्षण उद्देश्य से पूरी तरह असंबंधित विषय पर बात करना।"
+
+- act: off_task
+  teacher_line_hi: "कल सब लोग अपनी फीस और आधार कार्ड जमा कर देना।"
+  quote: "कल सब लोग अपनी फीस और आधार कार्ड जमा कर देना"
+  addressed_child: all
+  context_hi: "प्रशासनिक असंबंधित निर्देश"
+  explanation_hi: "शिक्षण गतिविधि के बीच में असंबंधित प्रशासनिक बात।"
+
+- act: give_new_problem
+  teacher_line_hi: "अब सब बच्चे अपनी स्लेट पर 43 में से 27 घटाकर दिखाओ।"
+  quote: "43 में से 27 घटाकर दिखाओ"
+  addressed_child: all
+  context_hi: "नया प्रश्न देना (43 - 27)"
+  explanation_hi: "शिक्षिका अभ्यास के लिए एक नया गणितीय प्रश्न प्रस्तुत करती है।"
+
+- act: give_new_problem
+  teacher_line_hi: "अगला शब्द बोर्ड पर लिख रही हूँ—'मछली', इसे पढ़कर बताओ।"
+  quote: "अगला शब्द बोर्ड पर लिख रही हूँ—'मछली'"
+  addressed_child: null
+  context_hi: "नया शब्द पठन"
+  explanation_hi: "शिक्षिका बच्चों के सामने एक नया शब्द पढ़ने के लिए रखती है।"

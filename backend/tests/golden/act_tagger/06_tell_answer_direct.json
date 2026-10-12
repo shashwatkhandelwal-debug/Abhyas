@@ -1,0 +1,16 @@
+{
+  "role": "act_tagger",
+  "input": {
+    "transcript": "रवि इसका सही उत्तर 35 है, लिख लो।",
+    "move_title_hi": "हासिल वाला घटाव (बंडल और तीली)",
+    "current_item_text": "52 - 17",
+    "children_list": "ravi (रवि), priya (प्रिया), aman (अमन)",
+    "scene_persona_ids": ["ravi", "priya", "aman"]
+  },
+  "output": {
+    "acts": ["tell_answer"],
+    "addressed_child": "ravi",
+    "problem": null,
+    "quote": "सही उत्तर 35 है"
+  }
+}

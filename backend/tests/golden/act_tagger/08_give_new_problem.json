@@ -1,0 +1,20 @@
+{
+  "role": "act_tagger",
+  "input": {
+    "transcript": "अब सब बच्चे 43 में से 27 घटाकर दिखाओ।",
+    "move_title_hi": "हासिल वाला घटाव (बंडल और तीली)",
+    "current_item_text": "52 - 17",
+    "children_list": "ravi (रवि), priya (प्रिया), aman (अमन)",
+    "scene_persona_ids": ["ravi", "priya", "aman"]
+  },
+  "output": {
+    "acts": ["give_new_problem"],
+    "addressed_child": "all",
+    "problem": {
+      "type": "sub",
+      "a": 43,
+      "b": 27
+    },
+    "quote": "43 में से 27 घटाकर दिखाओ"
+  }
+}
