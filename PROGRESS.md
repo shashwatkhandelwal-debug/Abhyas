@@ -193,14 +193,15 @@ All items from `spec/15_human_inputs.md` are currently open:
 ## 8. Current Status & Active Lanes
 
 ### STOPPED AT:
-- **Main Branch**: Merged `lane-a` (`5c082e6`) and `lane-b` (`0fff714`). Main commit: `65eb907`. All 640 tests collected (639 passed, 1 skipped). CI completely green.
+- **Main Branch**: Merged approved commit `5a593a6` (cherry-pick `7b4e770`). Pushed to `origin/main`. All 641 tests collected (640 passed, 1 skipped). CI completely green.
+- **Async Audio & Subprocess Strict Guard Live on Main**: `_concat_wav_bytes` is async, `to_wav_sync` deleted, `subprocess.run` completely eliminated from `backend/app` with grep regression test enforced in CI.
 - **Full Rehearsal Loop Live on Main**: STT (`saaras:v4` / mock) → `act_tagger` → pure deterministic rule engine → `child_voice` → `guards` → TTS (`bulbul:v3` / mock with `SynthResult`) → Postgres `scene_store`.
 - **Runtime LLM Roles Complete**: T09–T14 (`intent_router`, `act_tagger`, `child_voice`, `coach`, `fidelity_checker`, `question_classifier`, `guide_answerer`).
-- **Lane C (Active Subagent `dedbeca5-c132-424a-ba75-005f3e74a3df`)**: Working on CHANGES `f2c7364` (CSRF on state-changing `/api` endpoints, client host rate-limiting, admin `?as=` demo teacher restriction, teacher-scoped idempotency, dynamic scene board & demo chips, and production audio 404/503 guard).
-- **Lane B (Active Subagent `f461c827-69fc-4300-8725-21cd1e6f3fdc`)**: Working on eliminating `subprocess.run` & `to_wav_sync`, making `_concat_wav_bytes` async, and implementing T20 (weekly state machine per spec/08 §8.1–§8.2).
+- **Lane C (Active Subagent `b9c2bfd9-14c5-4d05-9cd6-209e5373d34a`)**: Working on CHANGES `fc8e51b` (`tts_cache.get` audio serving with strict 404 on miss, demo login page hiding `admin.demo`, demo account query scoping).
+- **Lane B (Active Subagent `30b84880-8782-49cf-a263-5cf47c36853a`)**: Working on CHANGES `518d79e` (spec/08 weekly state machine: `REHEARSE_INTRO`, `REFLECT_PEER`, `REFLECT_SELF`, `intents.match_intent`, `ASK` flow, `delete_confirm`, `SessionService` side effects, onboarding with join codes & placement, and §8.8 tests).
 
 ### NEXT:
-1. Complete Lane C review request upon subagent finishing CHANGES `f2c7364`.
-2. Complete Lane B review request upon subagent finishing async audio cleanup & T20.
+1. Complete Lane C review request upon subagent finishing CHANGES `fc8e51b`.
+2. Complete Lane B review request upon subagent finishing CHANGES `518d79e`.
 3. Merge `lane-c` and `lane-b` into `main`.
-4. Proceed to T21 (weekly loop + evidence) and T22 (Intents, ASK, retrieval).
+4. Drop unused `tts_cache` table and model in migration.
