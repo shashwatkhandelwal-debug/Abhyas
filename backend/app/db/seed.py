@@ -85,18 +85,25 @@ async def seed_database() -> None:
                     )
                 )
 
-        # 3. Invite Code
-        invite = await session.get(InviteCode, "ABHYAS-KNP")
-        if not invite:
-            session.add(
-                InviteCode(
-                    code="ABHYAS-KNP",
-                    cluster_id="KNP-C01",
-                    batch_id="KNP-B1",
-                    district="Kanpur Nagar",
-                    active=True,
+        # 3. Invite Codes
+        invite_codes_data = [
+            ("ABHYAS-KNP", "KNP-C01", "KNP-B1"),
+            ("KNP-C01-B1", "KNP-C01", "KNP-B1"),
+            ("KNP-C01-B2", "KNP-C01", "KNP-B2"),
+            ("DEMO", "KNP-C01", "KNP-B1"),
+        ]
+        for inv_code, inv_cid, inv_bid in invite_codes_data:
+            invite = await session.get(InviteCode, inv_code)
+            if not invite:
+                session.add(
+                    InviteCode(
+                        code=inv_code,
+                        cluster_id=inv_cid,
+                        batch_id=inv_bid,
+                        district="Kanpur Nagar",
+                        active=True,
+                    )
                 )
-            )
 
         await session.flush()
 
@@ -215,7 +222,9 @@ async def seed_database() -> None:
                 )
 
         # 7. Demo App Users
-        demo_users_data = [
+        demo_users_data: list[
+            tuple[uuid.UUID, str, str, str | None, str | None, str | None, uuid.UUID | None]
+        ] = [
             (
                 USER_DEMO1_ID,
                 "teacher.demo1",
