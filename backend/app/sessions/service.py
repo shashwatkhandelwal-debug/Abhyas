@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, date, datetime
+import re
+from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +18,7 @@ from backend.app.core.intents import (
 )
 from backend.app.core.messages import get_message
 from backend.app.core.types import Button, InboundMessage, OutboundMessage
+from backend.app.llm.client import LLMUnavailable
 from backend.app.llm.roles.coach import coach_feedback
 from backend.app.llm.roles.fidelity_checker import check_fidelity
 from backend.app.llm.roles.guide_answerer import answer_guide_question, compose_guide_reply
@@ -24,7 +27,13 @@ from backend.app.llm.schemas import RetrievedChunk
 from backend.app.rehearsal.scene_runner import SceneRunner, load_move_card
 from backend.app.rehearsal.scene_store import scene_store
 from backend.app.retrieval.search import GuideRetriever
-from backend.app.rule_engine.domain import ChildState, SceneTurn, TeachingAct
+from backend.app.rule_engine.domain import (
+    ChildRuntime,
+    ChildState,
+    Problem,
+    SceneTurn,
+    TeachingAct,
+)
 from backend.app.sessions.path import compute_move_path
 from backend.app.sessions.repository import SessionRepository
 from backend.app.sessions.state_machine import (
@@ -36,6 +45,7 @@ from backend.app.sessions.state_machine import (
 )
 
 logger = logging.getLogger("abhyas.sessions.service")
+IST = ZoneInfo("Asia/Kolkata")
 
 
 class SessionService:
@@ -50,17 +60,12 @@ class SessionService:
         self.repo = repository or SessionRepository(db_session)
         self.scene_runner = scene_runner or SceneRunner()
         self.retriever = GuideRetriever()
-        self._contexts: dict[UUID, SessionContext] = {}
 
     async def get_or_create_context(self, teacher_id: UUID) -> SessionContext:
         """Loads or constructs a SessionContext from database state."""
-        if teacher_id in self._contexts:
-            return self._contexts[teacher_id]
-
         teacher = await self.repo.get_or_create_teacher(teacher_id)
-        today = date.today()
-        # Monday of current week
-        week_start = today.fromordinal(today.toordinal() - today.weekday())
+        today = datetime.now(IST).date()
+        week_start = today - timedelta(days=today.weekday())
 
         db_session = await self.repo.get_or_create_session_state(
             teacher_id=teacher_id,
@@ -68,6 +73,7 @@ class SessionService:
             move_id="NUM_PLACE_VALUE_BUNDLES",
         )
 
+        ctx_data = db_session.context or {}
         ctx = SessionContext(
             teacher_id=str(teacher_id),
             week_start=str(week_start),
@@ -76,8 +82,22 @@ class SessionService:
             prior_state_before_ask=(
                 SessionStateEnum(db_session.prior_state) if db_session.prior_state else None
             ),
+            prior_state_before_delete=(
+                SessionStateEnum(ctx_data["prior_state_before_delete"])
+                if ctx_data.get("prior_state_before_delete")
+                else None
+            ),
+            awaiting_delete_confirm=bool(ctx_data.get("awaiting_delete_confirm", False)),
             onboarding_state=OnboardingStateEnum(teacher.onboarding_state),
             retries_count=db_session.rehearse_attempts,
+            rehearsal_turns_count=int(ctx_data.get("rehearsal_turns_count", 0)),
+            placement_turns_count=int(ctx_data.get("placement_turns_count", 0)),
+            reflection_type=ctx_data.get("reflection_type"),
+            reflect_step=int(ctx_data.get("reflect_step", 0)),
+            peer_checklist_total=int(ctx_data.get("peer_checklist_total", 3)),
+            evidence_level=int(ctx_data.get("evidence_level", 0)),
+            child_states=ctx_data.get("child_states", {}),
+            clarifying_already_asked=bool(ctx_data.get("clarifying_already_asked", False)),
             name=teacher.name,
             address_form=teacher.address_form or "f",
             cluster_id=teacher.cluster_id,
@@ -91,7 +111,6 @@ class SessionService:
             lite_mode=bool(teacher.lite_mode),
             last_inbound_at=teacher.last_inbound_at,
         )
-        self._contexts[teacher_id] = ctx
         return ctx
 
     async def _sync_context_to_db(self, ctx: SessionContext, teacher_uuid: UUID) -> None:
@@ -112,23 +131,47 @@ class SessionService:
         teacher.lite_mode = ctx.lite_mode
         await self.repo.save_teacher(teacher)
 
-        if ctx.onboarding_state == OnboardingStateEnum.READY:
-            week_d = date.fromisoformat(ctx.week_start)
-            db_state = await self.repo.get_or_create_session_state(
-                teacher_uuid, week_d, ctx.current_move_id
+        week_d = date.fromisoformat(ctx.week_start)
+        db_state = await self.repo.get_or_create_session_state(
+            teacher_uuid, week_d, ctx.current_move_id
+        )
+        db_state.move_id = ctx.current_move_id
+        db_state.state = ctx.current_state.value
+        db_state.prior_state = (
+            ctx.prior_state_before_ask.value if ctx.prior_state_before_ask else None
+        )
+        db_state.rehearse_attempts = ctx.retries_count
+        db_state.context = {
+            "evidence_level": ctx.evidence_level,
+            "rehearsal_turns_count": ctx.rehearsal_turns_count,
+            "placement_turns_count": ctx.placement_turns_count,
+            "reflect_step": ctx.reflect_step,
+            "reflection_type": ctx.reflection_type,
+            "peer_checklist_total": ctx.peer_checklist_total,
+            "child_states": ctx.child_states,
+            "awaiting_delete_confirm": ctx.awaiting_delete_confirm,
+            "prior_state_before_delete": (
+                ctx.prior_state_before_delete.value if ctx.prior_state_before_delete else None
+            ),
+            "clarifying_already_asked": ctx.clarifying_already_asked,
+        }
+        await self.repo.save_session_state(db_state)
+
+    async def _get_next_move_title(self, teacher_id: UUID, current_move_id: str) -> str:
+        """Determines next move title from teacher's personal move path."""
+        path_entries = await self.repo.get_move_path(teacher_id)
+        if path_entries:
+            curr_idx = next(
+                (i for i, p in enumerate(path_entries) if p.move_id == current_move_id),
+                -1,
             )
-            db_state.state = ctx.current_state.value
-            db_state.prior_state = (
-                ctx.prior_state_before_ask.value if ctx.prior_state_before_ask else None
-            )
-            db_state.rehearse_attempts = ctx.retries_count
-            db_state.context = {
-                "evidence_level": ctx.evidence_level,
-                "rehearsal_turns_count": ctx.rehearsal_turns_count,
-                "reflect_step": ctx.reflect_step,
-                "reflection_type": ctx.reflection_type,
-            }
-            await self.repo.save_session_state(db_state)
+            if curr_idx >= 0 and curr_idx + 1 < len(path_entries):
+                next_id = path_entries[curr_idx + 1].move_id
+                if next_id:
+                    next_card = load_move_card(next_id)
+                    return next_card.title_hi
+        curr_card = load_move_card(current_move_id)
+        return curr_card.title_hi
 
     async def handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
         """Dispatches an inbound teacher message through conversation flow and persists side effects."""
@@ -184,10 +227,11 @@ class SessionService:
                 ctx.retries_count = 0
                 ctx.last_inbound_at = now
                 await self._sync_context_to_db(ctx, teacher_id)
+                move = load_move_card(ctx.current_move_id)
                 return [
                     OutboundMessage(
                         kind="text",
-                        text_hi=get_message("learn_intro", address_form),
+                        text_hi=get_message("learn_intro", address_form, move_title=move.title_hi),
                         buttons=[
                             Button(
                                 id="btn_understood",
@@ -207,7 +251,7 @@ class SessionService:
             if (
                 matched_intent in (Intent.CONFIRM_DELETE, Intent.CONFIRM_YES)
                 or btn_id == "btn_delete_confirm"
-                or text_content in ("हाँ, मिटाएँ", "confirm_delete")
+                or text_content == "confirm_delete"
             ):
                 ctx.awaiting_delete_confirm = False
                 wsm = WeeklyStateMachine(ctx)
@@ -227,10 +271,19 @@ class SessionService:
                 ctx.prior_state_before_delete = None
                 await self._sync_context_to_db(ctx, teacher_id)
                 prompt_key = WeeklyStateMachine(ctx).get_state_prompt_key(target)
+                move = load_move_card(ctx.current_move_id)
+                if prompt_key == "learn_intro":
+                    prompt_msg = get_message(prompt_key, address_form, move_title=move.title_hi)
+                elif prompt_key == "rehearse_intro":
+                    prompt_msg = get_message(
+                        prompt_key, address_form, scene_intro=move.scenario.intro_hi
+                    )
+                else:
+                    prompt_msg = get_message(prompt_key, address_form)
                 return [
                     OutboundMessage(
                         kind="text",
-                        text_hi=get_message(prompt_key, address_form),
+                        text_hi=prompt_msg,
                     )
                 ]
 
@@ -243,23 +296,74 @@ class SessionService:
                     kind="buttons",
                     text_hi=get_message("delete_confirm", address_form),
                     buttons=[
-                        Button(id="btn_delete_confirm", title_hi="हाँ, मिटाएँ"),
-                        Button(id="btn_delete_cancel", title_hi="नहीं"),
+                        Button(
+                            id="btn_delete_confirm",
+                            title_hi=get_message("btn_yes", address_form),
+                        ),
+                        Button(
+                            id="btn_delete_cancel",
+                            title_hi=get_message("btn_no", address_form),
+                        ),
                     ],
                 )
             ]
 
-        # 3. ASK interrupt flow (§8.3 step 5, §8.4)
-        is_ask_keyword = matched_intent == Intent.ASK or text_content.startswith(
-            ("सवाल", "प्रश्न", "question", "sawal")
-        )
+        # 3. ASK interrupt flow (§8.3 step 5, §8.4) & Admin escalation (Requirement B.7)
+        is_ask_keyword = matched_intent in (
+            Intent.ASK,
+            Intent.ADMIN,
+        ) or text_content.lower().startswith(("question", "sawal"))
         if is_ask_keyword or ctx.current_state == SessionStateEnum.ASK:
             if ctx.current_state != SessionStateEnum.ASK:
                 ctx.prior_state_before_ask = ctx.current_state
                 ctx.current_state = SessionStateEnum.ASK
 
             q_text = extract_ask_query(text_content) if is_ask_keyword else text_content
-            if not q_text or q_text in ("सवाल", "प्रश्न"):
+            if matched_intent == Intent.ADMIN:
+                if not q_text:
+                    q_text = text_content
+                q_rec = await self.repo.record_question(
+                    teacher_id=teacher_id,
+                    text=q_text,
+                    category="admin",
+                    answer_hi=get_message("ask_admin", address_form),
+                    source_ids=[],
+                    confidence=1.0,
+                    status="escalated",
+                )
+                await self.repo.record_review_item(
+                    kind="question",
+                    ref_id=str(q_rec.id),
+                    reason="Admin escalation",
+                )
+                reply_text = get_message("ask_admin", address_form)
+
+                prior = ctx.prior_state_before_ask or SessionStateEnum.LEARN
+                ctx.current_state = prior
+                ctx.prior_state_before_ask = None
+                ctx.clarifying_already_asked = False
+                await self._sync_context_to_db(ctx, teacher_id)
+
+                resume_note = get_message("ask_resume", address_form)
+                prior_prompt_key = WeeklyStateMachine(ctx).get_state_prompt_key(prior)
+                move = load_move_card(ctx.current_move_id)
+                if prior_prompt_key == "learn_intro":
+                    prior_prompt = get_message(
+                        prior_prompt_key, address_form, move_title=move.title_hi
+                    )
+                elif prior_prompt_key == "rehearse_intro":
+                    prior_prompt = get_message(
+                        prior_prompt_key, address_form, scene_intro=move.scenario.intro_hi
+                    )
+                else:
+                    prior_prompt = get_message(prior_prompt_key, address_form)
+
+                return [
+                    OutboundMessage(kind="text", text_hi=reply_text),
+                    OutboundMessage(kind="text", text_hi=f"{resume_note}\n\n{prior_prompt}"),
+                ]
+
+            if not q_text:
                 await self._sync_context_to_db(ctx, teacher_id)
                 return [
                     OutboundMessage(
@@ -309,7 +413,7 @@ class SessionService:
 
             # Persist question record
             status_val = "escalated" if answer_res.escalated else "answered"
-            await self.repo.record_question(
+            q_rec = await self.repo.record_question(
                 teacher_id=teacher_id,
                 text=q_text,
                 category=classify_res.output.category,
@@ -318,10 +422,19 @@ class SessionService:
                 confidence=answer_res.output.confidence,
                 status=status_val,
             )
+            if status_val == "escalated":
+                await self.repo.record_review_item(
+                    kind="question",
+                    ref_id=str(q_rec.id),
+                    reason=f"Question escalated: {classify_res.output.category}",
+                )
 
             # Compose reply
             if answer_res.escalated:
-                reply_text = get_message("ask_escalated", address_form)
+                reply_text = get_message(
+                    "ask_admin" if classify_res.output.category == "admin" else "ask_escalated",
+                    address_form,
+                )
             elif classify_res.output.category == "out_of_scope":
                 reply_text = get_message("ask_out_of_scope", address_form)
             elif classify_res.output.category == "admin":
@@ -338,7 +451,15 @@ class SessionService:
 
             resume_note = get_message("ask_resume", address_form)
             prior_prompt_key = WeeklyStateMachine(ctx).get_state_prompt_key(prior)
-            prior_prompt = get_message(prior_prompt_key, address_form)
+            move = load_move_card(ctx.current_move_id)
+            if prior_prompt_key == "learn_intro":
+                prior_prompt = get_message(prior_prompt_key, address_form, move_title=move.title_hi)
+            elif prior_prompt_key == "rehearse_intro":
+                prior_prompt = get_message(
+                    prior_prompt_key, address_form, scene_intro=move.scenario.intro_hi
+                )
+            else:
+                prior_prompt = get_message(prior_prompt_key, address_form)
 
             return [
                 OutboundMessage(kind="text", text_hi=reply_text),
@@ -388,10 +509,10 @@ class SessionService:
                     ]
 
             elif current_onboarding == OnboardingStateEnum.JOIN_CODE:
-                if matched_intent == Intent.CONFIRM_NO or text_content in (
-                    "नहीं",
-                    "no_code",
-                    "skip",
+                if (
+                    matched_intent == Intent.CONFIRM_NO
+                    or text_content in ("no_code", "skip")
+                    or btn_id in ("btn_no", "btn_skip")
                 ):
                     ctx.cluster_id = "UNASSIGNED"
                     osm.transition("no_code")
@@ -431,8 +552,14 @@ class SessionService:
                         kind="buttons",
                         text_hi=get_message("ask_address_form", address_form),
                         buttons=[
-                            Button(id="btn_female", title_hi="शिक्षिका"),
-                            Button(id="btn_male", title_hi="शिक्षक"),
+                            Button(
+                                id="btn_female",
+                                title_hi=get_message("btn_female", address_form),
+                            ),
+                            Button(
+                                id="btn_male",
+                                title_hi=get_message("btn_male", address_form),
+                            ),
                         ],
                     )
                 ]
@@ -440,11 +567,16 @@ class SessionService:
             elif current_onboarding == OnboardingStateEnum.PROFILE_ADDRESS:
                 osm.transition(btn_id or text_content)
                 await self._sync_context_to_db(ctx, teacher_id)
+                default_name = (
+                    get_message("btn_female", ctx.address_form)
+                    if ctx.address_form == "f"
+                    else get_message("btn_male", ctx.address_form)
+                )
                 return [
                     OutboundMessage(
                         kind="text",
                         text_hi=get_message(
-                            "ask_experience", ctx.address_form, name=ctx.name or "शिक्षिका"
+                            "ask_experience", ctx.address_form, name=ctx.name or default_name
                         ),
                     )
                 ]
@@ -467,8 +599,14 @@ class SessionService:
                         kind="buttons",
                         text_hi=get_message("consent_share_scores", ctx.address_form),
                         buttons=[
-                            Button(id="btn_yes", title_hi="हाँ"),
-                            Button(id="btn_no", title_hi="नहीं"),
+                            Button(
+                                id="btn_yes",
+                                title_hi=get_message("btn_yes", ctx.address_form),
+                            ),
+                            Button(
+                                id="btn_no",
+                                title_hi=get_message("btn_no", ctx.address_form),
+                            ),
                         ],
                     )
                 ]
@@ -488,11 +626,20 @@ class SessionService:
 
             elif current_onboarding == OnboardingStateEnum.PLACEMENT_INTRO:
                 osm.transition("turn_input")
-                # Initialize placement scene with Ravi
+                # Initialize placement scene with Ravi on 52-17
                 scene = await scene_store.get_active_for_teacher(teacher_id)
                 if scene is None:
+                    ravi = ChildRuntime(
+                        persona_id="ravi",
+                        misconception="SUB_SMALLER_FROM_LARGER",
+                        temperament="confident",
+                        state=ChildState.MISCONCEPTION,
+                    )
                     scene = await self.scene_runner.create_scene(
-                        teacher_id=teacher_id, move_id="NUM_SUB_REGROUP_BUNDLES"
+                        teacher_id=teacher_id,
+                        move_id="NUM_SUB_REGROUP_BUNDLES",
+                        item=Problem(type="sub", a=52, b=17),
+                        children=[ravi],
                     )
                 turn_res = None
                 if scene is not None:
@@ -502,16 +649,7 @@ class SessionService:
                         address_form=ctx.address_form,
                     )
                 await self._sync_context_to_db(ctx, teacher_id)
-                turn1_outbounds = turn_res.outbound if turn_res else []
-                if not turn1_outbounds:
-                    turn1_outbounds = [
-                        OutboundMessage(
-                            kind="text",
-                            text_hi="रवि: 45 ही तो होगा!",
-                            speaker="ravi",
-                        )
-                    ]
-                return turn1_outbounds
+                return turn_res.outbound if turn_res else []
 
             elif current_onboarding == OnboardingStateEnum.PLACEMENT:
                 res_placement = osm.transition(text_content)
@@ -526,11 +664,21 @@ class SessionService:
 
                 if res_placement.new_state == str(OnboardingStateEnum.READY):
                     # Placement finished after turn 2: compute personal move path
+                    placement_used_tell_answer = False
+                    if scene is not None:
+                        for t in scene.turns:
+                            if (
+                                TeachingAct.TELL_ANSWER.value in t.acts
+                                or TeachingAct.TELL_ANSWER in t.acts
+                            ):
+                                placement_used_tell_answer = True
+                                break
+
                     path_entries = compute_move_path(
                         teacher_id=teacher_id,
                         first_year=ctx.first_year,
                         classes=ctx.classes,
-                        placement_used_tell_answer=False,
+                        placement_used_tell_answer=placement_used_tell_answer,
                     )
                     await self.repo.record_move_path(teacher_id, path_entries)
                     if path_entries:
@@ -538,26 +686,30 @@ class SessionService:
                     ctx.current_state = SessionStateEnum.LEARN
                     await self._sync_context_to_db(ctx, teacher_id)
 
+                    first_move = load_move_card(ctx.current_move_id)
                     ready_outbounds: list[OutboundMessage] = []
                     if turn_res:
                         ready_outbounds.extend(turn_res.outbound)
                     ready_outbounds.extend(
                         [
                             OutboundMessage(
-                                kind="text", text_hi=get_message("placement_done", ctx.address_form)
+                                kind="text",
+                                text_hi=get_message("placement_done", ctx.address_form),
                             ),
                             OutboundMessage(
                                 kind="text",
                                 text_hi=get_message(
                                     "ready_first_move",
                                     ctx.address_form,
-                                    move_title="स्थानीय मान - बंडल",
+                                    move_title=first_move.title_hi,
                                 ),
                             ),
                             OutboundMessage(
                                 kind="buttons",
                                 text_hi=get_message(
-                                    "learn_intro", ctx.address_form, move_title="स्थानीय मान - बंडल"
+                                    "learn_intro",
+                                    ctx.address_form,
+                                    move_title=first_move.title_hi,
                                 ),
                                 buttons=[
                                     Button(
@@ -582,11 +734,12 @@ class SessionService:
         curr = ctx.current_state
 
         if curr == SessionStateEnum.LEARN:
+            move = load_move_card(ctx.current_move_id)
             if matched_intent == Intent.REPEAT or btn_id == "btn_replay":
                 return [
                     OutboundMessage(
                         kind="buttons",
-                        text_hi=get_message("learn_intro", address_form),
+                        text_hi=get_message("learn_intro", address_form, move_title=move.title_hi),
                         buttons=[
                             Button(
                                 id="btn_understood",
@@ -638,7 +791,7 @@ class SessionService:
             move = load_move_card(ctx.current_move_id)
             try:
                 fidelity_res = await check_fidelity(move, text_content)
-            except Exception as exc:
+            except (LLMUnavailable, TimeoutError, ValueError, TypeError) as exc:
                 logger.warning("Fidelity check failed: %s; using deterministic fallback", exc)
                 from backend.app.llm.roles.fidelity_checker import (
                     FidelityResult,
@@ -684,14 +837,24 @@ class SessionService:
             ]
 
         elif curr == SessionStateEnum.MODEL:
+            move = load_move_card(ctx.current_move_id)
             if matched_intent == Intent.LISTEN or btn_id == "btn_listen":
                 wsm.transition("btn_listen")
                 await self._sync_context_to_db(ctx, teacher_id)
+                model_lines = [t.text_hi for t in move.model_rehearsal if t.text_hi]
+                model_text = (
+                    "\n\n".join(model_lines)
+                    if model_lines
+                    else get_message("model_header", address_form)
+                )
                 return [
                     OutboundMessage(kind="text", text_hi=get_message("model_header", address_form)),
+                    OutboundMessage(kind="text", text_hi=model_text),
                     OutboundMessage(
                         kind="text",
-                        text_hi=get_message("rehearse_intro", address_form, scene_intro="कक्षा 2 में"),
+                        text_hi=get_message(
+                            "rehearse_intro", address_form, scene_intro=move.scenario.intro_hi
+                        ),
                     ),
                 ]
             if matched_intent == Intent.SKIP or btn_id == "btn_skip":
@@ -700,7 +863,9 @@ class SessionService:
                 return [
                     OutboundMessage(
                         kind="text",
-                        text_hi=get_message("rehearse_intro", address_form, scene_intro="कक्षा 2 में"),
+                        text_hi=get_message(
+                            "rehearse_intro", address_form, scene_intro=move.scenario.intro_hi
+                        ),
                     ),
                 ]
             # Free text does NOT silently advance
@@ -744,6 +909,53 @@ class SessionService:
 
             if ended:
                 wsm_res = wsm.transition(text_content, scene_ended=True)
+
+                teacher_turns = [t for t in scene.turns if t.transcript and t.acts != ["stop"]]
+                teacher_turns_count = len(teacher_turns)
+
+                trajectories: dict[str, list[ChildState]] = {}
+                for child in scene.scene_state.children:
+                    if child.history:
+                        trajectories[child.persona_id] = [ChildState.MISCONCEPTION] + [
+                            h[1] for h in child.history
+                        ]
+                    else:
+                        trajectories[child.persona_id] = [child.state]
+
+                # Empty scene or missing trajectories, or < 3 teacher turns -> skip coach entirely
+                if not scene.turns or teacher_turns_count < 3 or not trajectories:
+                    await self._sync_context_to_db(ctx, teacher_id)
+                    outbounds: list[OutboundMessage] = []
+                    has_neutral = any(
+                        m.text_hi == get_message("scene_ended_neutral", address_form)
+                        for m in turn_res.outbound
+                    )
+                    outbounds.extend(turn_res.outbound)
+                    if not has_neutral:
+                        outbounds.append(
+                            OutboundMessage(
+                                kind="text",
+                                text_hi=get_message("scene_ended_neutral", address_form),
+                            )
+                        )
+                    outbounds.append(
+                        OutboundMessage(
+                            kind="buttons",
+                            text_hi=get_message("realism_prompt", address_form),
+                            buttons=[
+                                Button(
+                                    id="btn_retry",
+                                    title_hi=get_message("btn_retry", address_form),
+                                ),
+                                Button(
+                                    id="btn_continue",
+                                    title_hi=get_message("btn_continue", address_form),
+                                ),
+                            ],
+                        )
+                    )
+                    return outbounds
+
                 if wsm_res.evidence_level and wsm_res.evidence_level >= 1:
                     await self.repo.record_adoption_evidence(
                         teacher_id=teacher_id,
@@ -757,16 +969,16 @@ class SessionService:
                 move = load_move_card(ctx.current_move_id)
                 # 1. turns: all scene turns in chronological order (teacher + child responses)
                 all_scene_turns: list[SceneTurn] = []
-                # 2. acts: actual tagged acts for each teacher turn
+                # 2. acts: actual tagged acts for each teacher turn with NO fallback to [REPEAT_QUESTION]!
                 tagged_acts: list[list[TeachingAct]] = []
 
                 for t in scene.turns:
-                    if t.transcript:
+                    if t.transcript and t.acts != ["stop"]:
                         all_scene_turns.append(SceneTurn(speaker="teacher", text_hi=t.transcript))
                         turn_acts = [
                             TeachingAct(a) for a in t.acts if a in TeachingAct._value2member_map_
                         ]
-                        tagged_acts.append(turn_acts or [TeachingAct.REPEAT_QUESTION])
+                        tagged_acts.append(turn_acts)
                     if t.child_lines:
                         for cl in t.child_lines:
                             line_text = getattr(cl, "line_hi", None) or getattr(cl, "text_hi", "")
@@ -782,23 +994,7 @@ class SessionService:
                                     SceneTurn(speaker=cr.persona_id, text_hi=resp_text)
                                 )
 
-                if not all_scene_turns:
-                    all_scene_turns = [SceneTurn(speaker="teacher", text_hi="नमस्ते बच्चों")]
-                    tagged_acts = [[TeachingAct.REPEAT_QUESTION]]
-
-                # 3. trajectories: real child state trajectories from scene.scene_state.children
-                trajectories: dict[str, list[ChildState]] = {}
-                for child in scene.scene_state.children:
-                    if child.history:
-                        trajectories[child.persona_id] = [ChildState.MISCONCEPTION] + [
-                            h[1] for h in child.history
-                        ]
-                    else:
-                        trajectories[child.persona_id] = [child.state]
-                if not trajectories:
-                    trajectories = {"ravi": [ChildState.MISCONCEPTION, ChildState.CORRECT]}
-
-                # 4. target_child_id: find target child with misconception
+                # target_child_id: find target child with misconception
                 target_child_id = next(
                     (c.persona_id for c in scene.scene_state.children if c.misconception),
                     scene.scene_state.children[0].persona_id
@@ -806,23 +1002,8 @@ class SessionService:
                     else "ravi",
                 )
 
-                # 5. current_item_answer: real item answer from scene.scene_state.current_item
-                current_item = scene.scene_state.current_item
-                current_item_answer: int | str
-                attr_name = "answer"
-                if hasattr(current_item, attr_name):
-                    val = getattr(current_item, attr_name)
-                    current_item_answer = val() if callable(val) else val
-                elif current_item.type == "sub":
-                    current_item_answer = (current_item.a or 0) - (current_item.b or 0)
-                elif current_item.type == "add":
-                    current_item_answer = (current_item.a or 0) + (current_item.b or 0)
-                elif current_item.type == "place_value":
-                    current_item_answer = (current_item.tens or 0) * 10 + (current_item.ones or 0)
-                elif current_item.type == "read_word":
-                    current_item_answer = current_item.word or ""
-                else:
-                    current_item_answer = 0
+                # 3. current_item_answer from scene.scene_state.current_item.answer()
+                current_item_answer = scene.scene_state.current_item.answer()
 
                 try:
                     coach_res = await coach_feedback(
@@ -834,7 +1015,7 @@ class SessionService:
                         current_item_answer=current_item_answer,
                         attempt=ctx.retries_count + 1,
                     )
-                except Exception as exc:
+                except (LLMUnavailable, TimeoutError, ValueError, TypeError) as exc:
                     logger.warning("Coach feedback failed: %s; using deterministic fallback", exc)
                     from backend.app.llm.roles.coach import CoachResult, fallback_coach_feedback
 
@@ -918,6 +1099,7 @@ class SessionService:
             return turn_res.outbound
 
         elif curr == SessionStateEnum.FEEDBACK:
+            move = load_move_card(ctx.current_move_id)
             if matched_intent == Intent.RETRY or btn_id == "btn_retry":
                 res = wsm.transition("btn_retry")
                 await self._sync_context_to_db(ctx, teacher_id)
@@ -926,7 +1108,7 @@ class SessionService:
                         OutboundMessage(
                             kind="text",
                             text_hi=get_message(
-                                "rehearse_intro", address_form, scene_intro="कक्षा 2 में नया अभ्यास:"
+                                "rehearse_intro", address_form, scene_intro=move.scenario.intro_hi
                             ),
                         )
                     ]
@@ -956,13 +1138,69 @@ class SessionService:
                         ],
                     )
                 ]
-            # Realism rating
-            return []
+
+            # Realism rating handling (1 to 5)
+            rating_val: int | None = None
+            if btn_id and btn_id.startswith("btn_rating_"):
+                try:
+                    rating_val = int(btn_id.split("_")[-1])
+                except ValueError:
+                    rating_val = None
+            elif text_content:
+                clean_digits = (
+                    text_content.replace("\u0967", "1")
+                    .replace("\u0968", "2")
+                    .replace("\u0969", "3")
+                    .replace("\u096a", "4")
+                    .replace("\u096b", "5")
+                )
+                m = re.search(r"\b([1-5])\b", clean_digits)
+                if m:
+                    rating_val = int(m.group(1))
+
+            if rating_val is not None and 1 <= rating_val <= 5:
+                scene = await scene_store.get_active_for_teacher(teacher_id)
+                scene_id = scene.scene_id if scene else None
+                await self.repo.record_realism_rating(
+                    teacher_id=teacher_id, rating=rating_val, scene_id=scene_id
+                )
+                await self._sync_context_to_db(ctx, teacher_id)
+                return [
+                    OutboundMessage(
+                        kind="buttons",
+                        text_hi=get_message("realism_prompt", address_form),
+                        buttons=[
+                            Button(id="btn_retry", title_hi=get_message("btn_retry", address_form)),
+                            Button(
+                                id="btn_continue",
+                                title_hi=get_message("btn_continue", address_form),
+                            ),
+                        ],
+                    )
+                ]
+
+            # Any other text -> send unclear + retry/continue buttons; never send an empty reply!
+            return [
+                OutboundMessage(
+                    kind="buttons",
+                    text_hi=get_message("unclear", address_form),
+                    buttons=[
+                        Button(id="btn_retry", title_hi=get_message("btn_retry", address_form)),
+                        Button(
+                            id="btn_continue",
+                            title_hi=get_message("btn_continue", address_form),
+                        ),
+                    ],
+                )
+            ]
 
         elif curr == SessionStateEnum.TRY_IN_CLASS:
+            move = load_move_card(ctx.current_move_id)
             if matched_intent == Intent.PEER or btn_id == "btn_peer":
                 wsm.transition("btn_peer")
                 await self._sync_context_to_db(ctx, teacher_id)
+                item_text = move.peer_checklist[0] if move.peer_checklist else ""
+                total_items = len(move.peer_checklist) if move.peer_checklist else 3
                 return [
                     OutboundMessage(
                         kind="buttons",
@@ -970,18 +1208,19 @@ class SessionService:
                             "peer_item",
                             address_form,
                             i=1,
-                            n=3,
-                            item="क्या शिक्षक ने बंडलों का उपयोग किया?",
+                            n=total_items,
+                            item=item_text,
                         ),
                         buttons=[
-                            Button(id="btn_yes", title_hi="हाँ"),
-                            Button(id="btn_no", title_hi="नहीं"),
+                            Button(id="btn_yes", title_hi=get_message("btn_yes", address_form)),
+                            Button(id="btn_no", title_hi=get_message("btn_no", address_form)),
                         ],
                     )
                 ]
             if matched_intent == Intent.SELF or btn_id == "btn_self":
                 wsm.transition("btn_self")
                 await self._sync_context_to_db(ctx, teacher_id)
+                q_text = move.reflection_questions[0] if move.reflection_questions else ""
                 return [
                     OutboundMessage(
                         kind="text",
@@ -989,17 +1228,24 @@ class SessionService:
                             "reflect_q",
                             address_form,
                             i=1,
-                            question="आज कक्षा में बच्चों को क्या सबसे अच्छा लगा?",
+                            question=q_text,
                         ),
                     )
                 ]
             if matched_intent == Intent.LATER or btn_id == "btn_later":
                 wsm.transition("btn_later")
                 await self._sync_context_to_db(ctx, teacher_id)
+                default_name = (
+                    get_message("btn_female", address_form)
+                    if address_form == "f"
+                    else get_message("btn_male", address_form)
+                )
                 return [
                     OutboundMessage(
                         kind="text",
-                        text_hi=get_message("reminder", address_form, name=ctx.name or "शिक्षिका"),
+                        text_hi=get_message(
+                            "reminder", address_form, name=ctx.name or default_name
+                        ),
                     )
                 ]
             # Free text does not advance
@@ -1011,6 +1257,7 @@ class SessionService:
             ]
 
         elif curr == SessionStateEnum.REFLECT_PEER:
+            move = load_move_card(ctx.current_move_id)
             res = wsm.transition(text_content)
             if res.new_state == "DONE":
                 await self.repo.record_adoption_evidence(
@@ -1021,15 +1268,21 @@ class SessionService:
                 )
                 await self._sync_context_to_db(ctx, teacher_id)
                 level_name = get_message("evidence_level_3", address_form)
+                next_title = await self._get_next_move_title(teacher_id, ctx.current_move_id)
+                default_name = (
+                    get_message("btn_female", address_form)
+                    if address_form == "f"
+                    else get_message("btn_male", address_form)
+                )
                 return [
                     OutboundMessage(
                         kind="buttons",
                         text_hi=get_message(
                             "week_done",
                             address_form,
-                            name=ctx.name or "शिक्षिका",
+                            name=ctx.name or default_name,
                             level_name=level_name,
-                            next_move_title="घटाना - पुनर्समूहन",
+                            next_move_title=next_title,
                         ),
                         buttons=[
                             Button(
@@ -1044,6 +1297,9 @@ class SessionService:
                     )
                 ]
             await self._sync_context_to_db(ctx, teacher_id)
+            step_idx = max(0, ctx.reflect_step - 1)
+            item_text = move.peer_checklist[step_idx] if step_idx < len(move.peer_checklist) else ""
+            total_items = len(move.peer_checklist) if move.peer_checklist else 3
             return [
                 OutboundMessage(
                     kind="buttons",
@@ -1051,17 +1307,18 @@ class SessionService:
                         "peer_item",
                         address_form,
                         i=ctx.reflect_step,
-                        n=3,
-                        item="क्या बच्चों ने समझाकर उत्तर दिया?",
+                        n=total_items,
+                        item=item_text,
                     ),
                     buttons=[
-                        Button(id="btn_yes", title_hi="हाँ"),
-                        Button(id="btn_no", title_hi="नहीं"),
+                        Button(id="btn_yes", title_hi=get_message("btn_yes", address_form)),
+                        Button(id="btn_no", title_hi=get_message("btn_no", address_form)),
                     ],
                 )
             ]
 
         elif curr == SessionStateEnum.REFLECT_SELF:
+            move = load_move_card(ctx.current_move_id)
             res = wsm.transition(text_content)
             if res.new_state == "DONE":
                 await self.repo.record_adoption_evidence(
@@ -1072,15 +1329,21 @@ class SessionService:
                 )
                 await self._sync_context_to_db(ctx, teacher_id)
                 level_name = get_message("evidence_level_2", address_form)
+                next_title = await self._get_next_move_title(teacher_id, ctx.current_move_id)
+                default_name = (
+                    get_message("btn_female", address_form)
+                    if address_form == "f"
+                    else get_message("btn_male", address_form)
+                )
                 return [
                     OutboundMessage(
                         kind="buttons",
                         text_hi=get_message(
                             "week_done",
                             address_form,
-                            name=ctx.name or "शिक्षिका",
+                            name=ctx.name or default_name,
                             level_name=level_name,
-                            next_move_title="घटाना - पुनर्समूहन",
+                            next_move_title=next_title,
                         ),
                         buttons=[
                             Button(
@@ -1095,23 +1358,30 @@ class SessionService:
                     )
                 ]
             await self._sync_context_to_db(ctx, teacher_id)
+            step_idx = max(0, ctx.reflect_step - 1)
+            q_text = (
+                move.reflection_questions[step_idx]
+                if step_idx < len(move.reflection_questions)
+                else ""
+            )
             return [
                 OutboundMessage(
                     kind="text",
                     text_hi=get_message(
-                        "reflect_q", address_form, i=2, question="अगली बार आप क्या अलग करेंगी?"
+                        "reflect_q", address_form, i=ctx.reflect_step, question=q_text
                     ),
                 )
             ]
 
         elif curr == SessionStateEnum.DONE:
+            move = load_move_card(ctx.current_move_id)
             if matched_intent == Intent.NEXT or btn_id == "btn_next_move":
                 wsm.transition("btn_next_move")
                 await self._sync_context_to_db(ctx, teacher_id)
                 return [
                     OutboundMessage(
                         kind="buttons",
-                        text_hi=get_message("learn_intro", address_form),
+                        text_hi=get_message("learn_intro", address_form, move_title=move.title_hi),
                         buttons=[
                             Button(
                                 id="btn_understood",
@@ -1128,7 +1398,10 @@ class SessionService:
                     OutboundMessage(
                         kind="text",
                         text_hi=get_message(
-                            "progress_summary", address_form, n_done=1, lines="1. स्थानीय मान - बंडल"
+                            "progress_summary",
+                            address_form,
+                            n_done=1,
+                            lines=f"1. {move.title_hi}",
                         ),
                     )
                 ]

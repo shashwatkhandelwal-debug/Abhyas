@@ -17,6 +17,7 @@ from backend.app.db.models import (
     InviteCode,
     MovePath,
     Question,
+    RealismRating,
     RehearsalScore,
     ReviewItem,
     SessionState,
@@ -66,6 +67,7 @@ class SessionRepository:
         self._consent_logs: list[ConsentLog] = []
         self._questions: list[Question] = []
         self._move_paths: list[MovePath] = []
+        self._realism_ratings: list[RealismRating] = []
         self._invite_codes: dict[str, InviteCode] = {}
 
         # Pre-seed invite codes
@@ -364,6 +366,42 @@ class SessionRepository:
                 logger.warning("DB commit failed for move_path: %s", exc)
         return paths
 
+    async def get_move_path(self, teacher_id: UUID) -> list[MovePath]:
+        """Retrieves personal move path sequence for teacher."""
+        if self.session is not None:
+            try:
+                res = await self.session.execute(
+                    select(MovePath)
+                    .where(MovePath.teacher_id == teacher_id)
+                    .order_by(MovePath.position)
+                )
+                items = list(res.scalars().all())
+                if items:
+                    return items
+            except Exception as exc:
+                logger.warning("DB query failed for move_path: %s", exc)
+        return [m for m in self._move_paths if m.teacher_id == teacher_id]
+
+    async def record_realism_rating(
+        self, teacher_id: UUID, rating: int, scene_id: UUID | None = None
+    ) -> RealismRating:
+        """Records teacher realism rating (1 to 5)."""
+        rr = RealismRating(
+            id=uuid4(),
+            teacher_id=teacher_id,
+            scene_id=scene_id,
+            rating=rating,
+            created_at=datetime.now(UTC),
+        )
+        self._realism_ratings.append(rr)
+        if self.session is not None:
+            try:
+                self.session.add(rr)
+                await self.session.commit()
+            except Exception as exc:
+                logger.warning("DB insert failed for realism_rating: %s", exc)
+        return rr
+
     async def record_question(
         self,
         teacher_id: UUID,
@@ -417,6 +455,7 @@ class SessionRepository:
         self._questions = [q for q in self._questions if q.teacher_id != teacher_id]
         self._move_paths = [m for m in self._move_paths if m.teacher_id != teacher_id]
         self._consent_logs = [c for c in self._consent_logs if c.teacher_id != teacher_id]
+        self._realism_ratings = [r for r in self._realism_ratings if r.teacher_id != teacher_id]
         keys_to_del = [k for k in self._session_states if k[0] == teacher_id]
         for k in keys_to_del:
             del self._session_states[k]
@@ -443,6 +482,9 @@ class SessionRepository:
                 )
                 await self.session.execute(
                     delete(ConsentLog).where(ConsentLog.teacher_id == teacher_id)
+                )
+                await self.session.execute(
+                    delete(RealismRating).where(RealismRating.teacher_id == teacher_id)
                 )
                 await self.session.commit()
             except Exception as exc:

@@ -38,6 +38,7 @@ class Intent(StrEnum):
     SELF = "self"
     LATER = "later"
     MORE = "more"
+    ADMIN = "admin"
 
 
 # Boundary regex for Devanagari (\u0900-\u097F) and Latin/alphanumeric words
@@ -105,6 +106,11 @@ _SKIP_PATTERN = re.compile(
 
 _REPEAT_PATTERN = re.compile(
     rf"^{_WB}(फिर\s*से|दोबारा|repeat|phir\s*se|wapas){_WBE}(\s+(सुनें|सुनना|bologe))?$",
+    re.IGNORECASE,
+)
+
+_ADMIN_PATTERN = re.compile(
+    rf"^{_WB}(admin|व्यवस्थापक|प्रशासक){_WBE}([:\s\-\?].*|$)",
     re.IGNORECASE,
 )
 
@@ -247,6 +253,9 @@ def match_intent(
     if _REPEAT_PATTERN.match(cleaned) or _REPEAT_PATTERN.match(cleaned_punct):
         return Intent.REPEAT
 
+    if _ADMIN_PATTERN.match(cleaned):
+        return Intent.ADMIN
+
     if _ASK_PREFIX_PATTERN.match(cleaned):
         return Intent.ASK
 
@@ -308,7 +317,7 @@ def match_intent(
 def extract_ask_query(text: str) -> str:
     """Extracts the underlying question after an ASK keyword prefix."""
     cleaned = normalize_intent_text(text)
-    match = _ASK_PREFIX_PATTERN.match(cleaned)
+    match = _ADMIN_PATTERN.match(cleaned) or _ASK_PREFIX_PATTERN.match(cleaned)
     if match:
         remainder = cleaned[match.end(1) :].strip()
         remainder = re.sub(r"^[:\s\-\?]+", "", remainder).strip()

@@ -1,6 +1,8 @@
 """Tests for Weekly State Machine, Onboarding, and SessionService (spec/08 §8.1–§8.8, T20/T21)."""
 
+import re
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -470,6 +472,7 @@ async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence(
     # 10. LEARN -> EXPLAIN_BACK
     out10 = await service.handle_inbound(make_inbound(teacher_id=t_id, button_id="btn_understood"))
     assert any("शब्दों में" in str(m.text_hi or "") for m in out10)
+    ctx = await service.get_or_create_context(t_id)
     assert ctx.current_state == SessionStateEnum.EXPLAIN_BACK
 
     # 11. EXPLAIN_BACK -> MODEL (calls check_fidelity, records explain_score)
@@ -477,12 +480,14 @@ async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence(
         make_inbound(teacher_id=t_id, text="दहाई को बंडलों से और इकाई को खुली तीलियों से समझाना चाहिए।")
     )
     assert len(out11) >= 1
+    ctx = await service.get_or_create_context(t_id)
     assert ctx.current_state == SessionStateEnum.MODEL
     assert len(service.repo._explain_scores) >= 1
 
     # 12. MODEL -> REHEARSE_INTRO
     out12 = await service.handle_inbound(make_inbound(teacher_id=t_id, button_id="btn_listen"))
     assert any("बच्चों से" in str(m.text_hi or "") for m in out12)
+    ctx = await service.get_or_create_context(t_id)
     assert ctx.current_state == SessionStateEnum.REHEARSE_INTRO
 
     # 13. REHEARSE_INTRO -> REHEARSE (first turn)
@@ -490,6 +495,7 @@ async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence(
         make_inbound(teacher_id=t_id, text="नमस्ते बच्चों, आज हम 52-17 करेंगे।")
     )
     assert len(out13) >= 1
+    ctx = await service.get_or_create_context(t_id)
     assert ctx.current_state == SessionStateEnum.REHEARSE
 
     # 14. REHEARSE turns 2 and 3
@@ -497,10 +503,12 @@ async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence(
     await service.handle_inbound(
         make_inbound(teacher_id=t_id, text="शाबाश, 5 बंडल और 2 खुली तीलियाँ।")
     )
+    ctx = await service.get_or_create_context(t_id)
     assert ctx.rehearsal_turns_count == 3
 
     # 15. Stop scene with stop keyword "बस" -> FEEDBACK (evidence level 1, calls coach_feedback)
     out15 = await service.handle_inbound(make_inbound(teacher_id=t_id, text="बस"))
+    ctx = await service.get_or_create_context(t_id)
     assert ctx.current_state == SessionStateEnum.FEEDBACK
     assert any("सुझाव" in str(m.text_hi or "") or "असली" in str(m.text_hi or "") for m in out15)
     evidence_rows = await service.repo.get_adoption_evidence(t_id)
@@ -509,11 +517,13 @@ async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence(
     # 16. FEEDBACK -> TRY_IN_CLASS
     out16 = await service.handle_inbound(make_inbound(teacher_id=t_id, button_id="btn_continue"))
     assert any("कक्षा में" in str(m.text_hi or "") for m in out16)
+    ctx = await service.get_or_create_context(t_id)
     assert ctx.current_state == SessionStateEnum.TRY_IN_CLASS
 
     # 17. TRY_IN_CLASS -> REFLECT_SELF
     out17 = await service.handle_inbound(make_inbound(teacher_id=t_id, button_id="btn_self"))
     assert any("सवाल" in str(m.text_hi or "") for m in out17)
+    ctx = await service.get_or_create_context(t_id)
     assert ctx.current_state == SessionStateEnum.REFLECT_SELF
 
     # 18. Q1 answer -> Q2
@@ -526,6 +536,7 @@ async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence(
     out19 = await service.handle_inbound(
         make_inbound(teacher_id=t_id, text="अगली बार मैं बच्चों से खुद बंडल बनवाऊँगी।")
     )
+    ctx = await service.get_or_create_context(t_id)
     assert ctx.current_state == SessionStateEnum.DONE
     assert any("शाबाश" in str(m.text_hi or "") for m in out19)
 
@@ -534,3 +545,103 @@ async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence(
     assert len(all_evidence) >= 2
     max_level = max(e.level for e in all_evidence)
     assert max_level >= 2
+
+
+def test_session_service_hygiene_no_broad_exceptions_and_no_hardcoded_hindi() -> None:
+    """Verifies backend/app/sessions/service.py has no 'except Exception' and zero hardcoded Hindi literals."""
+    service_path = Path(__file__).parents[2] / "app" / "sessions" / "service.py"
+    assert service_path.is_file(), f"service.py not found at {service_path}"
+
+    content = service_path.read_text(encoding="utf-8")
+
+    # 1. Broad exception check
+    assert "except Exception" not in content, (
+        "backend/app/sessions/service.py must not contain 'except Exception'. "
+        "Catch specific exceptions instead."
+    )
+
+    # 2. Hardcoded Hindi literals check (Devanagari Unicode block \u0900-\u097F)
+    hindi_matches = re.findall(r"[\u0900-\u097F]+", content)
+    assert not hindi_matches, (
+        f"backend/app/sessions/service.py must contain ZERO hardcoded Hindi literals. "
+        f"Found {len(hindi_matches)} matches: {hindi_matches[:10]}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_admin_escalation_creates_review_item() -> None:
+    """Verifies 'admin' query sends ask_admin, escalates, and creates review_item in DB."""
+    service = SessionService()
+    t_id = uuid4()
+    ctx = await service.get_or_create_context(t_id)
+    ctx.onboarding_state = OnboardingStateEnum.READY
+    ctx.current_state = SessionStateEnum.LEARN
+    await service._sync_context_to_db(ctx, t_id)
+
+    out = await service.handle_inbound(
+        make_inbound(teacher_id=t_id, text="admin: मुझे अवकाश के बारे में पूछना है")
+    )
+    assert len(out) >= 1
+    # Check question recorded with status='escalated'
+    questions = [q for q in service.repo._questions if q.teacher_id == t_id]
+    assert len(questions) == 1
+    assert questions[0].status == "escalated"
+    assert questions[0].category == "admin"
+
+    # Check review item created for escalated question
+    review_items = [
+        r
+        for r in service.repo._review_items
+        if r.kind == "question" and r.ref_id == str(questions[0].id)
+    ]
+    assert len(review_items) == 1
+
+
+@pytest.mark.asyncio
+async def test_coach_skipped_when_under_three_teacher_turns() -> None:
+    """Verifies scene with < 3 teacher turns skips coach, records no score, and sends scene_ended_neutral."""
+    service = SessionService()
+    t_id = uuid4()
+    ctx = await service.get_or_create_context(t_id)
+    ctx.onboarding_state = OnboardingStateEnum.READY
+    ctx.current_state = SessionStateEnum.REHEARSE_INTRO
+    await service._sync_context_to_db(ctx, t_id)
+
+    # Turn 1
+    await service.handle_inbound(make_inbound(teacher_id=t_id, text="नमस्ते बच्चों"))
+    # Only 1 turn, teacher sends stop word 'बस'
+    out = await service.handle_inbound(make_inbound(teacher_id=t_id, text="बस"))
+
+    # State is FEEDBACK
+    ctx = await service.get_or_create_context(t_id)
+    assert ctx.current_state == SessionStateEnum.FEEDBACK
+
+    # Rehearsal scores must be EMPTY (no score recorded)
+    scores = [s for s in service.repo._rehearsal_scores if s.teacher_id == t_id]
+    assert len(scores) == 0
+
+    # Output contains scene_ended_neutral
+    assert any("फीडबैक देखते हैं" in str(m.text_hi or "") for m in out)
+
+
+@pytest.mark.asyncio
+async def test_feedback_realism_rating_and_unclear_handling() -> None:
+    """Verifies realism rating 1-5 is persisted in RealismRating, and other text sends unclear."""
+    service = SessionService()
+    t_id = uuid4()
+    ctx = await service.get_or_create_context(t_id)
+    ctx.onboarding_state = OnboardingStateEnum.READY
+    ctx.current_state = SessionStateEnum.FEEDBACK
+    await service._sync_context_to_db(ctx, t_id)
+
+    # Send invalid text -> unclear + buttons, never empty
+    out_unclear = await service.handle_inbound(make_inbound(teacher_id=t_id, text="कुछ और बात"))
+    assert len(out_unclear) == 1
+    assert any(b.id == "btn_continue" for b in (out_unclear[0].buttons or []))
+
+    # Send realism rating 4
+    out_rating = await service.handle_inbound(make_inbound(teacher_id=t_id, text="4"))
+    assert len(out_rating) == 1
+    ratings = [r for r in service.repo._realism_ratings if r.teacher_id == t_id]
+    assert len(ratings) == 1
+    assert ratings[0].rating == 4
