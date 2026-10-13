@@ -1,12 +1,16 @@
-"""Exhaustive tests for RuleEngine matching all 14 requirements in spec/04 §4.5."""
-
 import random
 
+import pytest
+
 from backend.app.rule_engine.bugs import (
+    add_correct,
     akshar_by_akshar,
     first_akshar_guess,
     matra_drop,
+    pv_correct,
+    read_correct,
     split_akshars,
+    sub_correct,
 )
 from backend.app.rule_engine.child_state import ChildState
 from backend.app.rule_engine.domain import (
@@ -413,3 +417,62 @@ def test_problem_answer_calculation() -> None:
     assert Problem(type="add", a=43, b=28).answer() == 71
     assert Problem(type="place_value", tens=4, ones=7).answer() == 47
     assert Problem(type="read_word", word="मेला").answer() == "मेला"
+
+
+def test_problem_answer_missing_required_fields_raises() -> None:
+    """Verifies Problem.answer() raises ValueError when required fields are missing/None."""
+    with pytest.raises(ValueError, match="requires non-None 'a' and 'b'"):
+        Problem(type="sub", a=None, b=17).answer()
+    with pytest.raises(ValueError, match="requires non-None 'a' and 'b'"):
+        Problem(type="sub", a=52, b=None).answer()
+    with pytest.raises(ValueError, match="requires non-None 'a' and 'b'"):
+        Problem(type="add", a=None, b=28).answer()
+    with pytest.raises(ValueError, match="requires non-None 'a' and 'b'"):
+        Problem(type="add", a=43, b=None).answer()
+    with pytest.raises(ValueError, match="requires non-None 'tens' and 'ones'"):
+        Problem(type="place_value", tens=None, ones=7).answer()
+    with pytest.raises(ValueError, match="requires non-None 'tens' and 'ones'"):
+        Problem(type="place_value", tens=4, ones=None).answer()
+    with pytest.raises(ValueError, match="requires a non-empty 'word'"):
+        Problem(type="read_word", word=None).answer()
+    with pytest.raises(ValueError, match="requires a non-empty 'word'"):
+        Problem(type="read_word", word="").answer()
+
+
+def test_rule_engine_correct_answers_use_problem_answer() -> None:
+    """Verifies rule engine correct bug functions use Problem.answer() as single source of truth."""
+    sub_p = Problem(type="sub", a=52, b=17)
+    assert sub_correct(sub_p).answer == sub_p.answer() == 35
+
+    add_p = Problem(type="add", a=43, b=28)
+    assert add_correct(add_p).answer == add_p.answer() == 71
+
+    pv_p = Problem(type="place_value", tens=4, ones=7)
+    assert pv_correct(pv_p).answer == pv_p.answer() == 47
+
+    word_p = Problem(type="read_word", word="मेला")
+    assert read_correct(word_p).answer == word_p.answer() == "मेला"
+
+
+def test_rule_engine_calls_problem_answer(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Explicitly verifies bug functions delegate to Problem.answer()."""
+    called: list[str] = []
+    original_answer = Problem.answer
+
+    def mock_answer(self: Problem) -> int | str:
+        called.append(self.type)
+        return original_answer(self)
+
+    monkeypatch.setattr(Problem, "answer", mock_answer)
+
+    sub_correct(Problem(type="sub", a=52, b=17))
+    assert "sub" in called
+
+    add_correct(Problem(type="add", a=43, b=28))
+    assert "add" in called
+
+    pv_correct(Problem(type="place_value", tens=4, ones=7))
+    assert "place_value" in called
+
+    read_correct(Problem(type="read_word", word="मेला"))
+    assert "read_word" in called

@@ -26,7 +26,7 @@ def pv_correct(problem: Problem, context: dict[str, Any] | None = None) -> BugOu
     """
     tens, ones = _unpack_pv(problem)
     tens10 = tens * 10
-    ans = tens10 + ones
+    ans = int(problem.answer())
 
     steps = [
         make_step(

@@ -63,14 +63,22 @@ class Problem(BaseModel):
 
     def answer(self) -> int | str:
         """Mathematical or phonetic correct answer for the item."""
-        if self.type == "sub":
-            return (self.a or 0) - (self.b or 0)
-        if self.type == "add":
-            return (self.a or 0) + (self.b or 0)
+        if self.type in ("sub", "add"):
+            if self.a is None or self.b is None:
+                raise ValueError(
+                    f"Problem of type '{self.type}' requires non-None 'a' and 'b', got a={self.a}, b={self.b}"
+                )
+            return self.a - self.b if self.type == "sub" else self.a + self.b
         if self.type == "place_value":
-            return (self.tens or 0) * 10 + (self.ones or 0)
+            if self.tens is None or self.ones is None:
+                raise ValueError(
+                    f"Problem of type 'place_value' requires non-None 'tens' and 'ones', got tens={self.tens}, ones={self.ones}"
+                )
+            return self.tens * 10 + self.ones
         if self.type == "read_word":
-            return self.word or ""
+            if not self.word:
+                raise ValueError("Problem of type 'read_word' requires a non-empty 'word'")
+            return self.word
         raise ValueError(f"Unknown problem type: {self.type}")
 
 
