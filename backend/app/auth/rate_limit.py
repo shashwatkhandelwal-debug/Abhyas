@@ -19,7 +19,8 @@ def get_client_ip(request: Request) -> str:
     forwarded = request.headers.get("x-forwarded-for")
     if settings.ENVIRONMENT == "production":
         if forwarded:
-            return forwarded.split(",")[0].strip()
+            hops = forwarded.split(",")
+            return hops[-1].strip()
         return request.client.host if request.client and request.client.host else "127.0.0.1"
 
     direct_ip = request.client.host if request.client and request.client.host else "127.0.0.1"

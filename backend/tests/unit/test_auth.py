@@ -365,13 +365,13 @@ def test_rate_limiter_production_environment_extracts_forwarded_ip_buckets(
     monkeypatch.setattr(settings, "ENVIRONMENT", "production")
     reset_login_rate_limits()
 
-    # 5 attempts from client A through proxy
+    # 5 attempts from client A through proxy where Render appends client IP as the LAST hop
     for _ in range(5):
         req_a = Request(
             scope={
                 "type": "http",
                 "client": ("10.0.0.1", 50000),
-                "headers": [(b"x-forwarded-for", b"203.0.113.10, 10.0.0.1")],
+                "headers": [(b"x-forwarded-for", b"spoofed.ip.header, 203.0.113.10")],
                 "path": "/login",
             }
         )
@@ -382,7 +382,7 @@ def test_rate_limiter_production_environment_extracts_forwarded_ip_buckets(
         scope={
             "type": "http",
             "client": ("10.0.0.1", 50001),
-            "headers": [(b"x-forwarded-for", b"203.0.113.10, 10.0.0.1")],
+            "headers": [(b"x-forwarded-for", b"spoofed.ip.header, 203.0.113.10")],
             "path": "/login",
         }
     )
@@ -390,12 +390,12 @@ def test_rate_limiter_production_environment_extracts_forwarded_ip_buckets(
         check_login_rate_limit(req_a_blocked)
     assert exc.value.status_code == 429
 
-    # Client B through the same proxy has its own separate bucket and succeeds
+    # Client B through the same proxy has a different last hop and succeeds
     req_b = Request(
         scope={
             "type": "http",
             "client": ("10.0.0.1", 50002),
-            "headers": [(b"x-forwarded-for", b"203.0.113.20, 10.0.0.1")],
+            "headers": [(b"x-forwarded-for", b"spoofed.ip.header, 203.0.113.20")],
             "path": "/login",
         }
     )
