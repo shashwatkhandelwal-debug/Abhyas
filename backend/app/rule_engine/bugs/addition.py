@@ -33,7 +33,7 @@ def add_correct(problem: Problem, context: dict[str, Any] | None = None) -> BugO
     s_u = s % 10
     carry = s // 10
     t = ta + tb + carry
-    ans = t * 10 + s_u
+    ans = int(problem.answer())
 
     steps = [
         make_step("ADD_UNITS", nums=[ua, ub, s], ua=ua, ub=ub, s=s),
