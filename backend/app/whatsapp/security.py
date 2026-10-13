@@ -10,6 +10,8 @@ def verify_whatsapp_signature(payload_bytes: bytes, signature_header: str) -> bo
     """Verifies SHA256 signature from WhatsApp / Meta Cloud API."""
     if not signature_header or not signature_header.startswith("sha256="):
         return False
+    if not settings.WHATSAPP_APP_SECRET:
+        return False
 
     expected_sig = signature_header.split("sha256=")[1]
     computed_sig = hmac.new(
