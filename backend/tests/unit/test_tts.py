@@ -11,7 +11,7 @@ import pytest
 import respx
 
 from backend.app.config import settings
-from backend.app.speech.audio import duration_s, to_wav
+from backend.app.speech.audio import AudioProcessingError, duration_s, to_wav
 from backend.app.speech.cache import TTSCache, compute_cache_key, tts_cache
 from backend.app.speech.tts import (
     MockTTS,
@@ -341,7 +341,7 @@ async def test_cache_hit_returns_ogg_and_concat_of_two_cached_lines_yields_valid
             assert wav2.startswith(b"RIFF")
 
             # Concat of two cached lines yields valid audio
-            concatenated = _concat_wav_bytes([wav1, wav2])
+            concatenated = await _concat_wav_bytes([wav1, wav2])
             assert concatenated.startswith(b"RIFF")
 
             dur1 = await duration_s(wav1)
@@ -349,3 +349,10 @@ async def test_cache_hit_returns_ogg_and_concat_of_two_cached_lines_yields_valid
             dur_total = await duration_s(concatenated)
             assert dur_total > 0.5
             assert abs(dur_total - (dur1 + dur2)) < 0.2
+
+
+@pytest.mark.asyncio
+async def test_concat_wav_bytes_raises_on_invalid_audio() -> None:
+    """_concat_wav_bytes raises AudioProcessingError instead of swallowing errors."""
+    with pytest.raises(AudioProcessingError):
+        await _concat_wav_bytes([b"corrupt_non_audio_payload_bytes"])

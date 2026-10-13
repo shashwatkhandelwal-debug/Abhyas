@@ -19,7 +19,7 @@ from pydantic import BaseModel
 
 from backend.app.config import settings
 from backend.app.llm.hindi_numbers import to_words
-from backend.app.speech.audio import pitch_shift, to_wav_sync
+from backend.app.speech.audio import AudioProcessingError, pitch_shift, to_wav
 from backend.app.speech.cache import compute_cache_key, tts_cache
 from backend.app.speech.client import get_speech_http_client
 from backend.app.speech.spend import calculate_tts_cost, speech_budget
@@ -153,8 +153,9 @@ class MockTTS:
         if abs(voice.pitch_factor - 1.0) > 0.001:
             try:
                 raw_wav = await pitch_shift(raw_wav, voice.pitch_factor)
-            except Exception:
-                pass
+            except AudioProcessingError as exc:
+                logger.warning("MockTTS pitch shift failed: %s", exc)
+                return SynthResult(cache_key=cache_key, fmt="wav", audio=b"", cache_hit=False)
 
         await tts_cache.put_wav(cache_key, raw_wav)
         return SynthResult(
@@ -294,11 +295,19 @@ class SarvamTTS:
         if len(wav_parts) == 1:
             raw_wav = wav_parts[0]
         else:
-            raw_wav = _concat_wav_bytes(wav_parts)
+            try:
+                raw_wav = await _concat_wav_bytes(wav_parts)
+            except AudioProcessingError as exc:
+                logger.warning("Sarvam TTS audio concatenation failed: %s", exc)
+                return SynthResult(cache_key=cache_key, fmt="wav", audio=b"", cache_hit=False)
 
         # 3. Apply pitch shift if child voice (voice.pitch_factor != 1.0)
         if abs(voice.pitch_factor - 1.0) > 0.001:
-            raw_wav = await pitch_shift(raw_wav, voice.pitch_factor)
+            try:
+                raw_wav = await pitch_shift(raw_wav, voice.pitch_factor)
+            except AudioProcessingError as exc:
+                logger.warning("Sarvam TTS pitch shift failed: %s", exc)
+                return SynthResult(cache_key=cache_key, fmt="wav", audio=b"", cache_hit=False)
 
         # Store synthesized audio in cache
         await tts_cache.put_wav(cache_key, raw_wav)
@@ -391,7 +400,11 @@ class BhashiniTTS:
             raise TTSUnavailable(f"Bhashini TTS request failed: {exc}") from exc
 
         if abs(voice.pitch_factor - 1.0) > 0.001:
-            raw_wav = await pitch_shift(raw_wav, voice.pitch_factor)
+            try:
+                raw_wav = await pitch_shift(raw_wav, voice.pitch_factor)
+            except AudioProcessingError as exc:
+                logger.warning("Bhashini TTS pitch shift failed: %s", exc)
+                return SynthResult(cache_key=cache_key, fmt="wav", audio=b"", cache_hit=False)
 
         await tts_cache.put_wav(cache_key, raw_wav)
         return SynthResult(
@@ -402,8 +415,8 @@ class BhashiniTTS:
         )
 
 
-def _concat_wav_bytes(wav_chunks: list[bytes]) -> bytes:
-    """Concatenates multiple 22.05 kHz 16-bit mono WAV audio chunks."""
+async def _concat_wav_bytes(wav_chunks: list[bytes]) -> bytes:
+    """Concatenates multiple 22.05 kHz 16-bit mono WAV audio chunks (spec/06 §6.3)."""
     all_frames = b""
     sample_rate = 22050
 
@@ -411,16 +424,16 @@ def _concat_wav_bytes(wav_chunks: list[bytes]) -> bytes:
         if not chunk:
             continue
         if not chunk.startswith(b"RIFF"):
-            try:
-                chunk = to_wav_sync(chunk)
-            except Exception:
-                pass
+            chunk = await to_wav(chunk, fmt="ogg")
         try:
             with wave.open(io.BytesIO(chunk), "rb") as wf:
                 sample_rate = wf.getframerate()
                 all_frames += wf.readframes(wf.getnframes())
-        except Exception:
-            pass
+        except Exception as exc:
+            raise AudioProcessingError(f"Failed to read WAV chunk frames: {exc}") from exc
+
+    if not all_frames:
+        return b""
 
     out_io = io.BytesIO()
     with wave.open(out_io, "wb") as wf:

@@ -17,7 +17,6 @@ from backend.app.speech.audio import (
     to_ogg_opus,
     to_wav,
     to_wav16k,
-    to_wav_sync,
     to_web,
     validate_audio_duration,
 )
@@ -232,10 +231,19 @@ async def test_to_wav_converts_ogg_and_preserves_wav(wav_5s: bytes, ogg_5s: byte
     dur = await duration_s(converted_wav)
     assert 4.8 <= dur <= 5.2
 
-    # 3. Synchronous helper
-    sync_wav = to_wav_sync(ogg_5s, fmt="ogg")
-    assert sync_wav.startswith(b"RIFF")
-
-    # 4. Empty audio
+    # 3. Empty audio
     assert await to_wav(b"") == b""
-    assert to_wav_sync(b"") == b""
+
+
+def test_no_subprocess_run_in_backend_app() -> None:
+    """Verifies that no Python file under backend/app uses synchronous subprocess.run."""
+    backend_app_dir = Path(__file__).parents[2] / "app"
+    assert backend_app_dir.is_dir()
+
+    violations: list[str] = []
+    for py_file in backend_app_dir.rglob("*.py"):
+        content = py_file.read_text(encoding="utf-8")
+        if "subprocess.run" in content:
+            violations.append(str(py_file.relative_to(backend_app_dir.parent)))
+
+    assert not violations, f"Forbidden subprocess.run found in: {violations}"
