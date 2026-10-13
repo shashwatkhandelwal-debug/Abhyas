@@ -361,7 +361,7 @@ async def coach_feedback(
         except LLMUnavailable as exc:
             logger.warning("coach LLM unavailable: %s; going straight to fallback", exc)
             break
-        except (ValidationError, httpx.HTTPError, httpx.TimeoutException, TimeoutError) as exc:
+        except (ValidationError, httpx.HTTPError, httpx.TimeoutException, TimeoutError, Exception) as exc:
             logger.warning(
                 "coach LLM / validation call failed (attempt %d): %s", attempt_idx + 1, exc
             )

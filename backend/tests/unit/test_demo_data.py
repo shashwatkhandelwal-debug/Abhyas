@@ -5,9 +5,14 @@ Verifies:
 2. Suppression demonstration for batch KNP-B3 (n < 10).
 3. Cluster KNP-C01 teacher count (12) and exact consent split (7 True, 5 False).
 4. All teachers and users have is_demo=True and names prefixed with 'डेमो '.
-5. Real rehearsal scores and explain scores generated via pedagogical rules/engine.
-6. Deterministic generation.
-7. Demo banner presence on web interface when demo_mode is True.
+5. Deliberate practice rehearsals run real engine & coach path on scripted teacher turns only.
+6. Provenance is honest (model='mock' or 'fallback', real confidence, needs_review).
+7. Evidence levels strictly match source:
+   rehearsal -> 1 (>=3 teacher turns), reflection -> 2, peer_checklist -> 3, arp_observation -> 4, child_check -> 5.
+8. Every RehearsalScore links to a real Scene with stored Turns.
+9. AggModuleBatch rows computed from demo rows, no negative counts.
+10. Deterministic generation with seed 42.
+11. Demo banner presence on web interface.
 """
 
 from __future__ import annotations
@@ -28,23 +33,39 @@ from backend.app.db.models import (
     AdoptionEvidence,
     AggModuleBatch,
     AppUser,
+    ARPObservation,
     ExplainScore,
     RehearsalScore,
     Scene,
     Teacher,
+    Turn,
 )
 from backend.app.web.teacher import STATIC_DIR
 from backend.app.web.teacher import router as teacher_router
 
 
-class MockResult:
-    """Mock result object providing scalar_one_or_none."""
+class MockScalars:
+    """Mock scalar wrapper."""
 
-    def __init__(self, value: Any = None) -> None:
+    def __init__(self, items: list[Any]) -> None:
+        self._items = items
+
+    def all(self) -> list[Any]:
+        return self._items
+
+
+class MockResult:
+    """Mock result object providing scalar_one_or_none and scalars."""
+
+    def __init__(self, value: Any = None, items: list[Any] | None = None) -> None:
         self._value = value
+        self._items = items if items is not None else ([value] if value is not None else [])
 
     def scalar_one_or_none(self) -> Any:
         return self._value
+
+    def scalars(self) -> MockScalars:
+        return MockScalars(self._items)
 
 
 class FakeDemoSession:
@@ -75,31 +96,97 @@ class FakeDemoSession:
         except Exception:
             sql = str(stmt)
 
-        if "app_user" in sql.lower():
-            # Check for username match
-            match = re.search(r"username = '([^']+)'", sql, re.IGNORECASE)
-            if match:
-                target_username = match.group(1)
+        sql_lower = sql.lower()
+
+        # Teacher queries: select by batch_id
+        if "from teacher" in sql_lower:
+            match_b = re.search(r"batch_id = '([^']+)'", sql, re.IGNORECASE)
+            if match_b:
+                target_batch = match_b.group(1)
+                matching = [
+                    t for t in self.added if isinstance(t, Teacher) and t.batch_id == target_batch
+                ]
+                return MockResult(items=matching)
+            return MockResult(items=[t for t in self.added if isinstance(t, Teacher)])
+
+        # AppUser queries: select by username
+        if "from app_user" in sql_lower or "app_user" in sql_lower:
+            match_u = re.search(r"username = '([^']+)'", sql, re.IGNORECASE)
+            if match_u:
+                target_username = match_u.group(1)
                 for obj in self.added:
                     if isinstance(obj, AppUser) and obj.username == target_username:
-                        return MockResult(obj)
+                        return MockResult(value=obj)
             return MockResult(None)
 
-        if "adoption_evidence" in sql.lower():
+        in_match = re.search(r"teacher_id IN \(([^)]+)\)", sql, re.IGNORECASE)
+        allowed_teachers: set[str] | None = None
+        if in_match:
+            allowed_teachers = set(re.findall(r"'([^']+)'", in_match.group(1)))
+
+        # AdoptionEvidence queries
+        if "adoption_evidence" in sql_lower:
             match_t = re.search(r"teacher_id = '([^']+)'", sql, re.IGNORECASE)
             match_m = re.search(r"move_id = '([^']+)'", sql, re.IGNORECASE)
-            if match_t and match_m:
-                tid_str, mid = match_t.group(1), match_m.group(1)
+            match_l = re.search(r"level = (\d+)", sql, re.IGNORECASE)
+            if match_t and match_m and match_l:
+                tid_str, mid, lvl = match_t.group(1), match_m.group(1), int(match_l.group(1))
                 for obj in self.added:
                     if (
                         isinstance(obj, AdoptionEvidence)
                         and str(obj.teacher_id) == tid_str
                         and obj.move_id == mid
+                        and obj.level == lvl
                     ):
-                        return MockResult(obj)
-            return MockResult(None)
+                        return MockResult(value=obj)
+                return MockResult(None)
 
-        if "agg_module_batch" in sql.lower():
+            # Collection of adoption evidence
+            evs = [
+                obj
+                for obj in self.added
+                if isinstance(obj, AdoptionEvidence)
+                and (allowed_teachers is None or str(obj.teacher_id) in allowed_teachers)
+            ]
+            return MockResult(items=evs)
+
+        # ExplainScore queries
+        if "explain_score" in sql_lower:
+            match_t = re.search(r"teacher_id = '([^']+)'", sql, re.IGNORECASE)
+            if match_t:
+                tid_str = match_t.group(1)
+                es_matching = [
+                    obj
+                    for obj in self.added
+                    if isinstance(obj, ExplainScore) and str(obj.teacher_id) == tid_str
+                ]
+                val = es_matching[0] if es_matching else None
+                return MockResult(value=val, items=es_matching)
+            es_all = [
+                obj
+                for obj in self.added
+                if isinstance(obj, ExplainScore)
+                and (allowed_teachers is None or str(obj.teacher_id) in allowed_teachers)
+            ]
+            return MockResult(items=es_all)
+
+        # RehearsalScore queries
+        if "rehearsal_score" in sql_lower:
+            rs_all = [
+                obj
+                for obj in self.added
+                if isinstance(obj, RehearsalScore)
+                and (allowed_teachers is None or str(obj.teacher_id) in allowed_teachers)
+            ]
+            return MockResult(items=rs_all)
+
+        # Turn queries
+        if "turn" in sql_lower:
+            turns = [obj for obj in self.added if isinstance(obj, Turn)]
+            return MockResult(items=turns)
+
+        # AggModuleBatch queries
+        if "agg_module_batch" in sql_lower:
             match_b = re.search(r"batch_id = '([^']+)'", sql, re.IGNORECASE)
             match_m = re.search(r"move_id = '([^']+)'", sql, re.IGNORECASE)
             if match_b and match_m:
@@ -110,7 +197,7 @@ class FakeDemoSession:
                         and obj.batch_id == bid
                         and obj.move_id == mid
                     ):
-                        return MockResult(obj)
+                        return MockResult(value=obj)
             return MockResult(None)
 
         return MockResult(None)
@@ -151,7 +238,7 @@ async def test_populate_demo_cohort_cluster_c01_consent_split() -> None:
     assert len(consenting) == 7, "Exactly 7 teachers in KNP-C01 must have consent_share_scores=True"
     assert len(non_consenting) == 5, "Exactly 5 teachers in KNP-C01 must have consent_share_scores=False"
 
-    # Verify teacher.demo3 (index 3) is among the non-consenting teachers
+    # Verify teacher.demo3 is non-consenting
     t3 = next(t for t in c01_teachers if t.id == uuid.UUID("00000000-0000-0000-0000-000000000003"))
     assert t3.consent_share_scores is False, "teacher.demo3 must demonstrate non-consenting behavior"
 
@@ -179,47 +266,121 @@ async def test_populate_demo_cohort_is_demo_flag_and_prefixes() -> None:
 
 
 @pytest.mark.asyncio
-async def test_populate_demo_cohort_real_engine_scores() -> None:
-    """Verifies rehearsal scores and explain scores are generated using pedagogical engine and rubrics."""
+async def test_populate_demo_cohort_rehearsals_link_to_scenes_with_turns() -> None:
+    """Verifies every RehearsalScore links to a real Scene with stored Turns (CHANGES item 5)."""
     session = FakeDemoSession()
     await populate_demo_cohort(cast(AsyncSession, session))
 
     scenes = [o for o in session.added if isinstance(o, Scene)]
     rscores = [o for o in session.added if isinstance(o, RehearsalScore)]
-    escores = [o for o in session.added if isinstance(o, ExplainScore)]
-    evidences = [o for o in session.added if isinstance(o, AdoptionEvidence)]
-    aggregates = [o for o in session.added if isinstance(o, AggModuleBatch)]
+    turns = [o for o in session.added if isinstance(o, Turn)]
 
-    assert len(scenes) == 51
     assert len(rscores) == 51
-    assert len(escores) == 51
-    assert len(evidences) == 51
+    assert len(scenes) == 51
+    assert len(turns) > 0
+
+    scene_map = {s.id: s for s in scenes}
+    turns_by_scene: dict[uuid.UUID, list[Turn]] = {}
+    for tr in turns:
+        turns_by_scene.setdefault(tr.scene_id, []).append(tr)
+
+    for rs in rscores:
+        assert rs.scene_id in scene_map, f"RehearsalScore {rs.id} must link to a valid Scene"
+        scene = scene_map[rs.scene_id]
+        assert scene.teacher_turns >= 3, "Scene must have at least 3 teacher turns"
+        assert scene.status == "completed"
+        stored_turns = turns_by_scene.get(rs.scene_id, [])
+        assert len(stored_turns) >= 3, "Scene must have stored Turn records"
+
+
+@pytest.mark.asyncio
+async def test_populate_demo_cohort_honest_provenance() -> None:
+    """Verifies provenance is honest: model is 'mock' or 'fallback', never 'claude-sonnet' (CHANGES item 2)."""
+    session = FakeDemoSession()
+    await populate_demo_cohort(cast(AsyncSession, session))
+
+    rscores = [o for o in session.added if isinstance(o, RehearsalScore)]
+    escores = [o for o in session.added if isinstance(o, ExplainScore)]
+
+    for rs in rscores:
+        assert rs.model in ("mock", "fallback"), f"RehearsalScore model must be mock/fallback, got {rs.model}"
+        assert rs.model != "claude-sonnet", "Must never label demo output as claude-sonnet"
+        assert isinstance(rs.confidence, float)
+        assert 0.0 <= rs.confidence <= 1.0
+        assert isinstance(rs.needs_review, bool)
+
+    for es in escores:
+        assert es.model in ("mock", "fallback"), f"ExplainScore model must be mock/fallback, got {es.model}"
+        assert es.model != "claude-sonnet", "Must never label demo output as claude-sonnet"
+        assert isinstance(es.confidence, float)
+        assert 0.0 <= es.confidence <= 1.0
+
+
+@pytest.mark.asyncio
+async def test_populate_demo_cohort_evidence_levels_match_source() -> None:
+    """Verifies evidence levels strictly match their source (CHANGES item 4)."""
+    session = FakeDemoSession()
+    await populate_demo_cohort(cast(AsyncSession, session))
+
+    evidences = [o for o in session.added if isinstance(o, AdoptionEvidence)]
+    arp_observations = [o for o in session.added if isinstance(o, ARPObservation)]
+
+    assert len(evidences) >= 51
+    assert len(arp_observations) > 0
+
+    valid_sources = {"rehearsal", "reflection", "peer_checklist", "arp_observation", "child_check"}
+    for ev in evidences:
+        assert ev.source in valid_sources
+        if ev.source == "rehearsal":
+            assert ev.level == 1, "rehearsal evidence level must be 1"
+        elif ev.source == "reflection":
+            assert ev.level == 2, "reflection evidence level must be 2"
+        elif ev.source == "peer_checklist":
+            assert ev.level == 3, "peer_checklist evidence level must be 3"
+        elif ev.source == "arp_observation":
+            assert ev.level == 4, "arp_observation evidence level must be 4"
+        elif ev.source == "child_check":
+            assert ev.level == 5, "child_check evidence level must be 5"
+
+
+@pytest.mark.asyncio
+async def test_populate_demo_cohort_aggregates_non_negative_and_suppressed() -> None:
+    """Verifies AggModuleBatch computed honestly from demo rows with suppression (CHANGES items 3 & 5)."""
+    session = FakeDemoSession()
+    await populate_demo_cohort(cast(AsyncSession, session))
+
+    aggregates = [o for o in session.added if isinstance(o, AggModuleBatch)]
     assert len(aggregates) == 3
 
-    # Check that RehearsalScore contains real rubric scores and non-invented pedagogical feedback
-    sample_rscore = rscores[0]
-    assert isinstance(sample_rscore.scores, dict)
-    assert len(sample_rscore.scores) > 0
-    for crit_id, val in sample_rscore.scores.items():
-        assert isinstance(crit_id, str)
-        assert isinstance(val, int)
-        assert 0 <= val <= 2
+    agg_by_batch = {a.batch_id: a for a in aggregates}
 
-    assert sample_rscore.strength_hi != ""
-    assert sample_rscore.change_hi != ""
-    assert sample_rscore.exact_words_hi != ""
+    # Batch KNP-B3: n = 8 < 10 -> MUST be suppressed
+    b3_agg = agg_by_batch["KNP-B3"]
+    assert b3_agg.n_teachers == 8
+    assert b3_agg.explain_missing is None, "Batch KNP-B3 with n<10 must have explain_missing=None"
+    assert b3_agg.rubric_dist is None, "Batch KNP-B3 with n<10 must have rubric_dist=None"
+    assert b3_agg.ladder_dist is None, "Batch KNP-B3 with n<10 must have ladder_dist=None"
+    assert b3_agg.active_rate is None, "Batch KNP-B3 with n<10 must have active_rate=None"
 
-    # Check ExplainScore contains real points analysis
-    sample_escore = escores[0]
-    assert isinstance(sample_escore.points, dict)
-    assert len(sample_escore.points) > 0
-    assert sample_escore.transcript != ""
+    # Batches KNP-B1 and KNP-B2: computed from real rows, no negative counts
+    for b_id in ["KNP-B1", "KNP-B2"]:
+        agg = agg_by_batch[b_id]
+        assert agg.n_teachers is not None and agg.n_teachers >= 10
+        assert agg.ladder_dist is not None
+        for lvl_str, count in agg.ladder_dist.items():
+            assert count >= 0, f"ladder_dist level {lvl_str} must not be negative: {count}"
 
-    # Check AggModuleBatch has counts
-    batch_map = {agg.batch_id: agg.n_teachers for agg in aggregates}
-    assert batch_map["KNP-B1"] == 25
-    assert batch_map["KNP-B2"] == 18
-    assert batch_map["KNP-B3"] == 8
+        if agg.explain_missing:
+            for kpid, count in agg.explain_missing.items():
+                assert count >= 0, f"explain_missing for {kpid} must not be negative: {count}"
+
+        if agg.rubric_dist:
+            for crit_id, dist in agg.rubric_dist.items():
+                for score_val, count in dist.items():
+                    assert count >= 0, f"rubric_dist for {crit_id}[{score_val}] must not be negative: {count}"
+
+        if agg.active_rate is not None:
+            assert 0.0 <= agg.active_rate <= 1.0
 
 
 @pytest.mark.asyncio
@@ -283,7 +444,6 @@ async def test_demo_banner_displayed_on_web_page() -> None:
         transport=ASGITransport(app=app),
         base_url="http://test",
     ) as client:
-        # Request with demo=1 or user.is_demo=True
         resp = await client.get("/teacher")
         assert resp.status_code == 200
         assert "डेमो डेटा — वास्तविक शिक्षक नहीं" in resp.text

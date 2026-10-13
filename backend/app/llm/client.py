@@ -390,7 +390,12 @@ async def call_tool(
     and tool_choice={"type": "tool", "name": tool_name}; returns the tool input dict.
     """
     # 1. Check if mock provider is active
-    if not settings.ANTHROPIC_API_KEY or settings.LLM_PROVIDER == "mock":
+    if (
+        not settings.ANTHROPIC_API_KEY
+        or settings.LLM_PROVIDER == "mock"
+        or settings.ANTHROPIC_API_KEY == "mock_key_for_testing"
+        or settings.ENVIRONMENT == "test"
+    ):
         t0 = time.perf_counter()
         result = await get_mock_llm().call_tool(
             role=role,

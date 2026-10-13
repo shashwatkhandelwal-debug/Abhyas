@@ -180,11 +180,11 @@ async def seed_database() -> None:
             session.add(s2)
 
         # 6. Completed moves and Adoption Evidence for demo3
-        for idx, (m_id, lvl) in enumerate(
+        for idx, (m_id, lvl, src) in enumerate(
             [
-                ("m_sub_regroup_intro", 5),
-                ("m_count_forward_10", 4),
-                ("m_place_value_bundling", 3),
+                ("m_sub_regroup_intro", 5, "child_check"),
+                ("m_count_forward_10", 4, "arp_observation"),
+                ("m_place_value_bundling", 3, "peer_checklist"),
             ]
         ):
             stmt_ev = select(AdoptionEvidence).where(
@@ -198,7 +198,7 @@ async def seed_database() -> None:
                         teacher_id=TEACHER_DEMO3_ID,
                         move_id=m_id,
                         level=lvl,
-                        source="rehearsal",
+                        source=src,
                         detail={"seeded": True},
                         created_at=datetime.now(UTC) - timedelta(days=(3 - idx) * 7),
                     )
