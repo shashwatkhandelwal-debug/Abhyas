@@ -476,6 +476,7 @@ async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence(
     out11 = await service.handle_inbound(
         make_inbound(teacher_id=t_id, text="दहाई को बंडलों से और इकाई को खुली तीलियों से समझाना चाहिए।")
     )
+    assert len(out11) >= 1
     assert ctx.current_state == SessionStateEnum.MODEL
     assert len(service.repo._explain_scores) >= 1
 
@@ -488,6 +489,7 @@ async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence(
     out13 = await service.handle_inbound(
         make_inbound(teacher_id=t_id, text="नमस्ते बच्चों, आज हम 52-17 करेंगे।")
     )
+    assert len(out13) >= 1
     assert ctx.current_state == SessionStateEnum.REHEARSE
 
     # 14. REHEARSE turns 2 and 3

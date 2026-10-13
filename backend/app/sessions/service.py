@@ -755,19 +755,83 @@ class SessionService:
 
                 # Generate coach feedback
                 move = load_move_card(ctx.current_move_id)
-                teacher_turns = [
-                    SceneTurn(speaker="teacher", text_hi=t.transcript)
-                    for t in scene.turns
-                    if t.transcript
-                ]
+                # 1. turns: all scene turns in chronological order (teacher + child responses)
+                all_scene_turns: list[SceneTurn] = []
+                # 2. acts: actual tagged acts for each teacher turn
+                tagged_acts: list[list[TeachingAct]] = []
+
+                for t in scene.turns:
+                    if t.transcript:
+                        all_scene_turns.append(SceneTurn(speaker="teacher", text_hi=t.transcript))
+                        turn_acts = [
+                            TeachingAct(a) for a in t.acts if a in TeachingAct._value2member_map_
+                        ]
+                        tagged_acts.append(turn_acts or [TeachingAct.REPEAT_QUESTION])
+                    if t.child_lines:
+                        for cl in t.child_lines:
+                            line_text = getattr(cl, "line_hi", None) or getattr(cl, "text_hi", "")
+                            if line_text:
+                                all_scene_turns.append(
+                                    SceneTurn(speaker=cl.persona_id, text_hi=line_text)
+                                )
+                    elif t.child_responses:
+                        for cr in t.child_responses:
+                            resp_text = str(cr.answer) if cr.answer is not None else ""
+                            if resp_text:
+                                all_scene_turns.append(
+                                    SceneTurn(speaker=cr.persona_id, text_hi=resp_text)
+                                )
+
+                if not all_scene_turns:
+                    all_scene_turns = [SceneTurn(speaker="teacher", text_hi="नमस्ते बच्चों")]
+                    tagged_acts = [[TeachingAct.REPEAT_QUESTION]]
+
+                # 3. trajectories: real child state trajectories from scene.scene_state.children
+                trajectories: dict[str, list[ChildState]] = {}
+                for child in scene.scene_state.children:
+                    if child.history:
+                        trajectories[child.persona_id] = [ChildState.MISCONCEPTION] + [
+                            h[1] for h in child.history
+                        ]
+                    else:
+                        trajectories[child.persona_id] = [child.state]
+                if not trajectories:
+                    trajectories = {"ravi": [ChildState.MISCONCEPTION, ChildState.CORRECT]}
+
+                # 4. target_child_id: find target child with misconception
+                target_child_id = next(
+                    (c.persona_id for c in scene.scene_state.children if c.misconception),
+                    scene.scene_state.children[0].persona_id
+                    if scene.scene_state.children
+                    else "ravi",
+                )
+
+                # 5. current_item_answer: real item answer from scene.scene_state.current_item
+                current_item = scene.scene_state.current_item
+                current_item_answer: int | str
+                attr_name = "answer"
+                if hasattr(current_item, attr_name):
+                    val = getattr(current_item, attr_name)
+                    current_item_answer = val() if callable(val) else val
+                elif current_item.type == "sub":
+                    current_item_answer = (current_item.a or 0) - (current_item.b or 0)
+                elif current_item.type == "add":
+                    current_item_answer = (current_item.a or 0) + (current_item.b or 0)
+                elif current_item.type == "place_value":
+                    current_item_answer = (current_item.tens or 0) * 10 + (current_item.ones or 0)
+                elif current_item.type == "read_word":
+                    current_item_answer = current_item.word or ""
+                else:
+                    current_item_answer = 0
+
                 try:
                     coach_res = await coach_feedback(
                         move=move,
-                        turns=teacher_turns,
-                        acts=[[TeachingAct.REPEAT_QUESTION] for _ in teacher_turns],
-                        trajectories={"ravi": [ChildState.MISCONCEPTION, ChildState.CORRECT]},
-                        target_child_id="ravi",
-                        current_item_answer=35,
+                        turns=all_scene_turns,
+                        acts=tagged_acts,
+                        trajectories=trajectories,
+                        target_child_id=target_child_id,
+                        current_item_answer=current_item_answer,
                         attempt=ctx.retries_count + 1,
                     )
                 except Exception as exc:
@@ -776,11 +840,11 @@ class SessionService:
 
                     coach_fb = fallback_coach_feedback(
                         move=move,
-                        turns=teacher_turns,
-                        acts=[[TeachingAct.REPEAT_QUESTION] for _ in teacher_turns],
-                        trajectories={"ravi": [ChildState.MISCONCEPTION, ChildState.CORRECT]},
-                        target_child_id="ravi",
-                        current_item_answer=35,
+                        turns=all_scene_turns,
+                        acts=tagged_acts,
+                        trajectories=trajectories,
+                        target_child_id=target_child_id,
+                        current_item_answer=current_item_answer,
                         attempt=ctx.retries_count + 1,
                     )
                     coach_res = CoachResult(
