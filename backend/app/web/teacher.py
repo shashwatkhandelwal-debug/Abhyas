@@ -36,6 +36,7 @@ from backend.app.auth.guards import get_current_user, require_role
 from backend.app.auth.session import clear_session_cookie
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
+from backend.app.core.messages import get_message
 from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
@@ -59,6 +60,7 @@ TEMPLATES_DIR = WEB_DIR / "templates"
 STATIC_DIR = WEB_DIR / "static"
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+templates.env.globals["get_message"] = get_message
 
 router = APIRouter(tags=["Teacher Web PWA"])
 
@@ -189,6 +191,10 @@ async def teacher_chat_page(
                 )
 
     demo_chips = load_demo_chips() if is_demo else []
+    try:
+        demo_banner_text = get_message("ui_demo_banner")
+    except Exception:
+        demo_banner_text = "डेमो डेटा — वास्तविक शिक्षक नहीं"
 
     response = templates.TemplateResponse(
         "teacher.html",
@@ -201,6 +207,7 @@ async def teacher_chat_page(
             "board_problem": board_problem,
             "lite_mode": teacher.lite_mode,
             "demo_mode": is_demo,
+            "demo_banner_text": demo_banner_text,
             "demo_chips": demo_chips,
             "initial_messages": initial_messages,
         },
@@ -425,6 +432,11 @@ async def teacher_progress_page(
             }
         )
 
+    try:
+        demo_banner_text = get_message("ui_demo_banner")
+    except Exception:
+        demo_banner_text = "डेमो डेटा — वास्तविक शिक्षक नहीं"
+
     response = templates.TemplateResponse(
         "progress.html",
         {
@@ -432,6 +444,7 @@ async def teacher_progress_page(
             "csrf_token": csrf_token,
             "teacher_name": teacher.name or current_user.display_name or "शिक्षिका",
             "demo_mode": is_demo,
+            "demo_banner_text": demo_banner_text,
             "is_saved": is_saved,
             "consent_share_scores": teacher.consent_share_scores,
             "consent_research": teacher.consent_research,

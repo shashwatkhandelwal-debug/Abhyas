@@ -552,6 +552,12 @@ async def test_seeding_with_anthropic_api_key_never_calls_real_client(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verifies that seeding forces mock LLM and restores original provider afterwards."""
+    monkeypatch.setattr(
+        "backend.app.llm.client.get_anthropic_client",
+        MagicMock(
+            side_effect=RuntimeError("Real Anthropic client must never be called during seeding")
+        ),
+    )
     monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "sk-ant-test-real-key")
     monkeypatch.setattr(settings, "LLM_PROVIDER", "anthropic")
 

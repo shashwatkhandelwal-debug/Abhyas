@@ -46,7 +46,7 @@
 
     <!-- Demo Banner (spec/03 §3.5) -->
     {% if demo_mode %}
-    <div class="demo-banner" role="status" aria-label="डेमो सूचना">डेमो डेटा — वास्तविक शिक्षक नहीं</div>
+    <div class="demo-banner" role="status" aria-label="डेमो सूचना">{{ demo_banner_text or get_message('ui_demo_banner') }}</div>
     {% endif %}
 
     <!-- Network Alert Banner -->

@@ -79,7 +79,7 @@ async def compute_aggregates_for_batch(
     for es in escores:
         if es.points:
             for kpid, status in es.points.items():
-                if status in ("missing", "partial", "missed", False):
+                if status in ("missing", "partial"):
                     explain_missing[kpid] = explain_missing.get(kpid, 0) + 1
 
     # 3. Rubric score distribution
