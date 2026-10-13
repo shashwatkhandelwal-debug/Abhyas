@@ -3,7 +3,7 @@
 import re
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 import pytest
@@ -405,7 +405,7 @@ class FakeSessionRepository(SessionRepository):
     """In-memory repository fake for unit tests."""
 
     def __init__(self, session: AsyncSession | None = None) -> None:
-        self.session = session  # type: ignore[assignment]
+        self.session = cast(AsyncSession, session)
         self._teachers: dict[UUID, Teacher] = {}
         self._session_states: dict[tuple[UUID, date], SessionState] = {}
         self._evidence: list[AdoptionEvidence] = []
@@ -835,8 +835,8 @@ async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence(
 
 
 def test_sessions_package_hygiene_no_broad_exceptions_and_no_devanagari() -> None:
-    """Verifies all .py files in backend/app/sessions/ have zero 'except Exception',
-    zero bare 'except:', and zero Devanagari literals."""
+    """Verifies all .py files in backend/app/sessions/ have zero broad exceptions,
+    zero '_in_memory' constructs, and zero Devanagari literals."""
     sessions_dir = Path(__file__).parents[2] / "app" / "sessions"
     assert sessions_dir.is_dir(), f"sessions directory not found at {sessions_dir}"
 
@@ -845,18 +845,28 @@ def test_sessions_package_hygiene_no_broad_exceptions_and_no_devanagari() -> Non
         f"Expected at least 5 .py files in {sessions_dir}, found {len(py_files)}"
     )
 
+    broad_exc_pattern = re.compile(
+        r"except\s+(?:\([^)]*\b(?:Exception|BaseException)\b[^)]*\)|\b(?:Exception|BaseException)\b)"
+    )
+
     for py_file in py_files:
         content = py_file.read_text(encoding="utf-8")
 
-        # 1. Broad exception check
-        assert "except Exception" not in content, (
-            f"{py_file.name} must not contain 'except Exception'. Catch specific exceptions instead."
-        )
+        # 1. Broad exception check (bare except, except Exception/BaseException, or tuple containing them)
         assert not re.search(r"except\s*:", content), (
             f"{py_file.name} must not contain bare 'except:'. Catch specific exceptions instead."
         )
+        assert not broad_exc_pattern.search(content), (
+            f"{py_file.name} must not catch Exception or BaseException broadly. "
+            "Catch specific exceptions instead."
+        )
 
-        # 2. Hardcoded Hindi literals check (Devanagari Unicode block \u0900-\u097F)
+        # 2. No in-memory state leakage
+        assert "_in_memory" not in content, (
+            f"{py_file.name} must not contain forbidden substring '_in_memory'."
+        )
+
+        # 3. Hardcoded Hindi literals check (Devanagari Unicode block \u0900-\u097F)
         hindi_matches = re.findall(r"[\u0900-\u097F]+", content)
         assert not hindi_matches, (
             f"{py_file.name} must contain ZERO hardcoded Hindi literals. "
@@ -947,7 +957,8 @@ async def test_feedback_realism_rating_and_unclear_handling() -> None:
 @pytest.mark.asyncio
 async def test_second_session_service_instance_continues_mid_scene_from_db() -> None:
     """Verifies a fresh SessionService instance resumes and continues a session mid-scene
-    solely from persisted database state (simulating a fresh worker process)."""
+    from state. Note: Uses FakeSessionRepository in-memory to prove SessionService holds
+    no instance state between requests; real database continuity is tested in integration tests."""
     repo = FakeSessionRepository()
     service1 = SessionService(repository=repo)
     t_id = uuid4()

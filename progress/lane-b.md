@@ -44,3 +44,10 @@ None.
   9. Removed echo fallback in ConversationService: fails fast with RuntimeError if session_dispatcher is None in production.
   10. SceneRunner: concurrent child TTS with asyncio.gather, last 4 child lines in context, logs unknown acts, removed hardcoded 52-17 fallback.
   11. locks.py: ref-counted idle per-teacher lock pruning, single Render instance docstring note.
+- Deliberate Practice & Repository Hardening (CHANGES 2f9f2de & followup):
+  1. SessionRepository requires AsyncSession; removed all in-memory fallback dicts and swallowed exceptions; IntegrityError races handled via begin_nested() savepoints to avoid discarding outer transaction state.
+  2. Deleted dead backend/app/sessions/manager.py and removed exports from backend/app/sessions/__init__.py.
+  3. Broadened hygiene test in test_state_machine.py: zero bare except, zero except (Exception/BaseException), zero _in_memory substrings, zero Devanagari literals across backend/app/sessions/*.py.
+  4. FakeSessionRepository in tests: uses cast(AsyncSession, session) without type: ignore.
+  5. path.py notes: DEFAULT_INDUCTION_ORDER and candidate moves table are hardcoded as fallbacks since content/induction_track.yaml is optional and currently absent.
+  6. Real Postgres repository integration tests added in backend/tests/integration/test_session_repository.py covering idempotency, forced IntegrityError race recovery, consent round-trip, and fresh process/session state continuity.

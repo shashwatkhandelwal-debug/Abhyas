@@ -52,11 +52,12 @@ class SessionRepository:
             consent_share_scores=False,
             created_at=datetime.now(UTC),
         )
-        self.session.add(teacher)
         try:
+            async with self.session.begin_nested():
+                self.session.add(teacher)
+                await self.session.flush()
             await self.session.commit()
         except IntegrityError:
-            await self.session.rollback()
             res = await self.session.execute(select(Teacher).where(Teacher.id == teacher_id))
             return res.scalar_one()
 
@@ -91,11 +92,12 @@ class SessionRepository:
             context={},
             updated_at=datetime.now(UTC),
         )
-        self.session.add(st)
         try:
+            async with self.session.begin_nested():
+                self.session.add(st)
+                await self.session.flush()
             await self.session.commit()
         except IntegrityError:
-            await self.session.rollback()
             res = await self.session.execute(
                 select(SessionState).where(
                     SessionState.teacher_id == teacher_id,

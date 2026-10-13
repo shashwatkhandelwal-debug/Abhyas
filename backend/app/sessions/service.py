@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import re
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -1158,16 +1157,14 @@ class SessionService:
                 except ValueError:
                     rating_val = None
             elif text_content:
-                clean_digits = (
-                    text_content.replace("\u0967", "1")
-                    .replace("\u0968", "2")
-                    .replace("\u0969", "3")
-                    .replace("\u096a", "4")
-                    .replace("\u096b", "5")
-                )
-                m = re.search(r"\b([1-5])\b", clean_digits)
-                if m:
-                    rating_val = int(m.group(1))
+                for tok in text_content.split():
+                    try:
+                        v = int(tok)
+                        if 1 <= v <= 5:
+                            rating_val = v
+                            break
+                    except ValueError:
+                        continue
 
             if rating_val is not None and 1 <= rating_val <= 5:
                 scene = await scene_store.get_active_for_teacher(teacher_id)
