@@ -405,3 +405,11 @@ def test_spec_4_5_14_serialisation() -> None:
     assert roundtrip.move_id == scene.move_id
     assert len(roundtrip.children) == len(scene.children)
     assert roundtrip.current_item.a == scene.current_item.a
+
+
+def test_problem_answer_calculation() -> None:
+    """Verifies Problem.answer() computes correct answer for all item types."""
+    assert Problem(type="sub", a=52, b=17).answer() == 35
+    assert Problem(type="add", a=43, b=28).answer() == 71
+    assert Problem(type="place_value", tens=4, ones=7).answer() == 47
+    assert Problem(type="read_word", word="मेला").answer() == "मेला"
