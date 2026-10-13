@@ -24,13 +24,15 @@ Populates a deterministic demo cohort:
 from __future__ import annotations
 
 import logging
-import random
 import uuid
+from collections.abc import Generator
+from contextlib import contextmanager
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import yaml
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -61,7 +63,17 @@ from backend.app.speech.tts import MockTTS
 
 logger = logging.getLogger("abhyas.db.demo_data")
 
-DEMO_COHORT_SEED = 42
+
+@contextmanager
+def _force_mock_llm() -> Generator[None, None, None]:
+    """Forces settings.LLM_PROVIDER to 'mock' locally during cohort population, restoring in finally."""
+    prev = settings.LLM_PROVIDER
+    settings.LLM_PROVIDER = "mock"
+    try:
+        yield
+    finally:
+        settings.LLM_PROVIDER = prev
+
 
 FICTIONAL_TEACHER_NAMES = [
     "सुमन शर्मा",
@@ -143,14 +155,16 @@ def _load_seed_moves() -> dict[str, MoveCard]:
             data = yaml.safe_load(p.read_text(encoding="utf-8"))
             card = MoveCard.model_validate(data)
             moves[card.id] = card
-        except Exception as e:
+        except (OSError, yaml.YAMLError, ValidationError) as e:
             logger.warning("Could not load move from %s: %s", p, e)
     return moves
 
 
 async def populate_demo_cohort(session: AsyncSession) -> None:
-    """Populates 51 demo teachers across 3 batches with engine-scored rehearsals."""
-    random.seed(DEMO_COHORT_SEED)
+    """Populates 51 demo teachers across 3 batches with engine-scored rehearsals.
+
+    Note: cohort = 2 engine-run trajectories replicated, labelled demo.
+    """
     password_hash = hash_password(settings.DEMO_PASSWORD)
     now = datetime.now(UTC)
     today = date.today()
@@ -223,17 +237,17 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
             # Cluster KNP-C02 (remaining 13 teachers in KNP-B1)
             cluster_id = "KNP-C02"
             batch_id = "KNP-B1"
-            consent_share = (idx % 2 == 0)
+            consent_share = idx % 2 == 0
         elif idx <= 43:
             # Cluster KNP-C02 (18 teachers in KNP-B2)
             cluster_id = "KNP-C02"
             batch_id = "KNP-B2"
-            consent_share = (idx % 2 == 0)
+            consent_share = idx % 2 == 0
         else:
             # Cluster KNP-C02 (8 teachers in KNP-B3)
             cluster_id = "KNP-C02"
             batch_id = "KNP-B3"
-            consent_share = (idx % 2 == 0)
+            consent_share = idx % 2 == 0
 
         t = await session.get(Teacher, teacher_id)
         if not t:
@@ -330,14 +344,14 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
         assert stored_low is not None, "Failed to retrieve low scene record from memory store"
 
         # Helper to extract scene turns, acts, and child trajectories from a completed SceneRecord
-        def _extract_scene_data(sc_record: Any) -> tuple[list[SceneTurn], list[list[TeachingAct]], dict[str, list[ChildState]]]:
+        def _extract_scene_data(
+            sc_record: Any,
+        ) -> tuple[list[SceneTurn], list[list[TeachingAct]], dict[str, list[ChildState]]]:
             sturns: list[SceneTurn] = []
             sacts: list[list[TeachingAct]] = []
             for tr in sc_record.turns:
                 sturns.append(SceneTurn(speaker="teacher", text_hi=tr.transcript))
-                act_enums = [
-                    TeachingAct(a) for a in tr.acts if a in TeachingAct._value2member_map_
-                ]
+                act_enums = [TeachingAct(a) for a in tr.acts if a in TeachingAct._value2member_map_]
                 sacts.append(act_enums)
                 for cl in tr.child_lines:
                     sturns.append(SceneTurn(speaker=cl.persona_id, text_hi=cl.line_hi))
@@ -350,37 +364,38 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
         turns_high, acts_high, traj_high = _extract_scene_data(stored_high)
         turns_low, acts_low, traj_low = _extract_scene_data(stored_low)
 
-        # Run real coach path on the engine-generated turns
-        coach_res_high = await coach_feedback(
-            move=move,
-            turns=turns_high,
-            acts=acts_high,
-            trajectories=traj_high,
-            target_child_id="ravi",
-            current_item_answer=16,
-        )
-        coach_res_low = await coach_feedback(
-            move=move,
-            turns=turns_low,
-            acts=acts_low,
-            trajectories=traj_low,
-            target_child_id="ravi",
-            current_item_answer=16,
-        )
+        with _force_mock_llm():
+            # Run real coach path on the engine-generated turns
+            coach_res_high = await coach_feedback(
+                move=move,
+                turns=turns_high,
+                acts=acts_high,
+                trajectories=traj_high,
+                target_child_id="ravi",
+                current_item_answer=16,
+            )
+            coach_res_low = await coach_feedback(
+                move=move,
+                turns=turns_low,
+                acts=acts_low,
+                trajectories=traj_low,
+                target_child_id="ravi",
+                current_item_answer=16,
+            )
 
-        # Explain-it-back scripts through real check_fidelity
-        transcript_high = (
-            "हासिल वाली घटाव में जब इकाई से इकाई न घटे तो दहाई का एक बंडल खोलते हैं "
-            "और खुली तीलियाँ गिनकर घटाते हैं। बच्चे को सीधा उत्तर नहीं बताना है।"
-        )
-        transcript_partial = "घटाव में बच्चों को तीलियों से अभ्यास कराया जाएगा।"
+            # Explain-it-back scripts through real check_fidelity
+            transcript_high = (
+                "डेमो: हासिल वाली घटाव में जब इकाई से इकाई न घटे तो दहाई का एक बंडल खोलते हैं "
+                "और खुली तीलियाँ गिनकर घटाते हैं। बच्चे को सीधा उत्तर नहीं बताना है।"
+            )
+            transcript_partial = "डेमो: घटाव में बच्चों को तीलियों से अभ्यास कराया जाएगा।"
 
-        fid_res_high = await check_fidelity(move, transcript_high)
-        fid_res_partial = await check_fidelity(move, transcript_partial)
+            fid_res_high = await check_fidelity(move, transcript_high)
+            fid_res_partial = await check_fidelity(move, transcript_partial)
 
         # Seed rows for each demo teacher
         for idx, teacher in enumerate(teachers):
-            is_high = (idx % 3 != 0)
+            is_high = idx % 3 != 0
             chosen_rec = stored_high if is_high else stored_low
             chosen_coach = coach_res_high if is_high else coach_res_low
             chosen_fid = fid_res_high if is_high else fid_res_partial
@@ -431,7 +446,9 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
                         )
                     )
                 for cl_idx, cl in enumerate(t_rec.child_lines):
-                    t_child_id = uuid.UUID(f"00000000-0000-0003-0000-{(idx + 1) * 100 + t_idx * 10 + cl_idx:012x}")
+                    t_child_id = uuid.UUID(
+                        f"00000000-0000-0003-0000-{(idx + 1) * 100 + t_idx * 10 + cl_idx:012x}"
+                    )
                     t_child = await session.get(Turn, t_child_id)
                     if not t_child:
                         session.add(
@@ -492,17 +509,29 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
                 )
 
             # 5. AdoptionEvidence matching source strictly (spec/03 §3.5)
-            # - level 1: rehearsal (valid since len(chosen_rec.turns) >= 3)
-            # - level 2: reflection
-            # - level 3: peer_checklist
-            # - level 4: arp_observation (with ARPObservation row)
-            # - level 5: child_check
-            evidence_plan: list[tuple[int, str]] = [(1, "rehearsal")]
-            if idx % 2 == 0:
-                evidence_plan.append((2, "reflection"))
-            if idx % 3 == 0:
-                evidence_plan.append((3, "peer_checklist"))
-            if idx % 5 == 0:
+            # Cumulative: if level N is added, all levels 1..N exist.
+            max_lvl = 1
+            if idx == 12:
+                max_lvl = 5
+            elif idx % 5 == 0:
+                max_lvl = 4
+            elif idx % 3 == 0:
+                max_lvl = 3
+            elif idx % 2 == 0:
+                max_lvl = 2
+
+            sources = {
+                1: "rehearsal",
+                2: "reflection",
+                3: "peer_checklist",
+                4: "arp_observation",
+                5: "child_check",
+            }
+            evidence_plan: list[tuple[int, str]] = [
+                (lvl, sources[lvl]) for lvl in range(1, max_lvl + 1)
+            ]
+
+            if max_lvl >= 4:
                 # Add real ARPObservation row for higher levels
                 arp_obs_id = uuid.UUID(f"00000000-0000-0004-0000-{(idx + 1):012x}")
                 arp_obs = await session.get(ARPObservation, arp_obs_id)
@@ -513,14 +542,11 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
                             teacher_id=teacher.id,
                             move_id=target_move_id,
                             checklist={"concrete_materials": True, "elicited_explanation": True},
-                            notes="कक्षा में तीलियों का अच्छा उपयोग देखा गया।",
+                            notes="डेमो: कक्षा में तीलियों का अच्छा उपयोग देखा गया।",
                             observed_on=today - timedelta(days=5),
                             created_at=now - timedelta(days=5),
                         )
                     )
-                evidence_plan.append((4, "arp_observation"))
-            if idx == 12:
-                evidence_plan.append((5, "child_check"))
 
             for lvl, src in evidence_plan:
                 stmt_ae = select(AdoptionEvidence).where(
@@ -563,4 +589,6 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
             existing_agg.computed_at = computed_agg.computed_at
 
     await session.commit()
-    logger.info("Successfully populated demo cohort with SceneRunner deliberate practice rehearsals.")
+    logger.info(
+        "Successfully populated demo cohort with SceneRunner deliberate practice rehearsals."
+    )

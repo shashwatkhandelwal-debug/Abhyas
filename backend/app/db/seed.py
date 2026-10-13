@@ -331,12 +331,16 @@ async def seed_database() -> None:
             existing_admin.is_demo = False
 
         # Clean up legacy admin.demo if it exists
+        stmt_legacy = select(AppUser).where(AppUser.username == "admin.demo")
+        legacy_admin = (await session.execute(stmt_legacy)).scalar_one_or_none()
+        if legacy_admin:
+            await session.delete(legacy_admin)
+
         # 9. Synthetic demo cohort (db/demo_data.py)
         await populate_demo_cohort(session)
 
         await session.commit()
         logger.info("Successfully seeded demo users, teachers, clusters, and synthetic cohort.")
-
 
 
 if __name__ == "__main__":

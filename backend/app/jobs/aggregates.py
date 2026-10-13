@@ -1,3 +1,4 @@
+# TODO(T24): replace
 """Batch and module metrics aggregation job (spec/09 §9.4, spec/14 T24).
 
 # NOTE (Lane C / T31): Minimal compute_aggregates_for_batch implemented for T24 / T31
@@ -78,7 +79,7 @@ async def compute_aggregates_for_batch(
     for es in escores:
         if es.points:
             for kpid, status in es.points.items():
-                if status in ("missed", "partial", False):
+                if status in ("missing", "partial", "missed", False):
                     explain_missing[kpid] = explain_missing.get(kpid, 0) + 1
 
     # 3. Rubric score distribution

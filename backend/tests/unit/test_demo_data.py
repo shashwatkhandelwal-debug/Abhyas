@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from contextlib import asynccontextmanager
 from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
@@ -28,6 +29,7 @@ from fastapi.staticfiles import StaticFiles
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.config import settings
 from backend.app.db.demo_data import populate_demo_cohort
 from backend.app.db.models import (
     AdoptionEvidence,
@@ -40,6 +42,8 @@ from backend.app.db.models import (
     Teacher,
     Turn,
 )
+from backend.app.db.seed import seed_database
+from backend.app.jobs.aggregates import compute_aggregates_for_batch
 from backend.app.web.teacher import STATIC_DIR
 from backend.app.web.teacher import router as teacher_router
 
@@ -73,6 +77,7 @@ class FakeDemoSession:
 
     def __init__(self) -> None:
         self.added: list[Any] = []
+        self.deleted: list[Any] = []
         self._by_key: dict[tuple[type, Any], Any] = {}
 
     def add(self, obj: Any) -> None:
@@ -80,6 +85,14 @@ class FakeDemoSession:
         ident = getattr(obj, "id", None)
         if ident is not None:
             self._by_key[(type(obj), ident)] = obj
+
+    async def delete(self, obj: Any) -> None:
+        self.deleted.append(obj)
+        if obj in self.added:
+            self.added.remove(obj)
+        ident = getattr(obj, "id", None)
+        if ident is not None:
+            self._by_key.pop((type(obj), ident), None)
 
     async def get(self, model: type, ident: Any) -> Any:
         return self._by_key.get((model, ident))
@@ -122,7 +135,9 @@ class FakeDemoSession:
         in_match = re.search(r"teacher_id IN \(([^)]+)\)", sql, re.IGNORECASE)
         allowed_teachers: set[str] | None = None
         if in_match:
-            allowed_teachers = set(re.findall(r"'([^']+)'", in_match.group(1)))
+            allowed_teachers = {
+                s.replace("-", "").lower() for s in re.findall(r"'([^']+)'", in_match.group(1))
+            }
 
         # AdoptionEvidence queries
         if "adoption_evidence" in sql_lower:
@@ -134,7 +149,8 @@ class FakeDemoSession:
                 for obj in self.added:
                     if (
                         isinstance(obj, AdoptionEvidence)
-                        and str(obj.teacher_id) == tid_str
+                        and str(obj.teacher_id).replace("-", "").lower()
+                        == tid_str.replace("-", "").lower()
                         and obj.move_id == mid
                         and obj.level == lvl
                     ):
@@ -146,7 +162,10 @@ class FakeDemoSession:
                 obj
                 for obj in self.added
                 if isinstance(obj, AdoptionEvidence)
-                and (allowed_teachers is None or str(obj.teacher_id) in allowed_teachers)
+                and (
+                    allowed_teachers is None
+                    or str(obj.teacher_id).replace("-", "").lower() in allowed_teachers
+                )
             ]
             return MockResult(items=evs)
 
@@ -154,11 +173,12 @@ class FakeDemoSession:
         if "explain_score" in sql_lower:
             match_t = re.search(r"teacher_id = '([^']+)'", sql, re.IGNORECASE)
             if match_t:
-                tid_str = match_t.group(1)
+                tid_str = match_t.group(1).replace("-", "").lower()
                 es_matching = [
                     obj
                     for obj in self.added
-                    if isinstance(obj, ExplainScore) and str(obj.teacher_id) == tid_str
+                    if isinstance(obj, ExplainScore)
+                    and str(obj.teacher_id).replace("-", "").lower() == tid_str
                 ]
                 val = es_matching[0] if es_matching else None
                 return MockResult(value=val, items=es_matching)
@@ -166,7 +186,10 @@ class FakeDemoSession:
                 obj
                 for obj in self.added
                 if isinstance(obj, ExplainScore)
-                and (allowed_teachers is None or str(obj.teacher_id) in allowed_teachers)
+                and (
+                    allowed_teachers is None
+                    or str(obj.teacher_id).replace("-", "").lower() in allowed_teachers
+                )
             ]
             return MockResult(items=es_all)
 
@@ -176,7 +199,10 @@ class FakeDemoSession:
                 obj
                 for obj in self.added
                 if isinstance(obj, RehearsalScore)
-                and (allowed_teachers is None or str(obj.teacher_id) in allowed_teachers)
+                and (
+                    allowed_teachers is None
+                    or str(obj.teacher_id).replace("-", "").lower() in allowed_teachers
+                )
             ]
             return MockResult(items=rs_all)
 
@@ -236,11 +262,15 @@ async def test_populate_demo_cohort_cluster_c01_consent_split() -> None:
     non_consenting = [t for t in c01_teachers if t.consent_share_scores is False]
 
     assert len(consenting) == 7, "Exactly 7 teachers in KNP-C01 must have consent_share_scores=True"
-    assert len(non_consenting) == 5, "Exactly 5 teachers in KNP-C01 must have consent_share_scores=False"
+    assert len(non_consenting) == 5, (
+        "Exactly 5 teachers in KNP-C01 must have consent_share_scores=False"
+    )
 
     # Verify teacher.demo3 is non-consenting
     t3 = next(t for t in c01_teachers if t.id == uuid.UUID("00000000-0000-0000-0000-000000000003"))
-    assert t3.consent_share_scores is False, "teacher.demo3 must demonstrate non-consenting behavior"
+    assert t3.consent_share_scores is False, (
+        "teacher.demo3 must demonstrate non-consenting behavior"
+    )
 
 
 @pytest.mark.asyncio
@@ -257,11 +287,15 @@ async def test_populate_demo_cohort_is_demo_flag_and_prefixes() -> None:
 
     for t in teachers:
         assert t.is_demo is True, f"Teacher {t.name} must have is_demo=True"
-        assert t.name is not None and t.name.startswith("डेमो "), f"Teacher name '{t.name}' must start with 'डेमो '"
+        assert t.name is not None and t.name.startswith("डेमो "), (
+            f"Teacher name '{t.name}' must start with 'डेमो '"
+        )
 
     for u in users:
         assert u.is_demo is True, f"User {u.username} must have is_demo=True"
-        assert u.display_name is not None and u.display_name.startswith("डेमो "), f"User display_name '{u.display_name}' must start with 'डेमो '"
+        assert u.display_name is not None and u.display_name.startswith("डेमो "), (
+            f"User display_name '{u.display_name}' must start with 'डेमो '"
+        )
         assert u.role == "teacher"
 
 
@@ -303,14 +337,18 @@ async def test_populate_demo_cohort_honest_provenance() -> None:
     escores = [o for o in session.added if isinstance(o, ExplainScore)]
 
     for rs in rscores:
-        assert rs.model in ("mock", "fallback"), f"RehearsalScore model must be mock/fallback, got {rs.model}"
+        assert rs.model in ("mock", "fallback"), (
+            f"RehearsalScore model must be mock/fallback, got {rs.model}"
+        )
         assert rs.model != "claude-sonnet", "Must never label demo output as claude-sonnet"
         assert isinstance(rs.confidence, float)
         assert 0.0 <= rs.confidence <= 1.0
         assert isinstance(rs.needs_review, bool)
 
     for es in escores:
-        assert es.model in ("mock", "fallback"), f"ExplainScore model must be mock/fallback, got {es.model}"
+        assert es.model in ("mock", "fallback"), (
+            f"ExplainScore model must be mock/fallback, got {es.model}"
+        )
         assert es.model != "claude-sonnet", "Must never label demo output as claude-sonnet"
         assert isinstance(es.confidence, float)
         assert 0.0 <= es.confidence <= 1.0
@@ -377,7 +415,9 @@ async def test_populate_demo_cohort_aggregates_non_negative_and_suppressed() -> 
         if agg.rubric_dist:
             for crit_id, dist in agg.rubric_dist.items():
                 for score_val, count in dist.items():
-                    assert count >= 0, f"rubric_dist for {crit_id}[{score_val}] must not be negative: {count}"
+                    assert count >= 0, (
+                        f"rubric_dist for {crit_id}[{score_val}] must not be negative: {count}"
+                    )
 
         if agg.active_rate is not None:
             assert 0.0 <= agg.active_rate <= 1.0
@@ -448,3 +488,74 @@ async def test_demo_banner_displayed_on_web_page() -> None:
         assert resp.status_code == 200
         assert "डेमो डेटा — वास्तविक शिक्षक नहीं" in resp.text
         assert "demo-banner" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_aggregates_counts_missing_status() -> None:
+    """Verifies that compute_aggregates_for_batch counts 'missing' and 'partial' statuses in explain_missing."""
+    batch_id = "KNP-B1"
+    move_id = "NUM_SUB_REGROUP_BUNDLES"
+    session = FakeDemoSession()
+
+    teachers = [
+        Teacher(
+            id=uuid.UUID(f"00000000-0000-0009-0000-{i + 1:012x}"),
+            batch_id=batch_id,
+            cluster_id="KNP-C01",
+            name=f"डेमो {i}",
+            is_demo=True,
+        )
+        for i in range(12)
+    ]
+    for t in teachers:
+        session.add(t)
+
+    escore = ExplainScore(
+        id=uuid.uuid4(),
+        teacher_id=teachers[0].id,
+        move_id=move_id,
+        points={"kp_missing": "missing", "kp_partial": "partial", "kp_covered": "covered"},
+    )
+    session.add(escore)
+
+    agg = await compute_aggregates_for_batch(cast(AsyncSession, session), batch_id, move_id)
+    assert agg.explain_missing is not None
+    assert agg.explain_missing.get("kp_missing") == 1
+    assert agg.explain_missing.get("kp_partial") == 1
+    assert "kp_covered" not in agg.explain_missing
+
+
+@pytest.mark.asyncio
+async def test_seed_database_removes_legacy_admin(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verifies that seed_database removes legacy admin.demo account."""
+    legacy_admin = AppUser(
+        id=uuid.uuid4(),
+        username="admin.demo",
+        role="admin",
+        password_hash="hash",
+    )
+    session = FakeDemoSession()
+    session.add(legacy_admin)
+
+    @asynccontextmanager
+    async def mock_session_factory():
+        yield session
+
+    monkeypatch.setattr("backend.app.db.seed.async_session_factory", mock_session_factory)
+    await seed_database()
+
+    assert legacy_admin in session.deleted
+
+
+@pytest.mark.asyncio
+async def test_seeding_with_anthropic_api_key_never_calls_real_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verifies that seeding forces mock LLM and restores original provider afterwards."""
+    monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "sk-ant-test-real-key")
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "anthropic")
+
+    session = FakeDemoSession()
+    await populate_demo_cohort(cast(AsyncSession, session))
+
+    assert settings.LLM_PROVIDER == "anthropic"
