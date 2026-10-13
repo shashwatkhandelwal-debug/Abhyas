@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#B3261E">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>मेरा डेटा हटाएँ — पुष्टि</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="chat-header">
+      <div class="header-left">
+        <a href="/teacher/progress" class="btn-icon" aria-label="प्रगति पर वापस जाएँ">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </a>
+        <div class="header-titles">
+          <span class="header-move-title danger">मेरा डेटा हटाएँ</span>
+          <span class="header-step-chip">{{ teacher_name }}</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="progress-main">
+      <div class="delete-dialog-box" role="alertdialog" aria-labelledby="delete-title" aria-describedby="delete-warning">
+        <div class="danger-icon-wrapper" aria-hidden="true">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#B3261E" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+
+        <h1 id="delete-title" class="delete-dialog-title">क्या आप वाकई अपना सारा डेटा हटाना चाहती हैं?</h1>
+
+        <p id="delete-warning" class="delete-dialog-body">
+          यह प्रक्रिया <strong>स्थायी और अपरिवर्तनीय</strong> है।
+          पुष्टि करने पर आपका खाता, सभी अभ्यास अंक, प्रमाण सीढ़ी की प्रगति, चैट संदेश और ऑडियो रिकॉर्ड डेटाबेस से हमेशा के लिए मिटा दिए जाएँगे।
+        </p>
+
+        <form method="POST" action="/teacher/delete" class="delete-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+          <button type="submit" class="btn-danger-confirm" id="btn-confirm-delete">
+            हाँ, मिटाएँ
+          </button>
+
+          <a href="/teacher/progress" class="btn-cancel-link">नहीं, वापस जाएँ</a>
+        </form>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
