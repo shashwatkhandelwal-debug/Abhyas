@@ -44,6 +44,11 @@
       </nav>
     </header>
 
+    <!-- Demo Banner (spec/03 §3.5) -->
+    {% if demo_mode %}
+    <div class="demo-banner" role="status" aria-label="डेमो सूचना">डेमो डेटा — वास्तविक शिक्षक नहीं</div>
+    {% endif %}
+
     <!-- Network Alert Banner -->
     <div id="network-banner" class="network-banner" role="status" aria-live="polite"></div>
 

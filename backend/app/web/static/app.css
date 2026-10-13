@@ -208,6 +208,17 @@ body {
   color: var(--danger);
 }
 
+/* Demo Data Banner (spec/03 §3.5) */
+.demo-banner {
+  background-color: var(--accent-light, #FFF3CD);
+  color: #7A5300;
+  border-bottom: 1px solid var(--accent, #FFD166);
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+}
+
 /* Network Banners */
 .network-banner {
   padding: 0.5rem 1rem;
