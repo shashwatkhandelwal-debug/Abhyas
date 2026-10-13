@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 import uuid
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Any
 
 import pytest
@@ -29,8 +29,11 @@ from backend.app.db.models import (
     ExplainScore,
     Message,
     MovePath,
+    Question,
     RehearsalScore,
+    ReviewItem,
     Scene,
+    ScheduledJob,
     SessionState,
     Teacher,
     Turn,
@@ -109,7 +112,27 @@ class InMemoryProgressSession:
                     cls_name = obj.__class__.__name__.lower()
                     tbl_name = getattr(obj, "__tablename__", "").lower()
                     if tbl in (cls_name, tbl_name):
-                        to_remove.append(obj)
+                        if isinstance(obj, ScheduledJob):
+                            p = obj.payload or {}
+                            t_str = str(p.get("teacher_id", ""))
+                            q_str = str(p.get("question_id", ""))
+                            if (t_str and t_str in sql) or (q_str and q_str in sql):
+                                to_remove.append(obj)
+                            elif not ("payload" in sql_lower or "json" in sql_lower):
+                                to_remove.append(obj)
+                        elif isinstance(obj, ReviewItem):
+                            if obj.ref_id in sql or "ref_id" not in sql_lower:
+                                to_remove.append(obj)
+                        elif hasattr(obj, "teacher_id"):
+                            tid_str = str(obj.teacher_id).lower().replace("-", "")
+                            if (
+                                str(obj.teacher_id) in sql
+                                or tid_str in sql.lower().replace("-", "")
+                                or "teacher_id" not in sql_lower
+                            ):
+                                to_remove.append(obj)
+                        else:
+                            to_remove.append(obj)
                 for obj in to_remove:
                     self.entities.remove(obj)
                     self.deleted.append(obj)
@@ -162,6 +185,10 @@ class InMemoryProgressSession:
         if re.search(r"select\s+explain_score\.id\s+from", sql_lower):
             escores = [obj for obj in self.entities if isinstance(obj, ExplainScore)]
             return MockResult(items=[e.id for e in escores])
+
+        if re.search(r"select\s+question\.id\s+from", sql_lower):
+            questions = [obj for obj in self.entities if isinstance(obj, Question)]
+            return MockResult(items=[q.id for q in questions])
 
         if "from explain_score" in sql_lower:
             escores = [obj for obj in self.entities if isinstance(obj, ExplainScore)]
@@ -457,9 +484,43 @@ async def test_post_delete_purges_data_and_logs_out() -> None:
         id=uuid.uuid4(), teacher_id=teacher_id, direction="in", channel="web", channel_msg_id="m1"
     )
     clog = ConsentLog(id=uuid.uuid4(), teacher_id=teacher_id, field="share", value=True)
+    question_id = uuid.uuid4()
+    question = Question(
+        id=question_id,
+        teacher_id=teacher_id,
+        text="बच्चों को घटाव कैसे सिखाएँ?",
+        status="answered",
+    )
+    scheduled_job = ScheduledJob(
+        id=uuid.uuid4(),
+        kind="followup",
+        run_at=datetime.now(UTC),
+        payload={"teacher_id": str(teacher_id), "question_id": str(question_id)},
+    )
+    review_item = ReviewItem(
+        id=uuid.uuid4(),
+        kind="question",
+        ref_id=str(question_id),
+        status="open",
+    )
 
     session = InMemoryProgressSession(
-        entities=[teacher, user, scene, turn, rscore, escore, evidence, sstate, mpath, msg, clog]
+        entities=[
+            teacher,
+            user,
+            scene,
+            turn,
+            rscore,
+            escore,
+            evidence,
+            sstate,
+            mpath,
+            msg,
+            clog,
+            question,
+            scheduled_job,
+            review_item,
+        ]
     )
     app = create_test_progress_app(session, user=user)
 
@@ -487,7 +548,7 @@ async def test_post_delete_purges_data_and_logs_out() -> None:
             or "max-age=0" in set_cookie.lower()
         )
 
-        # 3. Data purged from database
+        # 3. Data purged from database (including scheduled jobs and review items)
         assert teacher in session.deleted
         assert user in session.deleted
         assert scene in session.deleted
@@ -499,3 +560,38 @@ async def test_post_delete_purges_data_and_logs_out() -> None:
         assert mpath in session.deleted
         assert msg in session.deleted
         assert clog in session.deleted
+        assert question in session.deleted
+        assert scheduled_job in session.deleted
+        assert review_item in session.deleted
+        assert len(session.entities) == 0
+
+
+@pytest.mark.asyncio
+async def test_post_delete_without_csrf_returns_403_and_purges_nothing() -> None:
+    """POST /teacher/delete without CSRF token returns 403 and purges nothing."""
+    teacher_id = uuid.UUID("00000000-0000-0000-0000-000000000004")
+    user_id = uuid.UUID("00000000-0000-0000-0001-000000000004")
+
+    teacher = Teacher(id=teacher_id, name="आरती", is_demo=True)
+    user = AppUser(
+        id=user_id,
+        username="teacher.demo4",
+        role="teacher",
+        teacher_id=teacher_id,
+        password_hash="hash",
+    )
+    session = InMemoryProgressSession(entities=[teacher, user])
+    app = create_test_progress_app(session, user=user)
+
+    token = create_session_token({"user_id": str(user_id), "role": "teacher"})
+    cookies = {SESSION_COOKIE_NAME: token}
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test", cookies=cookies
+    ) as client:
+        # Omits Authorization header and CSRF token/cookie -> verify_csrf_token must reject
+        resp = await client.post("/teacher/delete", follow_redirects=False)
+        assert resp.status_code == 403
+        assert teacher not in session.deleted
+        assert user not in session.deleted
+        assert len(session.entities) == 2

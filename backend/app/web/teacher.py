@@ -98,7 +98,7 @@ async def teacher_chat_page(
     if current_user.role not in ("teacher", "admin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="यह पृष्ठ केवल शिक्षकों के लिए है (Teacher role required)",
+            detail="Teacher or admin role required",
         )
 
     teacher = await get_teacher_for_user(current_user, db, request=request)
@@ -129,7 +129,11 @@ async def teacher_chat_page(
             "speaker": m.speaker,
             "audio_ref": m.audio_ref,
             "buttons": m.buttons,
-            "time_str": m.created_at.astimezone(UTC).strftime("%H:%M") if m.created_at else "अभी",
+            "time_str": (
+                m.created_at.astimezone(UTC).strftime("%H:%M")
+                if m.created_at
+                else get_message("ui_time_just_now")
+            ),
         }
         for m in db_messages
     ]
@@ -159,6 +163,7 @@ async def teacher_chat_page(
     board_problem = ""
     if active_scene and active_scene.engine_state:
         state = active_scene.engine_state
+        board_prefix = get_message("ui_board_prefix")
         if state.get("board_problem"):
             board_problem = str(state["board_problem"])
         elif state.get("board_text"):
@@ -166,44 +171,46 @@ async def teacher_chat_page(
         elif state.get("board"):
             board_problem = str(state["board"])
         elif state.get("current_item_text"):
-            board_problem = f"बोर्ड: {state['current_item_text']}"
+            board_problem = f"{board_prefix} {state['current_item_text']}"
         elif current_item := state.get("current_item"):
             if isinstance(current_item, dict):
                 if current_item.get("text"):
-                    board_problem = f"बोर्ड: {current_item['text']}"
+                    board_problem = f"{board_prefix} {current_item['text']}"
                 elif (
                     current_item.get("type") == "sub"
                     and "a" in current_item
                     and "b" in current_item
                 ):
-                    board_problem = f"बोर्ड: {current_item['a']} − {current_item['b']}"
+                    board_problem = f"{board_prefix} {current_item['a']} − {current_item['b']}"
                 elif (
                     current_item.get("type") == "add"
                     and "a" in current_item
                     and "b" in current_item
                 ):
-                    board_problem = f"बोर्ड: {current_item['a']} + {current_item['b']}"
+                    board_problem = f"{board_prefix} {current_item['a']} + {current_item['b']}"
                 elif current_item.get("word"):
-                    board_problem = f"बोर्ड: {current_item['word']}"
+                    board_problem = f"{board_prefix} {current_item['word']}"
             elif isinstance(current_item, str):
                 board_problem = (
-                    current_item if current_item.startswith("बोर्ड:") else f"बोर्ड: {current_item}"
+                    current_item
+                    if current_item.startswith(board_prefix)
+                    else f"{board_prefix} {current_item}"
                 )
 
     demo_chips = load_demo_chips() if is_demo else []
-    try:
-        demo_banner_text = get_message("ui_demo_banner")
-    except Exception:
-        demo_banner_text = "डेमो डेटा — वास्तविक शिक्षक नहीं"
+    demo_banner_text = get_message("ui_demo_banner")
 
     response = templates.TemplateResponse(
-        "teacher.html",
-        {
+        request=request,
+        name="teacher.html",
+        context={
             "request": request,
             "csrf_token": csrf_token,
-            "teacher_name": teacher.name or current_user.display_name or "शिक्षिका",
-            "move_title": "दो अंकों की हासिल वाली घटाव",
-            "step_chip": "चरण 4/7 · अभ्यास",
+            "teacher_name": (
+                teacher.name or current_user.display_name or get_message("ui_default_teacher_name")
+            ),
+            "move_title": get_message("ui_default_move_title"),
+            "step_chip": get_message("ui_default_step_chip"),
             "board_problem": board_problem,
             "lite_mode": teacher.lite_mode,
             "demo_mode": is_demo,
@@ -238,13 +245,15 @@ def _load_available_moves() -> dict[str, MoveCard]:
     return {}
 
 
-LADDER_LABELS = [
-    (1, "अभ्यास किया"),
-    (2, "स्वयं बताया"),
-    (3, "साथी ने देखा"),
-    (4, "ARP ने देखा"),
-    (5, "बच्चों में सुधार"),
-]
+def get_ladder_labels() -> list[tuple[int, str]]:
+    """Returns evidence ladder level numbers and labels loaded from message catalog."""
+    return [
+        (1, get_message("ui_ladder_level_1")),
+        (2, get_message("ui_ladder_level_2")),
+        (3, get_message("ui_ladder_level_3")),
+        (4, get_message("ui_ladder_level_4")),
+        (5, get_message("ui_ladder_level_5")),
+    ]
 
 
 @router.get("/teacher/progress", response_class=HTMLResponse)
@@ -263,7 +272,7 @@ async def teacher_progress_page(
     if not scoped_teacher:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="यह पृष्ठ देखने की अनुमति नहीं है (Access forbidden)",
+            detail="Access forbidden",
         )
 
     csrf_token = request.cookies.get(CSRF_COOKIE_NAME)
@@ -339,7 +348,7 @@ async def teacher_progress_page(
                 "label": lbl,
                 "filled": lvl <= max_level,
             }
-            for lvl, lbl in LADDER_LABELS
+            for lvl, lbl in get_ladder_labels()
         ]
 
         # 2. Rubric score history: inline CSS bars
@@ -432,17 +441,17 @@ async def teacher_progress_page(
             }
         )
 
-    try:
-        demo_banner_text = get_message("ui_demo_banner")
-    except Exception:
-        demo_banner_text = "डेमो डेटा — वास्तविक शिक्षक नहीं"
+    demo_banner_text = get_message("ui_demo_banner")
 
     response = templates.TemplateResponse(
-        "progress.html",
-        {
+        request=request,
+        name="progress.html",
+        context={
             "request": request,
             "csrf_token": csrf_token,
-            "teacher_name": teacher.name or current_user.display_name or "शिक्षिका",
+            "teacher_name": (
+                teacher.name or current_user.display_name or get_message("ui_default_teacher_name")
+            ),
             "demo_mode": is_demo,
             "demo_banner_text": demo_banner_text,
             "is_saved": is_saved,
@@ -473,7 +482,7 @@ async def update_teacher_consent(
     if not scoped_teacher:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="यह पृष्ठ देखने की अनुमति नहीं है (Access forbidden)",
+            detail="Access forbidden",
         )
 
     content_type = request.headers.get("content-type", "")
@@ -541,7 +550,7 @@ async def get_delete_confirm_page(
     if not scoped_teacher:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="यह पृष्ठ देखने की अनुमति नहीं है (Access forbidden)",
+            detail="Access forbidden",
         )
 
     csrf_token = request.cookies.get(CSRF_COOKIE_NAME)
@@ -551,11 +560,14 @@ async def get_delete_confirm_page(
         token_to_set = csrf_token
 
     response = templates.TemplateResponse(
-        "delete.html",
-        {
+        request=request,
+        name="delete.html",
+        context={
             "request": request,
             "csrf_token": csrf_token,
-            "teacher_name": teacher.name or current_user.display_name or "शिक्षिका",
+            "teacher_name": (
+                teacher.name or current_user.display_name or get_message("ui_default_teacher_name")
+            ),
         },
     )
     if token_to_set:
@@ -580,7 +592,7 @@ async def delete_teacher_account_data(
     if not scoped_teacher:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="यह पृष्ठ देखने की अनुमति नहीं है (Access forbidden)",
+            detail="Access forbidden",
         )
 
     teacher_id = teacher.id

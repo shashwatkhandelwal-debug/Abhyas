@@ -278,6 +278,16 @@ ui_suppressed: {text: "समूह छोटा है (n<10) — गोपन�
 ui_samples_title: {text: "नमूना आवाज़ें (मूल्यांकन हेतु)", audio: false}
 ui_logout: {text: "लॉग आउट", audio: false}
 ui_delete_data: {text: "मेरा डेटा हटाएँ", audio: false}
+ui_ladder_level_1: {text: "अभ्यास किया", audio: false}
+ui_ladder_level_2: {text: "स्वयं बताया", audio: false}
+ui_ladder_level_3: {text: "साथी ने देखा", audio: false}
+ui_ladder_level_4: {text: "ARP ने देखा", audio: false}
+ui_ladder_level_5: {text: "बच्चों में सुधार", audio: false}
+ui_board_prefix: {text: "बोर्ड:", audio: false}
+ui_time_just_now: {text: "अभी", audio: false}
+ui_default_teacher_name: {text: "शिक्षिका", text_m: "शिक्षक", audio: false}
+ui_default_move_title: {text: "दो अंकों की हासिल वाली घटाव", audio: false}
+ui_default_step_chip: {text: "चरण 4/7 · अभ्यास", audio: false}
 
 # ── Speaker labels ───────────────────────────────────────────
 speaker_abhyas: {text: "अभ्यास", audio: false}
