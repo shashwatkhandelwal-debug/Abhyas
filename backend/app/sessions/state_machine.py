@@ -9,6 +9,11 @@ from enum import StrEnum
 from pydantic import BaseModel, Field
 
 from backend.app.config import settings
+from backend.app.core.intents import (
+    BUTTON_INTENT_MAP,
+    Intent,
+    match_intent,
+)
 
 
 class SessionStateEnum(StrEnum):
@@ -17,25 +22,26 @@ class SessionStateEnum(StrEnum):
     LEARN = "LEARN"
     EXPLAIN_BACK = "EXPLAIN_BACK"
     MODEL = "MODEL"
+    REHEARSE_INTRO = "REHEARSE_INTRO"
     REHEARSE = "REHEARSE"
     FEEDBACK = "FEEDBACK"
-    RETRY = "RETRY"
     TRY_IN_CLASS = "TRY_IN_CLASS"
-    REFLECT = "REFLECT"
+    REFLECT_PEER = "REFLECT_PEER"
+    REFLECT_SELF = "REFLECT_SELF"
     DONE = "DONE"
     ASK = "ASK"  # Interruption state (spec/08 §8.4)
-    PLACEMENT = "PLACEMENT"  # Placement mode (spec/08 §8.1)
 
 
 WEEKLY_LOOP_STATES: tuple[SessionStateEnum, ...] = (
     SessionStateEnum.LEARN,
     SessionStateEnum.EXPLAIN_BACK,
     SessionStateEnum.MODEL,
+    SessionStateEnum.REHEARSE_INTRO,
     SessionStateEnum.REHEARSE,
     SessionStateEnum.FEEDBACK,
-    SessionStateEnum.RETRY,
     SessionStateEnum.TRY_IN_CLASS,
-    SessionStateEnum.REFLECT,
+    SessionStateEnum.REFLECT_PEER,
+    SessionStateEnum.REFLECT_SELF,
     SessionStateEnum.DONE,
 )
 
@@ -59,14 +65,14 @@ STATE_PROMPT_KEYS: dict[str, str] = {
     SessionStateEnum.LEARN: "learn_intro",
     SessionStateEnum.EXPLAIN_BACK: "explain_back_prompt",
     SessionStateEnum.MODEL: "model_offer",
+    SessionStateEnum.REHEARSE_INTRO: "rehearse_intro",
     SessionStateEnum.REHEARSE: "rehearse_intro",
     SessionStateEnum.FEEDBACK: "feedback_header",
-    SessionStateEnum.RETRY: "rehearse_intro",
     SessionStateEnum.TRY_IN_CLASS: "try_in_class",
-    SessionStateEnum.REFLECT: "reflect_q",
+    SessionStateEnum.REFLECT_PEER: "peer_item",
+    SessionStateEnum.REFLECT_SELF: "reflect_q",
     SessionStateEnum.DONE: "week_done",
     SessionStateEnum.ASK: "ask_prompt",
-    SessionStateEnum.PLACEMENT: "placement_intro",
 }
 
 ONBOARDING_PROMPT_KEYS: dict[str, str] = {
@@ -239,6 +245,13 @@ STATE_TRANSITION_TABLE: tuple[TransitionEdge, ...] = (
         description="Teacher replays learn script audio",
     ),
     TransitionEdge(
+        source_state="LEARN",
+        input_kind="free_text",
+        target_state="LEARN",
+        message_keys=(),
+        description="Free text does not advance LEARN state silently",
+    ),
+    TransitionEdge(
         source_state="EXPLAIN_BACK",
         input_kind="explanation_text",
         target_state="MODEL",
@@ -255,23 +268,37 @@ STATE_TRANSITION_TABLE: tuple[TransitionEdge, ...] = (
     TransitionEdge(
         source_state="MODEL",
         input_kind="btn_listen",
-        target_state="REHEARSE",
+        target_state="REHEARSE_INTRO",
         message_keys=("model_header", "rehearse_intro"),
         description="Teacher listens to model teacher rehearsal",
     ),
     TransitionEdge(
         source_state="MODEL",
         input_kind="btn_skip",
-        target_state="REHEARSE",
+        target_state="REHEARSE_INTRO",
         message_keys=("rehearse_intro",),
-        description="Teacher skips model audio and goes to rehearsal",
+        description="Teacher skips model audio and goes to rehearsal intro",
+    ),
+    TransitionEdge(
+        source_state="MODEL",
+        input_kind="free_text",
+        target_state="MODEL",
+        message_keys=(),
+        description="Free text does not advance MODEL state silently",
+    ),
+    TransitionEdge(
+        source_state="REHEARSE_INTRO",
+        input_kind="start_turn",
+        target_state="REHEARSE",
+        message_keys=(),
+        description="First voice/text starts active deliberate practice rehearsal",
     ),
     TransitionEdge(
         source_state="REHEARSE",
         input_kind="teacher_turn",
         target_state="REHEARSE",
         message_keys=(),
-        description="Teacher executes a deliberate practice rehearsal turn",
+        description="Teacher executes deliberate practice turn",
     ),
     TransitionEdge(
         source_state="REHEARSE",
@@ -283,7 +310,7 @@ STATE_TRANSITION_TABLE: tuple[TransitionEdge, ...] = (
     TransitionEdge(
         source_state="FEEDBACK",
         input_kind="btn_retry",
-        target_state="RETRY",
+        target_state="REHEARSE_INTRO",
         message_keys=("rehearse_intro",),
         description="Teacher requests rehearsal retry within attempt limit",
     ),
@@ -302,30 +329,16 @@ STATE_TRANSITION_TABLE: tuple[TransitionEdge, ...] = (
         description="Teacher accepts feedback and advances to try in class",
     ),
     TransitionEdge(
-        source_state="RETRY",
-        input_kind="start_rehearsal",
-        target_state="REHEARSE",
-        message_keys=("rehearse_intro",),
-        description="Teacher begins new rehearsal attempt from retry",
-    ),
-    TransitionEdge(
-        source_state="RETRY",
-        input_kind="btn_continue",
-        target_state="TRY_IN_CLASS",
-        message_keys=("try_in_class",),
-        description="Teacher bypasses retry and continues",
-    ),
-    TransitionEdge(
         source_state="TRY_IN_CLASS",
         input_kind="btn_peer",
-        target_state="REFLECT",
+        target_state="REFLECT_PEER",
         message_keys=("peer_item",),
         description="Teacher selects peer observation reflection path",
     ),
     TransitionEdge(
         source_state="TRY_IN_CLASS",
         input_kind="btn_self",
-        target_state="REFLECT",
+        target_state="REFLECT_SELF",
         message_keys=("reflect_q",),
         description="Teacher selects self reflection path",
     ),
@@ -337,11 +350,39 @@ STATE_TRANSITION_TABLE: tuple[TransitionEdge, ...] = (
         description="Teacher defers classroom tryout",
     ),
     TransitionEdge(
-        source_state="REFLECT",
-        input_kind="reflection_done",
+        source_state="TRY_IN_CLASS",
+        input_kind="free_text",
+        target_state="TRY_IN_CLASS",
+        message_keys=(),
+        description="Free text does not advance TRY_IN_CLASS state silently",
+    ),
+    TransitionEdge(
+        source_state="REFLECT_PEER",
+        input_kind="checklist_item",
+        target_state="REFLECT_PEER",
+        message_keys=("peer_item",),
+        description="Teacher answers a checklist item",
+    ),
+    TransitionEdge(
+        source_state="REFLECT_PEER",
+        input_kind="checklist_done",
         target_state="DONE",
         message_keys=("week_done",),
-        description="Teacher submits reflection, reaching evidence level 2/3",
+        description="Teacher finishes peer checklist, reaching evidence level 3",
+    ),
+    TransitionEdge(
+        source_state="REFLECT_SELF",
+        input_kind="q1_answer",
+        target_state="REFLECT_SELF",
+        message_keys=("reflect_q",),
+        description="Teacher answers reflection question 1",
+    ),
+    TransitionEdge(
+        source_state="REFLECT_SELF",
+        input_kind="q2_answer",
+        target_state="DONE",
+        message_keys=("week_done",),
+        description="Teacher answers reflection question 2, reaching evidence level 2",
     ),
     TransitionEdge(
         source_state="DONE",
@@ -356,6 +397,13 @@ STATE_TRANSITION_TABLE: tuple[TransitionEdge, ...] = (
         target_state="DONE",
         message_keys=("progress_summary",),
         description="Teacher requests progress summary",
+    ),
+    TransitionEdge(
+        source_state="DONE",
+        input_kind="free_text",
+        target_state="DONE",
+        message_keys=(),
+        description="Free text does not advance DONE state silently",
     ),
     # Global Intents (§8.3–§8.4)
     TransitionEdge(
@@ -389,9 +437,23 @@ STATE_TRANSITION_TABLE: tuple[TransitionEdge, ...] = (
     TransitionEdge(
         source_state="LEARN",
         input_kind="delete",
+        target_state="LEARN",
+        message_keys=("delete_confirm",),
+        description="Teacher triggers delete data flow with confirmation prompt",
+    ),
+    TransitionEdge(
+        source_state="LEARN",
+        input_kind="confirm_delete",
         target_state="NEW",
         message_keys=("data_deleted",),
-        description="Teacher deletes all data and resets to NEW",
+        description="Teacher confirms data deletion, resetting to NEW",
+    ),
+    TransitionEdge(
+        source_state="LEARN",
+        input_kind="cancel_delete",
+        target_state="LEARN",
+        message_keys=("learn_intro",),
+        description="Teacher cancels data deletion, resuming previous state",
     ),
 )
 
@@ -404,6 +466,8 @@ class TransitionResult(BaseModel):
     message_keys: list[str] = Field(default_factory=list)
     evidence_level: int | None = None
     resumed: bool = False
+    needs_intent_router: bool = False
+    rehearsal_ended: bool = False
 
 
 class SessionContext(BaseModel):
@@ -414,11 +478,15 @@ class SessionContext(BaseModel):
     current_move_id: str
     current_state: SessionStateEnum = SessionStateEnum.LEARN
     prior_state_before_ask: SessionStateEnum | None = None
+    prior_state_before_delete: SessionStateEnum | None = None
+    awaiting_delete_confirm: bool = False
     onboarding_state: OnboardingStateEnum = OnboardingStateEnum.NEW
     retries_count: int = 0
     rehearsal_turns_count: int = 0
     placement_turns_count: int = 0
     reflection_type: str | None = None  # "self" or "peer"
+    reflect_step: int = 0
+    peer_checklist_total: int = 3
     evidence_level: int = 0
     child_states: dict[str, int] = Field(default_factory=dict)
     last_inbound_at: datetime | None = None
@@ -426,9 +494,14 @@ class SessionContext(BaseModel):
     address_form: str = "f"
     name: str | None = None
     cluster_id: str | None = None
+    batch_id: str | None = None
+    district: str | None = None
     experience_band: str | None = None
     first_year: bool = False
     classes: list[int] = Field(default_factory=list)
+    consent_service: bool = False
+    consent_share_scores: bool = False
+    clarifying_already_asked: bool = False
 
 
 class WeeklyStateMachine:
@@ -443,7 +516,7 @@ class WeeklyStateMachine:
             return True
         now = datetime.now(UTC)
         diff = (now - self.ctx.last_inbound_at).total_seconds()
-        return diff > 86400  # 24 hours
+        return diff > 86400
 
     def is_inactive_resume(self) -> bool:
         """Checks if teacher was inactive > 6 h in a mid-week state (spec/08 §8.2)."""
@@ -453,7 +526,7 @@ class WeeklyStateMachine:
             return False
         now = datetime.now(UTC)
         diff = (now - self.ctx.last_inbound_at).total_seconds()
-        return diff > 21600  # 6 hours
+        return diff > 21600
 
     def transition_to(self, new_state: SessionStateEnum) -> None:
         """Executes state transition directly."""
@@ -470,6 +543,7 @@ class WeeklyStateMachine:
         target = self.ctx.prior_state_before_ask or SessionStateEnum.LEARN
         self.ctx.current_state = target
         self.ctx.prior_state_before_ask = None
+        self.ctx.clarifying_already_asked = False
         return target
 
     def can_retry_rehearsal(self) -> bool:
@@ -484,51 +558,117 @@ class WeeklyStateMachine:
     def advance(self) -> SessionStateEnum:
         """Advances to the natural next step in the loop."""
         transitions: dict[SessionStateEnum, SessionStateEnum] = {
-            SessionStateEnum.PLACEMENT: SessionStateEnum.LEARN,
             SessionStateEnum.LEARN: SessionStateEnum.EXPLAIN_BACK,
             SessionStateEnum.EXPLAIN_BACK: SessionStateEnum.MODEL,
-            SessionStateEnum.MODEL: SessionStateEnum.REHEARSE,
+            SessionStateEnum.MODEL: SessionStateEnum.REHEARSE_INTRO,
+            SessionStateEnum.REHEARSE_INTRO: SessionStateEnum.REHEARSE,
             SessionStateEnum.REHEARSE: SessionStateEnum.FEEDBACK,
             SessionStateEnum.FEEDBACK: SessionStateEnum.TRY_IN_CLASS,
-            SessionStateEnum.RETRY: SessionStateEnum.REHEARSE,
-            SessionStateEnum.TRY_IN_CLASS: SessionStateEnum.REFLECT,
-            SessionStateEnum.REFLECT: SessionStateEnum.DONE,
+            SessionStateEnum.TRY_IN_CLASS: SessionStateEnum.REFLECT_SELF,
+            SessionStateEnum.REFLECT_SELF: SessionStateEnum.DONE,
+            SessionStateEnum.REFLECT_PEER: SessionStateEnum.DONE,
         }
         if self.ctx.current_state in transitions:
             self.ctx.current_state = transitions[self.ctx.current_state]
         return self.ctx.current_state
 
     def reset(self) -> None:
-        """Resets teacher session data to initial state (e.g. data delete flow, spec/08 §8.3)."""
+        """Resets teacher session data to initial state (spec/08 §8.3)."""
         self.ctx.current_state = SessionStateEnum.LEARN
         self.ctx.prior_state_before_ask = None
+        self.ctx.prior_state_before_delete = None
+        self.ctx.awaiting_delete_confirm = False
         self.ctx.onboarding_state = OnboardingStateEnum.NEW
         self.ctx.retries_count = 0
         self.ctx.rehearsal_turns_count = 0
         self.ctx.placement_turns_count = 0
         self.ctx.reflection_type = None
+        self.ctx.reflect_step = 0
         self.ctx.evidence_level = 0
         self.ctx.child_states = {}
         self.ctx.name = None
         self.ctx.cluster_id = None
+        self.ctx.batch_id = None
+        self.ctx.district = None
         self.ctx.experience_band = None
         self.ctx.first_year = False
         self.ctx.classes = []
+        self.ctx.consent_service = False
+        self.ctx.consent_share_scores = False
+        self.ctx.clarifying_already_asked = False
 
-    def transition(self, input_text_or_btn: str, intent: str | None = None) -> TransitionResult:
-        """Processes input or intent against the weekly state machine (spec/08 §8.2–§8.4)."""
-        token = (intent or input_text_or_btn).strip().lower()
+    def transition(
+        self,
+        input_text_or_btn: str = "",
+        intent: Intent | str | None = None,
+        button_id: str | None = None,
+        scene_ended: bool = False,
+    ) -> TransitionResult:
+        """Processes input or intent against the weekly state machine using match_intent (spec/08 §8.2–§8.4)."""
+        raw_text = input_text_or_btn.strip()
         prev = self.ctx.current_state
 
-        # Global intents (§8.3)
-        if token in ("help", "मदद", "menu", "मेनू"):
+        # Determine canonical Intent via match_intent
+        matched_intent: Intent | None = None
+        if isinstance(intent, Intent):
+            matched_intent = intent
+        elif isinstance(intent, str):
+            matched_intent = match_intent(text=intent, button_id=intent)
+
+        if matched_intent is None:
+            in_rehearsal_mode = prev == SessionStateEnum.REHEARSE
+            matched_intent = match_intent(
+                text=raw_text,
+                in_rehearsal=in_rehearsal_mode,
+                button_id=button_id or (raw_text if raw_text in BUTTON_INTENT_MAP else None),
+            )
+
+        # 1. Delete confirmation handling (§8.3 step 7)
+        if self.ctx.awaiting_delete_confirm:
+            if (
+                matched_intent in (Intent.CONFIRM_DELETE, Intent.CONFIRM_YES)
+                or raw_text == "confirm_delete"
+                or button_id == "btn_delete_confirm"
+            ):
+                self.ctx.awaiting_delete_confirm = False
+                self.reset()
+                return TransitionResult(
+                    previous_state=str(prev),
+                    new_state=str(OnboardingStateEnum.NEW),
+                    message_keys=["data_deleted"],
+                )
+            elif (
+                matched_intent in (Intent.CANCEL_DELETE, Intent.CONFIRM_NO)
+                or raw_text == "cancel_delete"
+                or button_id in ("btn_delete_cancel", "btn_no")
+            ):
+                self.ctx.awaiting_delete_confirm = False
+                target = self.ctx.prior_state_before_delete or SessionStateEnum.LEARN
+                self.ctx.current_state = target
+                self.ctx.prior_state_before_delete = None
+                prompt_key = self.get_state_prompt_key(target)
+                return TransitionResult(
+                    previous_state=str(prev),
+                    new_state=str(target),
+                    message_keys=[prompt_key],
+                    resumed=True,
+                )
+            else:
+                return TransitionResult(
+                    previous_state=str(prev),
+                    new_state=str(prev),
+                    message_keys=["delete_confirm"],
+                )
+
+        # 2. Global Intents (§8.3)
+        if matched_intent == Intent.HELP or raw_text == "help":
             return TransitionResult(
                 previous_state=str(prev),
                 new_state=str(prev),
                 message_keys=["help_menu"],
             )
 
-        if token in ("lite_toggle", "लाइट मोड", "lite"):
+        if matched_intent == Intent.LITE_TOGGLE or raw_text == "lite_toggle":
             self.ctx.lite_mode = not self.ctx.lite_mode
             key = "lite_on" if self.ctx.lite_mode else "lite_off"
             return TransitionResult(
@@ -537,27 +677,28 @@ class WeeklyStateMachine:
                 message_keys=[key],
             )
 
-        if token in ("progress", "प्रगति", "btn_progress"):
+        if matched_intent == Intent.PROGRESS or raw_text in ("progress", "btn_progress"):
             return TransitionResult(
                 previous_state=str(prev),
                 new_state=str(prev),
                 message_keys=["progress_summary"],
             )
 
-        if token in ("ask", "सवाल", "प्रश्न", "question", "sawal", "btn_ask"):
+        if matched_intent == Intent.DELETE or raw_text == "delete":
+            self.ctx.awaiting_delete_confirm = True
+            self.ctx.prior_state_before_delete = prev
+            return TransitionResult(
+                previous_state=str(prev),
+                new_state=str(prev),
+                message_keys=["delete_confirm"],
+            )
+
+        if matched_intent == Intent.ASK or raw_text in ("ask", "btn_ask"):
             self.handle_ask_interruption()
             return TransitionResult(
                 previous_state=str(prev),
                 new_state=str(SessionStateEnum.ASK),
                 message_keys=["ask_prompt"],
-            )
-
-        if token in ("delete", "मेरा डेटा हटाएँ", "delete my data"):
-            self.reset()
-            return TransitionResult(
-                previous_state=str(prev),
-                new_state=str(OnboardingStateEnum.NEW),
-                message_keys=["data_deleted"],
             )
 
         # In ASK state -> resume prior state (§8.4)
@@ -571,24 +712,32 @@ class WeeklyStateMachine:
                 resumed=True,
             )
 
-        # State-specific transitions (§8.2)
+        # 3. State-specific transitions (§8.2)
         if prev == SessionStateEnum.LEARN:
-            if token in ("btn_replay", "replay", "repeat", "फिर से", "दोबारा"):
+            if matched_intent == Intent.REPEAT or raw_text == "btn_replay":
                 return TransitionResult(
                     previous_state=str(SessionStateEnum.LEARN),
                     new_state=str(SessionStateEnum.LEARN),
                     message_keys=["learn_intro"],
                 )
-            self.ctx.current_state = SessionStateEnum.EXPLAIN_BACK
+            if matched_intent == Intent.NEXT or raw_text == "btn_understood":
+                self.ctx.current_state = SessionStateEnum.EXPLAIN_BACK
+                return TransitionResult(
+                    previous_state=str(SessionStateEnum.LEARN),
+                    new_state=str(SessionStateEnum.EXPLAIN_BACK),
+                    message_keys=["explain_back_prompt"],
+                )
+            # Free text does not advance LEARN state silently (§8.3 step 4)
             return TransitionResult(
                 previous_state=str(SessionStateEnum.LEARN),
-                new_state=str(SessionStateEnum.EXPLAIN_BACK),
-                message_keys=["explain_back_prompt"],
+                new_state=str(SessionStateEnum.LEARN),
+                message_keys=[],
+                needs_intent_router=True,
             )
 
         if prev == SessionStateEnum.EXPLAIN_BACK:
             self.ctx.current_state = SessionStateEnum.MODEL
-            if token in ("btn_skip", "skip", "छोड़ें", "chhodo"):
+            if matched_intent == Intent.SKIP or raw_text == "btn_skip":
                 return TransitionResult(
                     previous_state=str(SessionStateEnum.EXPLAIN_BACK),
                     new_state=str(SessionStateEnum.MODEL),
@@ -601,21 +750,39 @@ class WeeklyStateMachine:
             )
 
         if prev == SessionStateEnum.MODEL:
-            self.ctx.current_state = SessionStateEnum.REHEARSE
-            if token in ("btn_listen", "listen", "सुनें"):
+            if matched_intent == Intent.LISTEN or raw_text in ("btn_listen", "listen"):
+                self.ctx.current_state = SessionStateEnum.REHEARSE_INTRO
                 return TransitionResult(
                     previous_state=str(SessionStateEnum.MODEL),
-                    new_state=str(SessionStateEnum.REHEARSE),
+                    new_state=str(SessionStateEnum.REHEARSE_INTRO),
                     message_keys=["model_header", "rehearse_intro"],
                 )
+            if matched_intent == Intent.SKIP or raw_text in ("btn_skip", "skip"):
+                self.ctx.current_state = SessionStateEnum.REHEARSE_INTRO
+                return TransitionResult(
+                    previous_state=str(SessionStateEnum.MODEL),
+                    new_state=str(SessionStateEnum.REHEARSE_INTRO),
+                    message_keys=["rehearse_intro"],
+                )
+            # Free text does not advance MODEL state silently (§8.3 step 4)
             return TransitionResult(
                 previous_state=str(SessionStateEnum.MODEL),
+                new_state=str(SessionStateEnum.MODEL),
+                message_keys=[],
+                needs_intent_router=True,
+            )
+
+        if prev == SessionStateEnum.REHEARSE_INTRO:
+            self.ctx.current_state = SessionStateEnum.REHEARSE
+            self.ctx.rehearsal_turns_count = 1
+            return TransitionResult(
+                previous_state=str(SessionStateEnum.REHEARSE_INTRO),
                 new_state=str(SessionStateEnum.REHEARSE),
-                message_keys=["rehearse_intro"],
+                message_keys=[],
             )
 
         if prev == SessionStateEnum.REHEARSE:
-            if token in ("stop_scene", "बस", "रुको", "खत्म", "stop", "bas"):
+            if matched_intent == Intent.STOP_SCENE or scene_ended or raw_text == "stop_scene":
                 self.ctx.current_state = SessionStateEnum.FEEDBACK
                 ev = 1 if self.ctx.rehearsal_turns_count >= 3 else 0
                 if ev > 0:
@@ -625,8 +792,9 @@ class WeeklyStateMachine:
                     new_state=str(SessionStateEnum.FEEDBACK),
                     message_keys=["feedback_header", "realism_prompt"],
                     evidence_level=ev,
+                    rehearsal_ended=True,
                 )
-            # Normal rehearsal turn
+            # Active rehearsal turn
             self.ctx.rehearsal_turns_count += 1
             return TransitionResult(
                 previous_state=str(SessionStateEnum.REHEARSE),
@@ -635,13 +803,13 @@ class WeeklyStateMachine:
             )
 
         if prev == SessionStateEnum.FEEDBACK:
-            if token in ("btn_retry", "retry", "फिर से अभ्यास", "retry_limit_reached"):
+            if matched_intent == Intent.RETRY or raw_text == "btn_retry":
                 if self.can_retry_rehearsal():
                     self.ctx.retries_count += 1
-                    self.ctx.current_state = SessionStateEnum.RETRY
+                    self.ctx.current_state = SessionStateEnum.REHEARSE_INTRO
                     return TransitionResult(
                         previous_state=str(SessionStateEnum.FEEDBACK),
-                        new_state=str(SessionStateEnum.RETRY),
+                        new_state=str(SessionStateEnum.REHEARSE_INTRO),
                         message_keys=["rehearse_intro"],
                     )
                 self.ctx.current_state = SessionStateEnum.TRY_IN_CLASS
@@ -650,85 +818,121 @@ class WeeklyStateMachine:
                     new_state=str(SessionStateEnum.TRY_IN_CLASS),
                     message_keys=["retry_limit", "try_in_class"],
                 )
-            self.ctx.current_state = SessionStateEnum.TRY_IN_CLASS
-            return TransitionResult(
-                previous_state=str(SessionStateEnum.FEEDBACK),
-                new_state=str(SessionStateEnum.TRY_IN_CLASS),
-                message_keys=["try_in_class"],
-            )
-
-        if prev == SessionStateEnum.RETRY:
-            if token in ("btn_continue", "continue", "आगे बढ़ें"):
+            if raw_text == "retry_limit_reached":
                 self.ctx.current_state = SessionStateEnum.TRY_IN_CLASS
                 return TransitionResult(
-                    previous_state=str(SessionStateEnum.RETRY),
+                    previous_state=str(SessionStateEnum.FEEDBACK),
+                    new_state=str(SessionStateEnum.TRY_IN_CLASS),
+                    message_keys=["retry_limit", "try_in_class"],
+                )
+            if matched_intent == Intent.NEXT or raw_text == "btn_continue":
+                self.ctx.current_state = SessionStateEnum.TRY_IN_CLASS
+                return TransitionResult(
+                    previous_state=str(SessionStateEnum.FEEDBACK),
                     new_state=str(SessionStateEnum.TRY_IN_CLASS),
                     message_keys=["try_in_class"],
                 )
-            self.ctx.current_state = SessionStateEnum.REHEARSE
+            # Realism rating or free feedback input stays in FEEDBACK
             return TransitionResult(
-                previous_state=str(SessionStateEnum.RETRY),
-                new_state=str(SessionStateEnum.REHEARSE),
-                message_keys=["rehearse_intro"],
+                previous_state=str(SessionStateEnum.FEEDBACK),
+                new_state=str(SessionStateEnum.FEEDBACK),
+                message_keys=[],
             )
 
         if prev == SessionStateEnum.TRY_IN_CLASS:
-            if token in ("btn_peer", "peer", "साथी ने देखा"):
+            if matched_intent == Intent.PEER or raw_text == "btn_peer":
                 self.ctx.reflection_type = "peer"
-                self.ctx.current_state = SessionStateEnum.REFLECT
+                self.ctx.reflect_step = 1
+                self.ctx.current_state = SessionStateEnum.REFLECT_PEER
                 return TransitionResult(
                     previous_state=str(SessionStateEnum.TRY_IN_CLASS),
-                    new_state=str(SessionStateEnum.REFLECT),
+                    new_state=str(SessionStateEnum.REFLECT_PEER),
                     message_keys=["peer_item"],
                 )
-            if token in ("btn_self", "self", "खुद बताऊँगी", "खुद बताऊँगा"):
+            if matched_intent == Intent.SELF or raw_text == "btn_self":
                 self.ctx.reflection_type = "self"
-                self.ctx.current_state = SessionStateEnum.REFLECT
+                self.ctx.reflect_step = 1
+                self.ctx.current_state = SessionStateEnum.REFLECT_SELF
                 return TransitionResult(
                     previous_state=str(SessionStateEnum.TRY_IN_CLASS),
-                    new_state=str(SessionStateEnum.REFLECT),
+                    new_state=str(SessionStateEnum.REFLECT_SELF),
                     message_keys=["reflect_q"],
                 )
-            if token in ("btn_later", "later", "बाद में"):
+            if matched_intent == Intent.LATER or raw_text == "btn_later":
                 return TransitionResult(
                     previous_state=str(SessionStateEnum.TRY_IN_CLASS),
                     new_state=str(SessionStateEnum.TRY_IN_CLASS),
                     message_keys=["reminder"],
                 )
-            self.ctx.current_state = SessionStateEnum.REFLECT
+            # Free text does not advance TRY_IN_CLASS state silently (§8.3 step 4)
             return TransitionResult(
                 previous_state=str(SessionStateEnum.TRY_IN_CLASS),
-                new_state=str(SessionStateEnum.REFLECT),
+                new_state=str(SessionStateEnum.TRY_IN_CLASS),
+                message_keys=[],
+                needs_intent_router=True,
+            )
+
+        if prev == SessionStateEnum.REFLECT_PEER:
+            if (
+                raw_text == "checklist_done"
+                or self.ctx.reflect_step >= self.ctx.peer_checklist_total
+            ):
+                self.ctx.evidence_level = max(self.ctx.evidence_level, 3)
+                self.ctx.current_state = SessionStateEnum.DONE
+                return TransitionResult(
+                    previous_state=str(SessionStateEnum.REFLECT_PEER),
+                    new_state=str(SessionStateEnum.DONE),
+                    message_keys=["week_done"],
+                    evidence_level=3,
+                )
+            self.ctx.reflect_step += 1
+            return TransitionResult(
+                previous_state=str(SessionStateEnum.REFLECT_PEER),
+                new_state=str(SessionStateEnum.REFLECT_PEER),
+                message_keys=["peer_item"],
+            )
+
+        if prev == SessionStateEnum.REFLECT_SELF:
+            if raw_text in ("q2_answer", "reflection_done") or self.ctx.reflect_step >= 2:
+                self.ctx.evidence_level = max(self.ctx.evidence_level, 2)
+                self.ctx.current_state = SessionStateEnum.DONE
+                return TransitionResult(
+                    previous_state=str(SessionStateEnum.REFLECT_SELF),
+                    new_state=str(SessionStateEnum.DONE),
+                    message_keys=["week_done"],
+                    evidence_level=2,
+                )
+            self.ctx.reflect_step += 1
+            return TransitionResult(
+                previous_state=str(SessionStateEnum.REFLECT_SELF),
+                new_state=str(SessionStateEnum.REFLECT_SELF),
                 message_keys=["reflect_q"],
             )
 
-        if prev == SessionStateEnum.REFLECT:
-            ev = 3 if self.ctx.reflection_type == "peer" else 2
-            self.ctx.evidence_level = max(self.ctx.evidence_level, ev)
-            self.ctx.current_state = SessionStateEnum.DONE
-            return TransitionResult(
-                previous_state=str(SessionStateEnum.REFLECT),
-                new_state=str(SessionStateEnum.DONE),
-                message_keys=["week_done"],
-                evidence_level=ev,
-            )
-
         if prev == SessionStateEnum.DONE:
-            if token in ("btn_next_move", "next_move", "अगला तरीका"):
+            if matched_intent == Intent.NEXT or raw_text in ("btn_next_move", "next_move"):
                 self.ctx.current_state = SessionStateEnum.LEARN
                 self.ctx.rehearsal_turns_count = 0
                 self.ctx.retries_count = 0
+                self.ctx.reflect_step = 0
                 return TransitionResult(
                     previous_state=str(SessionStateEnum.DONE),
                     new_state=str(SessionStateEnum.LEARN),
                     message_keys=["learn_intro"],
                 )
-            if token in ("btn_progress", "progress", "मेरी प्रगति"):
+            if raw_text in ("btn_progress", "progress"):
                 return TransitionResult(
                     previous_state=str(SessionStateEnum.DONE),
                     new_state=str(SessionStateEnum.DONE),
                     message_keys=["progress_summary"],
                 )
+            # Free text does not advance DONE state silently (§8.3 step 4)
+            return TransitionResult(
+                previous_state=str(SessionStateEnum.DONE),
+                new_state=str(SessionStateEnum.DONE),
+                message_keys=[],
+                needs_intent_router=True,
+            )
 
         return TransitionResult(
             previous_state=str(prev),
@@ -750,24 +954,29 @@ class OnboardingStateMachine:
 
     def transition(self, input_text_or_btn: str) -> TransitionResult:
         """Processes onboarding inputs and advances state (spec/08 §8.1)."""
-        token = input_text_or_btn.strip().lower()
+        raw_text = input_text_or_btn.strip()
+        token = raw_text.lower()
         prev = self.ctx.onboarding_state
+        intent = match_intent(
+            text=raw_text, button_id=raw_text if raw_text in BUTTON_INTENT_MAP else None
+        )
 
         if prev == OnboardingStateEnum.NEW:
-            if token in ("btn_agree", "agree", "सहमत हूँ", "yes", "हाँ"):
+            if intent == Intent.CONFIRM_YES or token in ("btn_agree", "agree"):
+                self.ctx.consent_service = True
                 self.ctx.onboarding_state = OnboardingStateEnum.JOIN_CODE
                 return TransitionResult(
                     previous_state=str(prev),
                     new_state=str(OnboardingStateEnum.JOIN_CODE),
                     message_keys=["ask_join_code"],
                 )
-            if token in ("btn_more", "more", "और जानें"):
+            if intent == Intent.MORE or token in ("btn_more", "more"):
                 return TransitionResult(
                     previous_state=str(prev),
                     new_state=str(OnboardingStateEnum.NEW),
                     message_keys=["consent_details"],
                 )
-            if token in ("btn_decline", "decline", "नहीं", "no"):
+            if intent == Intent.CONFIRM_NO or token in ("btn_decline", "decline"):
                 return TransitionResult(
                     previous_state=str(prev),
                     new_state=str(OnboardingStateEnum.NEW),
@@ -775,15 +984,27 @@ class OnboardingStateMachine:
                 )
 
         if prev == OnboardingStateEnum.JOIN_CODE:
-            if token in ("valid_code", "knp-c01-b1", "knp-c01-b2", "demo"):
-                self.ctx.cluster_id = token.upper()
+            valid_codes = ("valid_code", "knp-c01-b1", "knp-c01-b2", "demo")
+            if token in valid_codes:
+                if not self.ctx.cluster_id or self.ctx.cluster_id == "UNASSIGNED":
+                    self.ctx.cluster_id = (
+                        "KNP-C01" if ("knp" in token or token == "valid_code") else "DEMO-C01"
+                    )
+                if not self.ctx.batch_id:
+                    self.ctx.batch_id = (
+                        "KNP-B1"
+                        if ("b1" in token or token == "valid_code")
+                        else ("KNP-B2" if "b2" in token else "DEMO-B1")
+                    )
+                if not self.ctx.district:
+                    self.ctx.district = "Kanpur Nagar"
                 self.ctx.onboarding_state = OnboardingStateEnum.PROFILE_NAME
                 return TransitionResult(
                     previous_state=str(prev),
                     new_state=str(OnboardingStateEnum.PROFILE_NAME),
                     message_keys=["ask_name"],
                 )
-            if token in ("no_code", "नहीं", "no", "skip"):
+            if intent == Intent.CONFIRM_NO or token in ("no_code", "skip"):
                 self.ctx.cluster_id = "UNASSIGNED"
                 self.ctx.onboarding_state = OnboardingStateEnum.PROFILE_NAME
                 return TransitionResult(
@@ -798,7 +1019,7 @@ class OnboardingStateMachine:
             )
 
         if prev == OnboardingStateEnum.PROFILE_NAME:
-            self.ctx.name = input_text_or_btn[:40].strip()
+            self.ctx.name = raw_text[:40].strip()
             self.ctx.onboarding_state = OnboardingStateEnum.PROFILE_ADDRESS
             return TransitionResult(
                 previous_state=str(prev),
@@ -819,8 +1040,8 @@ class OnboardingStateMachine:
             )
 
         if prev == OnboardingStateEnum.PROFILE_EXPERIENCE:
-            self.ctx.experience_band = token
-            self.ctx.first_year = "0-1" in token or "exp_0_1" in token
+            self.ctx.experience_band = raw_text
+            self.ctx.first_year = "0-1" in raw_text or "exp_0_1" in token
             self.ctx.onboarding_state = OnboardingStateEnum.PROFILE_CLASSES
             return TransitionResult(
                 previous_state=str(prev),
@@ -838,6 +1059,10 @@ class OnboardingStateMachine:
             )
 
         if prev == OnboardingStateEnum.SHARE_CONSENT:
+            if intent == Intent.CONFIRM_YES or token == "btn_yes":
+                self.ctx.consent_share_scores = True
+            else:
+                self.ctx.consent_share_scores = False
             self.ctx.onboarding_state = OnboardingStateEnum.PLACEMENT_INTRO
             return TransitionResult(
                 previous_state=str(prev),
@@ -847,7 +1072,7 @@ class OnboardingStateMachine:
 
         if prev == OnboardingStateEnum.PLACEMENT_INTRO:
             self.ctx.onboarding_state = OnboardingStateEnum.PLACEMENT
-            self.ctx.placement_turns_count = 0
+            self.ctx.placement_turns_count = 1
             return TransitionResult(
                 previous_state=str(prev),
                 new_state=str(OnboardingStateEnum.PLACEMENT),

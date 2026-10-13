@@ -30,6 +30,14 @@ class Intent(StrEnum):
     GREETING = "greeting"
     CONFIRM_YES = "confirm_yes"
     CONFIRM_NO = "confirm_no"
+    CONFIRM_DELETE = "confirm_delete"
+    CANCEL_DELETE = "cancel_delete"
+    RETRY = "retry"
+    LISTEN = "listen"
+    PEER = "peer"
+    SELF = "self"
+    LATER = "later"
+    MORE = "more"
 
 
 # Boundary regex for Devanagari (\u0900-\u097F) and Latin/alphanumeric words
@@ -45,12 +53,26 @@ BUTTON_INTENT_MAP: dict[str, Intent] = {
     "btn_retry_speak": Intent.CONFIRM_NO,
     "btn_agree": Intent.CONFIRM_YES,
     "btn_decline": Intent.CONFIRM_NO,
+    "btn_more": Intent.MORE,
     "btn_understood": Intent.NEXT,
     "btn_replay": Intent.REPEAT,
     "btn_skip": Intent.SKIP,
     "btn_continue": Intent.NEXT,
     "btn_next_move": Intent.NEXT,
     "btn_progress": Intent.PROGRESS,
+    "btn_ask": Intent.ASK,
+    "btn_listen": Intent.LISTEN,
+    "btn_retry": Intent.RETRY,
+    "btn_peer": Intent.PEER,
+    "btn_self": Intent.SELF,
+    "btn_later": Intent.LATER,
+    "btn_delete_confirm": Intent.CONFIRM_DELETE,
+    "btn_delete_cancel": Intent.CANCEL_DELETE,
+    "btn_confirm_ok": Intent.CONFIRM_YES,
+    "btn_confirm_redo": Intent.CONFIRM_NO,
+    "btn_restart": Intent.NEXT,
+    "btn_not_now": Intent.CONFIRM_NO,
+    "btn_lite": Intent.LITE_TOGGLE,
 }
 
 # Stop scene regex: whole message or explicit stop phrases (spec/08 §8.3 Rule 2)
@@ -111,6 +133,46 @@ _DELETE_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+_CONFIRM_DELETE_PATTERN = re.compile(
+    rf"^{_WB}(हाँ\s*[,।]?\s*मिटाएँ|हाँ\s*[,।]?\s*मिटाएं|delete\s+confirm|yes\s+delete){_WBE}$",
+    re.IGNORECASE,
+)
+
+_CANCEL_DELETE_PATTERN = re.compile(
+    rf"^{_WB}(नहीं\s*[,।]?\s*मत\s*मिटाएँ|नहीं\s*[,।]?\s*रहने\s*दो|cancel\s+delete){_WBE}$",
+    re.IGNORECASE,
+)
+
+_RETRY_PATTERN = re.compile(
+    rf"^{_WB}(फिर\s*से\s*अभ्यास|retry|दोबारा\s*अभ्यास){_WBE}$",
+    re.IGNORECASE,
+)
+
+_LISTEN_PATTERN = re.compile(
+    rf"^{_WB}(सुनें|सुनो|listen){_WBE}$",
+    re.IGNORECASE,
+)
+
+_PEER_PATTERN = re.compile(
+    rf"^{_WB}(साथी\s*ने\s*देखा|peer){_WBE}$",
+    re.IGNORECASE,
+)
+
+_SELF_PATTERN = re.compile(
+    rf"^{_WB}(खुद\s*बताऊँगी|खुद\s*बताऊँगा|खुद\s*बताऊंगी|खुद\s*बताऊंगा|self){_WBE}$",
+    re.IGNORECASE,
+)
+
+_LATER_PATTERN = re.compile(
+    rf"^{_WB}(बाद\s*में|later){_WBE}$",
+    re.IGNORECASE,
+)
+
+_MORE_PATTERN = re.compile(
+    rf"^{_WB}(और\s*जानें|और\s*जाने|more){_WBE}$",
+    re.IGNORECASE,
+)
+
 _CONFIRM_YES_PATTERN = re.compile(
     rf"^{_WB}(हाँ|हा|haan|yes|सही|सही\s*है|sahii?){_WBE}[.!]?$",
     re.IGNORECASE,
@@ -153,9 +215,8 @@ def match_intent(
     4. Confirmation / greeting matches.
     """
     # 1. Button ID match
-    if button_id:
-        if button_id in BUTTON_INTENT_MAP:
-            return BUTTON_INTENT_MAP[button_id]
+    if button_id and button_id in BUTTON_INTENT_MAP:
+        return BUTTON_INTENT_MAP[button_id]
 
     if not text:
         return None
@@ -163,6 +224,9 @@ def match_intent(
     cleaned = normalize_intent_text(text)
     if not cleaned:
         return None
+
+    if cleaned in BUTTON_INTENT_MAP:
+        return BUTTON_INTENT_MAP[cleaned]
 
     # Strip trailing punctuation for clean matching
     cleaned_punct = re.sub(r"[\s।,!\.?]+$", "", cleaned)
@@ -197,6 +261,32 @@ def match_intent(
 
     if _DELETE_PATTERN.match(cleaned) or _DELETE_PATTERN.match(cleaned_punct):
         return Intent.DELETE
+
+    # Delete confirmations
+    if _CONFIRM_DELETE_PATTERN.match(cleaned) or _CONFIRM_DELETE_PATTERN.match(cleaned_punct):
+        return Intent.CONFIRM_DELETE
+
+    if _CANCEL_DELETE_PATTERN.match(cleaned) or _CANCEL_DELETE_PATTERN.match(cleaned_punct):
+        return Intent.CANCEL_DELETE
+
+    # Activity/flow intents
+    if _RETRY_PATTERN.match(cleaned) or _RETRY_PATTERN.match(cleaned_punct):
+        return Intent.RETRY
+
+    if _LISTEN_PATTERN.match(cleaned) or _LISTEN_PATTERN.match(cleaned_punct):
+        return Intent.LISTEN
+
+    if _PEER_PATTERN.match(cleaned) or _PEER_PATTERN.match(cleaned_punct):
+        return Intent.PEER
+
+    if _SELF_PATTERN.match(cleaned) or _SELF_PATTERN.match(cleaned_punct):
+        return Intent.SELF
+
+    if _LATER_PATTERN.match(cleaned) or _LATER_PATTERN.match(cleaned_punct):
+        return Intent.LATER
+
+    if _MORE_PATTERN.match(cleaned) or _MORE_PATTERN.match(cleaned_punct):
+        return Intent.MORE
 
     if _NEXT_PATTERN.match(cleaned) or _NEXT_PATTERN.match(cleaned_punct):
         return Intent.NEXT

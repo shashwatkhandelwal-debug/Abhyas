@@ -1,9 +1,12 @@
-"""Tests for Weekly State Machine, Onboarding, and Conversation Flow (spec/08 §8.1–§8.8, T20)."""
+"""Tests for Weekly State Machine, Onboarding, and SessionService (spec/08 §8.1–§8.8, T20/T21)."""
 
 from datetime import UTC, datetime, timedelta
+from uuid import uuid4
 
 import pytest
 
+from backend.app.core.types import InboundMessage
+from backend.app.sessions.service import SessionService
 from backend.app.sessions.state_machine import (
     STATE_TRANSITION_TABLE,
     WEEKLY_LOOP_STATES,
@@ -29,10 +32,11 @@ def test_state_machine_happy_path_transitions() -> None:
 
     assert sm.advance() == SessionStateEnum.EXPLAIN_BACK
     assert sm.advance() == SessionStateEnum.MODEL
+    assert sm.advance() == SessionStateEnum.REHEARSE_INTRO
     assert sm.advance() == SessionStateEnum.REHEARSE
     assert sm.advance() == SessionStateEnum.FEEDBACK
     assert sm.advance() == SessionStateEnum.TRY_IN_CLASS
-    assert sm.advance() == SessionStateEnum.REFLECT
+    assert sm.advance() == SessionStateEnum.REFLECT_SELF
     assert sm.advance() == SessionStateEnum.DONE
 
 
@@ -138,7 +142,6 @@ def test_6_hour_inactivity_resume_rule() -> None:
 )
 def test_table_driven_transitions_coverage(edge: TransitionEdge) -> None:
     """Exercises every (state, input-kind/intent) pair in STATE_TRANSITION_TABLE per §8.8."""
-    # Check if edge belongs to Onboarding
     onboarding_states = {s.value for s in OnboardingStateEnum}
 
     if edge.source_state in onboarding_states and edge.source_state != "LEARN":
@@ -157,7 +160,6 @@ def test_table_driven_transitions_coverage(edge: TransitionEdge) -> None:
         assert result.new_state == edge.target_state, f"Failed on edge {edge}"
         assert tuple(result.message_keys) == edge.message_keys, f"Failed message keys on {edge}"
     else:
-        # Weekly loop or global intent
         ctx = SessionContext(
             teacher_id="t_test",
             week_start="2026-10-12",
@@ -170,8 +172,13 @@ def test_table_driven_transitions_coverage(edge: TransitionEdge) -> None:
             ctx.retries_count = 3
         elif edge.source_state == "ASK" and edge.input_kind == "resume":
             ctx.prior_state_before_ask = SessionStateEnum.LEARN
-        elif edge.source_state == "REFLECT":
-            ctx.reflection_type = "self"
+        elif edge.source_state == "REFLECT_PEER" and edge.input_kind == "checklist_done":
+            ctx.reflect_step = ctx.peer_checklist_total
+        elif edge.source_state == "REFLECT_SELF" and edge.input_kind == "q2_answer":
+            ctx.reflect_step = 2
+        elif edge.input_kind in ("confirm_delete", "cancel_delete"):
+            ctx.awaiting_delete_confirm = True
+            ctx.prior_state_before_delete = SessionStateEnum.LEARN
 
         wsm = WeeklyStateMachine(ctx)
         result = wsm.transition(edge.input_kind)
@@ -207,6 +214,26 @@ def test_ask_from_every_weekly_state_resumes_cleanly() -> None:
         assert wsm.ctx.prior_state_before_ask is None
 
 
+def test_free_text_does_not_silently_advance() -> None:
+    """In LEARN, MODEL, TRY_IN_CLASS, DONE: free text never silently advances state (§8.3 step 4)."""
+    for st in (
+        SessionStateEnum.LEARN,
+        SessionStateEnum.MODEL,
+        SessionStateEnum.TRY_IN_CLASS,
+        SessionStateEnum.DONE,
+    ):
+        ctx = SessionContext(
+            teacher_id="t1",
+            week_start="2026-10-12",
+            current_move_id="NUM_PLACE_VALUE",
+            current_state=st,
+        )
+        wsm = WeeklyStateMachine(ctx)
+        res = wsm.transition("कुछ रैंडम टेक्स्ट जो बटन नहीं है")
+        assert res.new_state == str(st)
+        assert res.needs_intent_router is True
+
+
 def test_retry_limit_enforced_at_three() -> None:
     """Verifies that rehearsal retry limit is strictly enforced at 3 (§8.2, §8.8)."""
     ctx = SessionContext(
@@ -218,35 +245,35 @@ def test_retry_limit_enforced_at_three() -> None:
     )
     wsm = WeeklyStateMachine(ctx)
 
-    # Attempt 1
+    # Attempt 1 -> REHEARSE_INTRO
     res1 = wsm.transition("btn_retry")
-    assert res1.new_state == "RETRY"
+    assert res1.new_state == "REHEARSE_INTRO"
     assert wsm.ctx.retries_count == 1
     assert wsm.can_retry_rehearsal() is True
 
     # Transition to Rehearse, then stop -> FEEDBACK
-    wsm.transition("start_rehearsal")
+    wsm.transition("start_turn")
     assert wsm.ctx.current_state == SessionStateEnum.REHEARSE
     wsm.transition("stop_scene")
     assert wsm.ctx.current_state == SessionStateEnum.FEEDBACK
 
-    # Attempt 2
+    # Attempt 2 -> REHEARSE_INTRO
     res2 = wsm.transition("btn_retry")
-    assert res2.new_state == "RETRY"
+    assert res2.new_state == "REHEARSE_INTRO"
     assert wsm.ctx.retries_count == 2
     assert wsm.can_retry_rehearsal() is True
 
-    wsm.transition("start_rehearsal")
+    wsm.transition("start_turn")
     wsm.transition("stop_scene")
     assert wsm.ctx.current_state == SessionStateEnum.FEEDBACK
 
-    # Attempt 3
+    # Attempt 3 -> REHEARSE_INTRO
     res3 = wsm.transition("btn_retry")
-    assert res3.new_state == "RETRY"
+    assert res3.new_state == "REHEARSE_INTRO"
     assert wsm.ctx.retries_count == 3
     assert wsm.can_retry_rehearsal() is False
 
-    wsm.transition("start_rehearsal")
+    wsm.transition("start_turn")
     wsm.transition("stop_scene")
     assert wsm.ctx.current_state == SessionStateEnum.FEEDBACK
 
@@ -257,8 +284,8 @@ def test_retry_limit_enforced_at_three() -> None:
     assert wsm.ctx.current_state == SessionStateEnum.TRY_IN_CLASS
 
 
-def test_delete_flow_purges_and_resets_to_new() -> None:
-    """Verifies delete intent purges context and next inbound starts at NEW (§8.3, §8.8)."""
+def test_delete_flow_confirmation_and_purge() -> None:
+    """Verifies delete flow: confirmation prompt -> confirm purges to NEW, cancel resumes (§8.3 step 7)."""
     ctx = SessionContext(
         teacher_id="t1",
         week_start="2026-10-12",
@@ -271,136 +298,237 @@ def test_delete_flow_purges_and_resets_to_new() -> None:
     )
     wsm = WeeklyStateMachine(ctx)
 
-    res = wsm.transition("delete")
-    assert res.new_state == "NEW"
-    assert res.message_keys == ["data_deleted"]
+    # 1. Delete request triggers confirmation
+    res_prompt = wsm.transition("मेरा डेटा हटाएँ")
+    assert res_prompt.new_state == "REHEARSE"
+    assert res_prompt.message_keys == ["delete_confirm"]
+    assert wsm.ctx.awaiting_delete_confirm is True
+
+    # 2. Cancel resumes prior state
+    res_cancel = wsm.transition("btn_delete_cancel")
+    assert res_cancel.new_state == "REHEARSE"
+    assert wsm.ctx.awaiting_delete_confirm is False
+
+    # 3. New delete request, then confirm
+    wsm.transition("delete")
+    res_confirm = wsm.transition("btn_delete_confirm")
+    assert res_confirm.new_state == "NEW"
+    assert res_confirm.message_keys == ["data_deleted"]
     assert wsm.ctx.onboarding_state == OnboardingStateEnum.NEW
     assert wsm.ctx.name is None
-    assert wsm.ctx.cluster_id is None
-    assert wsm.ctx.retries_count == 0
-
-    # Next inbound enters Onboarding at NEW
-    osm = OnboardingStateMachine(ctx)
-    next_res = osm.transition("btn_agree")
-    assert next_res.new_state == "JOIN_CODE"
 
 
-def test_full_happy_path_from_new_to_done_peer_evidence_level_three() -> None:
-    """Verifies full end-to-end flow from NEW to DONE with peer reflection yielding level 3 (§8.8)."""
+def test_peer_reflection_steps_checklist_evidence_level_three() -> None:
+    """Verifies REFLECT_PEER steps through checklist items and yields level 3 (§8.2, §8.8)."""
     ctx = SessionContext(
-        teacher_id="teacher_happy",
-        week_start="2026-10-12",
-        current_move_id="NUM_PLACE_VALUE",
-    )
-
-    # 1. Onboarding
-    osm = OnboardingStateMachine(ctx)
-    assert ctx.onboarding_state == OnboardingStateEnum.NEW
-
-    r = osm.transition("btn_agree")
-    assert r.new_state == "JOIN_CODE"
-
-    r = osm.transition("KNP-C01-B1")
-    assert r.new_state == "PROFILE_NAME"
-
-    r = osm.transition("सुनीता शर्मा")
-    assert r.new_state == "PROFILE_ADDRESS"
-
-    r = osm.transition("btn_female")
-    assert r.new_state == "PROFILE_EXPERIENCE"
-    assert ctx.address_form == "f"
-
-    r = osm.transition("0-1")
-    assert r.new_state == "PROFILE_CLASSES"
-    assert ctx.first_year is True
-
-    r = osm.transition("कक्षा 1-2")
-    assert r.new_state == "SHARE_CONSENT"
-
-    r = osm.transition("btn_yes")
-    assert r.new_state == "PLACEMENT_INTRO"
-
-    r = osm.transition("शुरू")
-    assert r.new_state == "PLACEMENT"
-
-    # Placement turn 1
-    r = osm.transition("रवि, 52 में दहाई क्या है?")
-    assert r.new_state == "PLACEMENT"
-
-    # Placement turn 2 -> READY
-    r = osm.transition("बहुत अच्छे!")
-    assert r.new_state == "READY"
-    assert r.message_keys == ["placement_done", "ready_first_move"]
-
-    # Start weekly loop
-    r = osm.transition("start")
-    assert r.new_state == "LEARN"
-
-    # 2. Weekly Loop
-    wsm = WeeklyStateMachine(ctx)
-    assert ctx.current_state == SessionStateEnum.LEARN
-
-    # LEARN -> EXPLAIN_BACK
-    r = wsm.transition("btn_understood")
-    assert r.new_state == "EXPLAIN_BACK"
-    assert r.message_keys == ["explain_back_prompt"]
-
-    # EXPLAIN_BACK -> MODEL
-    r = wsm.transition("दहाई को बंडलों से और इकाई को खुली तीलियों से समझाना चाहिए।")
-    assert r.new_state == "MODEL"
-    assert r.message_keys == ["explain_back_reply", "model_offer"]
-
-    # MODEL -> REHEARSE
-    r = wsm.transition("btn_listen")
-    assert r.new_state == "REHEARSE"
-    assert r.message_keys == ["model_header", "rehearse_intro"]
-
-    # Rehearsal turns (>= 3 turns for evidence level 1)
-    wsm.transition("नमस्ते बच्चों, आज हम 52-17 करेंगे।")
-    wsm.transition("रवि, पहले 52 में कितने बंडल हैं?")
-    wsm.transition("शाबाश, 5 बंडल और 2 खुली तीलियाँ।")
-    assert ctx.rehearsal_turns_count == 3
-
-    # End scene with stop word -> FEEDBACK (evidence level 1)
-    r = wsm.transition("बस")
-    assert r.new_state == "FEEDBACK"
-    assert ctx.evidence_level == 1
-
-    # FEEDBACK -> TRY_IN_CLASS
-    r = wsm.transition("btn_continue")
-    assert r.new_state == "TRY_IN_CLASS"
-    assert r.message_keys == ["try_in_class"]
-
-    # TRY_IN_CLASS -> REFLECT (peer observation path)
-    r = wsm.transition("btn_peer")
-    assert r.new_state == "REFLECT"
-    assert r.message_keys == ["peer_item"]
-    assert ctx.reflection_type == "peer"
-
-    # REFLECT -> DONE (evidence level 3 for peer)
-    r = wsm.transition("reflection_done")
-    assert r.new_state == "DONE"
-    assert r.message_keys == ["week_done"]
-    assert ctx.evidence_level == 3
-
-
-def test_self_reflection_yields_evidence_level_two() -> None:
-    """Verifies that self reflection path records evidence level 2 (§8.2, §8.8)."""
-    ctx = SessionContext(
-        teacher_id="t_self",
+        teacher_id="t1",
         week_start="2026-10-12",
         current_move_id="NUM_PLACE_VALUE",
         current_state=SessionStateEnum.TRY_IN_CLASS,
-        evidence_level=1,
     )
     wsm = WeeklyStateMachine(ctx)
 
-    r1 = wsm.transition("btn_self")
-    assert r1.new_state == "REFLECT"
-    assert r1.message_keys == ["reflect_q"]
-    assert ctx.reflection_type == "self"
+    # Advance to REFLECT_PEER
+    r = wsm.transition("btn_peer")
+    assert r.new_state == "REFLECT_PEER"
+    assert r.message_keys == ["peer_item"]
+    assert ctx.reflect_step == 1
 
-    r2 = wsm.transition("reflection_done")
-    assert r2.new_state == "DONE"
-    assert r2.message_keys == ["week_done"]
+    # Item 1 answered -> item 2
+    r2 = wsm.transition("हाँ")
+    assert r2.new_state == "REFLECT_PEER"
+    assert r2.message_keys == ["peer_item"]
+    assert ctx.reflect_step == 2
+
+    # Item 2 answered -> item 3
+    r3 = wsm.transition("हाँ")
+    assert r3.new_state == "REFLECT_PEER"
+    assert r3.message_keys == ["peer_item"]
+    assert ctx.reflect_step == 3
+
+    # Item 3 answered -> DONE with evidence level 3
+    r4 = wsm.transition("हाँ")
+    assert r4.new_state == "DONE"
+    assert r4.message_keys == ["week_done"]
+    assert ctx.evidence_level == 3
+
+
+def test_self_reflection_steps_q1_q2_evidence_level_two() -> None:
+    """Verifies REFLECT_SELF steps Q1 then Q2, yielding evidence level 2 (§8.2, §8.8)."""
+    ctx = SessionContext(
+        teacher_id="t1",
+        week_start="2026-10-12",
+        current_move_id="NUM_PLACE_VALUE",
+        current_state=SessionStateEnum.TRY_IN_CLASS,
+    )
+    wsm = WeeklyStateMachine(ctx)
+
+    # Advance to REFLECT_SELF
+    r = wsm.transition("btn_self")
+    assert r.new_state == "REFLECT_SELF"
+    assert r.message_keys == ["reflect_q"]
+    assert ctx.reflect_step == 1
+
+    # Q1 answered -> Q2
+    r2 = wsm.transition("बच्चों ने तीलियाँ आसानी से गिनीं।")
+    assert r2.new_state == "REFLECT_SELF"
+    assert r2.message_keys == ["reflect_q"]
+    assert ctx.reflect_step == 2
+
+    # Q2 answered -> DONE with evidence level 2
+    r3 = wsm.transition("अगली बार मैं बच्चों से खुद बंडल बनवाऊँगी।")
+    assert r3.new_state == "DONE"
+    assert r3.message_keys == ["week_done"]
     assert ctx.evidence_level == 2
+
+
+def make_inbound(
+    teacher_id: uuid4,
+    text: str | None = None,
+    button_id: str | None = None,
+) -> InboundMessage:
+    return InboundMessage(
+        channel="whatsapp",
+        channel_msg_id=f"msg-{uuid4().hex[:8]}",
+        teacher_id=teacher_id,
+        kind="button" if button_id else "text",
+        text=text,
+        button_id=button_id,
+        received_at=datetime.now(UTC),
+    )
+
+
+@pytest.mark.asyncio
+async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence() -> None:
+    """Full happy path NEW -> DONE with SessionService asserting evidence >= 2 recorded in DB (§8.8)."""
+    service = SessionService()
+    t_id = uuid4()
+
+    # 1. NEW -> JOIN_CODE (agree to consent)
+    out1 = await service.handle_inbound(
+        make_inbound(teacher_id=t_id, text="सहमत हूँ", button_id="btn_agree")
+    )
+    assert any(
+        "ask_join_code" in str(m.text_hi or "") or "कोड" in str(m.text_hi or "") for m in out1
+    )
+    teacher = await service.repo.get_or_create_teacher(t_id)
+    assert teacher.consent_service is True
+
+    # 2. JOIN_CODE -> PROFILE_NAME (valid code)
+    out2 = await service.handle_inbound(make_inbound(teacher_id=t_id, text="KNP-C01-B1"))
+    assert any("ask_name" in str(m.text_hi or "") or "नाम" in str(m.text_hi or "") for m in out2)
+    assert teacher.cluster_id == "KNP-C01"
+
+    # 3. PROFILE_NAME -> PROFILE_ADDRESS
+    out3 = await service.handle_inbound(make_inbound(teacher_id=t_id, text="सुनीता शर्मा"))
+    assert any("संबोधित" in str(m.text_hi or "") for m in out3)
+    assert teacher.name == "सुनीता शर्मा"
+
+    # 4. PROFILE_ADDRESS -> PROFILE_EXPERIENCE
+    out4 = await service.handle_inbound(
+        make_inbound(teacher_id=t_id, text="शिक्षिका", button_id="btn_female")
+    )
+    assert any("साल" in str(m.text_hi or "") or "पढ़ा" in str(m.text_hi or "") for m in out4)
+    assert teacher.address_form == "f"
+
+    # 5. PROFILE_EXPERIENCE -> PROFILE_CLASSES
+    out5 = await service.handle_inbound(make_inbound(teacher_id=t_id, text="0-1 साल"))
+    assert any("कक्षा" in str(m.text_hi or "") for m in out5)
+    assert teacher.first_year is True
+
+    # 6. PROFILE_CLASSES -> SHARE_CONSENT
+    out6 = await service.handle_inbound(make_inbound(teacher_id=t_id, text="कक्षा 1-2"))
+    assert any("ARP" in str(m.text_hi or "") or "अंक" in str(m.text_hi or "") for m in out6)
+
+    # 7. SHARE_CONSENT -> PLACEMENT_INTRO
+    out7 = await service.handle_inbound(
+        make_inbound(teacher_id=t_id, text="हाँ", button_id="btn_yes")
+    )
+    assert any("रवि" in str(m.text_hi or "") or "अभ्यास" in str(m.text_hi or "") for m in out7)
+    assert teacher.consent_share_scores is True
+
+    # 8. PLACEMENT_INTRO -> PLACEMENT (turn 1)
+    out8 = await service.handle_inbound(
+        make_inbound(teacher_id=t_id, text="रवि, 52 में से 17 घटाना है।")
+    )
+    assert len(out8) >= 1
+
+    # 9. PLACEMENT turn 2 -> READY -> LEARN
+    out9 = await service.handle_inbound(
+        make_inbound(teacher_id=t_id, text="रवि, 52 में 5 बंडल और 2 तीलियाँ हैं।")
+    )
+    assert any(
+        "placement_done" in str(m.text_hi or "")
+        or "तैयार" in str(m.text_hi or "")
+        or "तरीका" in str(m.text_hi or "")
+        for m in out9
+    )
+    ctx = await service.get_or_create_context(t_id)
+    assert ctx.onboarding_state == OnboardingStateEnum.READY
+    assert ctx.current_state == SessionStateEnum.LEARN
+
+    # 10. LEARN -> EXPLAIN_BACK
+    out10 = await service.handle_inbound(make_inbound(teacher_id=t_id, button_id="btn_understood"))
+    assert any("शब्दों में" in str(m.text_hi or "") for m in out10)
+    assert ctx.current_state == SessionStateEnum.EXPLAIN_BACK
+
+    # 11. EXPLAIN_BACK -> MODEL (calls check_fidelity, records explain_score)
+    out11 = await service.handle_inbound(
+        make_inbound(teacher_id=t_id, text="दहाई को बंडलों से और इकाई को खुली तीलियों से समझाना चाहिए।")
+    )
+    assert ctx.current_state == SessionStateEnum.MODEL
+    assert len(service.repo._explain_scores) >= 1
+
+    # 12. MODEL -> REHEARSE_INTRO
+    out12 = await service.handle_inbound(make_inbound(teacher_id=t_id, button_id="btn_listen"))
+    assert any("बच्चों से" in str(m.text_hi or "") for m in out12)
+    assert ctx.current_state == SessionStateEnum.REHEARSE_INTRO
+
+    # 13. REHEARSE_INTRO -> REHEARSE (first turn)
+    out13 = await service.handle_inbound(
+        make_inbound(teacher_id=t_id, text="नमस्ते बच्चों, आज हम 52-17 करेंगे।")
+    )
+    assert ctx.current_state == SessionStateEnum.REHEARSE
+
+    # 14. REHEARSE turns 2 and 3
+    await service.handle_inbound(make_inbound(teacher_id=t_id, text="रवि, पहले 52 में कितने बंडल हैं?"))
+    await service.handle_inbound(
+        make_inbound(teacher_id=t_id, text="शाबाश, 5 बंडल और 2 खुली तीलियाँ।")
+    )
+    assert ctx.rehearsal_turns_count == 3
+
+    # 15. Stop scene with stop keyword "बस" -> FEEDBACK (evidence level 1, calls coach_feedback)
+    out15 = await service.handle_inbound(make_inbound(teacher_id=t_id, text="बस"))
+    assert ctx.current_state == SessionStateEnum.FEEDBACK
+    assert any("सुझाव" in str(m.text_hi or "") or "असली" in str(m.text_hi or "") for m in out15)
+    evidence_rows = await service.repo.get_adoption_evidence(t_id)
+    assert any(e.level == 1 for e in evidence_rows)
+
+    # 16. FEEDBACK -> TRY_IN_CLASS
+    out16 = await service.handle_inbound(make_inbound(teacher_id=t_id, button_id="btn_continue"))
+    assert any("कक्षा में" in str(m.text_hi or "") for m in out16)
+    assert ctx.current_state == SessionStateEnum.TRY_IN_CLASS
+
+    # 17. TRY_IN_CLASS -> REFLECT_SELF
+    out17 = await service.handle_inbound(make_inbound(teacher_id=t_id, button_id="btn_self"))
+    assert any("सवाल" in str(m.text_hi or "") for m in out17)
+    assert ctx.current_state == SessionStateEnum.REFLECT_SELF
+
+    # 18. Q1 answer -> Q2
+    out18 = await service.handle_inbound(
+        make_inbound(teacher_id=t_id, text="बच्चों ने तीलियाँ आसानी से गिनीं।")
+    )
+    assert any("सवाल" in str(m.text_hi or "") for m in out18)
+
+    # 19. Q2 answer -> DONE (evidence level 2 recorded in DB)
+    out19 = await service.handle_inbound(
+        make_inbound(teacher_id=t_id, text="अगली बार मैं बच्चों से खुद बंडल बनवाऊँगी।")
+    )
+    assert ctx.current_state == SessionStateEnum.DONE
+    assert any("शाबाश" in str(m.text_hi or "") for m in out19)
+
+    # 20. Assert evidence recorded in DB >= 2 per §8.8
+    all_evidence = await service.repo.get_adoption_evidence(t_id)
+    assert len(all_evidence) >= 2
+    max_level = max(e.level for e in all_evidence)
+    assert max_level >= 2

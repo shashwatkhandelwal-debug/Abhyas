@@ -1,6 +1,14 @@
 """Sessions package exports (spec/08)."""
 
 from backend.app.sessions.manager import SessionManager, session_manager
+from backend.app.sessions.path import (
+    DEFAULT_INDUCTION_ORDER,
+    MovePathEntry,
+    compute_move_path,
+    load_induction_order,
+)
+from backend.app.sessions.repository import SessionRepository
+from backend.app.sessions.service import SessionService
 from backend.app.sessions.state_machine import (
     ONBOARDING_PROMPT_KEYS,
     STATE_PROMPT_KEYS,
@@ -31,4 +39,10 @@ __all__ = [
     "get_weekly_prompt_message_key",
     "SessionManager",
     "session_manager",
+    "SessionService",
+    "SessionRepository",
+    "compute_move_path",
+    "MovePathEntry",
+    "load_induction_order",
+    "DEFAULT_INDUCTION_ORDER",
 ]
