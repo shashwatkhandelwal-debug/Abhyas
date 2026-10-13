@@ -61,6 +61,18 @@ class Problem(BaseModel):
             return f"pv:{self.tens}-{self.ones}"
         return f"word:{self.word}"
 
+    def answer(self) -> int | str:
+        """Mathematical or phonetic correct answer for the item."""
+        if self.type == "sub":
+            return (self.a or 0) - (self.b or 0)
+        if self.type == "add":
+            return (self.a or 0) + (self.b or 0)
+        if self.type == "place_value":
+            return (self.tens or 0) * 10 + (self.ones or 0)
+        if self.type == "read_word":
+            return self.word or ""
+        raise ValueError(f"Unknown problem type: {self.type}")
+
 
 class Step(BaseModel):
     """One reasoning step, engine-rendered (§4.1)."""

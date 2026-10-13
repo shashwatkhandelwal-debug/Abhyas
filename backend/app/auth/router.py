@@ -1,0 +1,381 @@
+"""Authentication routes: login, logout, and user profile (spec/07 §7.4, spec/09 §9.7)."""
+
+import logging
+from typing import Annotated, Any
+
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, status
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.app.auth.csrf import (
+    CSRF_COOKIE_NAME,
+    generate_csrf_token,
+    set_csrf_cookie,
+    verify_csrf_token,
+)
+from backend.app.auth.guards import get_current_user
+from backend.app.auth.passwords import verify_password
+from backend.app.auth.rate_limit import check_login_rate_limit
+from backend.app.auth.session import (
+    clear_session_cookie,
+    create_session_token,
+    set_session_cookie,
+)
+from backend.app.config import settings
+from backend.app.db.models import AppUser
+from backend.app.db.session import get_db_session
+
+logger = logging.getLogger("abhyas.auth")
+
+router = APIRouter(tags=["Authentication"])
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+ROLE_HOME_PATHS: dict[str, str] = {
+    "teacher": "/teacher",
+    "arp": "/arp",
+    "trainer": "/trainer",
+    "coach": "/review",
+    "admin": "/admin",
+}
+
+
+def _render_login_page(csrf_token: str, error_message: str | None = None) -> str:
+    """Renders accessible, responsive Hindi login page with CSRF and demo badges."""
+    error_html = (
+        f'<div class="error-banner" role="alert">{error_message}</div>' if error_message else ""
+    )
+    demo_creds_html = ""
+    if settings.DEMO_MODE:
+        demo_creds_html = f"""
+        <div class="demo-card">
+            <h3>डेमो खाते (पासवर्ड: <code>{settings.DEMO_PASSWORD}</code>)</h3>
+            <div class="demo-chips">
+                <button type="button" onclick="fillCreds('teacher.demo1')">शिक्षिका (नई): teacher.demo1</button>
+                <button type="button" onclick="fillCreds('teacher.demo2')">शिक्षिका (अभ्यास): teacher.demo2</button>
+                <button type="button" onclick="fillCreds('arp.demo')">ARP: arp.demo</button>
+                <button type="button" onclick="fillCreds('trainer.demo')">ट्रेनर: trainer.demo</button>
+                <button type="button" onclick="fillCreds('coach.demo')">कोच: coach.demo</button>
+            </div>
+        </div>
+        """
+
+    return f"""<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>लॉगिन — अभ्यास (Abhyas)</title>
+    <style>
+        :root {{
+            --bg: #FAF7F2;
+            --surface: #FFFFFF;
+            --ink: #1F2421;
+            --muted: #5E6662;
+            --brand: #1F6F5C;
+            --brand-ink: #FFFFFF;
+            --accent: #E0A100;
+            --danger: #B3261E;
+        }}
+        body {{
+            margin: 0;
+            padding: 1.5rem;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: "Noto Sans Devanagari", "Mukta", system-ui, sans-serif;
+            font-size: 17px;
+            line-height: 1.6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }}
+        .login-box {{
+            background: var(--surface);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 440px;
+            padding: 2rem;
+            box-sizing: border-box;
+        }}
+        .brand-header {{
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }}
+        .brand-title {{
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--brand);
+            margin: 0;
+        }}
+        .brand-subtitle {{
+            color: var(--muted);
+            font-size: 0.95rem;
+            margin-top: 0.25rem;
+        }}
+        .form-group {{
+            margin-bottom: 1.25rem;
+        }}
+        label {{
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }}
+        input[type="text"], input[type="password"] {{
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid #D0D7D3;
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            min-height: 48px;
+        }}
+        input:focus {{
+            outline: 2px solid var(--brand);
+            border-color: var(--brand);
+        }}
+        .btn-submit {{
+            width: 100%;
+            background: var(--brand);
+            color: var(--brand-ink);
+            border: none;
+            border-radius: 8px;
+            padding: 0.85rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            min-height: 48px;
+            margin-top: 0.5rem;
+        }}
+        .btn-submit:hover {{
+            background: #175446;
+        }}
+        .error-banner {{
+            background: #FDF2F2;
+            color: var(--danger);
+            border: 1px solid var(--danger);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.25rem;
+            font-size: 0.95rem;
+        }}
+        .demo-card {{
+            margin-top: 1.75rem;
+            padding-top: 1.25rem;
+            border-top: 1px dashed #D0D7D3;
+        }}
+        .demo-card h3 {{
+            margin: 0 0 0.75rem 0;
+            font-size: 0.95rem;
+            color: var(--muted);
+        }}
+        .demo-chips {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }}
+        .demo-chips button {{
+            background: #EDEAE4;
+            border: 1px solid #D8D4CC;
+            border-radius: 20px;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+            color: var(--ink);
+        }}
+        .demo-chips button:hover {{
+            background: #DFDBD3;
+        }}
+    </style>
+</head>
+<body>
+    <main class="login-box">
+        <header class="brand-header">
+            <h1 class="brand-title">अभ्यास</h1>
+            <p class="brand-subtitle">प्राथमिक शिक्षकों का अभ्यास साथी</p>
+        </header>
+
+        {error_html}
+
+        <form method="POST" action="/login">
+            <input type="hidden" name="csrf_token" value="{csrf_token}">
+
+            <div class="form-group">
+                <label for="username">यूज़रनेम (Username)</label>
+                <input type="text" id="username" name="username" required autocomplete="username" autofocus>
+            </div>
+
+            <div class="form-group">
+                <label for="password">पासवर्ड (Password)</label>
+                <input type="password" id="password" name="password" required autocomplete="current-password">
+            </div>
+
+            <button type="submit" class="btn-submit">लॉगिन करें</button>
+        </form>
+
+        {demo_creds_html}
+    </main>
+    <script>
+        function fillCreds(username) {{
+            document.getElementById('username').value = username;
+            document.getElementById('password').value = "{settings.DEMO_PASSWORD}";
+        }}
+    </script>
+</body>
+</html>"""
+
+
+@router.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request) -> Response:
+    """Renders login page and ensures CSRF cookie is present."""
+    csrf_token = request.cookies.get(CSRF_COOKIE_NAME)
+    token_to_set: str | None = None
+    if not csrf_token:
+        csrf_token = generate_csrf_token()
+        token_to_set = csrf_token
+
+    html_content = _render_login_page(csrf_token)
+    response = HTMLResponse(content=html_content)
+    if token_to_set:
+        set_csrf_cookie(response, token_to_set)
+    return response
+
+
+@router.post("/login")
+async def login(
+    request: Request,
+    response: Response,
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    username: Annotated[str | None, Form()] = None,
+    password: Annotated[str | None, Form()] = None,
+    csrf_token: Annotated[str | None, Form()] = None,
+) -> Response:
+    """Authenticates user with rate limiting (5/min/IP), CSRF verification, and signed session cookie."""
+    # 1. Rate limiting: 5/min/IP (§7.4)
+    check_login_rate_limit(request)
+
+    # 2. Check content-type: support both Form and JSON
+    user_val: str | None = username
+    pass_val: str | None = password
+    is_json = False
+
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        is_json = True
+        try:
+            body = await request.json()
+            user_val = body.get("username")
+            pass_val = body.get("password")
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="अमान्य JSON अनुरोध",
+            ) from None
+    else:
+        # Verify CSRF on form submissions
+        await verify_csrf_token(request)
+
+    if not user_val or not pass_val:
+        if is_json:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="यूज़रनेम और पासवर्ड दोनों आवश्यक हैं",
+            )
+        token = request.cookies.get(CSRF_COOKIE_NAME) or generate_csrf_token()
+        resp = HTMLResponse(
+            _render_login_page(token, "कृपया यूज़रनेम और पासवर्ड दर्ज करें"),
+            status_code=400,
+        )
+        set_csrf_cookie(resp, token)
+        return resp
+
+    # 3. Lookup user in database
+    stmt = select(AppUser).where(AppUser.username == user_val.strip())
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if not user or not verify_password(pass_val, user.password_hash):
+        if is_json:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="गलत यूज़रनेम या पासवर्ड (Invalid credentials)",
+            )
+        token = request.cookies.get(CSRF_COOKIE_NAME) or generate_csrf_token()
+        resp = HTMLResponse(
+            _render_login_page(token, "गलत यूज़रनेम या पासवर्ड। कृपया पुनः प्रयास करें।"),
+            status_code=401,
+        )
+        set_csrf_cookie(resp, token)
+        return resp
+
+    # 4. Create session token
+    session_payload: dict[str, Any] = {
+        "user_id": str(user.id),
+        "username": user.username,
+        "role": user.role,
+        "teacher_id": str(user.teacher_id) if user.teacher_id else None,
+        "cluster_id": user.cluster_id,
+        "district": user.district,
+    }
+    session_token = create_session_token(session_payload)
+    redirect_path = ROLE_HOME_PATHS.get(user.role, "/teacher")
+
+    if is_json:
+        json_resp = JSONResponse(
+            content={
+                "ok": True,
+                "user": {
+                    "id": str(user.id),
+                    "username": user.username,
+                    "role": user.role,
+                    "display_name": user.display_name,
+                    "teacher_id": str(user.teacher_id) if user.teacher_id else None,
+                },
+                "redirect": redirect_path,
+            }
+        )
+        set_session_cookie(json_resp, session_token)
+        return json_resp
+
+    # Redirect to role home (§9.7)
+    redir_resp = RedirectResponse(url=redirect_path, status_code=status.HTTP_303_SEE_OTHER)
+    set_session_cookie(redir_resp, session_token)
+    return redir_resp
+
+
+@router.post("/logout")
+@router.get("/logout")
+async def logout(request: Request) -> Response:
+    """Logs user out by clearing session cookie (§9.7)."""
+    accept = request.headers.get("accept", "")
+    if "application/json" in accept and "text/html" not in accept:
+        json_resp = JSONResponse(content={"ok": True, "redirect": "/login"})
+        clear_session_cookie(json_resp)
+        return json_resp
+
+    redir_resp = RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    clear_session_cookie(redir_resp)
+    return redir_resp
+
+
+@router.get("/api/auth/me")
+async def get_me(current_user: Annotated[AppUser, Depends(get_current_user)]) -> dict[str, Any]:
+    """Returns profile for currently authenticated user."""
+    return {
+        "id": str(current_user.id),
+        "username": current_user.username,
+        "role": current_user.role,
+        "display_name": current_user.display_name,
+        "teacher_id": str(current_user.teacher_id) if current_user.teacher_id else None,
+        "cluster_id": current_user.cluster_id,
+        "district": current_user.district,
+        "is_demo": current_user.is_demo,
+    }

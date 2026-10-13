@@ -7,8 +7,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
+from backend.app.auth.router import router as auth_router
 from backend.app.config import settings
+from backend.app.web import STATIC_DIR, chat_router, teacher_router
 from backend.app.whatsapp.router import router as whatsapp_router
 
 logging.basicConfig(
@@ -64,8 +68,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount static files
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
 # Mount Routers
+app.include_router(auth_router)
+app.include_router(chat_router)
+app.include_router(teacher_router)
 app.include_router(whatsapp_router)
+
+
+@app.get("/", include_in_schema=False)
+async def root() -> RedirectResponse:
+    """Redirect root to login page (spec/12)."""
+    return RedirectResponse(url="/login", status_code=303)
+
+
+@app.get("/healthz", tags=["System"])
+async def healthz() -> dict[str, str]:
+    """Lightweight liveness probe returning status and git SHA (spec/12)."""
+    return {"status": "ok", "git_sha": settings.GIT_SHA}
 
 
 @app.get("/health", tags=["System"])

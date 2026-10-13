@@ -23,6 +23,17 @@ async def verify_webhook(
     hub_challenge: str = Query(None, alias="hub.challenge"),
 ) -> Response:
     """Meta webhook verification endpoint."""
+    if not settings.WHATSAPP_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="WhatsApp channel is disabled",
+        )
+    if not settings.WHATSAPP_VERIFY_TOKEN:
+        logger.warning("WhatsApp verify token is not configured.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Verify token not configured",
+        )
     if hub_mode == "subscribe" and hub_verify_token == settings.WHATSAPP_VERIFY_TOKEN:
         logger.info("WhatsApp webhook verified successfully.")
         return Response(content=hub_challenge, media_type="text/plain")
@@ -36,17 +47,27 @@ async def receive_webhook(
     x_hub_signature_256: str = Header(None, alias="X-Hub-Signature-256"),
 ) -> dict[str, str]:
     """Receives inbound messages, verifies signature, ensures idempotency, and routes."""
+    if not settings.WHATSAPP_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="WhatsApp channel is disabled",
+        )
+
+    if not settings.WHATSAPP_APP_SECRET:
+        logger.error("WHATSAPP_APP_SECRET is not configured.")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="WhatsApp webhook secret not configured",
+        )
+
     body_bytes = await request.body()
 
-    # Signature verification (skip if in test/mock environment without app secret)
-    if settings.ENVIRONMENT != "test" and not settings.WHATSAPP_APP_SECRET.startswith("mock"):
-        if not x_hub_signature_256 or not verify_whatsapp_signature(
-            body_bytes, x_hub_signature_256
-        ):
-            logger.error("Invalid webhook HMAC signature.")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid signature"
-            )
+    if not x_hub_signature_256 or not verify_whatsapp_signature(body_bytes, x_hub_signature_256):
+        logger.error("Invalid webhook HMAC signature.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid signature",
+        )
 
     payload_json = await request.json()
     try:

@@ -79,6 +79,10 @@ class AppUser(Base):
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
 
+    @property
+    def is_demo_account(self) -> bool:
+        return bool(self.is_demo)
+
 
 class Teacher(Base):
     __tablename__ = "teacher"
@@ -121,6 +125,10 @@ class Teacher(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
+
+    @property
+    def is_demo_account(self) -> bool:
+        return bool(self.is_demo)
 
 
 class TeacherContact(Base):
@@ -658,19 +666,6 @@ class SpeechSpend(Base):
     kind: Mapped[str] = mapped_column(Text, nullable=False)
     units: Mapped[int] = mapped_column(Integer, nullable=False)
     cost_inr: Mapped[float] = mapped_column(Float, nullable=False)
-
-
-class TTSCache(Base):
-    __tablename__ = "tts_cache"
-
-    key: Mapped[str] = mapped_column(Text, primary_key=True)
-    voice: Mapped[str | None] = mapped_column(Text, nullable=True)
-    text_hi: Mapped[str | None] = mapped_column(Text, nullable=True)
-    mime: Mapped[str | None] = mapped_column(Text, nullable=True)
-    bytes: Mapped[bytes | None] = mapped_column(BYTEA, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, nullable=False
-    )
 
 
 class TTSAudio(Base):

@@ -107,7 +107,7 @@ A comprehensive audit comparing the current scaffold against `spec/02_architectu
 - [ ] **T27 Teacher chat PWA** · Priority: P0 · Finish-by: 20 Oct
 - [ ] **T28 WhatsApp channel** · Priority: P0 code 21 Oct / P1 live · Finish-by: 21 Oct
 - [ ] **T29 Progress, consent, delete** · Priority: P1 · Finish-by: 22 Oct
-- [ ] **T30 First hosted deploy** · Priority: P0 · Finish-by: 18 Oct
+- [x] **T30 First hosted deploy** · Priority: P0 · Finish-by: 18 Oct (completed 13 Oct via Lane C)
 - [ ] **T31 Demo data** · Priority: P1 · Finish-by: 22 Oct
 - [ ] **T32 ARP digest** · Priority: P1 · Finish-by: 24 Oct
 - [ ] **T33 Trainer view + aggregates** · Priority: P1 · Finish-by: 24 Oct
@@ -193,14 +193,18 @@ All items from `spec/15_human_inputs.md` are currently open:
 ## 8. Current Status & Active Lanes
 
 ### STOPPED AT:
-- **Main Branch**: Merged `lane-a` (`5c082e6`) and `lane-b` (`0fff714`). Main commit: `65eb907`. All 640 tests collected (639 passed, 1 skipped). CI completely green.
-- **Full Rehearsal Loop Live on Main**: STT (`saaras:v4` / mock) → `act_tagger` → pure deterministic rule engine → `child_voice` → `guards` → TTS (`bulbul:v3` / mock with `SynthResult`) → Postgres `scene_store`.
-- **Runtime LLM Roles Complete**: T09–T14 (`intent_router`, `act_tagger`, `child_voice`, `coach`, `fidelity_checker`, `question_classifier`, `guide_answerer`).
-- **Lane C (Active Subagent `dedbeca5-c132-424a-ba75-005f3e74a3df`)**: Working on CHANGES `f2c7364` (CSRF on state-changing `/api` endpoints, client host rate-limiting, admin `?as=` demo teacher restriction, teacher-scoped idempotency, dynamic scene board & demo chips, and production audio 404/503 guard).
-- **Lane B (Active Subagent `f461c827-69fc-4300-8725-21cd1e6f3fdc`)**: Working on eliminating `subprocess.run` & `to_wav_sync`, making `_concat_wav_bytes` async, and implementing T20 (weekly state machine per spec/08 §8.1–§8.2).
+- **Main Branch**: Merged approved commit `941929d` (Lane C T30: production deploy prep, `render.yaml`, `Dockerfile`, root `.dockerignore`, `docker-compose.yml`, `/healthz`, router mounting in `main.py`, `docs/DEPLOY.md`, `scripts/smoke_test.py`). Head is `941929d`.
+- **Coordinator Security Fix on Main (`bc9f7b6`)**:
+  - `POST /whatsapp/webhook`: 404 if not `WHATSAPP_ENABLED`, 503 if `WHATSAPP_APP_SECRET` empty, removed `startswith("mock")` bypass.
+  - `GET /whatsapp/webhook`: 403 if `WHATSAPP_VERIFY_TOKEN` empty.
+  - Full CI on `main`: 713 passed, 1 skipped (`test_migrations`).
+- **Lane C (Active Subagent `9cd3b2fd-c1a0-4c17-9965-9c53795dc32e`)**: Working on:
+  1. `get_client_ip` last-hop extraction in production with updated test.
+  2. T31 demo cohort data (`backend/app/db/demo_data.py`, `is_demo=True`, "डेमो" prefix, real engine + MockLLM scores on scripted turns).
+  3. T29 teacher progress page (`/teacher/progress`, evidence ladder, rubric history, consent toggles, data deletion).
+- **Lane B (Active Subagent `30b84880-8782-49cf-a263-5cf47c36853a`)**: Working on CHANGES `8da3157` (feeding real scene turns, tagged acts, child trajectories, and math answer into `coach_feedback`). Commit `8da3157` held unmerged.
 
 ### NEXT:
-1. Complete Lane C review request upon subagent finishing CHANGES `f2c7364`.
-2. Complete Lane B review request upon subagent finishing async audio cleanup & T20.
-3. Merge `lane-c` and `lane-b` into `main`.
-4. Proceed to T21 (weekly loop + evidence) and T22 (Intents, ASK, retrieval).
+1. Complete Lane B review request once real scene data is fed to coach.
+2. Complete Lane C review request upon finishing T31 demo cohort and T29 progress page.
+3. Merge approved lane commits into `main`.
