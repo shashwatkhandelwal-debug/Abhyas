@@ -31,6 +31,8 @@ services:
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
+      - key: TRUSTED_PROXY_IPS
+        sync: false
       - key: LLM_PROVIDER
         value: anthropic
       - key: ANTHROPIC_API_KEY
@@ -44,9 +46,15 @@ services:
       - key: LLM_DAILY_TOKEN_BUDGET
         value: "3000000"
       - key: STT_PROVIDER
-        value: sarvam
+        value: mock
       - key: TTS_PROVIDER
-        value: sarvam
+        value: mock
+      - key: SPEECH_PROVIDER_LIVE
+        value: "false"
+      - key: SPEECH_DAILY_BUDGET_INR
+        value: "50"
+      - key: SPEECH_TOTAL_BUDGET_INR
+        value: "500"
       - key: SARVAM_API_KEY
         sync: false
       - key: SARVAM_BASE_URL

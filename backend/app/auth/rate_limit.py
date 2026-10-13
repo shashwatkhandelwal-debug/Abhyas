@@ -15,15 +15,18 @@ _login_attempts: dict[str, list[float]] = defaultdict(list)
 
 
 def get_client_ip(request: Request) -> str:
-    """Extracts client IP, respecting X-Forwarded-For ONLY if direct client is a trusted proxy."""
+    """Extracts client IP, respecting X-Forwarded-For in production or via trusted proxy."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if settings.ENVIRONMENT == "production":
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+        return request.client.host if request.client and request.client.host else "127.0.0.1"
+
     direct_ip = request.client.host if request.client and request.client.host else "127.0.0.1"
     trusted_proxies = {ip.strip() for ip in settings.TRUSTED_PROXY_IPS.split(",") if ip.strip()}
 
-    if direct_ip in trusted_proxies:
-        forwarded = request.headers.get("x-forwarded-for")
-        if forwarded:
-            # First IP in chain is original client
-            return forwarded.split(",")[0].strip()
+    if direct_ip in trusted_proxies and forwarded:
+        return forwarded.split(",")[0].strip()
     return direct_ip
 
 

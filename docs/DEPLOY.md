@@ -84,11 +84,30 @@ END $$;
 ### 2.3 Single-Worker Constraint (§12.2)
 The application runs as a **single worker instance** (`--workers 1`) because the in-process conversation lock and session scheduler require a single process. Do not scale beyond 1 instance without deploying an external Redis queue.
 
+### 2.4 Ingress Proxy & Forwarded Client IP
+The container starts uvicorn with `--proxy-headers --forwarded-allow-ips="*"`.
+
+**Why `--forwarded-allow-ips="*"` is safe on Render**:
+Render provides an isolated container execution environment where Render's own ingress load balancer is the sole entrypoint. Render terminates TLS, strips untrusted client-supplied headers, and injects the authentic `X-Forwarded-For` client IP chain and `X-Forwarded-Proto` header.
+In `ENVIRONMENT=production`, FastAPI's rate limiter directly inspects the first hop of `X-Forwarded-For` (`backend/app/auth/rate_limit.py`) to enforce the 5-attempt-per-minute login limit per client IP. Allowing forwarded headers from the ingress proxy ensures accurate client IP attribution without false-positive throttling across distinct users.
+
 ---
 
-## 3. Environment Variables Checklist
+## 3. Environment Variables & Speech Configuration
 
-Configure all environment variables in **Render Dashboard** -> **Environment**.
+### 3.1 Initial Zero-Key Deploy vs Live Speech Activation
+- **Initial Deploy Boots Cleanly**: By default in `render.yaml`, `STT_PROVIDER=mock`, `TTS_PROVIDER=mock`, and `SPEECH_PROVIDER_LIVE=false`. This allows the initial production service to boot up and pass health checks immediately without failing fast on absent speech keys.
+- **Activating Live Speech (Sarvam AI)**:
+  Once `SARVAM_API_KEY` is obtained:
+  1. Open the Render Dashboard -> Select **abhyas** -> **Environment**.
+  2. Add `SARVAM_API_KEY` with your secret key.
+  3. Change `STT_PROVIDER` to `sarvam`.
+  4. Change `TTS_PROVIDER` to `sarvam`.
+  5. Change `SPEECH_PROVIDER_LIVE` to `true`.
+  6. Save changes; Render will redeploy with full Hindi STT and child-voice TTS enabled.
+
+### 3.2 Environment Variables Checklist Table
+Configure environment variables in **Render Dashboard** -> **Environment**.
 Never commit real production credentials to Git.
 
 | Variable Name | Description | Provider / Source | Required in Prod? |
@@ -105,15 +124,19 @@ Never commit real production credentials to Git.
 | `PHONE_ENC_KEY` | 32-byte Fernet encryption key (`Fernet.generate_key()`) | System admin / Fernet generator | **Yes** |
 | `DEMO_PASSWORD` | Password for evaluation demo accounts (must NOT be default) | System admin | **Yes** (must rotate) |
 | `ADMIN_PASSWORD` | Password for admin and coach consoles (must NOT be default) | System admin | **Yes** (must rotate) |
+| `TRUSTED_PROXY_IPS` | Comma-separated trusted proxy IPs (dev/staging testing) | System admin | Optional (default: `127.0.0.1`) |
 | `LLM_PROVIDER` | LLM engine (`anthropic`) | Architecture configuration | Optional (default: `anthropic`) |
 | `ANTHROPIC_API_KEY` | Claude API secret key (`sk-ant-...`) | Anthropic Console | **Yes** |
 | `CLAUDE_MODEL_FAST` | Haiku model ID for fast child responses | Anthropic | Optional (default: `claude-haiku-5-5`) |
 | `CLAUDE_MODEL_SMART` | Sonnet model ID for coach feedback | Anthropic | Optional (default: `claude-sonnet-5-5`) |
 | `CLAUDE_MODEL_BUILD` | Sonnet model ID for move generation | Anthropic | Optional (default: `claude-sonnet-5-5`) |
 | `LLM_DAILY_TOKEN_BUDGET` | Daily token safety cap (default `3000000`) | Budget control | Optional |
-| `STT_PROVIDER` | Speech-to-text provider (`sarvam`) | Architecture configuration | Optional (default: `sarvam`) |
-| `TTS_PROVIDER` | Text-to-speech provider (`sarvam`) | Architecture configuration | Optional (default: `sarvam`) |
-| `SARVAM_API_KEY` | Sarvam AI API subscription key | Sarvam AI Dashboard | **Yes** |
+| `STT_PROVIDER` | Speech-to-text provider (`mock` initial, `sarvam` live) | Architecture configuration | Optional (default: `mock`) |
+| `TTS_PROVIDER` | Text-to-speech provider (`mock` initial, `sarvam` live) | Architecture configuration | Optional (default: `mock`) |
+| `SPEECH_PROVIDER_LIVE` | Live speech switch (`false` initial, `true` when live) | Architecture configuration | Optional (default: `false`) |
+| `SPEECH_DAILY_BUDGET_INR`| Daily speech budget cap in INR | Budget control | Optional (default: `50.0`) |
+| `SPEECH_TOTAL_BUDGET_INR`| Total evaluation speech budget in INR | Budget control | Optional (default: `500.0`) |
+| `SARVAM_API_KEY` | Sarvam AI API subscription key | Sarvam AI Dashboard | Required if live speech |
 | `SARVAM_BASE_URL` | Sarvam API base URL | Sarvam AI | Optional (default: `https://api.sarvam.ai`) |
 | `SARVAM_STT_MODEL` | Sarvam speech-to-text model | Sarvam AI | Optional (default: `saaras:v4`) |
 | `SARVAM_TTS_MODEL` | Sarvam text-to-speech model | Sarvam AI | Optional (default: `bulbul:v3`) |

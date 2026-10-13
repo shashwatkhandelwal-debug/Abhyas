@@ -356,6 +356,54 @@ def test_rate_limiter_trusted_proxy_resolves_forwarded_ip() -> None:
     reset_login_rate_limits()
 
 
+def test_rate_limiter_production_environment_extracts_forwarded_ip_buckets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Two different X-Forwarded-For IPs get separate login rate-limit buckets when ENVIRONMENT='production'."""
+    from backend.app.config import settings
+
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    reset_login_rate_limits()
+
+    # 5 attempts from client A through proxy
+    for _ in range(5):
+        req_a = Request(
+            scope={
+                "type": "http",
+                "client": ("10.0.0.1", 50000),
+                "headers": [(b"x-forwarded-for", b"203.0.113.10, 10.0.0.1")],
+                "path": "/login",
+            }
+        )
+        check_login_rate_limit(req_a)
+
+    # 6th attempt from client A is blocked (429)
+    req_a_blocked = Request(
+        scope={
+            "type": "http",
+            "client": ("10.0.0.1", 50001),
+            "headers": [(b"x-forwarded-for", b"203.0.113.10, 10.0.0.1")],
+            "path": "/login",
+        }
+    )
+    with pytest.raises(HTTPException) as exc:
+        check_login_rate_limit(req_a_blocked)
+    assert exc.value.status_code == 429
+
+    # Client B through the same proxy has its own separate bucket and succeeds
+    req_b = Request(
+        scope={
+            "type": "http",
+            "client": ("10.0.0.1", 50002),
+            "headers": [(b"x-forwarded-for", b"203.0.113.20, 10.0.0.1")],
+            "path": "/login",
+        }
+    )
+    check_login_rate_limit(req_b)
+
+    reset_login_rate_limits()
+
+
 @pytest.mark.asyncio
 async def test_bearer_token_rejected_in_production_environment(
     monkeypatch: pytest.MonkeyPatch,

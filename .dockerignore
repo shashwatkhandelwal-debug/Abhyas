@@ -1,0 +1,7 @@
+.env*
+.git
+tts_cache/
+eval/samples/audio/
+**/__pycache__
+.venv
+node_modules
