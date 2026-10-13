@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ऑफ़लाइन — अभ्यास (Abhyas)</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <style>
+    .offline-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      margin: 1rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .checklist-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.95rem;
+    }
+    .checklist-item input[type="checkbox"] {
+      width: 22px;
+      height: 22px;
+      margin-top: 3px;
+      accent-color: var(--brand);
+    }
+    .offline-badge {
+      display: inline-block;
+      background: var(--danger-light);
+      color: var(--danger);
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 0.2rem 0.6rem;
+      border-radius: var(--radius-full);
+      margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <header class="chat-header">
+      <div class="header-left">
+        <a href="/teacher" class="brand-badge">
+          <svg class="brand-logo-icon" viewBox="0 0 24 24"><path d="M4 19 C8 17, 16 17, 20 19 M7 7 L17 7 M5 12 L19 12"/></svg>
+          <span>अभ्यास</span>
+        </a>
+      </div>
+      <div class="header-right">
+        <button type="button" class="btn-icon" onclick="window.location.reload()" title="पुनः प्रयास करें">↻</button>
+      </div>
+    </header>
+
+    <div class="network-banner offline" style="display: block;">
+      आप ऑफ़लाइन हैं — पुराना इतिहास और कक्षा चेकलिस्ट उपलब्ध हैं।
+    </div>
+
+    <!-- Offline Try-in-class Checklist (spec/09 §9.2) -->
+    <section class="offline-card">
+      <span class="offline-badge">कक्षा-अभ्यास चेकलिस्ट (ऑफ़लाइन उपलब्ध)</span>
+      <h2 style="font-size: 1.15rem; margin-top: 0; color: var(--brand);">दो अंकों की हासिल वाली घटाव (52 − 17)</h2>
+      <p style="font-size: 0.9rem; color: var(--muted); margin-bottom: 1rem;">
+        कक्षा में पढ़ाते समय इन 4 चरणों का ध्यान रखें। आपके टिक यहाँ सुरक्षित रहेंगे।
+      </p>
+
+      <div class="checklist-item">
+        <input type="checkbox" id="chk1" onchange="saveCheck(1)">
+        <label for="chk1"><strong>1. ठोस सामग्री:</strong> बच्चों को तीलियाँ और 10 के बंडल देकर खुद करने का अवसर दिया।</label>
+      </div>
+      <div class="checklist-item">
+        <input type="checkbox" id="chk2" onchange="saveCheck(2)">
+        <label for="chk2"><strong>2. बंडल खोलना:</strong> 52 में से 2 में 7 नहीं घटता, इसलिए 1 बंडल खोलकर 12 इकाइयाँ बनाईं।</label>
+      </div>
+      <div class="checklist-item">
+        <input type="checkbox" id="chk3" onchange="saveCheck(3)">
+        <label for="chk3"><strong>3. बच्चे से पूछना:</strong> बच्चे से पूछा कि अब कितनी इकाइयाँ और दहाई बचीं, उत्तर सीधे नहीं बताया।</label>
+      </div>
+      <div class="checklist-item">
+        <input type="checkbox" id="chk4" onchange="saveCheck(4)">
+        <label for="chk4"><strong>4. साथी अवलोकन:</strong> साथी शिक्षिका या ARP ने कक्षा शिक्षण का अवलोकन किया।</label>
+      </div>
+    </section>
+
+    <!-- Cached Chat Messages History -->
+    <section class="offline-card" style="flex: 1; display: flex; flex-direction: column;">
+      <h3 style="font-size: 1rem; margin-top: 0; color: var(--ink);">हाल का अभ्यास इतिहास (अंतिम 50 संदेश)</h3>
+      <div id="offline-messages-list" style="display: flex; flex-direction: column; gap: 0.6rem; max-height: 400px; overflow-y: auto;">
+        <p style="font-size: 0.85rem; color: var(--muted);">इतिहास लोड हो रहा है…</p>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // Restore checklist states
+    function loadChecklist() {
+      for (let i = 1; i <= 4; i++) {
+        const val = localStorage.getItem('abhyas_chk_' + i);
+        if (val === 'true') {
+          const el = document.getElementById('chk' + i);
+          if (el) el.checked = true;
+        }
+      }
+    }
+    function saveCheck(id) {
+      const el = document.getElementById('chk' + id);
+      if (el) {
+        localStorage.setItem('abhyas_chk_' + id, el.checked);
+      }
+    }
+
+    // Load cached messages from IndexedDB
+    const DB_NAME = 'abhyas_chat_db';
+    const DB_VERSION = 1;
+
+    function loadCachedHistory() {
+      const listEl = document.getElementById('offline-messages-list');
+      if (!listEl) return;
+
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onsuccess = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('messages_cache')) {
+          listEl.innerHTML = '<p style="color:var(--muted);font-size:0.85rem;">कोई सहेजा हुआ संदेश नहीं है।</p>';
+          return;
+        }
+        const tx = db.transaction(['messages_cache'], 'readonly');
+        const getAll = tx.objectStore('messages_cache').getAll();
+        getAll.onsuccess = () => {
+          const msgs = getAll.result || [];
+          if (msgs.length === 0) {
+            listEl.innerHTML = '<p style="color:var(--muted);font-size:0.85rem;">कोई सहेजा हुआ संदेश नहीं है।</p>';
+            return;
+          }
+          msgs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+          listEl.innerHTML = '';
+          msgs.slice(-50).forEach((m) => {
+            const div = document.createElement('div');
+            div.style.padding = '0.5rem 0.8rem';
+            div.style.borderRadius = '8px';
+            div.style.fontSize = '0.9rem';
+            div.style.backgroundColor = m.direction === 'in' ? 'var(--bubble-in)' : 'var(--bg)';
+            div.style.alignSelf = m.direction === 'in' ? 'flex-end' : 'flex-start';
+            div.style.maxWidth = '85%';
+            div.innerHTML = (m.speaker ? '<strong style="font-size:0.75rem;display:block;">' + m.speaker + '</strong>' : '') + (m.text || 'ऑडियो संदेश');
+            listEl.appendChild(div);
+          });
+        };
+      };
+      req.onerror = () => {
+        listEl.innerHTML = '<p style="color:var(--muted);font-size:0.85rem;">इतिहास लोड नहीं हो सका।</p>';
+      };
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadChecklist();
+      loadCachedHistory();
+    });
+  </script>
+</body>
+</html>
