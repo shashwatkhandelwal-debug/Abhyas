@@ -5,6 +5,7 @@ from backend.app.auth.access import (
     can_access_teacher,
     can_view_teacher_scores,
     get_teacher_display_name_for_arp,
+    scope_teachers_query,
 )
 from backend.app.auth.guards import (
     get_current_user,
@@ -21,5 +22,6 @@ __all__ = [
     "can_access_teacher",
     "can_view_teacher_scores",
     "get_teacher_display_name_for_arp",
+    "scope_teachers_query",
     "apply_aggregation_suppression",
 ]

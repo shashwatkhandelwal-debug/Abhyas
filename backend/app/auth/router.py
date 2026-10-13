@@ -62,7 +62,6 @@ def _render_login_page(csrf_token: str, error_message: str | None = None) -> str
                 <button type="button" onclick="fillCreds('arp.demo')">ARP: arp.demo</button>
                 <button type="button" onclick="fillCreds('trainer.demo')">ट्रेनर: trainer.demo</button>
                 <button type="button" onclick="fillCreds('coach.demo')">कोच: coach.demo</button>
-                <button type="button" onclick="fillCreds('admin.demo')">व्यवस्थापक: admin.demo</button>
             </div>
         </div>
         """

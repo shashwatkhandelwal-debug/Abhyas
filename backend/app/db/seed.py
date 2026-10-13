@@ -9,8 +9,8 @@ Seeds:
    - arp.demo (cluster KNP-C01)
    - trainer.demo (district Kanpur Nagar)
    - coach.demo
-   - admin.demo
-3. Synthetic demo cohort (db/demo_data.py)
+3. Real admin account (username: admin, uses ADMIN_PASSWORD from env)
+4. Synthetic demo cohort (db/demo_data.py)
 """
 
 import asyncio
@@ -269,15 +269,6 @@ async def seed_database() -> None:
                 None,
                 None,
             ),
-            (
-                USER_ADMIN_ID,
-                "admin.demo",
-                "admin",
-                "व्यवस्थापक (Admin)",
-                None,
-                None,
-                None,
-            ),
         ]
 
         for u_id, uname, urole, dname, cid, dist, tid in demo_users_data:
@@ -304,6 +295,36 @@ async def seed_database() -> None:
                 existing_user.teacher_id = tid
                 existing_user.cluster_id = cid
                 existing_user.district = dist
+
+        # 8. Real Admin User (uses ADMIN_PASSWORD from env, not a demo account)
+        admin_password_hash = hash_password(settings.ADMIN_PASSWORD)
+        stmt_admin = select(AppUser).where(AppUser.username == "admin")
+        existing_admin = (await session.execute(stmt_admin)).scalar_one_or_none()
+        if not existing_admin:
+            session.add(
+                AppUser(
+                    id=USER_ADMIN_ID,
+                    username="admin",
+                    password_hash=admin_password_hash,
+                    role="admin",
+                    display_name="व्यवस्थापक (Admin)",
+                    cluster_id=None,
+                    district=None,
+                    teacher_id=None,
+                    is_demo=False,
+                )
+            )
+        else:
+            existing_admin.password_hash = admin_password_hash
+            existing_admin.display_name = "व्यवस्थापक (Admin)"
+            existing_admin.role = "admin"
+            existing_admin.is_demo = False
+
+        # Clean up legacy admin.demo if it exists
+        stmt_legacy = select(AppUser).where(AppUser.username == "admin.demo")
+        legacy_admin = (await session.execute(stmt_legacy)).scalar_one_or_none()
+        if legacy_admin:
+            await session.delete(legacy_admin)
 
         await session.commit()
         logger.info("Successfully seeded demo users, teachers, and clusters.")

@@ -25,6 +25,8 @@ services:
         sync: false
       - key: DEMO_PASSWORD
         sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
       - key: LLM_PROVIDER
         value: anthropic
       - key: ANTHROPIC_API_KEY

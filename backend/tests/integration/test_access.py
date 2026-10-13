@@ -93,10 +93,47 @@ def test_arp_access_in_own_cluster_consenting_vs_non_consenting() -> None:
     assert get_teacher_display_name_for_arp(arp_user, t_non_consenting).startswith("शिक्षक #")
 
 
+def test_arp_demo_cannot_see_non_demo_teacher() -> None:
+    """Demo ARP (arp.demo) must never see non-demo teachers even in own cluster."""
+    cluster_id = "KNP-C01"
+    arp_demo = AppUser(
+        id=uuid.uuid4(),
+        username="arp.demo",
+        password_hash="hash",
+        role="arp",
+        cluster_id=cluster_id,
+        is_demo=True,
+    )
+    non_demo_teacher = Teacher(
+        id=uuid.uuid4(),
+        name="गीता",
+        cluster_id=cluster_id,
+        consent_share_scores=True,
+        is_demo=False,
+    )
+    demo_teacher = Teacher(
+        id=uuid.uuid4(),
+        name="सुमन",
+        cluster_id=cluster_id,
+        consent_share_scores=True,
+        is_demo=True,
+    )
+
+    # arp.demo cannot see non-demo teacher in same cluster
+    assert can_access_teacher(arp_demo, non_demo_teacher) is False
+    assert can_view_teacher_scores(arp_demo, non_demo_teacher) is False
+    assert get_teacher_display_name_for_arp(arp_demo, non_demo_teacher) == ""
+
+    # arp.demo CAN see demo teacher in same cluster
+    assert can_access_teacher(arp_demo, demo_teacher) is True
+    assert can_view_teacher_scores(arp_demo, demo_teacher) is True
+    assert get_teacher_display_name_for_arp(arp_demo, demo_teacher) == "सुमन"
+
+
 def test_admin_has_full_access() -> None:
     admin_user = AppUser(
         id=uuid.uuid4(),
-        username="admin.demo",
+        username="admin",
         password_hash="hash",
         role="admin",
     )

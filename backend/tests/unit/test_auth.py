@@ -167,7 +167,7 @@ async def test_require_role_admin_always_allowed() -> None:
     guard = require_role("teacher")
     admin_user = AppUser(
         id=uuid.uuid4(),
-        username="admin.demo",
+        username="admin",
         password_hash="hash",
         role="admin",
     )
@@ -207,6 +207,15 @@ async def test_get_login_page(auth_app: FastAPI) -> None:
         assert "अभ्यास" in res.text
         assert "csrf_token" in res.text
         assert CSRF_COOKIE_NAME in res.cookies
+
+
+@pytest.mark.asyncio
+async def test_login_page_html_does_not_contain_admin(auth_app: FastAPI) -> None:
+    """Login page HTML never mentions admin or admin.demo."""
+    async with AsyncClient(transport=ASGITransport(app=auth_app), base_url="http://test") as client:
+        res = await client.get("/login")
+        assert res.status_code == 200
+        assert "admin" not in res.text.lower()
 
 
 @pytest.mark.asyncio

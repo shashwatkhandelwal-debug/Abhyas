@@ -1,6 +1,7 @@
 """Unit tests for Web channel API, polling, idempotency, and audio caching (spec/07 §7.3, T26)."""
 
 import uuid
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -31,6 +32,7 @@ from backend.app.core.conversation import ConversationService
 from backend.app.core.types import Button, InboundMessage, OutboundMessage
 from backend.app.db.models import AppUser, Message, RealismRating, Teacher, TTSCache
 from backend.app.db.session import get_db_session
+from backend.app.speech.cache import tts_cache
 from backend.app.web.chat_api import router as chat_router
 
 # ── Test Fixtures ────────────────────────────────────────────────────────────
@@ -276,6 +278,9 @@ async def test_get_chat_messages_polling_and_pending_status(
 
 @pytest.mark.asyncio
 async def test_audio_cache_endpoint_headers(web_test_app: FastAPI) -> None:
+    fixture_wav = Path(__file__).parents[1] / "fixtures" / "audio" / "sample_5s.wav"
+    await tts_cache.put_wav("sample_voice_01", fixture_wav.read_bytes())
+
     async with AsyncClient(
         transport=ASGITransport(app=web_test_app), base_url="http://test"
     ) as client:
@@ -481,7 +486,7 @@ async def test_admin_chat_requires_explicit_demo_teacher(web_test_app: FastAPI) 
     """Item 3: Admin opens chat only as an explicit demo teacher (?as=<demo_id>, is_demo=True) or 400."""
     admin_user = AppUser(
         id=uuid.uuid4(),
-        username="admin.demo",
+        username="admin",
         role="admin",
         teacher_id=None,
         display_name="व्यवस्थापक",
@@ -636,10 +641,10 @@ async def test_idempotency_cross_teacher_collision_409(web_test_app: FastAPI) ->
 
 
 @pytest.mark.asyncio
-async def test_no_synthesized_wav_in_production(
+async def test_missing_audio_returns_404_in_all_environments(
     web_test_app: FastAPI, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Item 6: Missing audio in production returns 404; non-production synthesizes fallback."""
+    """Missing audio returns 404 in both test and prod mode without fallback synthesis."""
     async with AsyncClient(
         transport=ASGITransport(app=web_test_app), base_url="http://test"
     ) as client:
@@ -647,9 +652,10 @@ async def test_no_synthesized_wav_in_production(
         monkeypatch.setattr(settings, "ENVIRONMENT", "production")
         res_prod = await client.get("/api/audio/missing_audio_ref.wav")
         assert res_prod.status_code == 404
+        assert "ऑडियो फ़ाइल नहीं मिली" in res_prod.json()["detail"]
 
-        # In test mode: missing audio returns fallback WAV
+        # In test mode: missing audio ALSO returns 404 (no MockTTS fallback)
         monkeypatch.setattr(settings, "ENVIRONMENT", "test")
         res_test = await client.get("/api/audio/missing_audio_ref.wav")
-        assert res_test.status_code == 200
-        assert res_test.headers.get("content-type") == "audio/wav"
+        assert res_test.status_code == 404
+        assert "ऑडियो फ़ाइल नहीं मिली" in res_test.json()["detail"]

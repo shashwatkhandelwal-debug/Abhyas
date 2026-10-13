@@ -35,10 +35,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.auth.csrf import verify_csrf_token
 from backend.app.auth.guards import get_current_user
 from backend.app.channels.web import is_teacher_pending, mark_teacher_pending, process_inbound_web
-from backend.app.config import settings
-from backend.app.db.models import AppUser, Message, RealismRating, Teacher, TTSCache
+from backend.app.db.models import AppUser, Message, RealismRating, Teacher
 from backend.app.db.session import get_db_session
-from backend.app.speech.tts import MockTTS, VoiceSpec
+from backend.app.speech.cache import tts_cache
 
 logger = logging.getLogger("abhyas.web.chat")
 
@@ -117,6 +116,14 @@ async def get_teacher_for_user(
     if user.teacher_id:
         teacher = await db.get(Teacher, user.teacher_id)
         if teacher:
+            is_user_demo = getattr(user, "is_demo", False) or getattr(
+                user, "is_demo_account", False
+            )
+            if is_user_demo and not teacher.is_demo:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="डेमो खाते केवल डेमो शिक्षक तक पहुँच सकते हैं (Demo accounts can only access demo teachers)",
+                )
             return teacher
 
     raise HTTPException(
@@ -396,12 +403,14 @@ async def get_audio_file(
     audio_ref: str,
     ext: Literal["ogg", "mp3", "wav"],
     current_user: Annotated[AppUser, Depends(get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> Response:
     """Returns cached synthetic audio with private immutable cache-control headers (§7.3)."""
-    stmt = select(TTSCache).where(TTSCache.key == audio_ref)
-    result = await db.execute(stmt)
-    entry = result.scalar_one_or_none()
+    audio_bytes = await tts_cache.get(audio_ref, ext)
+    if not audio_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="ऑडियो फ़ाइल नहीं मिली (Audio file not found)",
+        )
 
     content_types: dict[str, str] = {
         "ogg": "audio/ogg",
@@ -409,30 +418,9 @@ async def get_audio_file(
         "wav": "audio/wav",
     }
     media_type = content_types.get(ext, "audio/ogg")
-
-    if entry and entry.bytes:
-        return Response(
-            content=entry.bytes,
-            media_type=entry.mime or media_type,
-            headers={"Cache-Control": "private, max-age=31536000, immutable"},
-        )
-
-    # In production, missing audio MUST return 404 without synthesizing
-    if settings.ENVIRONMENT == "production":
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="ऑडियो फ़ाइल नहीं मिली (Audio file not found)",
-        )
-
-    # In dev/test/mock mode, synthesize fallback WAV audio
-    mock_tts = MockTTS()
-    data = await mock_tts.synthesize(
-        text_hi="अभ्यास",
-        voice=VoiceSpec(provider_speaker="mock", model="mock"),
-    )
     return Response(
-        content=data,
-        media_type="audio/wav",
+        content=audio_bytes,
+        media_type=media_type,
         headers={"Cache-Control": "private, max-age=31536000, immutable"},
     )
 

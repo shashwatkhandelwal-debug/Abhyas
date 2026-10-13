@@ -17,7 +17,18 @@ from backend.app.db.models import AppUser, Teacher
 
 
 def can_access_teacher(user: AppUser, teacher: Teacher) -> bool:
-    """Checks whether the user is permitted to view basic teacher metadata."""
+    """Checks whether the user is permitted to view basic teacher metadata.
+
+    Demo accounts (teacher.demo*, arp.demo, trainer.demo, coach.demo) can NEVER
+    access non-demo teachers.
+    """
+    is_user_demo = getattr(user, "is_demo", False) or getattr(user, "is_demo_account", False)
+    is_teacher_demo = getattr(teacher, "is_demo", False) or getattr(
+        teacher, "is_demo_account", False
+    )
+    if is_user_demo and not is_teacher_demo:
+        return False
+
     if user.role == "admin":
         return True
     if user.role == "teacher":
@@ -30,7 +41,17 @@ def can_access_teacher(user: AppUser, teacher: Teacher) -> bool:
 
 
 def can_view_teacher_scores(user: AppUser, teacher: Teacher) -> bool:
-    """Checks whether the user is permitted to view teacher scores and transcripts (§3.3)."""
+    """Checks whether the user is permitted to view teacher scores and transcripts (§3.3).
+
+    Demo accounts can NEVER view scores of non-demo teachers.
+    """
+    is_user_demo = getattr(user, "is_demo", False) or getattr(user, "is_demo_account", False)
+    is_teacher_demo = getattr(teacher, "is_demo", False) or getattr(
+        teacher, "is_demo_account", False
+    )
+    if is_user_demo and not is_teacher_demo:
+        return False
+
     if user.role == "admin":
         return True
     if user.role == "teacher":
@@ -44,11 +65,38 @@ def can_view_teacher_scores(user: AppUser, teacher: Teacher) -> bool:
 
 
 def get_teacher_display_name_for_arp(user: AppUser, teacher: Teacher) -> str:
-    """Returns real name if consenting, or anonymised code 'शिक्षक #<short hash>' if not (§3.3)."""
+    """Returns real name if consenting, or anonymised code 'शिक्षक #<short hash>' if not (§3.3).
+
+    If demo user accesses a non-demo teacher, returns empty string.
+    """
+    is_user_demo = getattr(user, "is_demo", False) or getattr(user, "is_demo_account", False)
+    is_teacher_demo = getattr(teacher, "is_demo", False) or getattr(
+        teacher, "is_demo_account", False
+    )
+    if is_user_demo and not is_teacher_demo:
+        return ""
     if teacher.consent_share_scores and teacher.name:
         return teacher.name
     short_hash = str(teacher.id).replace("-", "")[:6]
     return f"शिक्षक #{short_hash}"
+
+
+def scope_teachers_query(query: Any, user: AppUser) -> Any:
+    """Scopes a SQLAlchemy query for Teacher to enforce role and demo boundaries.
+
+    Demo accounts (is_demo=True) are strictly scoped to is_demo teachers.
+    """
+    is_user_demo = getattr(user, "is_demo", False) or getattr(user, "is_demo_account", False)
+    if is_user_demo:
+        query = query.where(Teacher.is_demo.is_(True))
+
+    if user.role == "teacher":
+        query = query.where(Teacher.id == user.teacher_id)
+    elif user.role == "arp" and user.cluster_id:
+        query = query.where(Teacher.cluster_id == user.cluster_id)
+    elif user.role == "trainer" and user.district:
+        query = query.where(Teacher.district == user.district)
+    return query
 
 
 SUPPRESSION_MESSAGE = "समूह छोटा है (n<10) — गोपनीयता हेतु छिपाया गया"

@@ -79,6 +79,10 @@ class AppUser(Base):
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
 
+    @property
+    def is_demo_account(self) -> bool:
+        return bool(self.is_demo)
+
 
 class Teacher(Base):
     __tablename__ = "teacher"
@@ -121,6 +125,10 @@ class Teacher(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
+
+    @property
+    def is_demo_account(self) -> bool:
+        return bool(self.is_demo)
 
 
 class TeacherContact(Base):
