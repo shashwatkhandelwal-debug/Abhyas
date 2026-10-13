@@ -37,3 +37,10 @@ Branch: `lane-e` (base: `main` d7f7ccd)
 4. Hook points for lane B sessions: call `schedule_followup_for_question(session, question, now=…, move_id=…)` after an answered question; call `record_followup_from_button(session, teacher_id, button_id, now=…)` for inbound buttons `followup_yes|no|not_now` (returns False if not a follow-up button).
 5. Lane C: `compute_aggregates_for_batch` must stay at `backend.app.jobs.aggregates` (signature `(session, batch_id, move_id) -> AggModuleBatch`); the aggregates job fails with a clear error until that file is merged. The `/arp` page (T32) can read `latest_arp_digest_snapshot(session, cluster_id)`.
 6. ARP contact: if the ARP digest should go out on WhatsApp, a stored contact for `app_user` is needed.
+
+## T42 kappa harness (offered to lane D; new files only, nothing in lane D's folders edited)
+- `eval/calibration/kappa.py` — stdlib-only: `cohen_kappa` (unweighted / quadratic), `bootstrap_ci` (seeded percentile), `exact_agreement`, `confusion_matrix`, `pairwise_agreement` (AI vs each coach, coach vs coach), `criterion_agreement`, `render_report` (always states n; warns on n<20, kappa<0.70, undefined kappa).
+- `backend/tests/unit/test_eval_kappa.py` — 14 tests, all passing here: textbook 2x2 (kappa 0.4), quadratic kappa vs the Fleiss-Cohen moment identity on random data, match with scikit-learn (unweighted and quadratic), undefined-kappa, deterministic bootstrap, pairwise on shared items, report honesty.
+- `ruff` and `mypy --strict` clean on both.
+- Not done: loading `calibration_label` / `rehearsal_score` rows (needs the real `scores` JSON shape from T34) and the `make eval-kappa` wiring; lane D's `evaluate_kappa.py` scaffold is untouched.
+- Request: `from eval.calibration...` imports work under `python -m pytest` (CI) but not bare `pytest`; add `eval` to `[tool.setuptools] packages` or set pytest `pythonpath = ["."]` in `pyproject.toml`.
