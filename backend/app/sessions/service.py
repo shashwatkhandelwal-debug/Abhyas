@@ -920,6 +920,15 @@ class SessionService:
             if ended:
                 wsm_res = wsm.transition(text_content, scene_ended=True)
 
+                if wsm_res.evidence_level and wsm_res.evidence_level >= 1:
+                    await self.repo.record_adoption_evidence(
+                        teacher_id=teacher_id,
+                        move_id=ctx.current_move_id,
+                        level=1,
+                        source="rehearsal",
+                        detail={"turns": ctx.rehearsal_turns_count},
+                    )
+
                 teacher_turns = [t for t in scene.turns if t.transcript and t.acts != ["stop"]]
                 teacher_turns_count = len(teacher_turns)
 
@@ -965,15 +974,6 @@ class SessionService:
                         )
                     )
                     return outbounds
-
-                if wsm_res.evidence_level and wsm_res.evidence_level >= 1:
-                    await self.repo.record_adoption_evidence(
-                        teacher_id=teacher_id,
-                        move_id=ctx.current_move_id,
-                        level=1,
-                        source="rehearsal",
-                        detail={"turns": ctx.rehearsal_turns_count},
-                    )
 
                 # Generate coach feedback
                 move = load_move_card(ctx.current_move_id)

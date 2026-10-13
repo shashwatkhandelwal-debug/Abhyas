@@ -799,7 +799,7 @@ async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence(
     assert ctx.current_state == SessionStateEnum.FEEDBACK
     assert any("सुझाव" in str(m.text_hi or "") or "असली" in str(m.text_hi or "") for m in out15)
     evidence_rows = await service.repo.get_adoption_evidence(t_id)
-    assert any(e.level == 1 for e in evidence_rows)
+    assert any(e.level == 1 and e.source == "rehearsal" for e in evidence_rows)
 
     # 16. FEEDBACK -> TRY_IN_CLASS
     out16 = await service.handle_inbound(make_inbound(teacher_id=t_id, button_id="btn_continue"))

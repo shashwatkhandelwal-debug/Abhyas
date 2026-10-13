@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import NullPool
 
 from backend.app.core.types import InboundMessage
-from backend.app.db.models import SessionState, Teacher
+from backend.app.db.models import Batch, Cluster, SessionState, Teacher
 from backend.app.sessions.repository import SessionRepository
 from backend.app.sessions.service import SessionService
 from backend.app.sessions.state_machine import OnboardingStateEnum, SessionStateEnum
@@ -52,6 +52,10 @@ async def session_factory() -> AsyncGenerator[async_sessionmaker[AsyncSession], 
     async_url = get_async_db_url()
     engine = create_async_engine(async_url, poolclass=NullPool)
     factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with factory() as session:
+        await session.merge(Cluster(id="KNP-C01", name="Test Cluster"))
+        await session.merge(Batch(id="KNP-B1", name="Test Batch"))
+        await session.commit()
     try:
         yield factory
     finally:

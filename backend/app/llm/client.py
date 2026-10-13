@@ -315,7 +315,7 @@ class MockLLM:
             return None
 
         # Try to find matching fixture
-        files = list(role_dir.glob("*.json"))
+        files = sorted(role_dir.glob("*.json"))
         if not files:
             return None
 
