@@ -107,7 +107,7 @@ A comprehensive audit comparing the current scaffold against `spec/02_architectu
 - [ ] **T27 Teacher chat PWA** · Priority: P0 · Finish-by: 20 Oct
 - [ ] **T28 WhatsApp channel** · Priority: P0 code 21 Oct / P1 live · Finish-by: 21 Oct
 - [ ] **T29 Progress, consent, delete** · Priority: P1 · Finish-by: 22 Oct
-- [ ] **T30 First hosted deploy** · Priority: P0 · Finish-by: 18 Oct
+- [x] **T30 First hosted deploy** · Priority: P0 · Finish-by: 18 Oct (completed 13 Oct via Lane C)
 - [ ] **T31 Demo data** · Priority: P1 · Finish-by: 22 Oct
 - [ ] **T32 ARP digest** · Priority: P1 · Finish-by: 24 Oct
 - [ ] **T33 Trainer view + aggregates** · Priority: P1 · Finish-by: 24 Oct

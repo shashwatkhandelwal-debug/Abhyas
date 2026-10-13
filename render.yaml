@@ -10,9 +10,13 @@ services:
       - key: ENVIRONMENT
         value: production
       - key: PORT
-        value: 8000
+        value: "8000"
       - key: LOG_LEVEL
         value: INFO
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: GIT_SHA
+        sync: false
       - key: DATABASE_URL
         sync: false
       - key: ALEMBIC_DATABASE_URL
@@ -37,19 +41,51 @@ services:
         value: claude-sonnet-5-5
       - key: CLAUDE_MODEL_BUILD
         value: claude-sonnet-5-5
+      - key: LLM_DAILY_TOKEN_BUDGET
+        value: "3000000"
       - key: STT_PROVIDER
         value: sarvam
       - key: TTS_PROVIDER
         value: sarvam
       - key: SARVAM_API_KEY
         sync: false
+      - key: SARVAM_BASE_URL
+        value: https://api.sarvam.ai
+      - key: SARVAM_STT_MODEL
+        value: saaras:v4
+      - key: SARVAM_TTS_MODEL
+        value: bulbul:v3
+      - key: BHASHINI_USER_ID
+        sync: false
+      - key: BHASHINI_API_KEY
+        sync: false
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        sync: false
+      - key: MOCK_STT_TEXT
+        value: "रवि, 52 में से 17 कैसे घटाया? बताओ।"
       - key: WHATSAPP_ENABLED
         sync: false
-      - key: WHATSAPP_ACCESS_TOKEN
-        sync: false
+      - key: WHATSAPP_GRAPH_VERSION
+        value: v23.0
       - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_ACCESS_TOKEN
         sync: false
       - key: WHATSAPP_APP_SECRET
         sync: false
       - key: WHATSAPP_VERIFY_TOKEN
+        sync: false
+      - key: WHATSAPP_DISPLAY_NUMBER
+        sync: false
+      - key: WHATSAPP_UTILITY_COST_INR
+        value: "0.12"
+      - key: VOYAGE_API_KEY
+        sync: false
+      - key: VOYAGE_MODEL
+        value: voyage-multilingual-2
+      - key: SERVE_IN_REVIEW_TO_DEMO
+        value: "true"
+      - key: DEMO_MODE
+        value: "true"
+      - key: SENTRY_DSN
         sync: false
