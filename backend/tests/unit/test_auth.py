@@ -348,12 +348,16 @@ def test_rate_limiter_trusted_proxy_resolves_forwarded_ip() -> None:
 
 
 @pytest.mark.asyncio
-async def test_bearer_token_rejected_in_production_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_bearer_token_rejected_in_production_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Bearer-token auth is rejected/ignored when ENVIRONMENT == 'production'."""
     from backend.app.auth.guards import get_current_user_optional
     from backend.app.config import settings
 
-    token = create_session_token({"user_id": str(uuid.uuid4()), "username": "t1", "role": "teacher"})
+    token = create_session_token(
+        {"user_id": str(uuid.uuid4()), "username": "t1", "role": "teacher"}
+    )
     req = Request(
         scope={
             "type": "http",
@@ -362,6 +366,9 @@ async def test_bearer_token_rejected_in_production_environment(monkeypatch: pyte
         }
     )
     mock_db = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None
+    mock_db.execute.return_value = mock_result
 
     # In test/dev mode, bearer is allowed
     monkeypatch.setattr(settings, "ENVIRONMENT", "test")
@@ -375,4 +382,3 @@ async def test_bearer_token_rejected_in_production_environment(monkeypatch: pyte
     user = await get_current_user_optional(req, mock_db)
     assert user is None
     assert not mock_db.execute.called
-

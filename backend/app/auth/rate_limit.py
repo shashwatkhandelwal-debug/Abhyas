@@ -1,7 +1,7 @@
 """In-memory sliding window rate limiter for login attempts (spec/07 §7.4: 5/min/IP)."""
 
-from collections import defaultdict
 import time
+from collections import defaultdict
 
 from fastapi import HTTPException, Request, status
 

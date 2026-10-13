@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#1F6F5C">
-  <meta name="description" content="प्राथमिक शिक्षकों का अभ्यास साथी — WhatsApp और वेब पर अभ्यास">
+  <meta name="csrf-token" content="{{ csrf_token }}">
   <title>अभ्यास — {{ teacher_name or "शिक्षिका" }}</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="/static/app.css">
@@ -49,7 +49,7 @@
 
     <!-- REHEARSE Strip (Problem & 3 Children) (§9.2) -->
     <div class="rehearse-strip" id="rehearse-strip">
-      <span class="board-problem" id="board-problem">{{ board_problem or "बोर्ड: 52 − 17" }}</span>
+      <span class="board-problem" id="board-problem">{{ board_problem }}</span>
       <div class="children-pills">
         <span class="child-pill ravi active" title="रवि (कक्षा 2)">रवि</span>
         <span class="child-pill priya" title="प्रिया (कक्षा 2)">प्रिया</span>
@@ -110,14 +110,20 @@
       </div>
     </main>
 
-    <!-- Demo Sample Chips (Shown in mock STT or demo mode) (§9.2) -->
-    {% if demo_mode %}
+    <!-- Demo Sample Chips (Shown in demo mode if demo_chips loaded) (§9.2) -->
+    {% if demo_mode and demo_chips %}
     <section class="demo-helper-section" aria-label="नमूना उत्तर चिप्स">
       <div class="demo-hint">बोलने की जगह लिखें (नमूना प्रश्न):</div>
       <div class="demo-chips">
-        <button type="button" class="demo-chip">रवि, 52 में 2 में से 7 क्यों नहीं घट सकता?</button>
-        <button type="button" class="demo-chip">बंडल खोलकर दहाई से 10 तीलियाँ लो।</button>
-        <button type="button" class="demo-chip">शाबाश, अब 12 में से 7 घटाओ।</button>
+        {% for chip in demo_chips %}
+        <button
+          type="button"
+          class="demo-chip"
+          data-id="{{ chip.id }}"
+          data-text="{{ chip.text_hi or chip.text }}"
+          data-audio-available="{{ 'true' if chip.audio_available else 'false' }}"
+        >{{ chip.chip_label or chip.text_hi or chip.text }}</button>
+        {% endfor %}
       </div>
     </section>
     {% endif %}

@@ -13,7 +13,8 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.guards import get_current_user
-from backend.app.db.models import AppUser, Message, Teacher
+from backend.app.config import settings
+from backend.app.db.models import AppUser, Message, Scene, Teacher
 from backend.app.db.session import get_db_session
 from backend.app.web.teacher import STATIC_DIR
 from backend.app.web.teacher import router as teacher_router
@@ -118,7 +119,7 @@ async def test_get_teacher_chat_page(teacher_pwa_app: FastAPI) -> None:
         assert "चरण 4/7 · अभ्यास" in html
 
         # Rehearse child strip
-        assert "बोर्ड: 52 − 17" in html
+        assert 'id="board-problem"' in html
         assert "रवि" in html
         assert "प्रिया" in html
         assert "अमन" in html
@@ -233,3 +234,142 @@ def test_nfc_normalization_for_pwa_assets() -> None:
         content = path.read_text(encoding="utf-8")
         normalized = unicodedata.normalize("NFC", content)
         assert content == normalized, f"File {path.name} contains non-NFC normalized text"
+
+
+# ── Review Item 5 Tests ──────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_teacher_chat_page_board_empty_without_scene(
+    teacher_pwa_app: FastAPI,
+) -> None:
+    """Item 5: Board text is empty string when no scene is active."""
+    async with AsyncClient(
+        transport=ASGITransport(app=teacher_pwa_app), base_url="http://test"
+    ) as client:
+        res = await client.get("/teacher")
+        assert res.status_code == 200
+        # Board problem element exists but contains no text
+        assert '<span class="board-problem" id="board-problem"></span>' in res.text
+        # Hard-coded '52 − 17' or '52 - 17' must NOT appear on the board
+        assert "बोर्ड: 52" not in res.text
+
+
+@pytest.mark.asyncio
+async def test_teacher_chat_page_board_shows_active_problem(
+    teacher_pwa_app: FastAPI, mock_teacher_id: uuid.UUID, mock_teacher: Teacher
+) -> None:
+    """Item 5: Board shows active problem if set on active scene."""
+    active_scene = Scene(
+        id=uuid.uuid4(),
+        teacher_id=mock_teacher_id,
+        status="active",
+        engine_state={"board_problem": "बोर्ड: 43 − 27"},
+    )
+
+    async def mock_db_with_scene() -> AsyncSession:
+        db = AsyncMock(spec=AsyncSession)
+
+        async def get_mock(entity: Any, ident: Any) -> Any:
+            if entity is Teacher and ident == mock_teacher_id:
+                return mock_teacher
+            return None
+
+        async def execute_mock(stmt: Any) -> Any:
+            mock_res = MagicMock()
+            str_stmt = str(stmt)
+            if "FROM scene" in str_stmt:
+                mock_res.scalar_one_or_none.return_value = active_scene
+            elif "FROM message" in str_stmt:
+                mock_res.scalars.return_value.all.return_value = []
+            elif "FROM teacher" in str_stmt:
+                mock_res.scalar_one_or_none.return_value = mock_teacher
+            return mock_res
+
+        db.get.side_effect = get_mock
+        db.execute.side_effect = execute_mock
+        return db
+
+    teacher_pwa_app.dependency_overrides[get_db_session] = mock_db_with_scene
+
+    async with AsyncClient(
+        transport=ASGITransport(app=teacher_pwa_app), base_url="http://test"
+    ) as client:
+        res = await client.get("/teacher")
+        assert res.status_code == 200
+        assert '<span class="board-problem" id="board-problem">बोर्ड: 43 − 27</span>' in res.text
+
+
+@pytest.mark.asyncio
+async def test_teacher_chat_page_chips_load_when_demo_mode_true(
+    teacher_pwa_app: FastAPI, monkeypatch: pytest.MonkeyPatch, tmp_path: Any
+) -> None:
+    """Item 5: Chips load from demo_chips.json only when DEMO_MODE=True."""
+    import json
+    from pathlib import Path
+
+    sample_chips = [
+        {
+            "id": "c1",
+            "chip_label": "रवि से पूछें",
+            "text_hi": "रवि, तुमने 43 में से 27 कैसे घटाया?",
+            "audio_available": False,
+        },
+        {
+            "id": "c2",
+            "chip_label": "बंडल दिखाएँ",
+            "text_hi": "ये 4 बंडल हैं।",
+            "audio_available": True,
+        },
+    ]
+
+    chips_file = Path("eval/samples/demo_chips.json")
+    chips_file.parent.mkdir(parents=True, exist_ok=True)
+    created_temp_file = False
+    if not chips_file.exists():
+        chips_file.write_text(json.dumps(sample_chips, ensure_ascii=False), encoding="utf-8")
+        created_temp_file = True
+
+    try:
+        # Case 1: DEMO_MODE=True -> chips rendered
+        monkeypatch.setattr(settings, "DEMO_MODE", True)
+        async with AsyncClient(
+            transport=ASGITransport(app=teacher_pwa_app), base_url="http://test"
+        ) as client:
+            res = await client.get("/teacher?demo=1")
+            assert res.status_code == 200
+            assert "रवि से पूछें" in res.text
+            assert 'data-audio-available="false"' in res.text
+            # Hard-coded chips must not be present
+            assert "रवि, 52 में 2 में से 7 क्यों नहीं घट सकता?" not in res.text
+
+        # Case 2: DEMO_MODE=False -> no chips rendered
+        monkeypatch.setattr(settings, "DEMO_MODE", False)
+        async with AsyncClient(
+            transport=ASGITransport(app=teacher_pwa_app), base_url="http://test"
+        ) as client:
+            res_no_demo = await client.get("/teacher")
+            assert res_no_demo.status_code == 200
+            assert "रवि से पूछें" not in res_no_demo.text
+    finally:
+        if created_temp_file and chips_file.exists():
+            chips_file.unlink()
+
+
+@pytest.mark.asyncio
+async def test_teacher_chat_page_no_chips_when_json_missing(
+    teacher_pwa_app: FastAPI, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Item 5: Render no chips if demo_chips.json is missing even if DEMO_MODE=True."""
+    monkeypatch.setattr(settings, "DEMO_MODE", True)
+    # Point load_demo_chips to a non-existent file
+    from backend.app.web import teacher as teacher_mod
+
+    monkeypatch.setattr(teacher_mod, "load_demo_chips", lambda: [])
+
+    async with AsyncClient(
+        transport=ASGITransport(app=teacher_pwa_app), base_url="http://test"
+    ) as client:
+        res = await client.get("/teacher?demo=1")
+        assert res.status_code == 200
+        assert "demo-chip" not in res.text

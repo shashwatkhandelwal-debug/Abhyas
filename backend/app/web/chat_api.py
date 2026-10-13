@@ -23,6 +23,7 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Request,
     Response,
     UploadFile,
     status,
@@ -31,6 +32,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.auth.csrf import verify_csrf_token
 from backend.app.auth.guards import get_current_user
 from backend.app.channels.web import is_teacher_pending, mark_teacher_pending, process_inbound_web
 from backend.app.config import settings
@@ -70,18 +72,52 @@ class SettingsUpdateRequest(BaseModel):
 # ── Helper: Resolve Teacher ──────────────────────────────────────────────────
 
 
-async def get_teacher_for_user(user: AppUser, db: AsyncSession) -> Teacher:
-    """Finds the Teacher record linked to the authenticated user."""
+async def get_teacher_for_user(
+    user: AppUser,
+    db: AsyncSession,
+    request: Request | None = None,
+    as_teacher_id: str | uuid.UUID | None = None,
+) -> Teacher:
+    """Finds the Teacher record linked to the authenticated user.
+
+    When current_user is admin:
+    - Must specify ?as=<demo_teacher_id> (or as_teacher_id) pointing to an existing Teacher with is_demo=True.
+    - If ?as= is missing, returns 400 Bad Request.
+    - If ?as= points to a non-demo teacher or invalid ID, returns 400 Bad Request.
+    """
+    if user.role == "admin":
+        target_raw = as_teacher_id
+        if target_raw is None and request is not None:
+            target_raw = request.query_params.get("as")
+
+        if not target_raw:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="व्यवस्थापक को डेमो शिक्षक चुनना आवश्यक है (?as=<demo_teacher_id>) (Admin must select a demo teacher)",
+            )
+
+        try:
+            target_uuid = (
+                target_raw if isinstance(target_raw, uuid.UUID) else uuid.UUID(str(target_raw))
+            )
+        except (ValueError, TypeError):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="अमान्य शिक्षक आईडी (Invalid teacher ID)",
+            ) from None
+
+        demo_teacher = await db.get(Teacher, target_uuid)
+        if not demo_teacher or not demo_teacher.is_demo:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="केवल डेमो शिक्षक के रूप में चैट खोली जा सकती है (Only demo teachers can be impersonated)",
+            )
+        return demo_teacher
+
     if user.teacher_id:
         teacher = await db.get(Teacher, user.teacher_id)
         if teacher:
             return teacher
-
-    if user.role == "admin":
-        stmt = select(Teacher).limit(1)
-        res = (await db.execute(stmt)).scalar_one_or_none()
-        if res:
-            return res
 
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
@@ -92,15 +128,20 @@ async def get_teacher_for_user(user: AppUser, db: AsyncSession) -> Teacher:
 # ── Routes ───────────────────────────────────────────────────────────────────
 
 
-@router.post("/chat/text", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/chat/text",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(verify_csrf_token)],
+)
 async def send_chat_text(
     req: ChatTextRequest,
     background_tasks: BackgroundTasks,
     current_user: Annotated[AppUser, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
+    request: Request,
 ) -> dict[str, Any]:
     """Inbound text endpoint with deduplication and async processing (§7.3)."""
-    teacher = await get_teacher_for_user(current_user, db)
+    teacher = await get_teacher_for_user(current_user, db, request=request)
     clean_text = unicodedata.normalize("NFC", req.text.strip())
     if not clean_text:
         raise HTTPException(
@@ -108,14 +149,19 @@ async def send_chat_text(
             detail="संदेश खाली नहीं हो सकता (Message cannot be empty)",
         )
 
-    # 1. Deduplication on (channel, channel_msg_id) (§7.1, §7.3)
+    # 1. Deduplication on (channel, channel_msg_id) scoped by teacher_id (§7.1, §7.3)
     stmt = select(Message).where(
         Message.channel == "web",
         Message.channel_msg_id == req.client_msg_id,
     )
     existing = (await db.execute(stmt)).scalar_one_or_none()
     if existing:
-        return {"message_id": str(existing.id), "status": "duplicate_ignored"}
+        if existing.teacher_id == teacher.id:
+            return {"message_id": str(existing.id), "status": "duplicate_ignored"}
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="क्लाइंट संदेश आईडी का टकराव (Client message ID conflict across teachers)",
+        )
 
     # 2. Persist inbound message immediately
     msg_id = uuid.uuid4()
@@ -146,16 +192,21 @@ async def send_chat_text(
     return {"message_id": str(msg_id), "status": "accepted"}
 
 
-@router.post("/chat/audio", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/chat/audio",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(verify_csrf_token)],
+)
 async def send_chat_audio(
     background_tasks: BackgroundTasks,
     current_user: Annotated[AppUser, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
+    request: Request,
     client_msg_id: Annotated[str, Form()],
     file: Annotated[UploadFile, File()],
 ) -> dict[str, Any]:
     """Inbound audio upload endpoint (multipart, <= 2 MB) (§7.3)."""
-    teacher = await get_teacher_for_user(current_user, db)
+    teacher = await get_teacher_for_user(current_user, db, request=request)
 
     audio_bytes = await file.read()
     if len(audio_bytes) > MAX_AUDIO_BYTES:
@@ -169,14 +220,19 @@ async def send_chat_audio(
             detail="ऑडियो फ़ाइल खाली है (Empty audio file)",
         )
 
-    # Deduplication check
+    # Deduplication check scoped by teacher_id
     stmt = select(Message).where(
         Message.channel == "web",
         Message.channel_msg_id == client_msg_id,
     )
     existing = (await db.execute(stmt)).scalar_one_or_none()
     if existing:
-        return {"message_id": str(existing.id), "status": "duplicate_ignored"}
+        if existing.teacher_id == teacher.id:
+            return {"message_id": str(existing.id), "status": "duplicate_ignored"}
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="क्लाइंट संदेश आईडी का टकराव (Client message ID conflict across teachers)",
+        )
 
     # Persist audio message with text null pending STT
     msg_id = uuid.uuid4()
@@ -207,24 +263,34 @@ async def send_chat_audio(
     return {"message_id": str(msg_id), "status": "accepted"}
 
 
-@router.post("/chat/button", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/chat/button",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(verify_csrf_token)],
+)
 async def send_chat_button(
     req: ChatButtonRequest,
     background_tasks: BackgroundTasks,
     current_user: Annotated[AppUser, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
+    request: Request,
 ) -> dict[str, Any]:
     """Inbound button reply endpoint (§7.3)."""
-    teacher = await get_teacher_for_user(current_user, db)
+    teacher = await get_teacher_for_user(current_user, db, request=request)
 
-    # Deduplication check
+    # Deduplication check scoped by teacher_id
     stmt = select(Message).where(
         Message.channel == "web",
         Message.channel_msg_id == req.client_msg_id,
     )
     existing = (await db.execute(stmt)).scalar_one_or_none()
     if existing:
-        return {"message_id": str(existing.id), "status": "duplicate_ignored"}
+        if existing.teacher_id == teacher.id:
+            return {"message_id": str(existing.id), "status": "duplicate_ignored"}
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="क्लाइंट संदेश आईडी का टकराव (Client message ID conflict across teachers)",
+        )
 
     msg_id = uuid.uuid4()
     inbound_msg = Message(
@@ -257,10 +323,11 @@ async def send_chat_button(
 async def get_chat_messages(
     current_user: Annotated[AppUser, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
+    request: Request,
     after: str | None = None,
 ) -> dict[str, Any]:
     """Polls recent messages, returning pending state and new messages after cursor (§7.3)."""
-    teacher = await get_teacher_for_user(current_user, db)
+    teacher = await get_teacher_for_user(current_user, db, request=request)
 
     if after:
         try:
@@ -350,33 +417,38 @@ async def get_audio_file(
             headers={"Cache-Control": "private, max-age=31536000, immutable"},
         )
 
-    # In dev/test/mock mode, synthesize fallback WAV audio
-    if settings.ENVIRONMENT in ("development", "test"):
-        mock_tts = MockTTS()
-        data = await mock_tts.synthesize(
-            text_hi="अभ्यास",
-            voice=VoiceSpec(provider_speaker="mock", model="mock"),
-        )
-        return Response(
-            content=data,
-            media_type="audio/wav",
-            headers={"Cache-Control": "private, max-age=31536000, immutable"},
+    # In production, missing audio MUST return 404 without synthesizing
+    if settings.ENVIRONMENT == "production":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="ऑडियो फ़ाइल नहीं मिली (Audio file not found)",
         )
 
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="ऑडियो फ़ाइल नहीं मिली (Audio file not found)",
+    # In dev/test/mock mode, synthesize fallback WAV audio
+    mock_tts = MockTTS()
+    data = await mock_tts.synthesize(
+        text_hi="अभ्यास",
+        voice=VoiceSpec(provider_speaker="mock", model="mock"),
+    )
+    return Response(
+        content=data,
+        media_type="audio/wav",
+        headers={"Cache-Control": "private, max-age=31536000, immutable"},
     )
 
 
-@router.post("/chat/rating")
+@router.post(
+    "/chat/rating",
+    dependencies=[Depends(verify_csrf_token)],
+)
 async def post_chat_rating(
     req: ChatRatingRequest,
     current_user: Annotated[AppUser, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
+    request: Request,
 ) -> dict[str, Any]:
     """Records teacher realism rating (1 to 5) for a rehearsal scene (§7.3)."""
-    teacher = await get_teacher_for_user(current_user, db)
+    teacher = await get_teacher_for_user(current_user, db, request=request)
 
     rating_entry = RealismRating(
         id=uuid.uuid4(),
@@ -391,14 +463,18 @@ async def post_chat_rating(
     return {"ok": True}
 
 
-@router.post("/settings")
+@router.post(
+    "/settings",
+    dependencies=[Depends(verify_csrf_token)],
+)
 async def update_settings(
     req: SettingsUpdateRequest,
     current_user: Annotated[AppUser, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
+    request: Request,
 ) -> dict[str, Any]:
     """Updates teacher preferences (e.g. lite mode) (§7.3)."""
-    teacher = await get_teacher_for_user(current_user, db)
+    teacher = await get_teacher_for_user(current_user, db, request=request)
 
     if req.lite_mode is not None:
         teacher.lite_mode = req.lite_mode

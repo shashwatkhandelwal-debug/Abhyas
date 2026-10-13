@@ -15,6 +15,20 @@ const DB_VERSION = 1;
 const STORE_OUTBOX = 'outbox';
 const STORE_MESSAGES = 'messages_cache';
 
+// ── CSRF Protection ────────────────────────────────────────────────────────
+function getCsrfToken() {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  if (meta && meta.content) {
+    return meta.content;
+  }
+  const match = document.cookie.match(/(?:^|;\s*)abhyas_csrf=([^;]+)/);
+  if (match) {
+    return decodeURIComponent(match[1]);
+  }
+  return '';
+}
+window.getCsrfToken = getCsrfToken;
+
 function openDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -119,24 +133,35 @@ async function drainOutbox() {
         const startTime = Date.now();
         let resp;
 
+        const csrfToken = getCsrfToken();
+        const jsonHeaders = { 'Content-Type': 'application/json' };
+        if (csrfToken) {
+          jsonHeaders['x-csrf-token'] = csrfToken;
+        }
+
         if (item.kind === 'text') {
           resp = await fetch('/api/chat/text', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: jsonHeaders,
             body: JSON.stringify({ client_msg_id: item.client_msg_id, text: item.text }),
           });
         } else if (item.kind === 'button') {
           resp = await fetch('/api/chat/button', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: jsonHeaders,
             body: JSON.stringify({ client_msg_id: item.client_msg_id, button_id: item.button_id }),
           });
         } else if (item.kind === 'audio' && item.audioBlob) {
           const form = new FormData();
           form.append('client_msg_id', item.client_msg_id);
           form.append('file', item.audioBlob, 'voice.webm');
+          const audioHeaders = {};
+          if (csrfToken) {
+            audioHeaders['x-csrf-token'] = csrfToken;
+          }
           resp = await fetch('/api/chat/audio', {
             method: 'POST',
+            headers: audioHeaders,
             body: form,
           });
         }
@@ -481,9 +506,14 @@ async function toggleLiteMode(forceValue = null) {
   }
 
   try {
+    const csrfToken = getCsrfToken();
+    const headers = { 'Content-Type': 'application/json' };
+    if (csrfToken) {
+      headers['x-csrf-token'] = csrfToken;
+    }
     await fetch('/api/settings', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ lite_mode: target }),
     });
   } catch (err) {
@@ -572,13 +602,12 @@ function setupMicEvents() {
 // ── Demo Chip Handler ───────────────────────────────────────────────────────
 function setupDemoChips() {
   const chips = document.querySelectorAll('.demo-chip');
-  const input = document.getElementById('chat-input');
   chips.forEach((c) => {
     c.onclick = () => {
-      if (input) {
-        input.value = c.textContent.trim();
-        input.focus();
-      }
+      const audioAvailable = c.getAttribute('data-audio-available') === 'true';
+      const text = c.getAttribute('data-text') || c.textContent.trim();
+      // If chip has audio_available=false, send its text directly (§9.2)
+      handleSendText(text);
     };
   });
 }

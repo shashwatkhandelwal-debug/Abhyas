@@ -141,4 +141,17 @@ function loggerError(e) {
   }
 }
 
+function getCsrfToken() {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  if (meta && meta.content) {
+    return meta.content;
+  }
+  const match = document.cookie.match(/(?:^|;\s*)abhyas_csrf=([^;]+)/);
+  if (match) {
+    return decodeURIComponent(match[1]);
+  }
+  return '';
+}
+
+window.getCsrfToken = window.getCsrfToken || getCsrfToken;
 window.AudioRecorder = AudioRecorder;

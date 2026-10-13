@@ -9,6 +9,12 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.auth.csrf import (
+    CSRF_COOKIE_NAME,
+    CSRF_HEADER_NAME,
+    generate_csrf_token,
+    verify_csrf_token,
+)
 from backend.app.auth.guards import get_current_user
 from backend.app.channels.web import (
     WebChannel,
@@ -20,6 +26,7 @@ from backend.app.channels.web import (
     set_conversation_service_factory,
     unmark_teacher_pending,
 )
+from backend.app.config import settings
 from backend.app.core.conversation import ConversationService
 from backend.app.core.types import Button, InboundMessage, OutboundMessage
 from backend.app.db.models import AppUser, Message, RealismRating, Teacher, TTSCache
@@ -132,6 +139,7 @@ def web_test_app(mock_user: AppUser, mock_teacher: Teacher) -> FastAPI:
 
     app.dependency_overrides[get_current_user] = mock_get_current_user
     app.dependency_overrides[get_db_session] = mock_db_session
+    app.dependency_overrides[verify_csrf_token] = lambda: None
 
     return app
 
@@ -394,3 +402,254 @@ async def test_end_to_end_mock_conversation_flow(
 
     # Pending count must return to 0 after processing completes
     assert is_teacher_pending(mock_teacher_id) is False
+
+
+# ── Review Items 1, 3, 4, 6 Tests ──────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_csrf_on_api_post_routes(web_test_app: FastAPI) -> None:
+    """Item 1: POST to /api without CSRF fails (403); with valid CSRF succeeds."""
+    # Re-enable real verify_csrf_token for this test
+    web_test_app.dependency_overrides.pop(verify_csrf_token, None)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_test_app), base_url="http://test"
+    ) as client:
+        # 1. POST without CSRF cookie or header -> 403
+        res_no_csrf = await client.post(
+            "/api/chat/text",
+            json={"client_msg_id": str(uuid.uuid4()), "text": "नमस्ते"},
+        )
+        assert res_no_csrf.status_code == 403
+
+        # 2. POST with cookie but invalid header -> 403
+        token = generate_csrf_token()
+        client.cookies.set(CSRF_COOKIE_NAME, token)
+        res_bad_header = await client.post(
+            "/api/chat/text",
+            headers={CSRF_HEADER_NAME: "wrong-token"},
+            json={"client_msg_id": str(uuid.uuid4()), "text": "नमस्ते"},
+        )
+        assert res_bad_header.status_code == 403
+
+        # 3. POST with matching CSRF cookie and x-csrf-token header -> 202
+        res_valid = await client.post(
+            "/api/chat/text",
+            headers={CSRF_HEADER_NAME: token},
+            json={"client_msg_id": str(uuid.uuid4()), "text": "नमस्ते"},
+        )
+        assert res_valid.status_code == 202
+
+    # Restore override for other tests
+    web_test_app.dependency_overrides[verify_csrf_token] = lambda: None
+
+
+@pytest.mark.asyncio
+async def test_csrf_bearer_token_bypass_rules(
+    web_test_app: FastAPI, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Item 1: Bearer-token auth allowed to bypass CSRF ONLY when settings.ENVIRONMENT != 'production'."""
+    web_test_app.dependency_overrides.pop(verify_csrf_token, None)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_test_app), base_url="http://test"
+    ) as client:
+        # In non-production (e.g. test), Bearer token skips CSRF
+        monkeypatch.setattr(settings, "ENVIRONMENT", "test")
+        res_dev = await client.post(
+            "/api/chat/text",
+            headers={"Authorization": "Bearer test-bearer-token"},
+            json={"client_msg_id": str(uuid.uuid4()), "text": "नमस्ते"},
+        )
+        assert res_dev.status_code == 202
+
+        # In production, Bearer token does NOT bypass CSRF -> 403
+        monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+        res_prod = await client.post(
+            "/api/chat/text",
+            headers={"Authorization": "Bearer test-bearer-token"},
+            json={"client_msg_id": str(uuid.uuid4()), "text": "नमस्ते"},
+        )
+        assert res_prod.status_code == 403
+
+    web_test_app.dependency_overrides[verify_csrf_token] = lambda: None
+
+
+@pytest.mark.asyncio
+async def test_admin_chat_requires_explicit_demo_teacher(web_test_app: FastAPI) -> None:
+    """Item 3: Admin opens chat only as an explicit demo teacher (?as=<demo_id>, is_demo=True) or 400."""
+    admin_user = AppUser(
+        id=uuid.uuid4(),
+        username="admin.demo",
+        role="admin",
+        teacher_id=None,
+        display_name="व्यवस्थापक",
+        password_hash="hash",
+    )
+    demo_teacher_id = uuid.uuid4()
+    demo_teacher = Teacher(
+        id=demo_teacher_id,
+        name="डेमो शिक्षिका 1",
+        preferred_channel="web",
+        is_demo=True,
+    )
+    real_teacher_id = uuid.uuid4()
+    real_teacher = Teacher(
+        id=real_teacher_id,
+        name="वास्तविक शिक्षिका",
+        preferred_channel="web",
+        is_demo=False,
+    )
+
+    web_test_app.dependency_overrides[get_current_user] = lambda: admin_user
+
+    async def mock_db_with_teachers() -> AsyncSession:
+        db = AsyncMock(spec=AsyncSession)
+
+        async def get_mock(entity: Any, ident: Any) -> Any:
+            if entity is Teacher:
+                if ident == demo_teacher_id:
+                    return demo_teacher
+                if ident == real_teacher_id:
+                    return real_teacher
+            return None
+
+        db.get.side_effect = get_mock
+        db.commit = AsyncMock()
+        mock_res = MagicMock()
+        mock_res.scalar_one_or_none.return_value = None
+        db.execute.return_value = mock_res
+        return db
+
+    web_test_app.dependency_overrides[get_db_session] = mock_db_with_teachers
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_test_app), base_url="http://test"
+    ) as client:
+        # 1. Admin without selection -> 400
+        res_no_as = await client.post(
+            "/api/chat/text",
+            json={"client_msg_id": str(uuid.uuid4()), "text": "नमस्ते"},
+        )
+        assert res_no_as.status_code == 400
+
+        # 2. Admin with non-demo teacher -> 400
+        res_non_demo = await client.post(
+            f"/api/chat/text?as={real_teacher_id}",
+            json={"client_msg_id": str(uuid.uuid4()), "text": "नमस्ते"},
+        )
+        assert res_non_demo.status_code == 400
+
+        # 3. Admin with explicit demo teacher -> 202
+        res_demo = await client.post(
+            f"/api/chat/text?as={demo_teacher_id}",
+            json={"client_msg_id": str(uuid.uuid4()), "text": "नमस्ते"},
+        )
+        assert res_demo.status_code == 202
+
+
+@pytest.mark.asyncio
+async def test_idempotency_cross_teacher_collision_409(web_test_app: FastAPI) -> None:
+    """Item 4: Lookup of idempotency key filters by teacher_id; cross-teacher collision -> 409 Conflict."""
+    teacher_a_id = uuid.uuid4()
+    teacher_b_id = uuid.uuid4()
+    teacher_a = Teacher(id=teacher_a_id, name="शिक्षिका A", preferred_channel="web")
+    teacher_b = Teacher(id=teacher_b_id, name="शिक्षिका B", preferred_channel="web")
+
+    user_a = AppUser(
+        id=uuid.uuid4(), username="t_a", role="teacher", teacher_id=teacher_a_id, password_hash="h"
+    )
+    user_b = AppUser(
+        id=uuid.uuid4(), username="t_b", role="teacher", teacher_id=teacher_b_id, password_hash="h"
+    )
+
+    messages_store: dict[str, Message] = {}
+
+    current_test_user = user_a
+    web_test_app.dependency_overrides[get_current_user] = lambda: current_test_user
+
+    async def mock_db_cross() -> AsyncSession:
+        db = AsyncMock(spec=AsyncSession)
+
+        async def get_mock(entity: Any, ident: Any) -> Any:
+            if entity is Teacher:
+                if ident == teacher_a_id:
+                    return teacher_a
+                if ident == teacher_b_id:
+                    return teacher_b
+            return None
+
+        def add_mock(instance: Any) -> None:
+            if isinstance(instance, Message):
+                messages_store[instance.channel_msg_id] = instance
+
+        async def execute_mock(stmt: Any) -> Any:
+            mock_res = MagicMock()
+            str_stmt = str(stmt)
+            if "FROM message" in str_stmt:
+                params = list(getattr(stmt.compile(), "params", {}).values())
+                matched = None
+                for p in params:
+                    if p in messages_store:
+                        matched = messages_store[p]
+                        break
+                mock_res.scalar_one_or_none.return_value = matched
+            return mock_res
+
+        db.get.side_effect = get_mock
+        db.add.side_effect = add_mock
+        db.execute.side_effect = execute_mock
+        db.commit = AsyncMock()
+        return db
+
+    web_test_app.dependency_overrides[get_db_session] = mock_db_cross
+
+    shared_client_msg_id = str(uuid.uuid4())
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_test_app), base_url="http://test"
+    ) as client:
+        # 1. Teacher A sends message -> 202 accepted
+        res_a1 = await client.post(
+            "/api/chat/text",
+            json={"client_msg_id": shared_client_msg_id, "text": "संदेश A"},
+        )
+        assert res_a1.status_code == 202
+        assert res_a1.json()["status"] == "accepted"
+
+        # 2. Teacher A resends same message -> 202 duplicate_ignored
+        res_a2 = await client.post(
+            "/api/chat/text",
+            json={"client_msg_id": shared_client_msg_id, "text": "संदेश A"},
+        )
+        assert res_a2.status_code == 202
+        assert res_a2.json()["status"] == "duplicate_ignored"
+
+        # 3. Teacher B uses same client_msg_id -> 409 Conflict
+        current_test_user = user_b
+        res_b = await client.post(
+            "/api/chat/text",
+            json={"client_msg_id": shared_client_msg_id, "text": "संदेश B"},
+        )
+        assert res_b.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_no_synthesized_wav_in_production(
+    web_test_app: FastAPI, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Item 6: Missing audio in production returns 404; non-production synthesizes fallback."""
+    async with AsyncClient(
+        transport=ASGITransport(app=web_test_app), base_url="http://test"
+    ) as client:
+        # In production mode: missing audio returns 404
+        monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+        res_prod = await client.get("/api/audio/missing_audio_ref.wav")
+        assert res_prod.status_code == 404
+
+        # In test mode: missing audio returns fallback WAV
+        monkeypatch.setattr(settings, "ENVIRONMENT", "test")
+        res_test = await client.get("/api/audio/missing_audio_ref.wav")
+        assert res_test.status_code == 200
+        assert res_test.headers.get("content-type") == "audio/wav"
