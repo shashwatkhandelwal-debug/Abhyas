@@ -30,7 +30,7 @@ def sub_correct(problem: Problem, context: dict[str, Any] | None = None) -> BugO
     74-39 -> 35
     """
     a, b, t_top, u_top, t_bot, u_bot = _unpack_sub(problem)
-    ans = a - b
+    ans = int(problem.answer())
 
     steps: list[Step] = []
     if u_top < u_bot:

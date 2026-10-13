@@ -38,8 +38,9 @@ def read_correct(problem: Problem, context: dict[str, Any] | None = None) -> Bug
     किताब -> किताब
     गुड़िया -> गुड़िया
     """
-    word = _unpack_word(problem)
-    aksharas = split_akshars(word)
+    _unpack_word(problem)
+    ans = str(problem.answer())
+    aksharas = split_akshars(ans)
 
     steps = [
         make_step(
@@ -47,9 +48,9 @@ def read_correct(problem: Problem, context: dict[str, Any] | None = None) -> Bug
             words=aksharas,
             aksharas=join_akshars(aksharas, sep=" - "),
         ),
-        make_step("ANSWER", words=[word], answer=word),
+        make_step("ANSWER", words=[ans], answer=ans),
     ]
-    return BugOutput(rule_id="CORRECT_READ", answer=word, steps=steps)
+    return BugOutput(rule_id="CORRECT_READ", answer=ans, steps=steps)
 
 
 def matra_drop(problem: Problem, context: dict[str, Any] | None = None) -> BugOutput:
