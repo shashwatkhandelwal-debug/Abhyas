@@ -193,16 +193,18 @@ All items from `spec/15_human_inputs.md` are currently open:
 ## 8. Current Status & Active Lanes
 
 ### STOPPED AT:
-- **Main Branch**: Merged approved commit `95cb1e3` (Lane C T25–T29: full auth, web channel, teacher chat PWA, CSRF on all state-changing endpoints, `tts_cache.get` audio serving with strict 404 on miss, demo account scoping). Merge commit `2c51430`.
-- **Coordinator Commit on Main (`58aaa01`)**:
-  - Enforced production startup fail-fast validation in `backend/app/config.py`: `ADMIN_PASSWORD` cannot be empty or equal `"abhyas-admin-2026"`; `PHONE_ENC_KEY` cannot be empty or equal dev default key.
-  - Added unit tests in `backend/tests/unit/test_config.py` verifying that `Settings(ENVIRONMENT="production")` with defaults raises `ValidationError` naming `ADMIN_PASSWORD` and `PHONE_ENC_KEY`.
-  - Dropped unused `tts_cache` table and `TTSCache` model with Alembic migration `c4e1f7a2b9d3_drop_tts_cache_table.py`.
-  - CI verified clean on `main`: 695 passed, 1 skipped (test_migrations).
-- **Architecture Note for T32–T35 (Reports & Admin Views)**: Every Teacher query in ARP, trainer, coach, and admin views must go through `auth.access.scope_teachers_query`.
-- **Lane B (Active Subagent `30b84880-8782-49cf-a263-5cf47c36853a`)**: Working on CHANGES `518d79e` (spec/08 weekly state machine: `REHEARSE_INTRO`, `REFLECT_PEER`, `REFLECT_SELF`, `intents.match_intent`, `ASK` flow, `delete_confirm`, `SessionService` side effects, onboarding with join codes & placement, and §8.8 table-driven tests).
+- **Main Branch**: Merged approved commit `941929d` (Lane C T30: production deploy prep, `render.yaml`, `Dockerfile`, root `.dockerignore`, `docker-compose.yml`, `/healthz`, router mounting in `main.py`, `docs/DEPLOY.md`, `scripts/smoke_test.py`). Head is `941929d`.
+- **Coordinator Security Fix on Main (`bc9f7b6`)**:
+  - `POST /whatsapp/webhook`: 404 if not `WHATSAPP_ENABLED`, 503 if `WHATSAPP_APP_SECRET` empty, removed `startswith("mock")` bypass.
+  - `GET /whatsapp/webhook`: 403 if `WHATSAPP_VERIFY_TOKEN` empty.
+  - Full CI on `main`: 713 passed, 1 skipped (`test_migrations`).
+- **Lane C (Active Subagent `9cd3b2fd-c1a0-4c17-9965-9c53795dc32e`)**: Working on:
+  1. `get_client_ip` last-hop extraction in production with updated test.
+  2. T31 demo cohort data (`backend/app/db/demo_data.py`, `is_demo=True`, "डेमो" prefix, real engine + MockLLM scores on scripted turns).
+  3. T29 teacher progress page (`/teacher/progress`, evidence ladder, rubric history, consent toggles, data deletion).
+- **Lane B (Active Subagent `30b84880-8782-49cf-a263-5cf47c36853a`)**: Working on CHANGES `8da3157` (feeding real scene turns, tagged acts, child trajectories, and math answer into `coach_feedback`). Commit `8da3157` held unmerged.
 
 ### NEXT:
-1. Complete Lane B review request upon subagent finishing CHANGES `518d79e`.
-2. Merge `lane-b` into `main`, run CI, and report MAIN SHA.
-3. Proceed with T30–T35 (Render deploy & reports).
+1. Complete Lane B review request once real scene data is fed to coach.
+2. Complete Lane C review request upon finishing T31 demo cohort and T29 progress page.
+3. Merge approved lane commits into `main`.
