@@ -14,6 +14,7 @@ from backend.app.core.intents import (
     Intent,
     match_intent,
 )
+from backend.app.core.messages import get_message
 
 
 class SessionStateEnum(StrEnum):
@@ -157,14 +158,14 @@ STATE_TRANSITION_TABLE: tuple[TransitionEdge, ...] = (
         input_kind="btn_female",
         target_state="PROFILE_EXPERIENCE",
         message_keys=("ask_experience",),
-        description="Teacher selects female honorific (शिक्षिका)",
+        description="Teacher selects female honorific",
     ),
     TransitionEdge(
         source_state="PROFILE_ADDRESS",
         input_kind="btn_male",
         target_state="PROFILE_EXPERIENCE",
         message_keys=("ask_experience",),
-        description="Teacher selects male honorific (शिक्षक)",
+        description="Teacher selects male honorific",
     ),
     TransitionEdge(
         source_state="PROFILE_EXPERIENCE",
@@ -1028,7 +1029,7 @@ class OnboardingStateMachine:
             )
 
         if prev == OnboardingStateEnum.PROFILE_ADDRESS:
-            if token in ("btn_male", "शिक्षक", "m"):
+            if token in ("btn_male", get_message("btn_male", "m"), "m"):
                 self.ctx.address_form = "m"
             else:
                 self.ctx.address_form = "f"

@@ -38,7 +38,7 @@ def load_induction_order(induction_path: Path | str | None = None) -> list[str]:
             data = yaml.safe_load(induction_path.read_text(encoding="utf-8"))
             if isinstance(data, list) and all(isinstance(x, str) for x in data):
                 return data
-        except Exception as exc:
+        except (yaml.YAMLError, OSError) as exc:
             logger.warning("Failed to load induction track from %s: %s", induction_path, exc)
 
     return list(DEFAULT_INDUCTION_ORDER)
@@ -75,7 +75,7 @@ def compute_move_path(
             MovePathEntry(
                 position=i + 1,
                 move_id=m_id,
-                reason="प्रथम वर्ष शिक्षक: आधारशिला निश्चित क्रम",
+                reason="first_year_teacher_induction_fixed_order",
             )
             for i, m_id in enumerate(order)
         ]
@@ -117,32 +117,32 @@ def compute_move_path(
         move_id = str(m["id"])
         month_diff = max(0, int(str(m["sankul_month"])) - current_month)
         score = month_diff * 10.0
-        reasons: list[str] = [f"माह प्राथमिकता: +{month_diff * 10}"]
+        reasons: list[str] = [f"month_priority: +{month_diff * 10}"]
 
         if placement_used_tell_answer and m["has_ask_to_explain"]:
             score -= 15.0
-            reasons.append("प्लेसमेंट में उत्तर बताने के कारण स्पष्टीकरण अभ्यास: -15")
+            reasons.append("placement_tell_answer_explanation_practice: -15")
 
         if 1 in classes_list and (
             m["domain"] == "literacy" or move_id.startswith("NUM_PLACE_VALUE")
         ):
             score -= 10.0
-            reasons.append("कक्षा 1 पढ़ाने के कारण बुनियादी अभ्यास: -10")
+            reasons.append("grade_1_foundational_practice: -10")
 
         if move_id in rubrics:
             min_r = rubrics[move_id]
             delta = 5.0 * (2.0 - min_r)
             score -= delta
-            reasons.append(f"पूर्व प्रदर्शन सुधार: -{delta:.1f}")
+            reasons.append(f"prior_performance_improvement: -{delta:.1f}")
 
         tags = m["tags"]
         if isinstance(tags, set) and tags.intersection(q_tags):
             score -= 8.0
-            reasons.append("शिक्षक के प्रश्न से संबंधित: -8")
+            reasons.append("matched_teacher_question: -8")
 
         if done_ev.get(move_id, 0) >= 2:
             score += 100.0
-            reasons.append("पूर्व में पूरा किया गया (प्रमाण ≥ 2): +100")
+            reasons.append("previously_completed: +100")
 
         scored.append((score, move_id, "; ".join(reasons)))
 

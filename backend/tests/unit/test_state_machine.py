@@ -1,13 +1,30 @@
 """Tests for Weekly State Machine, Onboarding, and SessionService (spec/08 §8.1–§8.8, T20/T21)."""
 
 import re
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from uuid import uuid4
+from typing import Any
+from uuid import UUID, uuid4
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.types import InboundMessage
+from backend.app.db.models import (
+    AdoptionEvidence,
+    ConsentLog,
+    ExplainScore,
+    InviteCode,
+    MovePath,
+    Question,
+    RealismRating,
+    RehearsalScore,
+    ReviewItem,
+    SessionState,
+    Teacher,
+)
+from backend.app.sessions.path import MovePathEntry
+from backend.app.sessions.repository import SessionRepository
 from backend.app.sessions.service import SessionService
 from backend.app.sessions.state_machine import (
     STATE_TRANSITION_TABLE,
@@ -384,8 +401,278 @@ def test_self_reflection_steps_q1_q2_evidence_level_two() -> None:
     assert ctx.evidence_level == 2
 
 
+class FakeSessionRepository(SessionRepository):
+    """In-memory repository fake for unit tests."""
+
+    def __init__(self, session: AsyncSession | None = None) -> None:
+        self.session = session  # type: ignore[assignment]
+        self._teachers: dict[UUID, Teacher] = {}
+        self._session_states: dict[tuple[UUID, date], SessionState] = {}
+        self._evidence: list[AdoptionEvidence] = []
+        self._review_items: list[ReviewItem] = []
+        self._explain_scores: list[ExplainScore] = []
+        self._rehearsal_scores: list[RehearsalScore] = []
+        self._consent_logs: list[ConsentLog] = []
+        self._questions: list[Question] = []
+        self._move_paths: list[MovePath] = []
+        self._realism_ratings: list[RealismRating] = []
+        self._invite_codes: dict[str, InviteCode] = {
+            "KNP-C01-B1": InviteCode(
+                code="KNP-C01-B1",
+                cluster_id="KNP-C01",
+                batch_id="KNP-B1",
+                district="Kanpur Nagar",
+                active=True,
+            ),
+            "KNP-C01-B2": InviteCode(
+                code="KNP-C01-B2",
+                cluster_id="KNP-C01",
+                batch_id="KNP-B2",
+                district="Kanpur Nagar",
+                active=True,
+            ),
+            "DEMO": InviteCode(
+                code="DEMO",
+                cluster_id="DEMO-C01",
+                batch_id="DEMO-B1",
+                district="Kanpur Nagar",
+                active=True,
+            ),
+        }
+
+    async def get_or_create_teacher(self, teacher_id: UUID) -> Teacher:
+        if teacher_id not in self._teachers:
+            self._teachers[teacher_id] = Teacher(
+                id=teacher_id,
+                onboarding_state="NEW",
+                address_form="f",
+                preferred_channel="whatsapp",
+                lite_mode=False,
+                consent_service=False,
+                consent_share_scores=False,
+                created_at=datetime.now(UTC),
+            )
+        return self._teachers[teacher_id]
+
+    async def save_teacher(self, teacher: Teacher) -> None:
+        self._teachers[teacher.id] = teacher
+
+    async def get_or_create_session_state(
+        self, teacher_id: UUID, week_start: date, move_id: str
+    ) -> SessionState:
+        key = (teacher_id, week_start)
+        if key not in self._session_states:
+            self._session_states[key] = SessionState(
+                teacher_id=teacher_id,
+                week_start=week_start,
+                move_id=move_id,
+                state="LEARN",
+                prior_state=None,
+                rehearse_attempts=0,
+                context={},
+                updated_at=datetime.now(UTC),
+            )
+        return self._session_states[key]
+
+    async def save_session_state(self, session_state: SessionState) -> None:
+        key = (session_state.teacher_id, session_state.week_start)
+        session_state.updated_at = datetime.now(UTC)
+        self._session_states[key] = session_state
+
+    async def get_invite_code(self, code: str) -> InviteCode | None:
+        norm = code.strip().upper()
+        return self._invite_codes.get(norm)
+
+    async def log_consent(
+        self, teacher_id: UUID, field: str, value: bool, channel: str = "whatsapp"
+    ) -> ConsentLog:
+        entry = ConsentLog(
+            id=uuid4(),
+            teacher_id=teacher_id,
+            field=field,
+            value=value,
+            channel=channel,
+            created_at=datetime.now(UTC),
+        )
+        self._consent_logs.append(entry)
+        return entry
+
+    async def record_adoption_evidence(
+        self,
+        teacher_id: UUID,
+        move_id: str,
+        level: int,
+        source: str,
+        detail: dict[str, Any] | None = None,
+    ) -> AdoptionEvidence:
+        ev = AdoptionEvidence(
+            id=uuid4(),
+            teacher_id=teacher_id,
+            move_id=move_id,
+            level=level,
+            source=source,
+            detail=detail or {},
+            created_at=datetime.now(UTC),
+        )
+        self._evidence.append(ev)
+        return ev
+
+    async def get_adoption_evidence(self, teacher_id: UUID) -> list[AdoptionEvidence]:
+        return [e for e in self._evidence if e.teacher_id == teacher_id]
+
+    async def record_review_item(
+        self, kind: str, ref_id: str, reason: str | None = None
+    ) -> ReviewItem:
+        item = ReviewItem(
+            id=uuid4(),
+            kind=kind,
+            ref_id=ref_id,
+            reason=reason,
+            status="open",
+            created_at=datetime.now(UTC),
+        )
+        self._review_items.append(item)
+        return item
+
+    async def record_explain_score(
+        self,
+        teacher_id: UUID,
+        move_id: str,
+        transcript: str,
+        points: dict[str, Any],
+        misconceptions: list[str] | None,
+        confidence: float,
+        needs_review: bool,
+    ) -> ExplainScore:
+        score = ExplainScore(
+            id=uuid4(),
+            teacher_id=teacher_id,
+            move_id=move_id,
+            transcript=transcript,
+            points=points,
+            misconceptions=misconceptions or [],
+            confidence=confidence,
+            needs_review=needs_review,
+            created_at=datetime.now(UTC),
+        )
+        self._explain_scores.append(score)
+        return score
+
+    async def record_rehearsal_score(
+        self,
+        teacher_id: UUID,
+        scene_id: UUID | None,
+        move_id: str,
+        attempt: int,
+        scores: dict[str, Any],
+        evidence: dict[str, Any],
+        strength_hi: str,
+        change_hi: str,
+        exact_words_hi: str,
+        confidence: float,
+        needs_review: bool,
+    ) -> RehearsalScore:
+        score = RehearsalScore(
+            id=uuid4(),
+            teacher_id=teacher_id,
+            scene_id=scene_id,
+            move_id=move_id,
+            attempt=attempt,
+            scores=scores,
+            evidence=evidence,
+            strength_hi=strength_hi,
+            change_hi=change_hi,
+            exact_words_hi=exact_words_hi,
+            confidence=confidence,
+            needs_review=needs_review,
+            created_at=datetime.now(UTC),
+        )
+        self._rehearsal_scores.append(score)
+        return score
+
+    async def record_move_path(
+        self, teacher_id: UUID, entries: list[MovePathEntry]
+    ) -> list[MovePath]:
+        paths: list[MovePath] = []
+        for entry in entries:
+            mp = MovePath(
+                teacher_id=teacher_id,
+                position=entry.position,
+                move_id=entry.move_id,
+                reason=entry.reason,
+            )
+            paths.append(mp)
+            self._move_paths.append(mp)
+        return paths
+
+    async def get_move_path(self, teacher_id: UUID) -> list[MovePath]:
+        return [m for m in self._move_paths if m.teacher_id == teacher_id]
+
+    async def record_realism_rating(
+        self, teacher_id: UUID, rating: int, scene_id: UUID | None = None
+    ) -> RealismRating:
+        rr = RealismRating(
+            id=uuid4(),
+            teacher_id=teacher_id,
+            scene_id=scene_id,
+            rating=rating,
+            created_at=datetime.now(UTC),
+        )
+        self._realism_ratings.append(rr)
+        return rr
+
+    async def record_question(
+        self,
+        teacher_id: UUID,
+        text: str,
+        category: str,
+        answer_hi: str,
+        source_ids: list[str],
+        confidence: float,
+        status: str,
+    ) -> Question:
+        q = Question(
+            id=uuid4(),
+            teacher_id=teacher_id,
+            text=text,
+            category=category,
+            answer_hi=answer_hi,
+            source_ids=source_ids,
+            confidence=confidence,
+            status=status,
+            created_at=datetime.now(UTC),
+        )
+        self._questions.append(q)
+        return q
+
+    async def purge_teacher_data(self, teacher_id: UUID) -> None:
+        if teacher_id in self._teachers:
+            t = self._teachers[teacher_id]
+            t.name = None
+            t.cluster_id = None
+            t.batch_id = None
+            t.district = None
+            t.classes = []
+            t.experience_band = None
+            t.first_year = False
+            t.consent_service = False
+            t.consent_share_scores = False
+            t.onboarding_state = "NEW"
+
+        self._evidence = [e for e in self._evidence if e.teacher_id != teacher_id]
+        self._explain_scores = [e for e in self._explain_scores if e.teacher_id != teacher_id]
+        self._rehearsal_scores = [r for r in self._rehearsal_scores if r.teacher_id != teacher_id]
+        self._questions = [q for q in self._questions if q.teacher_id != teacher_id]
+        self._move_paths = [m for m in self._move_paths if m.teacher_id != teacher_id]
+        self._consent_logs = [c for c in self._consent_logs if c.teacher_id != teacher_id]
+        self._realism_ratings = [r for r in self._realism_ratings if r.teacher_id != teacher_id]
+        keys_to_del = [k for k in self._session_states if k[0] == teacher_id]
+        for k in keys_to_del:
+            del self._session_states[k]
+
+
 def make_inbound(
-    teacher_id: uuid4,
+    teacher_id: UUID | str,
     text: str | None = None,
     button_id: str | None = None,
 ) -> InboundMessage:
@@ -403,7 +690,7 @@ def make_inbound(
 @pytest.mark.asyncio
 async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence() -> None:
     """Full happy path NEW -> DONE with SessionService asserting evidence >= 2 recorded in DB (§8.8)."""
-    service = SessionService()
+    service = SessionService(repository=FakeSessionRepository())
     t_id = uuid4()
 
     # 1. NEW -> JOIN_CODE (agree to consent)
@@ -547,31 +834,41 @@ async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence(
     assert max_level >= 2
 
 
-def test_session_service_hygiene_no_broad_exceptions_and_no_hardcoded_hindi() -> None:
-    """Verifies backend/app/sessions/service.py has no 'except Exception' and zero hardcoded Hindi literals."""
-    service_path = Path(__file__).parents[2] / "app" / "sessions" / "service.py"
-    assert service_path.is_file(), f"service.py not found at {service_path}"
+def test_sessions_package_hygiene_no_broad_exceptions_and_no_devanagari() -> None:
+    """Verifies all .py files in backend/app/sessions/ have zero 'except Exception',
+    zero bare 'except:', and zero Devanagari literals."""
+    sessions_dir = Path(__file__).parents[2] / "app" / "sessions"
+    assert sessions_dir.is_dir(), f"sessions directory not found at {sessions_dir}"
 
-    content = service_path.read_text(encoding="utf-8")
-
-    # 1. Broad exception check
-    assert "except Exception" not in content, (
-        "backend/app/sessions/service.py must not contain 'except Exception'. "
-        "Catch specific exceptions instead."
+    py_files = list(sessions_dir.glob("*.py"))
+    assert len(py_files) >= 5, (
+        f"Expected at least 5 .py files in {sessions_dir}, found {len(py_files)}"
     )
 
-    # 2. Hardcoded Hindi literals check (Devanagari Unicode block \u0900-\u097F)
-    hindi_matches = re.findall(r"[\u0900-\u097F]+", content)
-    assert not hindi_matches, (
-        f"backend/app/sessions/service.py must contain ZERO hardcoded Hindi literals. "
-        f"Found {len(hindi_matches)} matches: {hindi_matches[:10]}"
-    )
+    for py_file in py_files:
+        content = py_file.read_text(encoding="utf-8")
+
+        # 1. Broad exception check
+        assert "except Exception" not in content, (
+            f"{py_file.name} must not contain 'except Exception'. Catch specific exceptions instead."
+        )
+        assert not re.search(r"except\s*:", content), (
+            f"{py_file.name} must not contain bare 'except:'. Catch specific exceptions instead."
+        )
+
+        # 2. Hardcoded Hindi literals check (Devanagari Unicode block \u0900-\u097F)
+        hindi_matches = re.findall(r"[\u0900-\u097F]+", content)
+        assert not hindi_matches, (
+            f"{py_file.name} must contain ZERO hardcoded Hindi literals. "
+            f"Found {len(hindi_matches)} matches: {hindi_matches[:10]}"
+        )
 
 
 @pytest.mark.asyncio
 async def test_admin_escalation_creates_review_item() -> None:
     """Verifies 'admin' query sends ask_admin, escalates, and creates review_item in DB."""
-    service = SessionService()
+    repo = FakeSessionRepository()
+    service = SessionService(repository=repo)
     t_id = uuid4()
     ctx = await service.get_or_create_context(t_id)
     ctx.onboarding_state = OnboardingStateEnum.READY
@@ -583,16 +880,14 @@ async def test_admin_escalation_creates_review_item() -> None:
     )
     assert len(out) >= 1
     # Check question recorded with status='escalated'
-    questions = [q for q in service.repo._questions if q.teacher_id == t_id]
+    questions = [q for q in repo._questions if q.teacher_id == t_id]
     assert len(questions) == 1
     assert questions[0].status == "escalated"
     assert questions[0].category == "admin"
 
     # Check review item created for escalated question
     review_items = [
-        r
-        for r in service.repo._review_items
-        if r.kind == "question" and r.ref_id == str(questions[0].id)
+        r for r in repo._review_items if r.kind == "question" and r.ref_id == str(questions[0].id)
     ]
     assert len(review_items) == 1
 
@@ -600,7 +895,8 @@ async def test_admin_escalation_creates_review_item() -> None:
 @pytest.mark.asyncio
 async def test_coach_skipped_when_under_three_teacher_turns() -> None:
     """Verifies scene with < 3 teacher turns skips coach, records no score, and sends scene_ended_neutral."""
-    service = SessionService()
+    repo = FakeSessionRepository()
+    service = SessionService(repository=repo)
     t_id = uuid4()
     ctx = await service.get_or_create_context(t_id)
     ctx.onboarding_state = OnboardingStateEnum.READY
@@ -617,7 +913,7 @@ async def test_coach_skipped_when_under_three_teacher_turns() -> None:
     assert ctx.current_state == SessionStateEnum.FEEDBACK
 
     # Rehearsal scores must be EMPTY (no score recorded)
-    scores = [s for s in service.repo._rehearsal_scores if s.teacher_id == t_id]
+    scores = [s for s in repo._rehearsal_scores if s.teacher_id == t_id]
     assert len(scores) == 0
 
     # Output contains scene_ended_neutral
@@ -627,7 +923,8 @@ async def test_coach_skipped_when_under_three_teacher_turns() -> None:
 @pytest.mark.asyncio
 async def test_feedback_realism_rating_and_unclear_handling() -> None:
     """Verifies realism rating 1-5 is persisted in RealismRating, and other text sends unclear."""
-    service = SessionService()
+    repo = FakeSessionRepository()
+    service = SessionService(repository=repo)
     t_id = uuid4()
     ctx = await service.get_or_create_context(t_id)
     ctx.onboarding_state = OnboardingStateEnum.READY
@@ -642,6 +939,43 @@ async def test_feedback_realism_rating_and_unclear_handling() -> None:
     # Send realism rating 4
     out_rating = await service.handle_inbound(make_inbound(teacher_id=t_id, text="4"))
     assert len(out_rating) == 1
-    ratings = [r for r in service.repo._realism_ratings if r.teacher_id == t_id]
+    ratings = [r for r in repo._realism_ratings if r.teacher_id == t_id]
     assert len(ratings) == 1
     assert ratings[0].rating == 4
+
+
+@pytest.mark.asyncio
+async def test_second_session_service_instance_continues_mid_scene_from_db() -> None:
+    """Verifies a fresh SessionService instance resumes and continues a session mid-scene
+    solely from persisted database state (simulating a fresh worker process)."""
+    repo = FakeSessionRepository()
+    service1 = SessionService(repository=repo)
+    t_id = uuid4()
+
+    # Advance context in service1 to REHEARSE state with 1 turn completed
+    ctx1 = await service1.get_or_create_context(t_id)
+    ctx1.onboarding_state = OnboardingStateEnum.READY
+    ctx1.current_state = SessionStateEnum.REHEARSE
+    ctx1.rehearsal_turns_count = 1
+    ctx1.child_states = {"ravi": 1}
+    await service1._sync_context_to_db(ctx1, t_id)
+
+    # Simulate fresh process: new SessionService instance sharing only the DB repository
+    service2 = SessionService(repository=repo)
+    ctx2 = await service2.get_or_create_context(t_id)
+
+    # Context was loaded accurately from DB alone
+    assert ctx2.current_state == SessionStateEnum.REHEARSE
+    assert ctx2.rehearsal_turns_count == 1
+    assert ctx2.child_states == {"ravi": 1}
+
+    # Process turn 2 in service2
+    out = await service2.handle_inbound(
+        make_inbound(teacher_id=t_id, text="रवि, 52 में से 10 निकालने पर कितने बचे?")
+    )
+    assert len(out) >= 1
+
+    # Verify updated state persisted in DB
+    ctx2_updated = await service2.get_or_create_context(t_id)
+    assert ctx2_updated.current_state == SessionStateEnum.REHEARSE
+    assert ctx2_updated.rehearsal_turns_count == 2

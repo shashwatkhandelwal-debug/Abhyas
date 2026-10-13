@@ -34,7 +34,7 @@ from backend.app.rule_engine.domain import (
     SceneTurn,
     TeachingAct,
 )
-from backend.app.sessions.path import compute_move_path
+from backend.app.sessions.path import compute_move_path, load_induction_order
 from backend.app.sessions.repository import SessionRepository
 from backend.app.sessions.state_machine import (
     OnboardingStateEnum,
@@ -57,7 +57,12 @@ class SessionService:
         db_session: AsyncSession | None = None,
         scene_runner: SceneRunner | None = None,
     ) -> None:
-        self.repo = repository or SessionRepository(db_session)
+        if repository is not None:
+            self.repo = repository
+        elif db_session is not None:
+            self.repo = SessionRepository(db_session)
+        else:
+            raise ValueError("Either repository or db_session must be provided to SessionService.")
         self.scene_runner = scene_runner or SceneRunner()
         self.retriever = GuideRetriever()
 
@@ -67,10 +72,16 @@ class SessionService:
         today = datetime.now(IST).date()
         week_start = today - timedelta(days=today.weekday())
 
+        path_entries = await self.repo.get_move_path(teacher_id)
+        if path_entries and path_entries[0].move_id:
+            initial_move_id = path_entries[0].move_id
+        else:
+            initial_move_id = load_induction_order()[0]
+
         db_session = await self.repo.get_or_create_session_state(
             teacher_id=teacher_id,
             week_start=week_start,
-            move_id="NUM_PLACE_VALUE_BUNDLES",
+            move_id=initial_move_id,
         )
 
         ctx_data = db_session.context or {}
