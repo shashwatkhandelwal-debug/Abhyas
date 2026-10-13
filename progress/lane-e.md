@@ -44,3 +44,10 @@ Branch: `lane-e` (base: `main` d7f7ccd)
 - `ruff` and `mypy --strict` clean on both.
 - Not done: loading `calibration_label` / `rehearsal_score` rows (needs the real `scores` JSON shape from T34) and the `make eval-kappa` wiring; lane D's `evaluate_kappa.py` scaffold is untouched.
 - Request: `from eval.calibration...` imports work under `python -m pytest` (CI) but not bare `pytest`; add `eval` to `[tool.setuptools] packages` or set pytest `pythonpath = ["."]` in `pyproject.toml`.
+
+## T23: deterministic move-path scoring
+
+- New pure module `backend/app/sessions/path_score.py` (spec/08 §8.5) plus `backend/tests/unit/test_path_score.py` (10 tests). No existing file touched; Lane B owns `sessions/` and can adopt `rank_moves` in `path.py`.
+- Spec gaps resolved: a past `sankul_month` ranks 0 (due now); an unknown or missing month ranks 11; the class-1 bonus needs class 1 AND (literacy OR id starts `NUM_PLACE_VALUE`); ties break by month then move id; reasons are machine-readable codes, not Hindi.
+- Verified: ruff format/check and mypy --strict clean; 10/10 tests pass offline by loading the module directly (the `sessions/__init__` import chain needs pydantic_settings, which this sandbox lacks). CI should run it normally.
+- Request to Lane B: replace the hard-coded `DEFAULT_INDUCTION_ORDER` and `candidate_moves` table in `sessions/path.py` with `rank_moves(...)` fed from the published `MoveCard`s; `content/induction_track.yaml` does not exist yet.
