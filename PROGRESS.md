@@ -82,27 +82,27 @@ A comprehensive audit comparing the current scaffold against `spec/02_architectu
 - [x] **T02 Config** · Priority: P0 · Finish-by: 12 Oct
 - [x] **T03 Database** · Priority: P0 · Finish-by: 13 Oct
 - [x] **T04 Content models & seed content** · Priority: P0 · Finish-by: 13 Oct
-- [ ] **T05 Hindi utilities** · Priority: P0 · Finish-by: 13 Oct
-- [ ] **T06 Bug rules** · Priority: P0 · Finish-by: 14 Oct
-- [ ] **T07 Rule engine** · Priority: P0 · Finish-by: 15 Oct
-- [ ] **T08 LLM client + MockLLM** · Priority: P0 · Finish-by: 14 Oct
-- [ ] **T09 Guards** · Priority: P0 · Finish-by: 15 Oct
-- [ ] **T10 act_tagger** · Priority: P0 · Finish-by: 16 Oct
-- [ ] **T11 child_voice** · Priority: P0 · Finish-by: 16 Oct
-- [ ] **T12 coach** · Priority: P0 · Finish-by: 17 Oct
-- [ ] **T13 fidelity_checker** · Priority: P0 · Finish-by: 17 Oct
-- [ ] **T14 intent_router, question_classifier, guide_answerer** · Priority: P1 · Finish-by: 20 Oct
-- [ ] **T15 Audio utils** · Priority: P0 · Finish-by: 14 Oct
-- [ ] **T16 STT** · Priority: P0 · Finish-by: 16 Oct
-- [ ] **T17 TTS + voices** · Priority: P0 · Finish-by: 17 Oct
-- [ ] **T18 Core service skeleton** · Priority: P0 · Finish-by: 16 Oct
-- [ ] **T19 SceneRunner** · Priority: P0 · Finish-by: 18 Oct
-- [ ] **T20 Onboarding** · Priority: P0 · Finish-by: 19 Oct
+- [x] **T05 Hindi utilities** · Priority: P0 · Finish-by: 13 Oct (completed via Lane A)
+- [x] **T06 Bug rules** · Priority: P0 · Finish-by: 14 Oct (completed via Lane A)
+- [x] **T07 Rule engine** · Priority: P0 · Finish-by: 15 Oct (completed via Lane A)
+- [x] **T08 LLM client + MockLLM** · Priority: P0 · Finish-by: 14 Oct (completed via Lane B)
+- [x] **T09 Guards** · Priority: P0 · Finish-by: 15 Oct (completed via Lane A)
+- [x] **T10 act_tagger** · Priority: P0 · Finish-by: 16 Oct (completed via Lane A)
+- [x] **T11 child_voice** · Priority: P0 · Finish-by: 16 Oct (completed via Lane A)
+- [x] **T12 coach** · Priority: P0 · Finish-by: 17 Oct (completed via Lane A)
+- [x] **T13 fidelity_checker** · Priority: P0 · Finish-by: 17 Oct (completed via Lane A)
+- [x] **T14 intent_router, question_classifier, guide_answerer** · Priority: P1 · Finish-by: 20 Oct (completed via Lane A)
+- [x] **T15 Audio utils** · Priority: P0 · Finish-by: 14 Oct (completed via Lane B)
+- [x] **T16 STT** · Priority: P0 · Finish-by: 16 Oct (completed via Lane B)
+- [x] **T17 TTS + voices** · Priority: P0 · Finish-by: 17 Oct (completed via Lane B)
+- [x] **T18 Core service skeleton** · Priority: P0 · Finish-by: 16 Oct (completed via Lane B)
+- [x] **T19 SceneRunner** · Priority: P0 · Finish-by: 18 Oct (completed via Lane B)
+- [ ] **T20 Onboarding & Weekly State Machine** · Priority: P0 · Finish-by: 19 Oct (in progress via Lane B)
 - [ ] **T21 Weekly loop + evidence** · Priority: P0 · Finish-by: 20 Oct
 - [ ] **T22 Intents, ASK, retrieval** · Priority: P1 · Finish-by: 21 Oct
 - [ ] **T23 Move path** · Priority: P1 · Finish-by: 21 Oct
 - [ ] **T24 Scheduler & jobs** · Priority: P1 · Finish-by: 22 Oct
-- [ ] **T25 Auth & demo users** · Priority: P0 · Finish-by: 17 Oct
+- [ ] **T25 Auth & demo users** · Priority: P0 · Finish-by: 17 Oct (CHANGES f2c7364 in progress via Lane C)
 - [ ] **T26 Web channel API** · Priority: P0 · Finish-by: 18 Oct
 - [ ] **T27 Teacher chat PWA** · Priority: P0 · Finish-by: 20 Oct
 - [ ] **T28 WhatsApp channel** · Priority: P0 code 21 Oct / P1 live · Finish-by: 21 Oct
@@ -187,3 +187,20 @@ All items from `spec/15_human_inputs.md` are currently open:
 - `git worktree add ../abhyas-lane-a lane-a; git worktree add ../abhyas-lane-d lane-d` (chained with semicolon)
 - `git -C ../abhyas-lane-a merge --ff-only origin/main; git -C ../abhyas-lane-d merge --ff-only origin/main` (chained with semicolon)
 - `git worktree remove --force ../abhyas-a ../abhyas-b ../abhyas-c ../abhyas-d` (batch removal)
+
+---
+
+## 8. Current Status & Active Lanes
+
+### STOPPED AT:
+- **Main Branch**: Merged `lane-a` (`5c082e6`) and `lane-b` (`0fff714`). Main commit: `65eb907`. All 640 tests collected (639 passed, 1 skipped). CI completely green.
+- **Full Rehearsal Loop Live on Main**: STT (`saaras:v4` / mock) → `act_tagger` → pure deterministic rule engine → `child_voice` → `guards` → TTS (`bulbul:v3` / mock with `SynthResult`) → Postgres `scene_store`.
+- **Runtime LLM Roles Complete**: T09–T14 (`intent_router`, `act_tagger`, `child_voice`, `coach`, `fidelity_checker`, `question_classifier`, `guide_answerer`).
+- **Lane C (Active Subagent `dedbeca5-c132-424a-ba75-005f3e74a3df`)**: Working on CHANGES `f2c7364` (CSRF on state-changing `/api` endpoints, client host rate-limiting, admin `?as=` demo teacher restriction, teacher-scoped idempotency, dynamic scene board & demo chips, and production audio 404/503 guard).
+- **Lane B (Active Subagent `f461c827-69fc-4300-8725-21cd1e6f3fdc`)**: Working on eliminating `subprocess.run` & `to_wav_sync`, making `_concat_wav_bytes` async, and implementing T20 (weekly state machine per spec/08 §8.1–§8.2).
+
+### NEXT:
+1. Complete Lane C review request upon subagent finishing CHANGES `f2c7364`.
+2. Complete Lane B review request upon subagent finishing async audio cleanup & T20.
+3. Merge `lane-c` and `lane-b` into `main`.
+4. Proceed to T21 (weekly loop + evidence) and T22 (Intents, ASK, retrieval).
