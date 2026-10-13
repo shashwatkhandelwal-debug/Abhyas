@@ -13,7 +13,6 @@ import logging
 import os
 import re
 import shutil
-import subprocess
 import wave
 from pathlib import Path
 
@@ -280,46 +279,6 @@ async def to_wav(audio_bytes: bytes, fmt: str = "ogg", sample_rate: int = 22050)
         raise AudioProcessingError(f"ffmpeg to_wav failed (code {retcode}): {err}")
 
     return stdout
-
-
-def to_wav_sync(audio_bytes: bytes, fmt: str = "ogg", sample_rate: int = 22050) -> bytes:
-    """Synchronous helper for to_wav."""
-    if not audio_bytes:
-        return b""
-    if (fmt == "wav" or audio_bytes.startswith(b"RIFF")) and audio_bytes.startswith(b"RIFF"):
-        return audio_bytes
-
-    ffmpeg = get_ffmpeg_path()
-    cmd = [
-        ffmpeg,
-        "-v",
-        "error",
-        "-i",
-        "pipe:0",
-        "-ac",
-        "1",
-        "-ar",
-        str(sample_rate),
-        "-f",
-        "wav",
-        "pipe:1",
-    ]
-    try:
-        proc_res = subprocess.run(
-            cmd,
-            input=audio_bytes,
-            capture_output=True,
-            timeout=15.0,
-            check=False,
-        )
-    except Exception as exc:
-        raise AudioProcessingError(f"Subprocess to_wav_sync failed: {exc}") from exc
-
-    if proc_res.returncode != 0:
-        err = proc_res.stderr.decode("utf-8", errors="replace").strip()
-        raise AudioProcessingError(f"ffmpeg to_wav_sync failed (code {proc_res.returncode}): {err}")
-
-    return proc_res.stdout
 
 
 async def to_ogg_opus(wav_bytes: bytes) -> bytes:
@@ -598,7 +557,6 @@ __all__ = [
     "duration_s",
     "duration_s_sync",
     "to_wav",
-    "to_wav_sync",
     "to_wav16k",
     "to_wav16k_sync",
     "to_ogg_opus",

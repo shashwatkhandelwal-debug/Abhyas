@@ -10,7 +10,6 @@ from backend.app.speech.audio import (
     to_ogg_opus,
     to_wav,
     to_wav16k,
-    to_wav_sync,
     to_web,
     validate_audio_duration,
 )
@@ -42,7 +41,6 @@ from backend.app.speech.voices import VOICE_CATALOG, VoiceSpec, get_voice, load_
 __all__ = [
     # Audio pipeline
     "to_wav",
-    "to_wav_sync",
     "to_wav16k",
     "duration_s",
     "split_for_stt",

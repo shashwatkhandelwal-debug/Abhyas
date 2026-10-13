@@ -44,7 +44,8 @@ from backend.app.rule_engine.domain import (
     TeachingAct,
 )
 from backend.app.rule_engine.engine import RuleEngine
-from backend.app.speech.tts import TTSProvider, get_tts_provider
+from backend.app.speech.audio import AudioProcessingError
+from backend.app.speech.tts import TTSError, TTSProvider, get_tts_provider
 from backend.app.speech.voices import get_voice
 
 logger = logging.getLogger("abhyas.rehearsal.scene_runner")
@@ -303,8 +304,10 @@ class SceneRunner:
                             audio_ref=synth_res.cache_key,
                             speaker=line_rec.persona_id,
                         )
-                except Exception as exc:
+                except (TTSError, AudioProcessingError) as exc:
                     logger.warning("TTS failed for child line, sending text only: %s", exc)
+                except Exception as exc:
+                    logger.warning("Unexpected error during child TTS, sending text only: %s", exc)
 
             return OutboundMessage(
                 kind="text",
