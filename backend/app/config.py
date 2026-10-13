@@ -145,8 +145,13 @@ class Settings(BaseSettings):
                 missing.append("SESSION_SECRET")
             if not self.PHONE_HASH_SALT or self.PHONE_HASH_SALT.startswith("dev_"):
                 missing.append("PHONE_HASH_SALT")
-            if not self.PHONE_ENC_KEY:
+            if (
+                not self.PHONE_ENC_KEY
+                or self.PHONE_ENC_KEY == "P5sUu77tT3i8_R1m2tZ_7lqf4xL6D-0K0A5vG4J-7-8="
+            ):
                 missing.append("PHONE_ENC_KEY")
+            if not self.ADMIN_PASSWORD or self.ADMIN_PASSWORD == "abhyas-admin-2026":
+                missing.append("ADMIN_PASSWORD")
 
             if missing:
                 err_msg = (

@@ -30,7 +30,7 @@ from backend.app.channels.web import (
 from backend.app.config import settings
 from backend.app.core.conversation import ConversationService
 from backend.app.core.types import Button, InboundMessage, OutboundMessage
-from backend.app.db.models import AppUser, Message, RealismRating, Teacher, TTSCache
+from backend.app.db.models import AppUser, Message, RealismRating, Teacher
 from backend.app.db.session import get_db_session
 from backend.app.speech.cache import tts_cache
 from backend.app.web.chat_api import router as chat_router
@@ -79,7 +79,6 @@ def web_test_app(mock_user: AppUser, mock_teacher: Teacher) -> FastAPI:
     # In-memory storage mock
     messages_db: dict[uuid.UUID, Message] = {}
     ratings_db: list[RealismRating] = []
-    tts_db: dict[str, TTSCache] = {}
 
     async def mock_get_current_user() -> AppUser:
         return mock_user
@@ -124,8 +123,6 @@ def web_test_app(mock_user: AppUser, mock_teacher: Teacher) -> FastAPI:
                 all_msgs = sorted(messages_db.values(), key=lambda m: m.created_at)
                 mock_res.scalars.return_value.all.return_value = all_msgs
                 mock_res.scalar_one_or_none.return_value = None
-            elif "FROM tts_cache" in str_stmt:
-                mock_res.scalar_one_or_none.return_value = tts_db.get("sample_audio_key")
             elif "FROM teacher" in str_stmt:
                 mock_res.scalar_one_or_none.return_value = mock_teacher
             else:

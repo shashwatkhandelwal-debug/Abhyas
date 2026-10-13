@@ -31,7 +31,6 @@ from backend.app.db.models import (
     Teacher,
     TeacherContact,
     TemplateSend,
-    TTSCache,
     Turn,
 )
 
@@ -66,6 +65,5 @@ __all__ = [
     "ScheduledJob",
     "TemplateSend",
     "LLMCall",
-    "TTSCache",
     "AggModuleBatch",
 ]

@@ -69,7 +69,8 @@ def test_alembic_migrations_round_trip() -> None:
             "scheduled_job",
             "template_send",
             "llm_call",
-            "tts_cache",
+            "speech_spend",
+            "tts_audio",
             "agg_module_batch",
         }
         for table in expected_tables:
