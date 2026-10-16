@@ -92,7 +92,7 @@ async def get_teacher_for_user(
         if not target_raw:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="व्यवस्थापक को डेमो शिक्षक चुनना आवश्यक है (?as=<demo_teacher_id>) (Admin must select a demo teacher)",
+                detail="Admin must select a demo teacher (?as=<demo_teacher_id>)",
             )
 
         try:
@@ -102,14 +102,14 @@ async def get_teacher_for_user(
         except (ValueError, TypeError):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="अमान्य शिक्षक आईडी (Invalid teacher ID)",
+                detail="Invalid teacher ID",
             ) from None
 
         demo_teacher = await db.get(Teacher, target_uuid)
         if not demo_teacher or not demo_teacher.is_demo:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="केवल डेमो शिक्षक के रूप में चैट खोली जा सकती है (Only demo teachers can be impersonated)",
+                detail="Only demo teachers can be impersonated",
             )
         return demo_teacher
 
@@ -122,13 +122,13 @@ async def get_teacher_for_user(
             if is_user_demo and not teacher.is_demo:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="डेमो खाते केवल डेमो शिक्षक तक पहुँच सकते हैं (Demo accounts can only access demo teachers)",
+                    detail="Demo accounts can only access demo teachers",
                 )
             return teacher
 
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail="शिक्षक खाता लिंक नहीं है (No linked teacher account)",
+        detail="No linked teacher account",
     )
 
 
@@ -153,7 +153,7 @@ async def send_chat_text(
     if not clean_text:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="संदेश खाली नहीं हो सकता (Message cannot be empty)",
+            detail="Message cannot be empty",
         )
 
     # 1. Deduplication on (channel, channel_msg_id) scoped by teacher_id (§7.1, §7.3)
@@ -167,7 +167,7 @@ async def send_chat_text(
             return {"message_id": str(existing.id), "status": "duplicate_ignored"}
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="क्लाइंट संदेश आईडी का टकराव (Client message ID conflict across teachers)",
+            detail="Client message ID conflict across teachers",
         )
 
     # 2. Persist inbound message immediately
@@ -219,12 +219,12 @@ async def send_chat_audio(
     if len(audio_bytes) > MAX_AUDIO_BYTES:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="ऑडियो फ़ाइल 2 MB से अधिक है (Audio file exceeds 2 MB limit)",
+            detail="Audio file exceeds 2 MB limit",
         )
     if len(audio_bytes) == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="ऑडियो फ़ाइल खाली है (Empty audio file)",
+            detail="Empty audio file",
         )
 
     # Deduplication check scoped by teacher_id
@@ -238,7 +238,7 @@ async def send_chat_audio(
             return {"message_id": str(existing.id), "status": "duplicate_ignored"}
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="क्लाइंट संदेश आईडी का टकराव (Client message ID conflict across teachers)",
+            detail="Client message ID conflict across teachers",
         )
 
     # Persist audio message with text null pending STT
@@ -296,7 +296,7 @@ async def send_chat_button(
             return {"message_id": str(existing.id), "status": "duplicate_ignored"}
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="क्लाइंट संदेश आईडी का टकराव (Client message ID conflict across teachers)",
+            detail="Client message ID conflict across teachers",
         )
 
     msg_id = uuid.uuid4()
@@ -345,7 +345,11 @@ async def get_chat_messages(
                     select(Message)
                     .where(
                         Message.teacher_id == teacher.id,
-                        Message.created_at > after_msg.created_at,
+                        (Message.created_at > after_msg.created_at)
+                        | (
+                            (Message.created_at == after_msg.created_at)
+                            & (Message.id != after_msg.id)
+                        ),
                     )
                     .order_by(Message.created_at.asc())
                 )
@@ -409,7 +413,7 @@ async def get_audio_file(
     if not audio_bytes:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="ऑडियो फ़ाइल नहीं मिली (Audio file not found)",
+            detail="Audio file not found",
         )
 
     content_types: dict[str, str] = {

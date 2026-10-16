@@ -1,6 +1,7 @@
 """Unit tests for Web channel API, polling, idempotency, and audio caching (spec/07 §7.3, T26)."""
 
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -24,7 +25,9 @@ from backend.app.channels.web import (
     mark_teacher_pending,
     process_inbound_web,
     reset_web_channel_state,
+    set_channel_session_factory,
     set_conversation_service_factory,
+    set_session_service_factory,
     unmark_teacher_pending,
 )
 from backend.app.config import settings
@@ -32,8 +35,10 @@ from backend.app.core.conversation import ConversationService
 from backend.app.core.types import Button, InboundMessage, OutboundMessage
 from backend.app.db.models import AppUser, Message, RealismRating, Teacher
 from backend.app.db.session import get_db_session
+from backend.app.sessions.service import SessionService
 from backend.app.speech.cache import tts_cache
 from backend.app.web.chat_api import router as chat_router
+from backend.tests.unit.test_state_machine import FakeSessionRepository
 
 # ── Test Fixtures ────────────────────────────────────────────────────────────
 
@@ -41,7 +46,6 @@ from backend.app.web.chat_api import router as chat_router
 @pytest.fixture(autouse=True)
 def clean_web_state() -> None:
     reset_web_channel_state()
-    set_conversation_service_factory(ConversationService)
 
 
 @pytest.fixture
@@ -83,62 +87,88 @@ def web_test_app(mock_user: AppUser, mock_teacher: Teacher) -> FastAPI:
     async def mock_get_current_user() -> AppUser:
         return mock_user
 
-    async def mock_db_session() -> AsyncSession:
-        db = AsyncMock(spec=AsyncSession)
+    db = AsyncMock(spec=AsyncSession)
+    db.__aenter__ = AsyncMock(return_value=db)
+    db.__aexit__ = AsyncMock(return_value=None)
 
-        async def get_mock(entity: Any, ident: Any) -> Any:
-            if entity is Teacher and ident == mock_teacher.id:
-                return mock_teacher
-            if entity is Message:
-                return messages_db.get(ident)
-            return None
+    async def get_mock(entity: Any, ident: Any) -> Any:
+        if entity is Teacher and ident == mock_teacher.id:
+            return mock_teacher
+        if entity is Message:
+            return messages_db.get(ident)
+        return None
 
-        def add_mock(instance: Any) -> None:
-            if isinstance(instance, Message):
-                messages_db[instance.id] = instance
-            elif isinstance(instance, RealismRating):
-                ratings_db.append(instance)
+    def add_mock(instance: Any) -> None:
+        if isinstance(instance, Message):
+            messages_db[instance.id] = instance
+        elif isinstance(instance, RealismRating):
+            ratings_db.append(instance)
 
-        async def execute_mock(stmt: Any) -> Any:
-            mock_res = MagicMock()
-            str_stmt = str(stmt)
-            if "FROM message" in str_stmt:
-                # Check channel_msg_id dedupe via parameters
-                params = list(getattr(stmt.compile(), "params", {}).values())
-                matched = None
-                for p in params:
-                    for msg in messages_db.values():
-                        if msg.channel_msg_id == p:
-                            matched = msg
-                            break
-                    if matched:
+    async def execute_mock(stmt: Any) -> Any:
+        mock_res = MagicMock()
+        str_stmt = str(stmt)
+        if "FROM message" in str_stmt:
+            # Check channel_msg_id dedupe via parameters
+            params = list(getattr(stmt.compile(), "params", {}).values())
+            matched = None
+            for p in params:
+                for msg in messages_db.values():
+                    if msg.channel_msg_id == p:
+                        matched = msg
                         break
-
                 if matched:
-                    mock_res.scalar_one_or_none.return_value = matched
-                    mock_res.scalars.return_value.all.return_value = [matched]
-                    return mock_res
+                    break
 
-                # Default list all messages sorted by created_at
-                all_msgs = sorted(messages_db.values(), key=lambda m: m.created_at)
-                mock_res.scalars.return_value.all.return_value = all_msgs
-                mock_res.scalar_one_or_none.return_value = None
-            elif "FROM teacher" in str_stmt:
-                mock_res.scalar_one_or_none.return_value = mock_teacher
+            if matched:
+                mock_res.scalar_one_or_none.return_value = matched
+                mock_res.scalars.return_value.all.return_value = [matched]
+                return mock_res
+
+            all_msgs = sorted(
+                messages_db.values(),
+                key=lambda m: m.created_at or datetime.min.replace(tzinfo=UTC),
+            )
+            # Check if after cursor timestamp is present in params
+            dt_param = next((p for p in params if isinstance(p, datetime)), None)
+            after_id_param = next(
+                (p for p in params if isinstance(p, uuid.UUID) and p != mock_teacher.id), None
+            )
+            if dt_param:
+                filtered_msgs = [
+                    m
+                    for m in all_msgs
+                    if m.created_at
+                    and (
+                        m.created_at > dt_param
+                        or (m.created_at == dt_param and after_id_param and m.id != after_id_param)
+                    )
+                ]
+                mock_res.scalars.return_value.all.return_value = filtered_msgs
             else:
-                mock_res.scalar_one_or_none.return_value = None
-                mock_res.scalars.return_value.all.return_value = []
-            return mock_res
+                mock_res.scalars.return_value.all.return_value = all_msgs
+            mock_res.scalar_one_or_none.return_value = None
+        elif "FROM teacher" in str_stmt:
+            mock_res.scalar_one_or_none.return_value = mock_teacher
+        else:
+            mock_res.scalar_one_or_none.return_value = None
+            mock_res.scalars.return_value.all.return_value = []
+        return mock_res
 
-        db.get.side_effect = get_mock
-        db.add.side_effect = add_mock
-        db.execute.side_effect = execute_mock
-        db.commit = AsyncMock()
+    db.get.side_effect = get_mock
+    db.add.side_effect = add_mock
+    db.execute.side_effect = execute_mock
+    db.commit = AsyncMock()
+
+    async def mock_db_session() -> AsyncSession:
         return db
 
     app.dependency_overrides[get_current_user] = mock_get_current_user
     app.dependency_overrides[get_db_session] = mock_db_session
     app.dependency_overrides[verify_csrf_token] = lambda: None
+
+    set_channel_session_factory(lambda: db)
+    app.state.messages_db = messages_db
+    app.state.ratings_db = ratings_db
 
     return app
 
@@ -380,6 +410,12 @@ async def test_end_to_end_mock_conversation_flow(
     mock_teacher_id: uuid.UUID,
 ) -> None:
     # Test background process_inbound_web with a custom ConversationService mock
+    mock_session = AsyncMock(spec=AsyncSession)
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=None)
+    mock_session.get.return_value = Teacher(id=mock_teacher_id, name="शिक्षिका")
+    set_channel_session_factory(lambda: mock_session)
+
     class TestConversationService(ConversationService):
         async def handle(self, inbound: InboundMessage) -> list[OutboundMessage]:
             assert inbound.text == "रवि ने क्या कहा?"
@@ -404,6 +440,228 @@ async def test_end_to_end_mock_conversation_flow(
 
     # Pending count must return to 0 after processing completes
     assert is_teacher_pending(mock_teacher_id) is False
+    assert mock_session.add.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_e2e_text_submission_background_process_and_polling(
+    web_test_app: FastAPI,
+) -> None:
+    """Tests text submission -> 202 -> background process -> polling returns bot outbound."""
+
+    class FlowSessionService:
+        async def handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
+            assert inbound.text == "नमस्ते, क्या हम शुरू करें?"
+            return [
+                OutboundMessage(
+                    kind="text",
+                    text_hi="हाँ, अभ्यास सत्र शुरू करते हैं।",
+                    speaker="abhyas",
+                )
+            ]
+
+    set_session_service_factory(lambda s: FlowSessionService())
+    client_msg_id = str(uuid.uuid4())
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_test_app), base_url="http://test"
+    ) as client:
+        # 1. Post text message -> 202 accepted
+        res = await client.post(
+            "/api/chat/text",
+            json={"client_msg_id": client_msg_id, "text": "नमस्ते, क्या हम शुरू करें?"},
+        )
+        assert res.status_code == 202
+        data = res.json()
+        assert data["status"] == "accepted"
+        inbound_id = data["message_id"]
+
+        # 2. Poll messages -> returns inbound message + bot outbound message
+        res_poll = await client.get("/api/chat/messages")
+        assert res_poll.status_code == 200
+        poll_data = res_poll.json()
+        assert poll_data["pending"] is False
+        msgs = poll_data["messages"]
+        assert len(msgs) == 2
+        assert msgs[0]["direction"] == "in"
+        assert msgs[0]["text"] == "नमस्ते, क्या हम शुरू करें?"
+        assert msgs[1]["direction"] == "out"
+        assert msgs[1]["text"] == "हाँ, अभ्यास सत्र शुरू करते हैं।"
+        assert msgs[1]["speaker"] == "abhyas"
+
+        # 3. Poll with after cursor -> returns only the bot outbound message
+        res_after = await client.get(f"/api/chat/messages?after={inbound_id}")
+        assert res_after.status_code == 200
+        after_data = res_after.json()
+        assert len(after_data["messages"]) == 1
+        assert after_data["messages"][0]["direction"] == "out"
+
+
+@pytest.mark.asyncio
+async def test_e2e_duplicate_client_msg_id_no_reprocessing(
+    web_test_app: FastAPI,
+) -> None:
+    """Duplicate client_msg_id returns existing message_id without extra processing."""
+    call_count = 0
+
+    class CountingSessionService:
+        async def handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
+            nonlocal call_count
+            call_count += 1
+            return [OutboundMessage(kind="text", text_hi="प्रतिक्रिया", speaker="abhyas")]
+
+    set_session_service_factory(lambda s: CountingSessionService())
+    shared_id = str(uuid.uuid4())
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_test_app), base_url="http://test"
+    ) as client:
+        # First send
+        res1 = await client.post(
+            "/api/chat/text",
+            json={"client_msg_id": shared_id, "text": "पहला अनुरोध"},
+        )
+        assert res1.status_code == 202
+        assert res1.json()["status"] == "accepted"
+        msg_id1 = res1.json()["message_id"]
+
+        # Duplicate send
+        res2 = await client.post(
+            "/api/chat/text",
+            json={"client_msg_id": shared_id, "text": "पहला अनुरोध"},
+        )
+        assert res2.status_code == 202
+        assert res2.json()["status"] == "duplicate_ignored"
+        assert res2.json()["message_id"] == msg_id1
+
+        # Confirm handle_inbound only executed once
+        assert call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_e2e_audio_upload_with_mock_stt(
+    web_test_app: FastAPI,
+) -> None:
+    """Audio upload invokes STT, records transcript, and runs SessionService."""
+    recorded_transcript: str | None = None
+
+    class AudioEchoService:
+        async def handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
+            nonlocal recorded_transcript
+            recorded_transcript = inbound.text
+            return [
+                OutboundMessage(
+                    kind="text",
+                    text_hi=f"सुना गया: {inbound.text}",
+                    speaker="coach",
+                )
+            ]
+
+    set_session_service_factory(lambda s: AudioEchoService())
+    client_msg_id = str(uuid.uuid4())
+    dummy_wav = b"RIFF" + b"\x00" * 200
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_test_app), base_url="http://test"
+    ) as client:
+        res = await client.post(
+            "/api/chat/audio",
+            data={"client_msg_id": client_msg_id},
+            files={"file": ("audio.wav", dummy_wav, "audio/wav")},
+        )
+        assert res.status_code == 202
+        assert res.json()["status"] == "accepted"
+
+        res_poll = await client.get("/api/chat/messages")
+        assert res_poll.status_code == 200
+        poll_data = res_poll.json()
+        assert poll_data["pending"] is False
+        msgs = poll_data["messages"]
+        assert len(msgs) == 2
+        # Inbound message was transcribed by MockSTT
+        assert msgs[0]["direction"] == "in"
+        assert msgs[0]["text"] is not None
+        assert len(msgs[0]["text"]) > 0
+        # Outbound bot message replied to transcript
+        assert msgs[1]["direction"] == "out"
+        assert recorded_transcript is not None
+
+
+@pytest.mark.asyncio
+async def test_e2e_button_press_submission(
+    web_test_app: FastAPI,
+) -> None:
+    """Button press is submitted, processed by SessionService, and polled."""
+    received_button_id: str | None = None
+
+    class ButtonService:
+        async def handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
+            nonlocal received_button_id
+            received_button_id = inbound.button_id
+            return [
+                OutboundMessage(
+                    kind="buttons",
+                    text_hi="बटन प्राप्त हुआ। अगला कदम चुनें:",
+                    buttons=[Button(id="btn_next_step", title_hi="आगे बढ़ें")],
+                    speaker="abhyas",
+                )
+            ]
+
+    set_session_service_factory(lambda s: ButtonService())
+    client_msg_id = str(uuid.uuid4())
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_test_app), base_url="http://test"
+    ) as client:
+        res = await client.post(
+            "/api/chat/button",
+            json={"client_msg_id": client_msg_id, "button_id": "btn_ready_practice"},
+        )
+        assert res.status_code == 202
+        assert res.json()["status"] == "accepted"
+        assert received_button_id == "btn_ready_practice"
+
+        res_poll = await client.get("/api/chat/messages")
+        assert res_poll.status_code == 200
+        msgs = res_poll.json()["messages"]
+        assert len(msgs) == 2
+        assert msgs[0]["kind"] == "button"
+        assert msgs[0]["text"] == "btn_ready_practice"
+        assert msgs[1]["kind"] == "buttons"
+        assert msgs[1]["buttons"][0]["id"] == "btn_next_step"
+
+
+@pytest.mark.asyncio
+async def test_e2e_real_session_service_onboarding_turn(
+    web_test_app: FastAPI,
+) -> None:
+    """Connects real SessionService with FakeSessionRepository end-to-end."""
+    fake_repo = FakeSessionRepository()
+    session_service = SessionService(repository=fake_repo)
+    set_session_service_factory(lambda s: session_service)
+
+    client_msg_id = str(uuid.uuid4())
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_test_app), base_url="http://test"
+    ) as client:
+        # In NEW onboarding state, teacher clicks 'btn_agree'
+        res = await client.post(
+            "/api/chat/button",
+            json={"client_msg_id": client_msg_id, "button_id": "btn_agree"},
+        )
+        assert res.status_code == 202
+        assert res.json()["status"] == "accepted"
+
+        # Poll messages -> real SessionService produces ask_join_code prompt
+        res_poll = await client.get("/api/chat/messages")
+        assert res_poll.status_code == 200
+        msgs = res_poll.json()["messages"]
+        assert len(msgs) == 2
+        assert msgs[0]["kind"] == "button"
+        assert msgs[1]["direction"] == "out"
+        # From messages_hi.yaml: ask_join_code prompt mentions code
+        assert any(token in (msgs[1]["text"] or "") for token in ["कोड", "ब्लॉक", "code", "join"])
 
 
 # ── Review Items 1, 3, 4, 6 Tests ──────────────────────────────────────────
@@ -649,10 +907,10 @@ async def test_missing_audio_returns_404_in_all_environments(
         monkeypatch.setattr(settings, "ENVIRONMENT", "production")
         res_prod = await client.get("/api/audio/missing_audio_ref.wav")
         assert res_prod.status_code == 404
-        assert "ऑडियो फ़ाइल नहीं मिली" in res_prod.json()["detail"]
+        assert "Audio file not found" in res_prod.json()["detail"]
 
         # In test mode: missing audio ALSO returns 404 (no MockTTS fallback)
         monkeypatch.setattr(settings, "ENVIRONMENT", "test")
         res_test = await client.get("/api/audio/missing_audio_ref.wav")
         assert res_test.status_code == 404
-        assert "ऑडियो फ़ाइल नहीं मिली" in res_test.json()["detail"]
+        assert "Audio file not found" in res_test.json()["detail"]
