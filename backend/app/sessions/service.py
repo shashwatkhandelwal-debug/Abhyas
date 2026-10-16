@@ -36,6 +36,7 @@ from backend.app.rule_engine.domain import (
 from backend.app.sessions.path import compute_move_path, load_induction_order
 from backend.app.sessions.repository import SessionRepository
 from backend.app.sessions.state_machine import (
+    ONBOARDING_PROMPT_KEYS,
     OnboardingStateEnum,
     OnboardingStateMachine,
     SessionContext,
@@ -182,6 +183,25 @@ class SessionService:
                     return next_card.title_hi
         curr_card = load_move_card(current_move_id)
         return curr_card.title_hi
+
+    def _get_resume_prompt(
+        self,
+        ctx: SessionContext,
+        prior: SessionStateEnum,
+        address_form: str,
+    ) -> str:
+        """Constructs prompt message to resume prior state after an ASK interruption."""
+        if ctx.onboarding_state != OnboardingStateEnum.READY:
+            prompt_key = ONBOARDING_PROMPT_KEYS.get(ctx.onboarding_state, "welcome")
+            return get_message(prompt_key, address_form)
+        prior_prompt_key = WeeklyStateMachine(ctx).get_state_prompt_key(prior)
+        move = load_move_card(ctx.current_move_id)
+        if prior_prompt_key == "learn_intro":
+            return get_message(prior_prompt_key, address_form, move_title=move.title_hi)
+        elif prior_prompt_key == "rehearse_intro":
+            return get_message(prior_prompt_key, address_form, scene_intro=move.scenario.intro_hi)
+        else:
+            return get_message(prior_prompt_key, address_form)
 
     async def handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
         """Dispatches an inbound teacher message through conversation flow and persists side effects."""
@@ -355,18 +375,7 @@ class SessionService:
                 await self._sync_context_to_db(ctx, teacher_id)
 
                 resume_note = get_message("ask_resume", address_form)
-                prior_prompt_key = WeeklyStateMachine(ctx).get_state_prompt_key(prior)
-                move = load_move_card(ctx.current_move_id)
-                if prior_prompt_key == "learn_intro":
-                    prior_prompt = get_message(
-                        prior_prompt_key, address_form, move_title=move.title_hi
-                    )
-                elif prior_prompt_key == "rehearse_intro":
-                    prior_prompt = get_message(
-                        prior_prompt_key, address_form, scene_intro=move.scenario.intro_hi
-                    )
-                else:
-                    prior_prompt = get_message(prior_prompt_key, address_form)
+                prior_prompt = self._get_resume_prompt(ctx, prior, address_form)
 
                 return [
                     OutboundMessage(kind="text", text_hi=reply_text),
@@ -405,7 +414,7 @@ class SessionService:
             schema_chunks = [
                 RetrievedChunk(
                     chunk_id=c.chunk_id,
-                    source_short_hi=c.source,
+                    source_short_hi=getattr(c, "source_short_hi", None) or c.source,
                     section=c.section,
                     text=c.text,
                     score=c.similarity_score,
@@ -460,16 +469,7 @@ class SessionService:
             await self._sync_context_to_db(ctx, teacher_id)
 
             resume_note = get_message("ask_resume", address_form)
-            prior_prompt_key = WeeklyStateMachine(ctx).get_state_prompt_key(prior)
-            move = load_move_card(ctx.current_move_id)
-            if prior_prompt_key == "learn_intro":
-                prior_prompt = get_message(prior_prompt_key, address_form, move_title=move.title_hi)
-            elif prior_prompt_key == "rehearse_intro":
-                prior_prompt = get_message(
-                    prior_prompt_key, address_form, scene_intro=move.scenario.intro_hi
-                )
-            else:
-                prior_prompt = get_message(prior_prompt_key, address_form)
+            prior_prompt = self._get_resume_prompt(ctx, prior, address_form)
 
             return [
                 OutboundMessage(kind="text", text_hi=reply_text),
