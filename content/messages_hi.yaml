@@ -269,7 +269,8 @@ ui_app_name: {text: "अभ्यास", audio: false}
 ui_hold_to_talk: {text: "बोलने के लिए दबाकर रखें", audio: false}
 ui_type_here: {text: "यहाँ लिखें…", audio: false}
 ui_type_instead: {text: "बोलने की जगह लिखें", audio: false}
-ui_offline_banner: {text: "इंटरनेट नहीं है — संदेश भेजे जाने के लिए रखे गए हैं", audio: false}
+ui_offline_banner: {text: "आप ऑफ़लाइन हैं — इंटरनेट नहीं है, संदेश भेजे जाने के लिए रखे गए हैं", audio: false}
+ui_offline_short: {text: "आप ऑफ़लाइन हैं", audio: false}
 ui_slow_banner: {text: "नेटवर्क धीमा है — लाइट मोड चालू करें?", audio: false}
 ui_mic_denied: {text: "माइक की अनुमति नहीं मिली। ब्राउज़र की सेटिंग में माइक चालू करें, या लिखकर भेजें।", audio: false}
 ui_demo_banner: {text: "डेमो डेटा — वास्तविक शिक्षक नहीं", audio: false}

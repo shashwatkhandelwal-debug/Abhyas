@@ -2,6 +2,7 @@
 
 Routes:
 - GET /teacher          Teacher WhatsApp-like chat interface
+- GET /chat             Teacher WhatsApp-like chat interface (alias)
 - GET /teacher/progress Teacher progress page with evidence ladder and rubric score history
 - POST /teacher/consent Update consent settings and record ConsentLog
 - GET /teacher/delete   Confirmation page for account and data deletion
@@ -87,6 +88,7 @@ def load_demo_chips() -> list[dict[str, Any]]:
     return []
 
 
+@router.get("/chat", response_class=HTMLResponse)
 @router.get("/teacher", response_class=HTMLResponse)
 async def teacher_chat_page(
     request: Request,
