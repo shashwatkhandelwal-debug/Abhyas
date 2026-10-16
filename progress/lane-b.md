@@ -12,10 +12,10 @@ Database: `abhyas_b` (waits for Docker Desktop)
 - [x] T17 TTS + voices
 - [x] T18 Core service skeleton
 - [x] T19 SceneRunner
-- [ ] T20 Onboarding
-- [ ] T21 Weekly loop + evidence
-- [ ] T22 Intents, ASK, retrieval
-- [ ] T23 Move path
+- [x] T20 Onboarding
+- [x] T21 Weekly loop + evidence
+- [x] T22 Intents, ASK, retrieval
+- [x] T23 Move path
 - [ ] T24 Scheduler & jobs
 
 ## Checkpoints
@@ -49,5 +49,10 @@ None.
   2. Deleted dead backend/app/sessions/manager.py and removed exports from backend/app/sessions/__init__.py.
   3. Broadened hygiene test in test_state_machine.py: zero bare except, zero except (Exception/BaseException), zero _in_memory substrings, zero Devanagari literals across backend/app/sessions/*.py.
   4. FakeSessionRepository in tests: uses cast(AsyncSession, session) without type: ignore.
-  5. path.py notes: DEFAULT_INDUCTION_ORDER and candidate moves table are hardcoded as fallbacks since content/induction_track.yaml is optional and currently absent.
+  5. path.py notes: replaced hardcoded candidate table with deterministic path_score.rank_moves fed from loaded MoveCards; keeps induction fallback when content/induction_track.yaml is absent.
   6. Real Postgres repository integration tests added in backend/tests/integration/test_session_repository.py covering idempotency, forced IntegrityError race recovery, consent round-trip, and fresh process/session state continuity.
+- T22 & T23 Implementation:
+  1. Chunk seed pipeline: `backend/app/retrieval/ingest.py` generates `content/chunks/seed_from_moves.jsonl` from the 4 seed move YAMLs, extracting learn scripts and key points with normalized text, tags, and source metadata.
+  2. BM25 Hindi retrieval: `backend/app/retrieval/search.py` implements `GuideRetriever` using `rank_bm25.BM25Okapi` with Unicode-aware whitespace/punctuation tokenization preserving matras, returning top-k scored `RetrievedChunk`s.
+  3. ASK conversation flow: Wired into `SessionService.handle_inbound`, classifying questions via `classify_question`, handling clarifications, retrieving BM25 chunks, generating answers via `answer_guide_question`, creating `ReviewItem` for admin/escalated questions, and cleanly resuming prior state with state-specific prompt resumption.
+  4. Move path ranking: `backend/app/sessions/path.py` wires `rank_moves` from `path_score.py` fed with loaded `MoveCard`s, preserving `DEFAULT_INDUCTION_ORDER` fallback when `content/induction_track.yaml` is absent and passing zero-broad-exception hygiene checks.
