@@ -202,6 +202,8 @@ async def log_llm_call(
     outcome: str,
 ) -> None:
     """Logs an LLM call row to the database (spec/05 §5.1)."""
+    if model == "mock":
+        return
     try:
         async with async_session_factory() as session:
             call_record = LLMCall(
