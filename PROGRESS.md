@@ -97,18 +97,18 @@ A comprehensive audit comparing the current scaffold against `spec/02_architectu
 - [x] **T17 TTS + voices** · Priority: P0 · Finish-by: 17 Oct (completed via Lane B)
 - [x] **T18 Core service skeleton** · Priority: P0 · Finish-by: 16 Oct (completed via Lane B)
 - [x] **T19 SceneRunner** · Priority: P0 · Finish-by: 18 Oct (completed via Lane B)
-- [ ] **T20 Onboarding & Weekly State Machine** · Priority: P0 · Finish-by: 19 Oct (in progress via Lane B)
-- [ ] **T21 Weekly loop + evidence** · Priority: P0 · Finish-by: 20 Oct
+- [x] **T20 Onboarding & Weekly State Machine** · Priority: P0 · Finish-by: 19 Oct (completed via Lane B)
+- [x] **T21 Weekly loop + evidence** · Priority: P0 · Finish-by: 20 Oct (completed via Lane B)
 - [ ] **T22 Intents, ASK, retrieval** · Priority: P1 · Finish-by: 21 Oct
 - [ ] **T23 Move path** · Priority: P1 · Finish-by: 21 Oct
 - [ ] **T24 Scheduler & jobs** · Priority: P1 · Finish-by: 22 Oct
-- [ ] **T25 Auth & demo users** · Priority: P0 · Finish-by: 17 Oct (CHANGES f2c7364 in progress via Lane C)
+- [x] **T25 Auth & demo users** · Priority: P0 · Finish-by: 17 Oct (completed via Lane C)
 - [ ] **T26 Web channel API** · Priority: P0 · Finish-by: 18 Oct
 - [ ] **T27 Teacher chat PWA** · Priority: P0 · Finish-by: 20 Oct
 - [ ] **T28 WhatsApp channel** · Priority: P0 code 21 Oct / P1 live · Finish-by: 21 Oct
-- [ ] **T29 Progress, consent, delete** · Priority: P1 · Finish-by: 22 Oct
+- [x] **T29 Progress, consent, delete** · Priority: P1 · Finish-by: 22 Oct (completed via Lane C)
 - [x] **T30 First hosted deploy** · Priority: P0 · Finish-by: 18 Oct (completed 13 Oct via Lane C)
-- [ ] **T31 Demo data** · Priority: P1 · Finish-by: 22 Oct
+- [x] **T31 Demo data** · Priority: P1 · Finish-by: 22 Oct (completed via Lane C)
 - [ ] **T32 ARP digest** · Priority: P1 · Finish-by: 24 Oct
 - [ ] **T33 Trainer view + aggregates** · Priority: P1 · Finish-by: 24 Oct
 - [ ] **T34 Coach review console** · Priority: P1 · Finish-by: 25 Oct
@@ -193,18 +193,27 @@ All items from `spec/15_human_inputs.md` are currently open:
 ## 8. Current Status & Active Lanes
 
 ### STOPPED AT:
-- **Main Branch**: Merged approved commit `941929d` (Lane C T30: production deploy prep, `render.yaml`, `Dockerfile`, root `.dockerignore`, `docker-compose.yml`, `/healthz`, router mounting in `main.py`, `docs/DEPLOY.md`, `scripts/smoke_test.py`). Head is `941929d`.
-- **Coordinator Security Fix on Main (`bc9f7b6`)**:
-  - `POST /whatsapp/webhook`: 404 if not `WHATSAPP_ENABLED`, 503 if `WHATSAPP_APP_SECRET` empty, removed `startswith("mock")` bypass.
-  - `GET /whatsapp/webhook`: 403 if `WHATSAPP_VERIFY_TOKEN` empty.
-  - Full CI on `main`: 713 passed, 1 skipped (`test_migrations`).
-- **Lane C (Active Subagent `9cd3b2fd-c1a0-4c17-9965-9c53795dc32e`)**: Working on:
-  1. `get_client_ip` last-hop extraction in production with updated test.
-  2. T31 demo cohort data (`backend/app/db/demo_data.py`, `is_demo=True`, "डेमो" prefix, real engine + MockLLM scores on scripted turns).
-  3. T29 teacher progress page (`/teacher/progress`, evidence ladder, rubric history, consent toggles, data deletion).
-- **Lane B (Active Subagent `30b84880-8782-49cf-a263-5cf47c36853a`)**: Working on CHANGES `8da3157` (feeding real scene turns, tagged acts, child trajectories, and math answer into `coach_feedback`). Commit `8da3157` held unmerged.
+- **Main Branch**: Merged approved PR #1 (`lane-b` at `0427357`) and Lane C (`0ee4c1b`). Current head is `0427357`.
+  - **Full CI Green across all 4 workflows** (`secrets`, `lint`, `content`, `test`):
+    - Real PostgreSQL testing in GitHub Actions CI with live `pgvector/pgvector:pg16` container: `test_session_repository.py` (3 passed), `test_scene_runner.py` (all passed), total 784 passed (100%).
+    - Code quality: `ruff check .` clean, `ruff format --check .` clean, `mypy --strict backend/app` clean across all 98 source files.
+- **Lane C Completed & Merged**:
+  - T31 Demo Data Cohort: Synthetic cohort with real `SceneRunner` execution on scripted teacher turns, honest provenance (`model="mock"`/`"fallback"`), cumulative evidence ladder, and non-negative aggregates.
+  - T29 Teacher Progress & Purge: `/teacher/progress` with evidence ladder, CSS rubric bars, consent toggles, and cascade purge of teacher records (including `ScheduledJob` and `ReviewItem`). Zero inline Hindi in web & purge modules.
+  - T25 Auth & Demo Users: Role guards, CSRF, login rate limiting, session cookies.
+  - T30 First Hosted Deploy: Render, Docker, compose, `/healthz`.
+- **Lane B Completed & Merged**:
+  - T18 Core Service Skeleton: Inbound/Outbound message protocols, per-teacher lock.
+  - T19 SceneRunner: Orchestrating act_tagger → rule engine → child_voice → output guards → TTS; scene store persistence.
+  - T20 Onboarding & Weekly State Machine: Table-driven onboarding, diagnostic placement scene.
+  - T21 Weekly Loop & Evidence: Full loop (LEARN → EXPLAIN_BACK → MODEL → REHEARSE → FEEDBACK → RETRY → TRY_IN_CLASS → REFLECT → DONE) backed by `PostgresSessionRepository`.
 
 ### NEXT:
-1. Complete Lane B review request once real scene data is fed to coach.
-2. Complete Lane C review request upon finishing T31 demo cohort and T29 progress page.
-3. Merge approved lane commits into `main`.
+1. **Lane B**:
+   - **T22 Intents, ASK, retrieval** · Priority: P1 (spec/08 §8.3–8.4, BM25 retrieval from `content/seed_from_moves.jsonl`, teacher question handling, guide answerer wiring, escalation).
+   - **T23 Move path** · Priority: P1 (spec/08 §8.5, sequencing moves for teacher progression).
+   - **T24 Scheduler & jobs** · Priority: P1 (spec/08 §8.6, APScheduler with DB store, follow-up questions, ARP digest snapshots, aggregates).
+2. **Lane C**:
+   - **T26 Web channel API** · Priority: P0 (spec/07 §7.3, polling API, idempotency, audio/text exchange).
+   - **T27 Teacher chat PWA** · Priority: P0 (spec/09 §9.2, mobile chat UI, voice recorder, IndexedDB outbox, service worker, light mode).
+   - **T28 WhatsApp channel** · Priority: P0/P1 (spec/07 §7.2, webhook handler, Meta Cloud API client, 24h window).
