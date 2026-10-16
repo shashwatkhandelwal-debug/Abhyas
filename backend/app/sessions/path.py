@@ -1,4 +1,4 @@
-"""Personal move path computation matching spec/08 §8.5."""
+"""Personal move path computation matching spec/08 §8.5 (T23)."""
 
 from __future__ import annotations
 
@@ -8,6 +8,9 @@ from pathlib import Path
 from uuid import UUID
 
 import yaml
+
+from backend.app.content_models import MoveCard
+from backend.app.sessions.path_score import MoveFacts, TeacherFacts, rank_moves
 
 logger = logging.getLogger("abhyas.sessions.path")
 
@@ -44,114 +47,104 @@ def load_induction_order(induction_path: Path | str | None = None) -> list[str]:
     return list(DEFAULT_INDUCTION_ORDER)
 
 
+def move_card_to_facts(card: MoveCard) -> MoveFacts:
+    """Extracts MoveFacts from a loaded MoveCard."""
+    domain_val = card.domain.value if hasattr(card.domain, "value") else str(card.domain)
+    return MoveFacts(
+        id=card.id,
+        domain=domain_val,
+        sankul_month=card.sankul_month,
+        effective_acts=frozenset(card.teaching_acts_effective),
+        tags=frozenset(card.tags),
+    )
+
+
+def load_all_move_cards(moves_dir: Path | str | None = None) -> list[MoveCard]:
+    """Loads all valid move cards from content/moves/."""
+    if moves_dir is None:
+        moves_dir = Path(__file__).parents[3] / "content" / "moves"
+    else:
+        moves_dir = Path(moves_dir)
+
+    cards: list[MoveCard] = []
+    if moves_dir.is_dir():
+        for f in sorted(moves_dir.glob("*.yaml")):
+            try:
+                data = yaml.safe_load(f.read_text(encoding="utf-8"))
+                if isinstance(data, dict) and "id" in data:
+                    cards.append(MoveCard.model_validate(data))
+            except (yaml.YAMLError, OSError, ValueError, KeyError) as exc:
+                logger.warning("Failed loading move card %s: %s", f, exc)
+    return cards
+
+
 def compute_move_path(
     teacher_id: UUID | str,
     first_year: bool = False,
-    classes: list[int] | None = None,
+    classes: list[int] | tuple[int, ...] | None = None,
     placement_used_tell_answer: bool = False,
     current_month: int = 10,
     done_moves_evidence: dict[str, int] | None = None,
     min_rubric_scores: dict[str, float] | None = None,
-    matched_question_tags: set[str] | None = None,
+    matched_question_tags: set[str] | frozenset[str] | None = None,
+    moves_dir: Path | str | None = None,
 ) -> list[MovePathEntry]:
-    """Computes deterministic personal move path per spec/08 §8.5.
+    """Computes deterministic personal move path per spec/08 §8.5 via path_score.rank_moves."""
+    teacher_facts = TeacherFacts(
+        current_month=current_month,
+        classes=tuple(classes or ()),
+        placement_used_tell_answer=placement_used_tell_answer,
+        done_evidence=done_moves_evidence or {},
+        min_rubric=min_rubric_scores or {},
+        question_tags=frozenset(matched_question_tags or ()),
+    )
 
-    Deterministic score per move (lower = sooner):
-    score = month_rank * 10
-          - 15 if placement used tell_answer and move.effective has ask_to_explain
-          - 10 if teacher.classes contains 1 and move.domain == literacy or move.id startswith NUM_PLACE_VALUE
-          - 5 * (2 - min rubric score on this move's criteria in last attempt)
-          - 8 if teacher asked a question whose category matched move.tags
-          + 100 if move already DONE with evidence >= 2
-    """
-    classes_list = classes or []
-    done_ev = done_moves_evidence or {}
-    rubrics = min_rubric_scores or {}
-    q_tags = matched_question_tags or set()
-
-    if first_year:
-        order = load_induction_order()
-        return [
-            MovePathEntry(
-                position=i + 1,
-                move_id=m_id,
-                reason="first_year_teacher_induction_fixed_order",
-            )
-            for i, m_id in enumerate(order)
+    cards = load_all_move_cards(moves_dir)
+    if cards:
+        move_facts = [move_card_to_facts(card) for card in cards]
+    else:
+        # Fallback defaults if move directory is missing
+        move_facts = [
+            MoveFacts(
+                "NUM_PLACE_VALUE_BUNDLES",
+                "numeracy",
+                "September",
+                frozenset({"ask_to_explain", "concrete_representation"}),
+                frozenset({"place_value", "number_sense", "ganit"}),
+            ),
+            MoveFacts(
+                "NUM_SUB_REGROUP_BUNDLES",
+                "numeracy",
+                "October",
+                frozenset({"ask_to_explain", "concrete_representation"}),
+                frozenset({"subtraction", "regrouping", "place_value", "ganit"}),
+            ),
+            MoveFacts(
+                "NUM_ADD_CARRY_BUNDLES",
+                "numeracy",
+                "November",
+                frozenset({"ask_to_explain", "concrete_representation"}),
+                frozenset({"addition", "regrouping", "carry", "place_value", "ganit"}),
+            ),
+            MoveFacts(
+                "LIT_MATRA_BLENDING",
+                "literacy",
+                "October",
+                frozenset({"phonics_sound_out", "model_step_aloud"}),
+                frozenset({"reading", "phonics", "matra", "blending", "bhasha"}),
+            ),
         ]
 
-    candidate_moves = [
-        {
-            "id": "NUM_PLACE_VALUE_BUNDLES",
-            "domain": "math",
-            "sankul_month": 10,
-            "has_ask_to_explain": True,
-            "tags": {"place_value", "math", "concrete"},
-        },
-        {
-            "id": "NUM_SUB_REGROUP_BUNDLES",
-            "domain": "math",
-            "sankul_month": 10,
-            "has_ask_to_explain": True,
-            "tags": {"subtraction", "math", "regrouping"},
-        },
-        {
-            "id": "NUM_ADD_CARRY_BUNDLES",
-            "domain": "math",
-            "sankul_month": 11,
-            "has_ask_to_explain": True,
-            "tags": {"addition", "math", "carry"},
-        },
-        {
-            "id": "LIT_MATRA_BLENDING",
-            "domain": "literacy",
-            "sankul_month": 11,
-            "has_ask_to_explain": False,
-            "tags": {"literacy", "matra", "phonics"},
-        },
-    ]
-
-    scored: list[tuple[float, str, str]] = []
-
-    for m in candidate_moves:
-        move_id = str(m["id"])
-        month_diff = max(0, int(str(m["sankul_month"])) - current_month)
-        score = month_diff * 10.0
-        reasons: list[str] = [f"month_priority: +{month_diff * 10}"]
-
-        if placement_used_tell_answer and m["has_ask_to_explain"]:
-            score -= 15.0
-            reasons.append("placement_tell_answer_explanation_practice: -15")
-
-        if 1 in classes_list and (
-            m["domain"] == "literacy" or move_id.startswith("NUM_PLACE_VALUE")
-        ):
-            score -= 10.0
-            reasons.append("grade_1_foundational_practice: -10")
-
-        if move_id in rubrics:
-            min_r = rubrics[move_id]
-            delta = 5.0 * (2.0 - min_r)
-            score -= delta
-            reasons.append(f"prior_performance_improvement: -{delta:.1f}")
-
-        tags = m["tags"]
-        if isinstance(tags, set) and tags.intersection(q_tags):
-            score -= 8.0
-            reasons.append("matched_teacher_question: -8")
-
-        if done_ev.get(move_id, 0) >= 2:
-            score += 100.0
-            reasons.append("previously_completed: +100")
-
-        scored.append((score, move_id, "; ".join(reasons)))
-
-    # Sort ascending by score
-    scored.sort(key=lambda x: x[0])
+    fixed_order = tuple(load_induction_order()) if first_year else None
+    ranked = rank_moves(move_facts, teacher_facts, fixed_order=fixed_order)
 
     return [
-        MovePathEntry(position=i + 1, move_id=m_id, reason=reason)
-        for i, (_, m_id, reason) in enumerate(scored)
+        MovePathEntry(
+            position=entry.position,
+            move_id=entry.move_id,
+            reason="; ".join(entry.reasons),
+        )
+        for entry in ranked
     ]
 
 
@@ -160,4 +153,6 @@ __all__ = [
     "compute_move_path",
     "load_induction_order",
     "DEFAULT_INDUCTION_ORDER",
+    "load_all_move_cards",
+    "move_card_to_facts",
 ]
