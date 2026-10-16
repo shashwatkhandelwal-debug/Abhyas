@@ -1,13 +1,17 @@
-"""Jobs package exports."""
+"""Jobs package exports (spec/08 §8.6, T24)."""
 
 from backend.app.jobs.scheduler import (
-    trigger_arp_weekly_digests,
-    trigger_two_day_followups,
-    trigger_weekly_prompts,
+    build_scheduler,
+    fast_forward_teacher,
+    plan_jobs,
+    run_due_jobs,
+    start_scheduler,
 )
 
 __all__ = [
-    "trigger_weekly_prompts",
-    "trigger_two_day_followups",
-    "trigger_arp_weekly_digests",
+    "build_scheduler",
+    "fast_forward_teacher",
+    "plan_jobs",
+    "run_due_jobs",
+    "start_scheduler",
 ]

@@ -68,7 +68,8 @@ _REHEARSED_STATES: Final = frozenset(
         SessionStateEnum.REHEARSE.value,
         SessionStateEnum.FEEDBACK.value,
         SessionStateEnum.TRY_IN_CLASS.value,
-        SessionStateEnum.REFLECT.value,
+        SessionStateEnum.REFLECT_PEER.value,
+        SessionStateEnum.REFLECT_SELF.value,
         SessionStateEnum.DONE.value,
     }
 )
@@ -76,7 +77,8 @@ _REHEARSAL_COMPLETE_STATES: Final = frozenset(
     {
         SessionStateEnum.FEEDBACK.value,
         SessionStateEnum.TRY_IN_CLASS.value,
-        SessionStateEnum.REFLECT.value,
+        SessionStateEnum.REFLECT_PEER.value,
+        SessionStateEnum.REFLECT_SELF.value,
         SessionStateEnum.DONE.value,
     }
 )
@@ -334,8 +336,8 @@ async def _digest_rows(
     rows: list[dict[str, Any]] = []
     for teacher in teachers:
         state = states.get(teacher.id)
-        score = latest_scores.get(teacher.id)
-        struggled = _low_criteria(score.scores) if score is not None else []
+        teacher_score = latest_scores.get(teacher.id)
+        struggled = _low_criteria(teacher_score.scores) if teacher_score is not None else []
         questions = escalated.get(teacher.id, [])
         rows.append(
             {

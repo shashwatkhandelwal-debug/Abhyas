@@ -117,6 +117,18 @@ class Settings(BaseSettings):
     TWO_DAY_FOLLOWUP_HOURS: int = 48
     REMINDER_AFTER_HOURS: int = 72
 
+    # ── Scheduler & Jobs — T24 ───────────────────────────────────────────
+    SCHEDULER_ENABLED: bool = True
+    SCHEDULER_TICK_SECONDS: int = 60
+    SCHEDULER_PLAN_MINUTES: int = 60
+    SCHEDULER_MAX_ATTEMPTS: int = 3
+    SCHEDULER_RETRY_BASE_SECONDS: int = 60
+    SCHEDULER_BATCH_LIMIT: int = 25
+    AGGREGATES_HOUR_IST: int = 2
+    ARP_DIGEST_WEEKDAY: int = 5  # Saturday
+    ARP_DIGEST_HOUR_IST: int = 17
+    FOLLOWUP_TOPIC_MAX_WORDS: int = 6
+
     # ── Demo / Evaluation & Observability ────────────────────────────────
     SERVE_IN_REVIEW_TO_DEMO: bool = True
     DEMO_MODE: bool = True

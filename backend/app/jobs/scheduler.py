@@ -1,20 +1,17 @@
-"""Scheduled background tasks for weekly loops, reminders, and ARP digests (§1, §4, §8, §13)."""
+"""Scheduled background tasks and scheduler wiring (spec/08 §8.6, T24)."""
 
-import logging
+from backend.app.jobs.tick import (
+    build_scheduler,
+    fast_forward_teacher,
+    plan_jobs,
+    run_due_jobs,
+    start_scheduler,
+)
 
-logger = logging.getLogger(__name__)
-
-
-async def trigger_weekly_prompts() -> None:
-    """Dispatches Monday morning utility templates to all enrolled teachers."""
-    logger.info("Executing scheduled task: trigger_weekly_prompts")
-
-
-async def trigger_two_day_followups() -> None:
-    """Dispatches follow-up questions for 'Ask Any Time' inquiries logged 48h prior."""
-    logger.info("Executing scheduled task: trigger_two_day_followups (48h follow-up)")
-
-
-async def trigger_arp_weekly_digests() -> None:
-    """Compiles and sends weekly digest messages to ARPs."""
-    logger.info("Executing scheduled task: trigger_arp_weekly_digests")
+__all__ = [
+    "build_scheduler",
+    "fast_forward_teacher",
+    "plan_jobs",
+    "run_due_jobs",
+    "start_scheduler",
+]
