@@ -186,6 +186,10 @@ async def test_postgres_scene_store_roundtrip() -> None:
         or os.environ.get("DATABASE_URL")
         or "postgresql+asyncpg://postgres:postgres@localhost:5432/abhyas_b"
     )
+    if db_url.startswith("postgresql://"):
+        db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    if "postgresql+psycopg2://" in db_url:
+        db_url = db_url.replace("postgresql+psycopg2://", "postgresql+asyncpg://")
 
     test_engine = create_async_engine(db_url, poolclass=NullPool)
     test_session_factory = async_sessionmaker(
