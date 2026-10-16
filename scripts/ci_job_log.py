@@ -4,16 +4,24 @@ Usage:
     python scripts/ci_job_log.py <job_id>
 """
 
-from pathlib import Path
 import sys
 import urllib.request
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from ci_status import get_github_token
+from ci_status import get_github_token  # noqa: E402
 
 
 class NoAuthRedirectHandler(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: object,
+        code: int,
+        msg: str,
+        headers: object,
+        newurl: str,
+    ) -> urllib.request.Request:
         new_req = super().redirect_request(req, fp, code, msg, headers, newurl)
         if new_req and "Authorization" in new_req.headers:
             del new_req.headers["Authorization"]
@@ -38,6 +46,11 @@ def fetch_job_log(job_id: str) -> None:
             lines = content.splitlines()
             print(f"=== Job {job_id} Log ({len(lines)} lines total) ===")
             keyword = sys.argv[2].lower() if len(sys.argv) > 2 else None
+            fail_idx = -1
+            for i, line in enumerate(lines):
+                if "short test summary info" in line.lower() or "=== failures ===" in line.lower():
+                    fail_idx = i
+                    break
             if keyword:
                 matching_lines = [line for line in lines if keyword in line.lower()]
                 print(f"--- Found {len(matching_lines)} lines matching '{keyword}' ---")
