@@ -469,3 +469,98 @@ async def test_shared_anthropic_client() -> None:
     client2 = get_anthropic_client()
     assert client1 is client2
     await close_anthropic_client()
+
+
+@pytest.mark.asyncio
+async def test_mock_llm_call_writes_db_row_when_enabled() -> None:
+    """When LLM_CALL_LOG_ENABLED is True, a mock call writes an LLMCall row."""
+    from unittest.mock import MagicMock
+
+    from backend.app.db.models import LLMCall
+    from backend.app.llm.client import log_llm_call
+
+    mock_session = AsyncMock()
+    mock_session.add = MagicMock()
+    mock_factory = patch("backend.app.llm.client.async_session_factory")
+
+    with (
+        patch.object(settings, "LLM_CALL_LOG_ENABLED", True),
+        mock_factory as mock_fac,
+    ):
+        mock_fac.return_value.__aenter__.return_value = mock_session
+        await log_llm_call(
+            role="coach",
+            prompt_version="coach.v1.md",
+            model="mock",
+            input_tokens=10,
+            output_tokens=20,
+            cache_read_tokens=0,
+            latency_ms=15,
+            outcome="mock_success",
+        )
+        assert mock_session.add.called
+        call_arg = mock_session.add.call_args[0][0]
+        assert isinstance(call_arg, LLMCall)
+        assert call_arg.model == "mock"
+        assert call_arg.role == "coach"
+        assert call_arg.outcome == "mock_success"
+        assert mock_session.commit.called
+
+
+@pytest.mark.asyncio
+async def test_mock_llm_call_skips_db_when_disabled() -> None:
+    """When LLM_CALL_LOG_ENABLED is False, log_llm_call returns early without opening DB session."""
+    from backend.app.llm.client import log_llm_call
+
+    mock_factory = patch("backend.app.llm.client.async_session_factory")
+    with (
+        patch.object(settings, "LLM_CALL_LOG_ENABLED", False),
+        mock_factory as mock_fac,
+    ):
+        await log_llm_call(
+            role="coach",
+            prompt_version="coach.v1.md",
+            model="mock",
+            input_tokens=10,
+            output_tokens=20,
+            cache_read_tokens=0,
+            latency_ms=15,
+            outcome="mock_success",
+        )
+        assert not mock_fac.called
+
+
+@pytest.mark.asyncio
+async def test_call_tool_mock_provider_logs_call_when_enabled() -> None:
+    """call_tool under LLM_PROVIDER='mock' writes an LLMCall row when logging is enabled."""
+    from unittest.mock import MagicMock
+
+    from backend.app.db.models import LLMCall
+    from backend.app.llm.client import call_tool
+
+    mock_session = AsyncMock()
+    mock_session.add = MagicMock()
+    mock_factory = patch("backend.app.llm.client.async_session_factory")
+    schema = {"type": "object", "properties": {"acts": {"type": "array"}}}
+
+    with (
+        patch.object(settings, "LLM_PROVIDER", "mock"),
+        patch.object(settings, "LLM_CALL_LOG_ENABLED", True),
+        mock_factory as mock_fac,
+    ):
+        mock_fac.return_value.__aenter__.return_value = mock_session
+        await call_tool(
+            role="act_tagger",
+            model="mock",
+            prompt_version="act_tagger.v1.md",
+            tool_name="tag_acts",
+            input_schema=schema,
+            system="test system",
+            messages=[{"role": "user", "content": "test"}],
+        )
+        assert mock_session.add.called
+        call_arg = mock_session.add.call_args[0][0]
+        assert isinstance(call_arg, LLMCall)
+        assert call_arg.model == "mock"
+        assert call_arg.outcome == "mock_success"
+        assert mock_session.commit.called

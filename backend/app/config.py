@@ -48,6 +48,7 @@ class Settings(BaseSettings):
 
     # ── Claude (Anthropic) — H1 ──────────────────────────────────────────
     LLM_PROVIDER: Literal["anthropic", "mock"] = "anthropic"
+    LLM_CALL_LOG_ENABLED: bool = True
     ANTHROPIC_API_KEY: str = ""
     CLAUDE_MODEL_FAST: str = "claude-haiku-5-5"
     CLAUDE_MODEL_SMART: str = "claude-sonnet-5-5"

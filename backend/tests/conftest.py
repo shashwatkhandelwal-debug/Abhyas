@@ -11,8 +11,12 @@ os.environ["ANTHROPIC_API_KEY"] = "mock_key_for_testing"
 os.environ["WHATSAPP_ACCESS_TOKEN"] = "mock_whatsapp_token"
 os.environ["STT_PROVIDER"] = "mock"
 os.environ["TTS_PROVIDER"] = "mock"
+os.environ["LLM_CALL_LOG_ENABLED"] = "false"
 
+from backend.app.config import settings
 from backend.app.main import app
+
+settings.LLM_CALL_LOG_ENABLED = False
 
 
 @pytest.fixture
