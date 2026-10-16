@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1F6F5C">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>मेरी प्रगति — अभ्यास</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header (spec/09 §9.2) -->
+    <header class="chat-header">
+      <div class="header-left">
+        <a href="/teacher" class="btn-icon" aria-label="चैट पर वापस जाएँ">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </a>
+        <div class="header-titles">
+          <span class="header-move-title">मेरी प्रगति</span>
+          <span class="header-step-chip">{{ teacher_name }}</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <a href="/logout" class="btn-icon" aria-label="लॉग आउट" title="लॉग आउट">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </a>
+      </div>
+    </header>
+
+    <!-- Demo Banner (spec/03 §3.5) -->
+    {% if demo_mode %}
+    <div class="demo-banner" role="status" aria-label="डेमो सूचना">{{ demo_banner_text or get_message('ui_demo_banner') }}</div>
+    {% endif %}
+
+    <!-- Success Flash Banner -->
+    {% if is_saved %}
+    <div class="success-banner" role="status">आपकी सहमति प्राथमिकताएँ सुरक्षित कर ली गई हैं।</div>
+    {% endif %}
+
+    <main class="progress-main">
+      <!-- Section: Move Cards (spec/09 §9.2 line 32) -->
+      <section class="moves-section" aria-label="शिक्षण तरीके और प्रगति">
+        <h2 class="section-heading">शिक्षण तरीके व प्रमाण सीढ़ी</h2>
+
+        {% for move in move_cards %}
+        <article class="move-card" id="move-card-{{ move.move_id }}">
+          <h3 class="move-card-title">{{ move.title_hi }}</h3>
+
+          <!-- Evidence Ladder (5 steps) -->
+          <div class="ladder-section">
+            <div class="subheading">प्रमाण सीढ़ी (Evidence Ladder)</div>
+            <div class="ladder-container" role="group" aria-label="प्रमाण सीढ़ी के स्तर">
+              {% for step in move.ladder_steps %}
+              <div class="ladder-step {{ 'filled' if step.filled else 'unfilled' }}" title="स्तर {{ step.level }}: {{ step.label }}">
+                <div class="ladder-step-num">{{ step.level }}</div>
+                <div class="ladder-step-label">{{ step.label }}</div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Rubric Score History (Inline Bars, No Chart Lib) -->
+          <div class="score-history-section">
+            <div class="subheading">अभ्यास अंक इतिहास (Rubric Scores)</div>
+            {% if move.score_history %}
+            <div class="history-list">
+              {% for item in move.score_history %}
+              <div class="score-row">
+                <span class="score-label">प्रयास {{ item.attempt }}</span>
+                <div class="inline-bar-track" aria-label="अंक {{ item.avg_score }} / 2">
+                  <div class="inline-bar-fill" style="width: {{ item.pct }}%;"></div>
+                </div>
+                <span class="score-val">{{ item.avg_score }}/2</span>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <p class="empty-text">अभी तक कोई अभ्यास अंक दर्ज नहीं हुआ है।</p>
+            {% endif %}
+          </div>
+
+          <!-- Explain-Back Key Points Covered -->
+          <div class="explain-points-section">
+            <div class="subheading">अपने शब्दों में समझाना (Key Points Covered)</div>
+            {% if move.has_explain_score and move.points_covered %}
+            <ul class="kp-list">
+              {% for kp in move.points_covered %}
+              <li class="kp-item {{ 'covered' if kp.covered else 'missed' }}">
+                <span class="kp-icon">{{ '✓' if kp.covered else '○' }}</span>
+                <span class="kp-text">{{ kp.title_hi }}</span>
+              </li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <p class="empty-text">अभी तक अपने शब्दों में समझाना बाकी है।</p>
+            {% endif %}
+          </div>
+        </article>
+        {% endfor %}
+      </section>
+
+      <!-- Section: Consent Toggles (spec/09 §9.2 line 32) -->
+      <section class="consent-section" aria-label="सहमति और गोपनीयता सेटिंग्स">
+        <h2 class="section-heading">गोपनीयता व सहमति सेटिंग्स</h2>
+        <form method="POST" action="/teacher/consent" class="consent-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+          <div class="setting-item">
+            <div class="setting-text">
+              <label for="consent_share_scores" class="setting-label">ARP के साथ स्कोर साझा करें</label>
+              <p class="setting-desc">आपके संकुल ARP को आपकी अभ्यास प्रगति और अंक देखने की अनुमति।</p>
+            </div>
+            <input
+              type="checkbox"
+              id="consent_share_scores"
+              name="consent_share_scores"
+              value="true"
+              class="checkbox-toggle"
+              {{ 'checked' if consent_share_scores else '' }}
+            >
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-text">
+              <label for="consent_research" class="setting-label">शोध व सुधार में भागीदारी</label>
+              <p class="setting-desc">अभ्यास प्रणाली व शिक्षण सामग्री को बेहतर बनाने हेतु अनाम डेटा उपयोग।</p>
+            </div>
+            <input
+              type="checkbox"
+              id="consent_research"
+              name="consent_research"
+              value="true"
+              class="checkbox-toggle"
+              {{ 'checked' if consent_research else '' }}
+            >
+          </div>
+
+          <button type="submit" class="btn-save">सेटिंग्स सहेजें</button>
+        </form>
+      </section>
+
+      <!-- Section: Data Deletion (spec/09 §9.2 line 32) -->
+      <section class="delete-section" aria-label="डेटा प्रबंधन">
+        <h2 class="section-heading danger">खाता व डेटा प्रबंधन</h2>
+        <p class="delete-desc">
+          आप किसी भी समय अपना सारा डेटा और खाता हमेशा के लिए मिटा सकती हैं।
+        </p>
+        <a href="/teacher/delete" class="btn-delete-link">मेरा डेटा हटाएँ</a>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
