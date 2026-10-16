@@ -17,7 +17,7 @@ Status: ALL TASKS COMPLETED (100% GREEN CI)
 
 | Task | Lane / Branch | PR | Status | Head SHA | CI Run | Deliverables & Summary |
 |---|---|---|---|---|---|---|
-| **Coord (T24)** Wire Lane-E Scheduler | `coord/wire-lane-e` | [PR #2](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/2) | **PASSED** (Ready for Review) | `b6d641d` | [Run 38960278394](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/38960278394) | Merged `lane-e` scheduler, admin fast-forward router, lifespan start/stop, config tunables, pyproject packages, migration test schema isolation fix. |
+| **Coord (T24)** Wire Lane-E Scheduler | `coord/wire-lane-e` | [PR #2](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/2) | **PASSED** (Ready for Review) | `94e045e` | [Run 38964779134](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/38964779134) | Merged `lane-e` scheduler, admin fast-forward router, lifespan start/stop, config tunables, pyproject packages, migration test schema isolation fix. |
 | **Lane C (T26)** Web Channel API | `lane-c` | [PR #3](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/3) | **PASSED** (Ready for Review) | `5fda935` | [Run 38961404641](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/38961404641) | SessionService web pipeline connection, deduplication, polling `/api/chat/messages`, audio caching, rating/settings endpoints, English HTTPException details. |
 | **Lane C (T27)** Teacher Chat PWA | `lane-c` | [PR #3](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/3) | **PASSED** (Ready for Review) | `ac34f2b` | [Run 38964138452](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/38964138452) | Teacher chat PWA templates (`teacher.html`, `chat.html`), vanilla JS offline outbox in IndexedDB with exponential retry, MediaRecorder 16kbps mono voice recorder, catalog-driven offline banner, <67 KB first-load asset budget. |
 | **Lane B (T22)** Intents, ASK, BM25 Retrieval | `lane-b` | [PR #4](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/4) | **PASSED** (Ready for Review) | `518ab7e` | [Run 38962536846](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/38962536846) | 22 chunks extracted into `content/chunks/seed_from_moves.jsonl`, BM25 retriever with Unicode Hindi tokenization in `search.py`, ASK flow wiring in `service.py`, review item escalation. |
@@ -30,8 +30,8 @@ Status: ALL TASKS COMPLETED (100% GREEN CI)
 ### 1. Coord: Wire Lane-E Scheduler & Pipeline Integration
 - **Branch**: `coord/wire-lane-e`
 - **PR**: [shashwatkhandelwal-debug/Abhyas#2](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/2)
-- **Head SHA**: `b6d641d`
-- **CI Status**: [Run 38960278394 — Completed / Success](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/38960278394)
+- **Head SHA**: `94e045e`
+- **CI Status**: [Run 38964779134 — Completed / Success](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/38964779134)
   - `lint`: Success
   - `secrets`: Success
   - `test`: Success (ran PostgreSQL + pgvector integration tests and unit tests)
