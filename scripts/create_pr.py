@@ -26,7 +26,9 @@ def create_pr(head_branch: str, title: str, base: str = "main") -> None:
     if token:
         headers["Authorization"] = f"Bearer {token}"
 
-    data = json.dumps({"title": title, "head": head_branch, "base": base, "body": title}).encode("utf-8")
+    data = json.dumps({"title": title, "head": head_branch, "base": base, "body": title}).encode(
+        "utf-8"
+    )
     req = urllib.request.Request(url, data=data, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=30) as res:
