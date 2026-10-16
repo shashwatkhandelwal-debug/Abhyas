@@ -208,6 +208,17 @@ body {
   color: var(--danger);
 }
 
+/* Demo Data Banner (spec/03 §3.5) */
+.demo-banner {
+  background-color: var(--accent-light, #FFF3CD);
+  color: #7A5300;
+  border-bottom: 1px solid var(--accent, #FFD166);
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+}
+
 /* Network Banners */
 .network-banner {
   padding: 0.5rem 1rem;
@@ -624,3 +635,359 @@ body {
   display: inline-flex;
   align-items: center;
 }
+
+/* ==========================================================================
+   Progress & Deletion Pages (spec/09 §9.1, §9.2)
+   ========================================================================== */
+
+.progress-main {
+  flex: 1;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  overflow-y: auto;
+}
+
+.success-banner {
+  background-color: var(--brand-light);
+  color: var(--brand);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.95rem;
+  border-left: 4px solid var(--brand);
+}
+
+.section-heading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--brand);
+  margin: 0 0 0.75rem 0;
+}
+
+.section-heading.danger {
+  color: var(--danger);
+}
+
+.move-card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.move-card-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.subheading {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Evidence Ladder (5 steps) */
+.ladder-container {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.4rem;
+}
+
+.ladder-step {
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.25rem;
+  text-align: center;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.ladder-step.filled {
+  background-color: var(--brand);
+  color: var(--brand-ink);
+}
+
+.ladder-step.unfilled {
+  background-color: var(--bg);
+  border: 1px dashed var(--border);
+  color: var(--muted);
+}
+
+.ladder-step-num {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.ladder-step-label {
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+/* Rubric Score History */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.score-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.score-label {
+  min-width: 65px;
+  color: var(--muted);
+}
+
+.inline-bar-track {
+  flex: 1;
+  height: 12px;
+  background-color: var(--bg);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.inline-bar-fill {
+  height: 100%;
+  background-color: var(--brand);
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+}
+
+.score-val {
+  min-width: 40px;
+  text-align: right;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.empty-text {
+  font-size: 0.9rem;
+  color: var(--muted);
+  font-style: italic;
+  margin: 0.25rem 0;
+}
+
+/* Explain Key Points */
+.kp-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.kp-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.92rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm);
+  line-height: 1.4;
+}
+
+.kp-item.covered {
+  background-color: var(--brand-light);
+  color: var(--ink);
+}
+
+.kp-item.missed {
+  background-color: var(--bg);
+  color: var(--muted);
+}
+
+.kp-icon {
+  font-weight: bold;
+}
+
+.kp-item.covered .kp-icon {
+  color: var(--brand);
+}
+
+/* Consent Settings */
+.consent-section, .delete-section {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.consent-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.setting-text {
+  flex: 1;
+}
+
+.setting-label {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 0.2rem;
+  color: var(--ink);
+}
+
+.setting-desc {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+.checkbox-toggle {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+
+.btn-save {
+  background-color: var(--brand);
+  color: var(--brand-ink);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 48px;
+  align-self: flex-start;
+}
+
+.btn-save:hover {
+  opacity: 0.9;
+}
+
+/* Delete Section & Dialog */
+.delete-desc {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0 0 1rem 0;
+}
+
+.btn-delete-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 1.2rem;
+  font-weight: 600;
+  text-decoration: none;
+  min-height: 48px;
+}
+
+.btn-delete-link:hover {
+  background-color: var(--danger-light);
+}
+
+.delete-dialog-box {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1.5rem 1.25rem;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.danger-icon-wrapper {
+  margin-bottom: 0.25rem;
+}
+
+.delete-dialog-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--danger);
+  margin: 0;
+}
+
+.delete-dialog-body {
+  font-size: 0.95rem;
+  color: var(--ink);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.delete-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.btn-danger-confirm {
+  background-color: var(--danger);
+  color: #FFFFFF;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.85rem;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 48px;
+  width: 100%;
+}
+
+.btn-danger-confirm:hover {
+  background-color: #931F18;
+}
+
+.btn-cancel-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  min-height: 48px;
+  width: 100%;
+}
+
+.btn-cancel-link:hover {
+  background-color: var(--border);
+}
+

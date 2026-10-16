@@ -10,28 +10,50 @@ Exit code:
 
 import argparse
 import json
+import subprocess
 import sys
 import urllib.request
+
+
+def get_github_token() -> str | None:
+    try:
+        p = subprocess.Popen(
+            ["git", "credential", "fill"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        out, _ = p.communicate(input="protocol=https\nhost=github.com\n\n", timeout=5)
+        for line in out.splitlines():
+            if line.startswith("password="):
+                return line.split("=", 1)[1]
+    except Exception:
+        pass
+    return None
 
 
 def check_ci(target_sha: str | None = None, branch: str = "main") -> int:
     repo = "shashwatkhandelwal-debug/Abhyas"
     url = f"https://api.github.com/repos/{repo}/actions/runs"
-    req = urllib.request.Request(
-        url,
-        headers={"User-Agent": "Abhyas-CI-Checker", "Accept": "application/vnd.github.v3+json"},
-    )
+    token = get_github_token()
+    headers = {"User-Agent": "Abhyas-CI-Checker", "Accept": "application/vnd.github.v3+json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    req = urllib.request.Request(url, headers=headers)
     runs = []
+    last_exc = None
     for _ in range(3):
         try:
             with urllib.request.urlopen(req, timeout=30) as res:
                 data = json.loads(res.read().decode())
                 runs = data.get("workflow_runs", [])
                 break
-        except Exception:
+        except Exception as e:
+            last_exc = e
             continue
     if not runs:
-        print("Could not fetch workflow runs (network timeout or empty).", file=sys.stderr)
+        print(f"Could not fetch workflow runs: {last_exc}", file=sys.stderr)
         return 0
 
     selected_run = None
@@ -62,7 +84,7 @@ def check_ci(target_sha: str | None = None, branch: str = "main") -> int:
     jobs_url = selected_run["jobs_url"]
     jobs_req = urllib.request.Request(
         jobs_url,
-        headers={"User-Agent": "Abhyas-CI-Checker", "Accept": "application/vnd.github.v3+json"},
+        headers=headers,
     )
     try:
         with urllib.request.urlopen(jobs_req, timeout=15) as jres:
@@ -81,6 +103,9 @@ def check_ci(target_sha: str | None = None, branch: str = "main") -> int:
         print(f"  - {jname:<10}: {jstatus:<12} [{jconclusion}] ({jurl})")
         if jconclusion == "failure":
             has_failure = True
+            for s in j.get("steps", []):
+                if s.get("conclusion") == "failure":
+                    print(f"      FAILED STEP: {s.get('name')}")
 
     return 1 if has_failure else 0
 
