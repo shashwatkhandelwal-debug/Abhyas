@@ -12,6 +12,8 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.app.auth.router import router as auth_router
 from backend.app.config import settings
+from backend.app.jobs.admin_api import router as jobs_admin_router
+from backend.app.jobs.scheduler import start_scheduler
 from backend.app.web import STATIC_DIR, chat_router, teacher_router
 from backend.app.whatsapp.router import router as whatsapp_router
 
@@ -48,8 +50,14 @@ async def _cleanup_clients() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Starting Abhyas Backend (Env: %s)", settings.ENVIRONMENT)
+    scheduler = start_scheduler()
     yield
     logger.info("Shutting down Abhyas Backend")
+    if scheduler is not None and getattr(scheduler, "running", False):
+        try:
+            scheduler.shutdown(wait=False)
+        except Exception as e:
+            logger.debug("Scheduler shutdown error: %s", e)
     await _cleanup_clients()
 
 
@@ -76,6 +84,7 @@ app.include_router(auth_router)
 app.include_router(chat_router)
 app.include_router(teacher_router)
 app.include_router(whatsapp_router)
+app.include_router(jobs_admin_router)
 
 
 @app.get("/", include_in_schema=False)

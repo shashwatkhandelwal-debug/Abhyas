@@ -7,7 +7,7 @@ from httpx import ASGITransport, AsyncClient
 
 # Set test environment
 os.environ["ENVIRONMENT"] = "test"
-os.environ["ANTHROPIC_API_KEY"] = "mock_key_for_testing"
+os.environ["ANTHROPIC_API_KEY"] = ""
 os.environ["WHATSAPP_ACCESS_TOKEN"] = "mock_whatsapp_token"
 os.environ["STT_PROVIDER"] = "mock"
 os.environ["TTS_PROVIDER"] = "mock"

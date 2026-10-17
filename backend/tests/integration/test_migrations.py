@@ -32,11 +32,17 @@ def test_alembic_migrations_round_trip() -> None:
     alembic_cfg = Config("alembic.ini")
     alembic_cfg.set_main_option("sqlalchemy.url", sync_url)
 
-    # 1. Upgrade to head
-    command.upgrade(alembic_cfg, "head")
-
     engine = create_engine(sync_url)
     try:
+        with engine.connect() as conn:
+            conn.execute(text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto;"))
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+            conn.commit()
+
+        # 1. Upgrade to head
+        command.upgrade(alembic_cfg, "head")
+
         inspector = inspect(engine)
         tables = set(inspector.get_table_names())
         expected_tables = {
