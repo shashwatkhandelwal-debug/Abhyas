@@ -87,6 +87,8 @@ class TTSCache:
                             return bytes(audio_row.mp3)
             except Exception as exc:
                 logger.warning("Database TTS cache get query error: %s", exc)
+                if settings.ENVIRONMENT != "production":
+                    self.use_db = False
 
         # 2. Try disk cache if in dev or fallback
         if self.use_disk:

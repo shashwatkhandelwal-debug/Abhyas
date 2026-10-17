@@ -322,3 +322,31 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **backend/app/db/seed.py**: Sanitized log output by removing `DEMO_PASSWORD` formatting from `logger.info("Starting database seed")`.
 - **docs/DEPLOY.md**: Updated §1.3 and Table 2 for `ALEMBIC_DATABASE_URL` to specify Supabase Session Pooler URI on port 5432 (`postgresql://...`) instead of the direct connection host (`db.[PROJECT-REF].supabase.co`), documenting that Supabase direct host defaults to IPv6 which causes connection failures on platforms without IPv6 routing (such as Render or standard Docker).
 - **.env.example**: Updated local `DATABASE_URL` and `ALEMBIC_DATABASE_URL` default passwords from `postgres` to `postgrespassword` to match `infra/docker-compose.yml`.
+
+### T63 Turn Pipeline Latency & Pre-warming (`latency`)
+- **Pipeline Call Dependency Map**:
+  - `intent_router` / stop keyword check: Evaluated immediately on input. If stop intent detected, terminates turn without LLM calls.
+  - `act_tagger`: Requires inbound transcript + current scene context. Produces `TeachingAct`s.
+  - `RuleEngine.step`: Pure deterministic Python. Consumes `TaggedTurn`, returns `StepResult` (<1 ms). The LLM never decides children's answers.
+  - `child_voice` & guards: Run concurrently across responding children using `asyncio.gather(*(_voice_child(r) for r in step_result.responses))`. Voicing calls have no mutual data dependencies. Output guard ensures numbers match rule engine output before release.
+  - Text-first delivery: `on_text_ready` hook persists and commits `Message` rows (`kind="text"`, `audio_ref=None`) immediately before TTS begins. Perceived latency on web channel drops from ~4-5s to ~1.2s.
+  - TTS synthesis: Concurrently synthesizes voice for all responding children via `asyncio.gather`. Once complete, attaches `audio_ref` and updates existing `Message` rows to `kind="audio"`. Client polling dynamically adds audio player to the rendered text bubble.
+- **Per-Stage Latency Reporting**:
+  - Updated `benchmark_latency.py` to record per-stage timing (`stt_ms`, `act_tagger_ms`, `rule_engine_ms`, `child_voice_ms`, `db_ms`, `tts_ms`, `total_ms`).
+  - Outputs `p50 (ms)` and `p95 (ms)` per stage in `eval/latency/REPORT.md`.
+- **TTS Pre-warming CLI (`scripts/prewarm_tts.py`)**:
+  - Pre-synthesizes and caches catalog messages with `audio: true` from `messages_hi.yaml` and the 3 shipped moves' `learn` narration into `TTSCache`.
+  - Idempotent (skips already-cached entries), budget-capped against `SPEECH_DAILY_BUDGET_INR` and `SPEECH_TOTAL_BUDGET_INR`, mock-aware (no-op on mock TTS unless `--force-mock`).
+  - Supports `--dry-run` (default) and `--write`.
+- **docs/DEPLOY.md**:
+  - Documented Supabase region as **Singapore (`ap-southeast-1`)** co-located with Render Singapore (`aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres`), keeping DB roundtrip latency <5 ms.
+  - Added `python scripts/prewarm_tts.py --write` as post-seed step in §4.
+- **Unit Tests**:
+  - Added `backend/tests/unit/test_latency_pipeline.py` (6 tests passing):
+    - `test_pipeline_output_invariant_ravi_subtraction`: Proves Ravi with `SUB_SMALLER_FROM_LARGER` calculates 43 - 27 = 24, never 16.
+    - `test_pipeline_parallel_child_voicing_multi_child`: Proves multi-child scenes maintain child ordering and voice responses concurrently.
+    - `test_text_first_delivery_callback`: Proves text messages are delivered with `kind="text"` and `audio_ref=None` before TTS, then updated with `kind="audio"` and `audio_ref`.
+    - `test_prewarm_load_targets`: Proves static audio target extraction from catalog and move scripts.
+    - `test_prewarm_tts_mock_noop`: Proves pre-warming is safe no-op under mock environment.
+    - `test_prewarm_tts_dry_run_and_idempotence`: Proves dry-run cost estimation and idempotency skipping.
+
