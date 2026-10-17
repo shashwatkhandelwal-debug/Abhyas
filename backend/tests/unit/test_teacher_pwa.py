@@ -3,6 +3,7 @@
 import os
 import unicodedata
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -63,6 +64,7 @@ def teacher_pwa_app(mock_teacher_id: uuid.UUID, mock_teacher: Teacher) -> FastAP
             kind="text",
             text="नमस्ते! अभ्यास शुरू करें?",
             speaker="abhyas",
+            created_at=datetime(2026, 10, 15, 10, 0, tzinfo=UTC),
         ),
         Message(
             id=uuid.uuid4(),
@@ -72,6 +74,7 @@ def teacher_pwa_app(mock_teacher_id: uuid.UUID, mock_teacher: Teacher) -> FastAP
             channel_msg_id="in-1",
             kind="text",
             text="हाँ, तैयार हूँ।",
+            created_at=datetime(2026, 10, 15, 10, 1, tzinfo=UTC),
         ),
     ]
 
@@ -128,6 +131,7 @@ async def test_get_teacher_chat_page(teacher_pwa_app: FastAPI) -> None:
         # Initial messages rendered server-side
         assert "नमस्ते! अभ्यास शुरू करें?" in html
         assert "हाँ, तैयार हूँ।" in html
+        assert 'data-created-at="2026-10-15T10:00:00+00:00"' in html
 
         # Composer controls
         assert 'id="chat-input"' in html

@@ -144,6 +144,7 @@ async def teacher_chat_page(
             "speaker": m.speaker,
             "audio_ref": m.audio_ref,
             "buttons": m.buttons,
+            "created_at": m.created_at.isoformat() if m.created_at else "",
             "time_str": (
                 m.created_at.astimezone(UTC).strftime("%H:%M")
                 if m.created_at

@@ -65,7 +65,7 @@
     <!-- Message Thread (WhatsApp-like) -->
     <main class="chat-messages" id="chat-messages" role="log" aria-live="polite">
       {% for msg in initial_messages %}
-      <div class="msg-row {{ 'inbound' if msg.direction == 'in' else 'outbound' }}" id="msg-{{ msg.id }}">
+      <div class="msg-row {{ 'inbound' if msg.direction == 'in' else 'outbound' }}" id="msg-{{ msg.id }}" data-created-at="{{ msg.created_at or '' }}">
         <div class="bubble">
           {% if msg.direction == 'out' and msg.speaker %}
           <div class="speaker-tag {{ msg.speaker|lower }}">
