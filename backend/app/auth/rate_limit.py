@@ -54,3 +54,26 @@ def check_login_rate_limit(request: Request) -> None:
 def reset_login_rate_limits() -> None:
     """Resets rate limit state (used in tests)."""
     _login_attempts.clear()
+
+
+_chat_attempts: dict[str, list[float]] = defaultdict(list)
+
+
+def check_chat_rate_limit(user_key: str) -> None:
+    """Per-user sliding window on chat sends (each send can trigger STT, LLM and TTS calls)."""
+    now = time.monotonic()
+    cutoff = now - float(settings.CHAT_RATE_LIMIT_WINDOW_SECONDS)
+    attempts = [t for t in _chat_attempts[user_key] if t > cutoff]
+    if len(attempts) >= settings.CHAT_MAX_MESSAGES_PER_MINUTE:
+        _chat_attempts[user_key] = attempts
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many messages. Please wait a minute.",
+        )
+    attempts.append(now)
+    _chat_attempts[user_key] = attempts
+
+
+def reset_chat_rate_limits() -> None:
+    """Resets chat rate limit state (used in tests)."""
+    _chat_attempts.clear()

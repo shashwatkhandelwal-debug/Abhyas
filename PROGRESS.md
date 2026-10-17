@@ -229,3 +229,16 @@ All items from `spec/15_human_inputs.md` are currently open:
 2. **T42 (Kappa Evaluation Harness)** · Priority: P1 (spec/11 §11.4, quadratic-weighted Cohen's kappa calculation for coach rubric scoring vs expert ratings).
 3. **T48 (Security & Privacy Pass)** · Priority: P0 (spec/12, spec/14, CSP headers, rate-limiting, audit verification).
 4. **T49 (Docs & Freeze)** · Priority: P0 (spec/13, submission checklist, sample inputs, demo script).
+
+### T48 Security pass (lane-e-docs)
+- Added `SecurityHeadersMiddleware` (CSP, nosniff, X-Frame-Options DENY, Referrer-Policy, Permissions-Policy, HSTS in production). **Deviation:** CSP keeps `'unsafe-inline'` for script/style because templates use inline scripts, `onclick` handlers and style attributes; all other directives are same-origin. Removing it needs templates moved to external JS (post-submission).
+- Per-user chat send limit (`CHAT_MAX_MESSAGES_PER_MINUTE`, default 20) on /api/chat/text, /audio, /button; in-memory, per instance.
+- Audio upload now reads at most `MAX_AUDIO_BYTES + 1` bytes before rejecting.
+- CI `audit` job runs `pip-audit` (advisory, `continue-on-error`).
+- Verified unchanged: CSRF double-submit with `hmac.compare_digest`, WhatsApp HMAC-SHA256 with constant-time compare and 503 when secret unset, login limit 5/min/IP, audio endpoint requires login.
+- Open: audio refs are not scoped to the owning teacher (any logged-in user holding a ref can fetch it; refs are content hashes); WhatsApp dedupe set `_PROCESSED_MESSAGE_IDS` is in-memory and unbounded; `onclick="...'{{ btn.id }}'"` interpolates content strings into JS (content is repo-controlled, not user input).
+
+### T43 Guard report (lane-e-docs)
+- `backend/app/llm/guard_stats.py` records every guard result (role, attempt, passed, reason, mock flag) from all 7 LLM roles; ring buffer in memory, optional JSONL via `GUARD_EVENT_LOG_PATH`. No teacher text is stored.
+- `make eval-guards [EVENTS=file.jsonl]` writes `eval/guards/REPORT.md`: live stats split real vs mock, plus a 10-case adversarial corpus run through the real `guard_child_line` (clearly labelled as test cases, not traffic).
+- Needs a human/agy step: run `make eval-guards` once and commit the generated REPORT.md; re-run with real events after the hosted T41 run (28–30 Oct). Fallbacks from an unavailable LLM are not guard events (see `llm_call.outcome`).
