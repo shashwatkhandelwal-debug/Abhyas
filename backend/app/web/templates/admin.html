@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ get_message("ui_admin_title") }} — अभ्यास</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <style>
+    .admin-container {
+      width: 100%;
+      max-width: 1040px;
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 1.5rem 1rem;
+      background-color: var(--bg);
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .admin-header {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .admin-title-box h1 {
+      margin: 0;
+      font-size: 1.4rem;
+      color: var(--brand);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .admin-subtitle {
+      margin: 0.25rem 0 0 0;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    .admin-user-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.9rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.6rem;
+      border-radius: var(--radius-full);
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .badge-brand { background-color: var(--brand-light); color: var(--brand); }
+    .badge-accent { background-color: var(--accent-light); color: #8A6100; }
+    .badge-danger { background-color: var(--danger-light); color: var(--danger); }
+    .badge-muted { background-color: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+    .badge-success { background-color: #E2F5EA; color: #15693D; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1rem;
+    }
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.75rem;
+    }
+    .card {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin: 0;
+    }
+    .stat-number {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--brand);
+      line-height: 1.2;
+    }
+    .stat-label {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 0.2rem;
+    }
+    .table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      margin-top: 0.5rem;
+    }
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    table.data-table th, table.data-table td {
+      padding: 0.5rem 0.6rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+    table.data-table th {
+      background-color: var(--bg);
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .banner-alert {
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .banner-success { background-color: #E2F5EA; color: #15693D; border: 1px solid #B8E4CB; }
+    .banner-danger { background-color: var(--danger-light); color: var(--danger); border: 1px solid #F5C6CB; }
+    .control-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+    }
+    .form-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .form-select, .form-input {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.95rem;
+      font-family: inherit;
+      background-color: var(--surface);
+      color: var(--ink);
+      min-width: 220px;
+      min-height: 44px;
+    }
+    .btn-action {
+      background-color: var(--brand);
+      color: var(--brand-ink);
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 0.5rem 1rem;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      min-height: 44px;
+    }
+    .btn-action:hover { opacity: 0.9; }
+    .btn-danger {
+      background-color: var(--danger);
+      color: #FFFFFF;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 0.5rem 1rem;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      min-height: 44px;
+    }
+    .btn-danger:hover { background-color: #931F18; }
+  </style>
+</head>
+<body>
+  <div class="admin-container">
+
+    <!-- Header -->
+    <header class="admin-header">
+      <div class="admin-title-box">
+        <h1>
+          <span>⚙️</span>
+          <span>{{ get_message("ui_admin_title") }}</span>
+        </h1>
+        <p class="admin-subtitle">{{ get_message("ui_admin_subtitle") }}</p>
+      </div>
+      <div class="admin-user-nav">
+        <span class="badge badge-brand">एडमिन: {{ admin_user.display_name or admin_user.username }}</span>
+        <a href="/logout" style="color: var(--danger); text-decoration: none; font-weight: 600;">{{ get_message("ui_logout") }}</a>
+      </div>
+    </header>
+
+    <!-- Flash notifications -->
+    {% if msg == 'reset_ok' %}
+      <div class="banner-alert banner-success">
+        <span>✓</span>
+        <span>{{ get_message("ui_admin_success_reset") }}</span>
+      </div>
+    {% elif msg == 'ff_ok' %}
+      <div class="banner-alert banner-success">
+        <span>✓</span>
+        <span>{{ get_message("ui_admin_success_ff") }} {% if advanced is not none %}({{ advanced }} कार्य निष्पादित){% endif %}</span>
+      </div>
+    {% elif msg == 'error' %}
+      <div class="banner-alert banner-danger">
+        <span>⚠</span>
+        <span>त्रुटि: अमान्य अनुरोध या पहचानकर्ता।</span>
+      </div>
+    {% endif %}
+
+    <!-- Environment & Provider Status -->
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">{{ get_message("ui_admin_env") }}</h2>
+        <span class="badge badge-brand">सक्रिय (Active)</span>
+      </div>
+      <div class="grid-4">
+        <div>
+          <div class="stat-label">ENVIRONMENT</div>
+          <div style="font-weight: 700;">{{ system_info.environment }}</div>
+        </div>
+        <div>
+          <div class="stat-label">LLM PROVIDER</div>
+          <div style="font-weight: 700;">{{ system_info.llm_provider }}</div>
+        </div>
+        <div>
+          <div class="stat-label">STT PROVIDER</div>
+          <div style="font-weight: 700;">{{ system_info.stt_provider }}</div>
+        </div>
+        <div>
+          <div class="stat-label">TTS PROVIDER</div>
+          <div style="font-weight: 700;">{{ system_info.tts_provider }}</div>
+        </div>
+      </div>
+      <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px dashed var(--border); font-size: 0.9rem; color: var(--muted);">
+        <strong>सामग्री रिलीज़ (Content Release):</strong> {{ system_info.release_id }}
+        &bull; <strong>कुल तरीके (Moves):</strong> {{ system_info.moves_count }}
+        &bull; <strong>प्रकाशन तिथि:</strong> {{ system_info.release_date }}
+      </div>
+    </section>
+
+    <!-- Metrics Overview Grid -->
+    <div class="grid-2">
+
+      <!-- Latency Card -->
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">{{ get_message("ui_admin_latency") }}</h2>
+          <span class="badge badge-accent">मिलीसेकंड (ms)</span>
+        </div>
+        <div class="grid-2" style="margin-bottom: 0.75rem;">
+          <div>
+            <div class="stat-label">पिछले 24 घंटे (Overall)</div>
+            <div class="stat-number">p50: {{ latency_stats.overall_p50_24h }} <span style="font-size: 1rem; color: var(--muted);">/ p95: {{ latency_stats.overall_p95_24h }} ms</span></div>
+            <div class="stat-label">{{ latency_stats.overall_calls_24h }} कॉल्स</div>
+          </div>
+          <div>
+            <div class="stat-label">पिछले 7 दिन (Overall)</div>
+            <div class="stat-number">p50: {{ latency_stats.overall_p50_7d }} <span style="font-size: 1rem; color: var(--muted);">/ p95: {{ latency_stats.overall_p95_7d }} ms</span></div>
+            <div class="stat-label">{{ latency_stats.overall_calls_7d }} कॉल्स</div>
+          </div>
+        </div>
+
+        {% if latency_stats.by_role %}
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>भूमिका / Stage</th>
+                <th>24h (p50 / p95)</th>
+                <th>7d (p50 / p95)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in latency_stats.by_role %}
+              <tr>
+                <td><strong>{{ r.role }}</strong></td>
+                <td>{{ r.p50_24h }} / {{ r.p95_24h }} ms ({{ r.calls_24h }})</td>
+                <td>{{ r.p50_7d }} / {{ r.p95_7d }} ms ({{ r.calls_7d }})</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p style="font-size: 0.85rem; color: var(--muted); margin: 0.5rem 0 0 0;">कोई हालिया एलएलएम कॉल दर्ज नहीं है।</p>
+        {% endif %}
+      </section>
+
+      <!-- Turn Activity & Guards Card -->
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">{{ get_message("ui_admin_turns") }} & {{ get_message("ui_admin_guards") }}</h2>
+        </div>
+        <div class="grid-2" style="margin-bottom: 0.75rem;">
+          <div>
+            <div class="stat-label">24 घंटे में कुल टर्न</div>
+            <div class="stat-number">{{ turns_stats.turns_24h }}</div>
+            <div class="stat-label">7 दिन: {{ turns_stats.turns_7d }} &bull; कुल: {{ turns_stats.total }}</div>
+          </div>
+          <div>
+            <div class="stat-label">गार्ड पास दर (Pass Rate)</div>
+            <div class="stat-number">{{ guard_stats.pass_pct }}%</div>
+            <div class="stat-label">रीट्राई: {{ guard_stats.retry_pct }}% &bull; फ़ॉलबैक: {{ guard_stats.fallback_pct }}%</div>
+          </div>
+        </div>
+
+        {% if turns_stats.by_role %}
+        <div style="font-size: 0.88rem; margin-top: 0.75rem;">
+          <strong>टर्न विभाजन (भूमिकावार):</strong>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem;">
+            {% for role, count in turns_stats.by_role.items() %}
+              <span class="badge badge-muted">{{ role }}: {{ count }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if guard_stats.recent_failures %}
+        <div style="margin-top: 0.75rem; border-top: 1px dashed var(--border); padding-top: 0.5rem;">
+          <div class="stat-label">हालिया गार्ड विफलताएँ (Review Items): {{ guard_stats.review_items_count }}</div>
+          <ul style="margin: 0.25rem 0 0 0; padding-left: 1.25rem; font-size: 0.85rem; color: var(--danger);">
+            {% for f in guard_stats.recent_failures %}
+              <li>{{ f.reason or 'अज्ञात कारण' }} ({{ f.created_at.strftime('%d %b %H:%M') }})</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+      </section>
+
+    </div>
+
+    <!-- LLM Token Usage & WhatsApp Templates Grid -->
+    <div class="grid-2">
+
+      <!-- LLM Tokens Card -->
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">{{ get_message("ui_admin_tokens") }}</h2>
+        </div>
+        {% if token_stats %}
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>भूमिका (Role)</th>
+                <th>कॉल्स</th>
+                <th>इनपुट</th>
+                <th>आउटपुट</th>
+                <th>कुल टोकन</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in token_stats %}
+              <tr>
+                <td><strong>{{ t.role }}</strong></td>
+                <td>{{ t.calls }}</td>
+                <td>{{ t.input_tokens }}</td>
+                <td>{{ t.output_tokens }}</td>
+                <td><strong>{{ t.total_tokens }}</strong></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p style="font-size: 0.85rem; color: var(--muted); margin: 0.5rem 0 0 0;">कोई टोकन उपयोग दर्ज नहीं है।</p>
+        {% endif %}
+      </section>
+
+      <!-- WhatsApp Template Usage & Cost Card -->
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">{{ get_message("ui_admin_templates") }}</h2>
+          <span class="badge badge-brand">इस सप्ताह</span>
+        </div>
+        <div class="grid-2" style="margin-bottom: 0.75rem;">
+          <div>
+            <div class="stat-label">कुल प्रेषित टेम्पलेट्स</div>
+            <div class="stat-number">{{ template_stats.total_sends }}</div>
+          </div>
+          <div>
+            <div class="stat-label">अनुमानित लागत (INR)</div>
+            <div class="stat-number">₹{{ template_stats.total_cost_inr }}</div>
+          </div>
+        </div>
+
+        {% if template_stats.templates %}
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>टेम्पलेट नाम</th>
+                <th>श्रेणी</th>
+                <th>संख्या</th>
+                <th>लागत (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in template_stats.templates %}
+              <tr>
+                <td><strong>{{ item.template_name }}</strong></td>
+                <td><span class="badge badge-muted">{{ item.category }}</span></td>
+                <td>{{ item.count }}</td>
+                <td>₹{{ item.cost_inr }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p style="font-size: 0.85rem; color: var(--muted); margin: 0.5rem 0 0 0;">इस सप्ताह कोई टेम्पलेट नहीं भेजा गया।</p>
+        {% endif %}
+      </section>
+
+    </div>
+
+    <!-- Scheduled Jobs Status -->
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">{{ get_message("ui_admin_jobs") }}</h2>
+        <div style="display: flex; gap: 0.4rem;">
+          <span class="badge badge-accent">लंबित: {{ job_stats.pending }}</span>
+          <span class="badge badge-success">पूर्ण: {{ job_stats.done }}</span>
+          <span class="badge badge-danger">विफल: {{ job_stats.failed }}</span>
+        </div>
+      </div>
+
+      {% if job_stats.recent_jobs %}
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>प्रकार (Kind)</th>
+              <th>निर्धारित समय (Run At)</th>
+              <th>स्थिति (Status)</th>
+              <th>प्रयास (Attempts)</th>
+              <th>त्रुटि (Error)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for j in job_stats.recent_jobs %}
+            <tr>
+              <td><strong>{{ j.kind }}</strong></td>
+              <td>{{ j.run_at.strftime('%Y-%m-%d %H:%M') }}</td>
+              <td>
+                {% if j.status == 'pending' %}
+                  <span class="badge badge-accent">लंबित</span>
+                {% elif j.status == 'done' %}
+                  <span class="badge badge-success">पूर्ण</span>
+                {% elif j.status == 'failed' %}
+                  <span class="badge badge-danger">विफल</span>
+                {% else %}
+                  <span class="badge badge-muted">{{ j.status }}</span>
+                {% endif %}
+              </td>
+              <td>{{ j.attempts }}</td>
+              <td style="color: var(--danger); font-size: 0.82rem;">{{ j.last_error or '-' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p style="font-size: 0.85rem; color: var(--muted); margin: 0.5rem 0 0 0;">कोई निर्धारित कार्य कतार में नहीं है।</p>
+      {% endif %}
+    </section>
+
+    <!-- Demo Controls Section (spec/09 §9.6) -->
+    <section class="card" style="border-left: 4px solid var(--accent);">
+      <div class="card-header">
+        <h2 class="card-title">{{ get_message("ui_admin_demo_controls") }}</h2>
+        <span class="badge badge-accent">{{ get_message("ui_demo_banner") }}</span>
+      </div>
+
+      <div class="grid-2">
+        <!-- Control 1: Reset Demo Teachers -->
+        <div style="background-color: var(--bg); padding: 1rem; border-radius: var(--radius-sm);">
+          <h3 style="margin: 0 0 0.4rem 0; font-size: 1rem; color: var(--ink);">{{ get_message("ui_admin_reset_demo") }}</h3>
+          <p style="margin: 0 0 0.75rem 0; font-size: 0.85rem; color: var(--muted);">
+            सभी डेमो शिक्षकों (teacher.demo1..3) के वर्तमान सत्र, टर्न, अंक व समीक्षा रिकॉर्ड रीसेट किए जाएँगे।
+          </p>
+          <form method="POST" action="/admin/reset-demo" onsubmit="return confirm('{{ get_message("ui_admin_reset_confirm") }}');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn-danger">
+              {{ get_message("ui_admin_reset_demo") }}
+            </button>
+          </form>
+        </div>
+
+        <!-- Control 2: Fast-Forward Teacher -->
+        <div style="background-color: var(--bg); padding: 1rem; border-radius: var(--radius-sm);">
+          <h3 style="margin: 0 0 0.4rem 0; font-size: 1rem; color: var(--ink);">{{ get_message("ui_admin_fast_forward") }}</h3>
+          <p style="margin: 0 0 0.75rem 0; font-size: 0.85rem; color: var(--muted);">
+            किसी डेमो शिक्षक के लंबित निर्धारित कार्य (प्रॉम्प्ट्स, रिफ्लेक्शन, आदि) तुरंत निष्पादित करें।
+          </p>
+          <form method="POST" action="/admin/fast-forward" class="control-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="form-row">
+              <select name="teacher_id" class="form-select" required>
+                {% for dt in demo_teachers %}
+                  <option value="{{ dt.id }}">{{ dt.name }} ({{ dt.onboarding_state }})</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="btn-action">
+                {{ get_message("ui_admin_fast_forward") }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</body>
+</html>

@@ -20,6 +20,7 @@ from pydantic import ValidationError
 from backend.app.config import settings
 from backend.app.content_models import FeedbackItem, MoveCard, Rubric
 from backend.app.llm.client import LLMUnavailable, call_tool
+from backend.app.llm.guard_stats import record_guard_event
 from backend.app.llm.guards import guard_coach, norm
 from backend.app.llm.hindi_numbers import extract_numbers
 from backend.app.llm.messages import load_catalog_message
@@ -329,6 +330,7 @@ async def coach_feedback(
                 rubric_rewards_not_telling=rubric_rewards_not_telling,
                 current_item_answer=current_item_answer,
             )
+            record_guard_event("coach", attempt_idx, is_valid, err_msg)
 
             if is_valid:
                 needs_review = parsed.confidence < settings.COACH_CONFIDENCE_THRESHOLD

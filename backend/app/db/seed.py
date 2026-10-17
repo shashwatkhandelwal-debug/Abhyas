@@ -34,6 +34,7 @@ from backend.app.db.models import (
     Teacher,
 )
 from backend.app.db.session import async_session_factory
+from backend.app.retrieval.ingest import load_chunks_to_db
 
 logger = logging.getLogger("abhyas.db.seed")
 
@@ -339,8 +340,13 @@ async def seed_database() -> None:
         # 9. Synthetic demo cohort (db/demo_data.py)
         await populate_demo_cohort(session)
 
+        # 10. Document chunks into doc_chunk table (spec/10 §10.4)
+        await load_chunks_to_db(session)
+
         await session.commit()
-        logger.info("Successfully seeded demo users, teachers, clusters, and synthetic cohort.")
+        logger.info(
+            "Successfully seeded demo users, teachers, clusters, synthetic cohort, and doc chunks."
+        )
 
 
 if __name__ == "__main__":

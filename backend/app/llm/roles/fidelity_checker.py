@@ -16,6 +16,7 @@ from pydantic import ValidationError
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
 from backend.app.llm.client import LLMUnavailable, call_tool
+from backend.app.llm.guard_stats import record_guard_event
 from backend.app.llm.guards import guard_fidelity_checker, norm, substring_match
 from backend.app.llm.messages import load_catalog_message
 from backend.app.llm.prompts import load_prompt
@@ -217,6 +218,7 @@ async def check_fidelity(move: MoveCard, transcript: str) -> FidelityResult:
                 expected_point_ids=expected_point_ids,
                 transcript=transcript,
             )
+            record_guard_event("fidelity_checker", attempt_idx, is_valid, err_msg)
 
             if is_valid:
                 needs_review = parsed.confidence < settings.FIDELITY_CONFIDENCE_THRESHOLD

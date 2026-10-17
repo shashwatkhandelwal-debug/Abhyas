@@ -643,6 +643,50 @@ function setupDemoChips() {
   });
 }
 
+// ── Delegated Event Handlers for Server-Rendered Buttons ──────────────────
+function playAudioDirect(btn, audioRef) {
+  let audio = btn._audio;
+  if (!audio) {
+    audio = new Audio('/api/audio/' + encodeURIComponent(audioRef) + '.ogg');
+    btn._audio = audio;
+    audio.onended = () => {
+      btn.innerHTML = '▶';
+    };
+  }
+  if (audio.paused) {
+    audio.play().catch(console.error);
+    btn.innerHTML = '⏸';
+  } else {
+    audio.pause();
+    btn.innerHTML = '▶';
+  }
+}
+window.playAudioDirect = playAudioDirect;
+
+document.addEventListener('click', (e) => {
+  const target = e.target;
+  if (!target || !(target instanceof Element)) return;
+
+  const playBtn = target.closest('.btn-play[data-audio-ref]');
+  if (playBtn) {
+    const audioRef = playBtn.getAttribute('data-audio-ref');
+    if (audioRef) {
+      playAudioDirect(playBtn, audioRef);
+    }
+    return;
+  }
+
+  const replyChip = target.closest('.reply-chip[data-btn-id]');
+  if (replyChip) {
+    const btnId = replyChip.getAttribute('data-btn-id');
+    const btnTitle = replyChip.getAttribute('data-btn-title') || replyChip.textContent.trim();
+    if (btnId) {
+      handleSendButton(btnId, btnTitle);
+    }
+    return;
+  }
+});
+
 // ── Service Worker Registration ────────────────────────────────────────────
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
