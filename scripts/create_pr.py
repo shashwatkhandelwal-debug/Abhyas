@@ -45,6 +45,7 @@ def create_pr(head_branch: str, title: str, base: str = "main") -> None:
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("Usage: python scripts/create_pr.py <head_branch> <title>")
+        print("Usage: python scripts/create_pr.py <head_branch> <title> [base_branch]")
         sys.exit(1)
-    create_pr(sys.argv[1], sys.argv[2])
+    base_branch = sys.argv[3] if len(sys.argv) > 3 else "main"
+    create_pr(sys.argv[1], sys.argv[2], base=base_branch)
