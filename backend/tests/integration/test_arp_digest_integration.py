@@ -126,6 +126,7 @@ async def test_non_consenting_teacher_never_appears_by_name_or_score(
             is_demo=False,
         )
         session.add(t_non_consent)
+        await session.flush()
 
         # Rehearsal scores
         session.add(
@@ -335,6 +336,7 @@ async def test_arp_answer_resolves_review_item_and_dispatches_message(
             is_demo=False,
         )
         session.add(t)
+        await session.flush()
 
         q = Question(
             id=uuid4(),
@@ -344,6 +346,7 @@ async def test_arp_answer_resolves_review_item_and_dispatches_message(
             status="escalated",
         )
         session.add(q)
+        await session.flush()
 
         item = ReviewItem(
             id=uuid4(),
@@ -443,6 +446,7 @@ async def test_escalated_question_non_consenting_teacher_anonymised(
             is_demo=False,
         )
         session.add(t_non_consent)
+        await session.flush()
 
         q = Question(
             id=uuid4(),
