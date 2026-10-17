@@ -251,6 +251,7 @@ async def _dispatch_inbound_message(raw_msg: dict[str, Any]) -> None:
                     phone_enc=encrypt_phone_number(from_phone),
                 )
                 session.add(contact)
+                await session.flush()
             else:
                 teacher.last_inbound_at = now
                 # Ensure contact exists
@@ -262,6 +263,7 @@ async def _dispatch_inbound_message(raw_msg: dict[str, Any]) -> None:
                         phone_enc=encrypt_phone_number(from_phone),
                     )
                     session.add(new_contact)
+                await session.flush()
 
             # 3. Persist inbound Message row
             db_msg_id = uuid.uuid4()
