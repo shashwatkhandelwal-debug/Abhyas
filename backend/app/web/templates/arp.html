@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1F6F5C">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{{ get_message('ui_arp_title') }} — अभ्यास</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <style>
+    .arp-container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 1rem;
+      font-family: inherit;
+    }
+    .arp-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      padding: 1rem 0;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+    .arp-title-group h1 {
+      margin: 0 0 0.25rem 0;
+      font-size: 1.5rem;
+      color: var(--brand);
+    }
+    .arp-cluster-badge {
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .arp-controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .week-select {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      font-size: 0.9rem;
+      color: var(--ink);
+      cursor: pointer;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      box-shadow: var(--shadow-sm);
+      text-align: center;
+    }
+    .stat-card .stat-val {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--brand);
+      line-height: 1.2;
+    }
+    .stat-card .stat-label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+    .arp-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .arp-section-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin: 0 0 1rem 0;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .arp-table-wrap {
+      overflow-x: auto;
+    }
+    .arp-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+    .arp-table th, .arp-table td {
+      padding: 0.75rem 0.6rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .arp-table th {
+      background: var(--bg);
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .arp-table tr:hover {
+      background-color: var(--bg);
+    }
+    .non-consenting-row {
+      background-color: #faf5eb;
+      font-style: italic;
+      color: var(--muted);
+    }
+    .badge-help {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      background-color: #ffebee;
+      color: var(--danger);
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-ok {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      background-color: var(--brand-light);
+      color: var(--brand);
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .rubric-dots {
+      display: inline-flex;
+      gap: 0.3rem;
+      align-items: center;
+    }
+    .dot-0, .dot-1, .dot-2 {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot-2 { background-color: #2e7d32; } /* green */
+    .dot-1 { background-color: #f9a825; } /* amber */
+    .dot-0 { background-color: #c62828; } /* red */
+    .visit-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 1rem;
+      margin-bottom: 1rem;
+      background: var(--bg);
+    }
+    .visit-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.5rem;
+    }
+    .visit-card-title {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--ink);
+    }
+    .visit-form-box {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px dashed var(--border);
+    }
+    .question-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 1rem;
+      margin-bottom: 1rem;
+      background: var(--surface);
+    }
+    .question-meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+    .question-text {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--ink);
+      margin-bottom: 1rem;
+      background: var(--bg);
+      padding: 0.75rem;
+      border-radius: var(--radius-sm);
+    }
+    .answer-textarea {
+      width: 100%;
+      min-height: 80px;
+      padding: 0.6rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 0.9rem;
+      box-sizing: border-box;
+      margin-bottom: 0.5rem;
+    }
+    .btn-submit-sm {
+      background: var(--brand);
+      color: var(--brand-ink);
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .btn-print {
+      background: transparent;
+      border: 1px solid var(--brand);
+      color: var(--brand);
+      border-radius: var(--radius-sm);
+      padding: 0.35rem 0.75rem;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    @media print {
+      body {
+        background: #fff;
+        color: #000;
+      }
+      .arp-header, .stats-grid, .arp-section:not(.section-visits), .visit-form-box, .btn-print, .demo-banner, .success-banner {
+        display: none !important;
+      }
+      .section-visits {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+      }
+      .visit-card {
+        border: 1px solid #ccc !important;
+        page-break-inside: avoid;
+        margin-bottom: 1.5cm;
+      }
+      .print-only-checklist {
+        display: block !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="arp-container">
+    <!-- Header -->
+    <header class="arp-header">
+      <div class="arp-title-group">
+        <h1>{{ get_message('ui_arp_title') }}</h1>
+        <div class="arp-cluster-badge">
+          क्लस्टर: <strong>{{ digest.cluster_name }}</strong>
+        </div>
+      </div>
+      <div class="arp-controls">
+        <form method="GET" action="/arp" id="weekForm">
+          <label for="weekSelect" style="font-size: 0.85rem; color: var(--muted); margin-right: 0.4rem;">सप्ताह चुनें:</label>
+          <select name="week" id="weekSelect" class="week-select" onchange="document.getElementById('weekForm').submit()">
+            {% for w in digest.available_weeks %}
+            <option value="{{ w.isoformat() }}" {% if w == digest.selected_week_start %}selected{% endif %}>
+              सप्ताह: {{ w.strftime('%d %b %Y') }}
+            </option>
+            {% endfor %}
+          </select>
+        </form>
+        <a href="/logout" class="btn-cancel-link" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; min-height: unset; width: auto;" title="लॉग आउट">लॉग आउट</a>
+      </div>
+    </header>
+
+    <!-- Demo Banner -->
+    {% if demo_mode %}
+    <div class="demo-banner" role="status" aria-label="डेमो सूचना">
+      {{ demo_banner_text or get_message('ui_demo_banner') }}
+    </div>
+    {% endif %}
+
+    <!-- Success Message Banner -->
+    {% if saved_msg %}
+    <div class="success-banner" role="status" style="margin-bottom: 1.5rem; padding: 0.75rem 1rem; background: #e8f5e9; border: 1px solid #c8e6c9; color: #2e7d32; border-radius: var(--radius-sm); font-weight: 500;">
+      {{ saved_msg }}
+    </div>
+    {% endif %}
+
+    <!-- Section 1: Overview Counts -->
+    <section class="stats-grid" aria-label="{{ get_message('ui_arp_section_overview') }}">
+      <div class="stat-card">
+        <div class="stat-val">{{ digest.active_teachers_count }} / {{ digest.total_teachers }}</div>
+        <div class="stat-label">{{ get_message('ui_arp_active_teachers') }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val">{{ digest.completed_loops_count }}</div>
+        <div class="stat-label">{{ get_message('ui_arp_completed_loops') }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val">{{ digest.moves_practised_count }}</div>
+        <div class="stat-label">{{ get_message('ui_arp_moves_practised') }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val">{{ digest.escalated_questions | length }}</div>
+        <div class="stat-label">{{ get_message('ui_arp_section_questions') }}</div>
+      </div>
+    </section>
+
+    <!-- Section 2: Who is practicing (Consenting Only Table + Non-Consenting Aggregate Row) -->
+    <section class="arp-section" aria-label="{{ get_message('ui_arp_section_teachers') }}">
+      <div class="arp-section-title">
+        <span>{{ get_message('ui_arp_section_teachers') }}</span>
+      </div>
+      <div class="arp-table-wrap">
+        <table class="arp-table">
+          <thead>
+            <tr>
+              <th>{{ get_message('ui_arp_col_teacher') }}</th>
+              <th>{{ get_message('ui_arp_col_school') }}</th>
+              <th>{{ get_message('ui_arp_col_move') }}</th>
+              <th>{{ get_message('ui_arp_col_step') }}</th>
+              <th>{{ get_message('ui_arp_col_evidence') }}</th>
+              <th>{{ get_message('ui_arp_col_rubric') }}</th>
+              <th>{{ get_message('ui_arp_col_help') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in digest.consenting_teachers %}
+            <tr>
+              <td><strong>{{ t.name }}</strong></td>
+              <td>{{ t.school }}</td>
+              <td>{{ t.move_title }}</td>
+              <td><code>{{ t.step_reached }}</code></td>
+              <td>स्तर {{ t.max_evidence_level }}</td>
+              <td>
+                {% if t.rubric_dots %}
+                <div class="rubric-dots" title="अंक: {% for d in t.rubric_dots %}{{ d.score }} {% endfor %}">
+                  {% for d in t.rubric_dots %}
+                  <span class="{{ d.dot_class }}" aria-label="अंक {{ d.score }}"></span>
+                  {% endfor %}
+                </div>
+                {% else %}
+                <span style="color: var(--muted);">—</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if t.needs_help %}
+                <span class="badge-help">{{ get_message('ui_arp_needs_help') }}</span>
+                {% else %}
+                <span class="badge-ok">{{ get_message('ui_arp_status_ok') }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            {% if digest.non_consenting_count == 0 %}
+            <tr>
+              <td colspan="7" style="text-align: center; color: var(--muted); padding: 1.5rem;">
+                इस क्लस्टर में कोई शिक्षक डेटा उपलब्ध नहीं है।
+              </td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+
+            <!-- Aggregate Row for Non-Consenting Teachers (spec/09 §9.3) -->
+            {% if digest.non_consenting_count > 0 %}
+            <tr class="non-consenting-row">
+              <td colspan="7">
+                {{ get_message('ui_arp_non_consenting_row', count=digest.non_consenting_count) }}
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section 3: Suggested Visit List -->
+    <section class="arp-section section-visits" aria-label="{{ get_message('ui_arp_section_visits') }}">
+      <div class="arp-section-title">
+        <span>{{ get_message('ui_arp_section_visits') }}</span>
+        <button class="btn-print" onclick="window.print()" title="भ्रमण सूची प्रिंट करें">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+          प्रिंट करें
+        </button>
+      </div>
+
+      {% for v in digest.suggested_visits %}
+      <article class="visit-card" id="visit-card-{{ v.teacher_id }}">
+        <div class="visit-card-header">
+          <div>
+            <div class="visit-card-title">{{ v.name }} — {{ v.school }}</div>
+            <div style="font-size: 0.85rem; color: var(--muted); margin-top: 0.2rem;">
+              तरीका: <strong>{{ v.move_title }}</strong> · औसत अंक: <strong>{{ v.avg_score if v.avg_score is not None else '—' }} / 2.0</strong>
+            </div>
+          </div>
+          <span class="badge-help">{{ get_message('ui_arp_visit_reason') }}</span>
+        </div>
+
+        {% if v.peer_checklist %}
+        <div style="margin: 0.5rem 0; font-size: 0.85rem;">
+          <div style="font-weight: 600; margin-bottom: 0.3rem;">5-मिनट अवलोकन जांच-सूची:</div>
+          <ul style="margin: 0; padding-left: 1.2rem; color: var(--ink);">
+            {% for item in v.peer_checklist %}
+            <li>{{ item }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+
+        <!-- Inline Observation Recording Form -->
+        <div class="visit-form-box">
+          <details>
+            <summary style="font-size: 0.9rem; font-weight: 600; color: var(--brand); cursor: pointer; user-select: none;">
+              {{ get_message('ui_arp_btn_record_observation') }}
+            </summary>
+            <form method="POST" action="/arp/observation" style="margin-top: 0.75rem;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="teacher_id" value="{{ v.teacher_id }}">
+              <input type="hidden" name="move_id" value="{{ v.move_id }}">
+
+              <div style="display: flex; gap: 1rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+                <div>
+                  <label style="font-size: 0.8rem; font-weight: 600; display: block;">भ्रमण तिथि:</label>
+                  <input type="date" name="observed_on" value="{{ digest.selected_week_start.isoformat() }}" style="padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.85rem;">
+                </div>
+              </div>
+
+              {% if v.peer_checklist %}
+              <div style="margin-bottom: 0.5rem;">
+                <div style="font-size: 0.8rem; font-weight: 600; margin-bottom: 0.25rem;">अवलोकन बिंदु (लागू होने पर टिक करें):</div>
+                {% for item in v.peer_checklist %}
+                <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; margin-bottom: 0.2rem; cursor: pointer;">
+                  <input type="checkbox" name="check_{{ loop.index }}" value="true" class="checkbox-toggle" style="width: 18px; height: 18px; min-width: 18px;">
+                  <span>{{ item }}</span>
+                </label>
+                {% endfor %}
+              </div>
+              {% endif %}
+
+              <div style="margin-bottom: 0.5rem;">
+                <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 0.2rem;">मार्गदर्शन नोट्स:</label>
+                <textarea name="notes" placeholder="कक्षा में शिक्षिका की शक्ति व सुधार का बिंदु..." style="width: 100%; min-height: 60px; padding: 0.5rem; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: inherit; font-size: 0.85rem; box-sizing: border-box;"></textarea>
+              </div>
+
+              <button type="submit" class="btn-submit-sm">{{ get_message('ui_arp_btn_record_observation') }}</button>
+            </form>
+          </details>
+        </div>
+      </article>
+      {% else %}
+      <div style="color: var(--muted); font-size: 0.9rem; text-align: center; padding: 1.5rem;">
+        इस सप्ताह किसी सहमति-प्राप्त शिक्षक को तत्काल भ्रमण की आवश्यकता नहीं है।
+      </div>
+      {% endfor %}
+    </section>
+
+    <!-- Section 4: Unanswered Escalated Questions -->
+    <section class="arp-section" aria-label="{{ get_message('ui_arp_section_questions') }}">
+      <div class="arp-section-title">
+        <span>{{ get_message('ui_arp_section_questions') }}</span>
+      </div>
+
+      {% for q in digest.escalated_questions %}
+      <article class="question-card" id="q-card-{{ q.question_id }}">
+        <div class="question-meta">
+          <strong>{{ q.teacher_display_name }}</strong> · श्रेणी: {{ q.category or 'सामान्य' }} · {{ q.created_at.strftime('%d %b %H:%M') }}
+        </div>
+        <div class="question-text">
+          "{{ q.text }}"
+        </div>
+        <form method="POST" action="/arp/answer">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="question_id" value="{{ q.question_id }}">
+          <textarea name="answer_hi" class="answer-textarea" placeholder="{{ get_message('ui_arp_answer_placeholder') }}" required></textarea>
+          <button type="submit" class="btn-submit-sm">{{ get_message('ui_arp_btn_answer') }}</button>
+        </form>
+      </article>
+      {% else %}
+      <div style="color: var(--muted); font-size: 0.9rem; text-align: center; padding: 1.5rem;">
+        वर्तमान में कोई अनुत्तरित प्रश्न नहीं है।
+      </div>
+      {% endfor %}
+    </section>
+  </div>
+</body>
+</html>
