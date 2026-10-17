@@ -30,8 +30,8 @@ Status: ALL TASKS COMPLETED (100% GREEN CI)
 | **Coord (T28)** WhatsApp Channel & Webhook | `coord/whatsapp` | [PR #14](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/14) | **MERGED into main** (`ba1cf73`) | `e7d41b7` | [Run 39035854362](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39035854362) | WhatsApp Cloud API channel, webhook verification, HMAC signature check, salted SHA-256 phone hash teacher lookup/creation, Fernet phone encryption, 24h service window, outside-window utility template fallback & tracking, and full unit & integration tests against PostgreSQL. |
 | **Coord (T32)** ARP Digest | `coord/arp-digest` | [PR #10](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/10) | **MERGED into main** (`81787c5`) | `6b922a9` | [Run 39036474523](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39036474523) | Weekly ARP digest generation, n<10 suppression, consent filtering. |
 | **Coord (T33)** Trainer View | `coord/trainer-view` | [PR #11](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/11) | **MERGED into main** (`5767c16`) | `b4e8a4d` | [Run 39037199360](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39037199360) | Trainer view & district aggregate dashboard with privacy guarantees. |
-| **Coord (T34)** Coach Review Console | `coord/review-console` | [PR #12](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/12) | **Merging origin/main** | `a539a04` | [Run 39029205709](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39029205709) | Coach review console for escalations and flagged turns. |
-| **Coord (T35)** Admin Console | `coord/admin` | [PR #13](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/13) | **Awaiting Review** | `02e5b4a` | [Run 39029959589](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39029959589) | Admin console for user management and system health. |
+| **Coord (T34)** Coach Review Console | `coord/review-console` | [PR #12](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/12) | **MERGED into main** (`ce1fddf`) | `a799edd` | [Run 39038018382](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39038018382) | Coach review console for escalations and flagged turns. |
+| **Coord (T35)** Admin Console | `coord/admin` | [PR #13](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/13) | **Merging origin/main** | `02e5b4a` | [Run 39029959589](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39029959589) | Admin console for user management and system health. |
 
 ---
 
@@ -112,6 +112,13 @@ Status: ALL TASKS COMPLETED (100% GREEN CI)
     - Retained only verified in-code optimizations with exact file links in Section 5.
     - Unit tests in `test_latency_benchmark.py`.
 
+<<<<<<< HEAD
+### 5. Coord: T34 Coach Review Console & Calibration
+- **Branch**: `coord/review-console`
+- **PR**: [shashwatkhandelwal-debug/Abhyas#12](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/12)
+- **Head SHA**: `f37cb28`
+- **CI Status**: [Run 39019393863 — Completed / Success](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39019393863)
+=======
 ### 5. Step 0: Guardrails Report & Dependency Audit Pass
 - **Branch**: `coord/guards-report`
 - **PR**: [shashwatkhandelwal-debug/Abhyas#9](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/9)
@@ -178,6 +185,7 @@ Status: ALL TASKS COMPLETED (100% GREEN CI)
   - `secrets`: Success
   - `test`: Success (PostgreSQL integration + unit tests)
   - `content`: Success
+>>>>>>> origin/main
 - **Key Deliverables**:
   - `backend/app/web/review.py` & templates (`review.html`, `review_detail.html`, `review_calibrate.html`, `review_move.html`):
     - 4 queue tabs (`rehearsal_score` / `explain_score`, `question`, `guard_failure`, `moves`) with badge counts and status filter.
@@ -187,4 +195,28 @@ Status: ALL TASKS COMPLETED (100% GREEN CI)
     - Calibration export (`GET /review/calibration.jsonl`): stream-downloads all double-coded calibration labels as newline-delimited JSON.
     - Move editor with key points, rubric levels, approvals counter, and raw YAML validator against `MoveCard` schema; marks `approved` when 2 distinct coaches approve (`MOVE_APPROVALS_REQUIRED = 2`).
   - Unit and PostgreSQL integration tests in `test_review_console.py` and `test_review_console_integration.py`.
+
+### 9. Coord: T35 Admin Operations Dashboard
+- **Branch**: `coord/admin`
+- **PR**: [shashwatkhandelwal-debug/Abhyas#13](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/13)
+- **Head SHA**: `02e5b4a`
+- **CI Status**: [Run 39029959589 — Completed / Success](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39029959589)
+  - `lint`: Success (ruff check + ruff format clean, mypy strict clean)
+  - `secrets`: Success (gitleaks clean)
+  - `content`: Success (all messages and seed content validated)
+  - `test`: Success (PostgreSQL integration + unit tests)
+- **Key Deliverables**:
+  - `backend/app/web/admin.py` & `backend/app/web/templates/admin.html`:
+    - Full system dashboard at `GET /admin` with environment & provider cards (LLM, STT, TTS, active release).
+    - Latency cards: overall p50 & p95 for last 24h & 7d, plus stage/role breakdown table (`coach`, `child_voice`, `act_tagger`, etc.).
+    - Turn activity cards: turns count last 24h, 7d, and total, with speaker breakdown.
+    - Guard metrics card: pass, retry, and fallback % with recent failure review items.
+    - LLM token consumption table: calls, input tokens, output tokens, total tokens by role.
+    - WhatsApp templates & weekly cost card: sends count and estimated INR cost this week by template category and name.
+    - Scheduled jobs monitoring: pending, done, failed, cancelled badges and recent jobs table.
+    - Demo controls:
+      - `POST /admin/reset-demo`: resets demo teachers (demo1..3) to clean initial state.
+      - `POST /admin/fast-forward`: fast-forwards pending scheduled jobs for a selected teacher.
+  - Comprehensive unit tests in `test_admin_dashboard.py` (9/9 pass) and PostgreSQL integration tests in `test_admin_integration.py`.
+
 

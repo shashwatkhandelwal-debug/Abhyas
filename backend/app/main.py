@@ -16,6 +16,7 @@ from backend.app.jobs.admin_api import router as jobs_admin_router
 from backend.app.jobs.scheduler import start_scheduler
 from backend.app.web import (
     STATIC_DIR,
+    admin_router,
     arp_router,
     chat_router,
     review_router,
@@ -98,6 +99,7 @@ app.include_router(review_router)
 app.include_router(trainer_router)
 app.include_router(whatsapp_router)
 app.include_router(jobs_admin_router)
+app.include_router(admin_router)
 
 
 @app.get("/", include_in_schema=False)

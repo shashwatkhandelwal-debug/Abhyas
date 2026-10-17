@@ -400,3 +400,50 @@ ui_arp_answer_success: {text: "उत्तर शिक्षक को भे�
 ui_arp_checklist_peer_link: {text: "कक्षा अवलोकन सूची (प्रिंट योग्य)", audio: false}
 ui_arp_answer_header: {text: "आपके प्रश्न का उत्तर (ARP द्वारा):", audio: false}
 
+# ── Admin Dashboard labels ───────────────────────────────────
+ui_admin_title:
+  text: "अभ्यास एडमिन डैशबोर्ड"
+  audio: false
+ui_admin_subtitle:
+  text: "सिस्टम मेट्रिक्स, विलंबता, टोकन उपयोग और डेमो नियंत्रण"
+  audio: false
+ui_admin_env:
+  text: "पर्यावरण व प्रदाता"
+  audio: false
+ui_admin_latency:
+  text: "विलंबता (p50 / p95)"
+  audio: false
+ui_admin_turns:
+  text: "टर्न गतिविधि"
+  audio: false
+ui_admin_guards:
+  text: "गार्ड प्रदर्शन"
+  audio: false
+ui_admin_tokens:
+  text: "एलएलएम टोकन व उपयोग"
+  audio: false
+ui_admin_templates:
+  text: "टेम्पलेट प्रेषण व अनुमानित लागत"
+  audio: false
+ui_admin_jobs:
+  text: "निर्धारित कार्य (Jobs)"
+  audio: false
+ui_admin_demo_controls:
+  text: "डेमो नियंत्रण"
+  audio: false
+ui_admin_reset_demo:
+  text: "डेमो शिक्षक डेटा रीसेट करें"
+  audio: false
+ui_admin_reset_confirm:
+  text: "क्या आप सभी डेमो शिक्षकों का अभ्यास डेटा रीसेट करना चाहते हैं?"
+  audio: false
+ui_admin_fast_forward:
+  text: "कार्य आगे बढ़ाएँ (Fast Forward)"
+  audio: false
+ui_admin_success_reset:
+  text: "डेमो शिक्षक डेटा सफलतापूर्वक रीसेट किया गया।"
+  audio: false
+ui_admin_success_ff:
+  text: "निर्धारित कार्य सफलतापूर्वक आगे बढ़ाए गए।"
+  audio: false
+

@@ -234,6 +234,7 @@ All items from `spec/15_human_inputs.md` are currently open:
   - **PR #10 (`coord/arp-digest`)**: T32 ARP dashboard (`/arp`) with consenting teacher table, visit list, question resolver. CI run 39016335193 green on `4e5fda6`.
   - **PR #11 (`coord/trainer-view`)**: T33 Trainer view (`/trainer`) with strict $n<10$ suppression and missed key-points insight. CI run 39017590919 green on `4f18375`.
   - **PR #12 (`coord/review-console`)**: T34 Coach review console (`/review`) with queue tabs, blind calibration, JSONL export, and 2-coach move approval. CI run 39019393863 green on `f37cb28`.
+  - **PR #13 (`coord/admin`)**: T35 Admin operations dashboard (`/admin`) with latency p50/p95 by stage, turn activity, guard metrics, LLM token consumption, WhatsApp template sends & costs, scheduled jobs, and demo controls. CI run 39021127576 green on `8b58b6d`.
 
 ### NEXT (Autonomous Overnight Queue):
 1. **T35 (Admin Dashboard `/admin`)** · Priority: P1 (spec/09 §9.6: latency percentiles by stage, turns count, guard pass/retry/fallback %, LLM calls & token usage, scheduled jobs status, demo controls: reset demo, fast-forward).
