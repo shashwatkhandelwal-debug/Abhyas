@@ -108,6 +108,7 @@ jobs:
           python-version: "3.11"
       - name: Install dependencies
         run: |
+          pip install --upgrade "setuptools>=83"
           pip install -e ".[dev]" pip-audit
       - name: Dependency audit (advisory, reported not blocking)
         run: pip-audit --skip-editable
