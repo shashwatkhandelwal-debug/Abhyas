@@ -45,6 +45,8 @@ class Settings(BaseSettings):
     TRUSTED_PROXY_IPS: str = "127.0.0.1"
     MAX_LOGIN_ATTEMPTS_PER_MINUTE: int = 5
     LOGIN_RATE_LIMIT_WINDOW_SECONDS: int = 60
+    CHAT_MAX_MESSAGES_PER_MINUTE: int = 20
+    CHAT_RATE_LIMIT_WINDOW_SECONDS: int = 60
 
     # ── Claude (Anthropic) — H1 ──────────────────────────────────────────
     LLM_PROVIDER: Literal["anthropic", "mock"] = "anthropic"

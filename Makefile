@@ -67,5 +67,8 @@ content-publish:
 samples:
 	python scripts/render_samples.py
 
+audit:
+	pip-audit --skip-editable
+
 freeze:
 	python scripts/freeze_check.py

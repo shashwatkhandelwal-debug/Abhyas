@@ -222,3 +222,11 @@ All items from `spec/15_human_inputs.md` are currently open:
 2. **T42 (Kappa Evaluation Harness)** · Priority: P1 (spec/11 §11.4, quadratic-weighted Cohen's kappa calculation for coach rubric scoring vs expert ratings).
 3. **T48 (Security & Privacy Pass)** · Priority: P0 (spec/12, spec/14, CSP headers, rate-limiting, audit verification).
 4. **T49 (Docs & Freeze)** · Priority: P0 (spec/13, submission checklist, sample inputs, demo script).
+
+### T48 Security pass (lane-e-docs)
+- Added `SecurityHeadersMiddleware` (CSP, nosniff, X-Frame-Options DENY, Referrer-Policy, Permissions-Policy, HSTS in production). **Deviation:** CSP keeps `'unsafe-inline'` for script/style because templates use inline scripts, `onclick` handlers and style attributes; all other directives are same-origin. Removing it needs templates moved to external JS (post-submission).
+- Per-user chat send limit (`CHAT_MAX_MESSAGES_PER_MINUTE`, default 20) on /api/chat/text, /audio, /button; in-memory, per instance.
+- Audio upload now reads at most `MAX_AUDIO_BYTES + 1` bytes before rejecting.
+- CI `audit` job runs `pip-audit` (advisory, `continue-on-error`).
+- Verified unchanged: CSRF double-submit with `hmac.compare_digest`, WhatsApp HMAC-SHA256 with constant-time compare and 503 when secret unset, login limit 5/min/IP, audio endpoint requires login.
+- Open: audio refs are not scoped to the owning teacher (any logged-in user holding a ref can fetch it; refs are content hashes); WhatsApp dedupe set `_PROCESSED_MESSAGE_IDS` is in-memory and unbounded; `onclick="...'{{ btn.id }}'"` interpolates content strings into JS (content is repo-controlled, not user input).
