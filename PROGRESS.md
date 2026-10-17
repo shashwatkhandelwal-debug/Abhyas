@@ -267,3 +267,16 @@ All items from `spec/15_human_inputs.md` are currently open:
 - `make eval-guards [EVENTS=file.jsonl]` writes `eval/guards/REPORT.md`: live stats split real vs mock, plus a 10-case adversarial corpus run through the real `guard_child_line` (clearly labelled as test cases, not traffic).
 - Needs a human/agy step: run `make eval-guards` once and commit the generated REPORT.md; re-run with real events after the hosted T41 run (28–30 Oct). Fallbacks from an unavailable LLM are not guard events (see `llm_call.outcome`).
 
+### RUN 4 Coordination, Merges, and Hardening
+- **Step 1 PR Merges Completed (All CI Green on `main` at `1134d71`)**:
+  - Merged #8 (`lane-e-docs` -> `ab0f0af`), #9 (`coord/guards-report` -> `a9ae0fe`), #14 (`coord/whatsapp` -> `ba1cf73`), #10 (`coord/arp-digest` -> `81787c5`), #11 (`coord/trainer-view` -> `5767c16`), #12 (`coord/review-console` -> `ce1fddf`), #13 (`coord/admin` -> `04b6aa1`), #15 (`coord/ingestion` -> `4fe9191`), and #17 (`coord/hardening` -> `1134d71`).
+  - All CI jobs green on main.
+- **PR #19 (`coord/nits`) — Open for Review (Do NOT merge)**:
+  - Addressed carry-over nits for #11 (ladder_counts defaults on empty dist, dropped unused district_summary), #12 (whitelisted calibrate score keys against rubric criteria), #15 (removed duplicate stopwords_hi.txt; documented page_ocr.v1.md vision prompt is not automated), #17 (verified no double-firing handlers; verified coach/arp audio bypass; documented /chat and /teacher both render teacher.html), WhatsApp follow-ups (_PROCESSED_MESSAGE_IDS bounded LRU cache, teacher auto-creation rate limit 10/min, ARP answer WhatsApp dispatch, IST-date observed_on), and admin credential docs.
+  - Head SHA: `4bcf5f2`, CI Run `39048051782` (100% success).
+- **PR #16 (`coord/t24-jobs`) — Open for Review (Do NOT merge)**:
+  - Merged main. Wired `schedule_reminder` on unfinished weekly steps (IST-slot deduped), lowered `FOLLOWUP_TRY_IN_CLASS_HOURS` from 72 to 48, resilient week rollover querying latest SessionState, wrapped schedule operations in `begin_nested()` savepoints, narrowed load_move_card exception handling. Added 4 unit tests.
+  - Head SHA: `06d423e`, CI Run `39048766813` (100% success).
+- **PR #18 (`coord/low-network`) — Open for Review (Do NOT merge)**:
+  - Merged main. Wrapped `dependency_overrides` cleanup in `finally` in `check_first_load.py`; added login status checks and non-login redirect assertions in `--url` mode; updated report table status to "Code present (not exercised)" for unexercised PWA features and "Measured" for bundle sizes; labelled local run as lower bound with mock DB and empty chat history; rendered `data-created-at` from server templates (`teacher.html`, `chat.html`) and updated `chat.js` `initRenderedMessagesFromDom()` to read it without inventing timestamps; updated unit test assertions.
+

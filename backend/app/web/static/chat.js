@@ -714,13 +714,15 @@ function initRenderedMessagesFromDom() {
       const textEl = row.querySelector('.bubble-text');
       const speakerEl = row.querySelector('.speaker-tag');
       const isOut = row.classList.contains('outbound');
+      const createdAtAttr = row.getAttribute('data-created-at');
+      const createdAt = createdAtAttr && createdAtAttr.trim() ? createdAtAttr.trim() : null;
 
       cachedBatch.push({
         id: rawId,
         direction: isOut ? 'out' : 'in',
         speaker: speakerEl ? speakerEl.textContent.trim() : null,
         text: textEl ? textEl.textContent.trim() : '',
-        created_at: new Date().toISOString(),
+        created_at: createdAt,
       });
     }
   });

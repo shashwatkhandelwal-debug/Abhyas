@@ -80,165 +80,198 @@ async def measure_first_load(
     """Fetches login, teacher chat, and referenced assets; computes raw and gzip sizes."""
     measurements: list[AssetMeasurement] = []
 
-    if base_url:
-        client_kwargs: dict[str, Any] = {"base_url": base_url, "follow_redirects": True}
-    else:
-        from unittest.mock import AsyncMock, MagicMock
-
-        from sqlalchemy.ext.asyncio import AsyncSession
-
-        from backend.app.auth.guards import get_current_user
-        from backend.app.db.models import AppUser, Teacher
-        from backend.app.db.session import get_db_session
-
-        mock_teacher_id = uuid.UUID("00000000-0000-0000-0000-000000000002")
-        mock_teacher = Teacher(
-            id=mock_teacher_id,
-            name="डेमो शिक्षिका 1 (सुमन)",
-            preferred_channel="web",
-            lite_mode=False,
-        )
-        mock_user = AppUser(
-            id=uuid.uuid4(),
-            username="teacher.demo1",
-            role="teacher",
-            teacher_id=mock_teacher_id,
-            display_name="डेमो शिक्षिका 1",
-            password_hash="hash",
-        )
-
-        async def mock_session() -> AsyncSession:
-            db = AsyncMock(spec=AsyncSession)
-
-            async def get_mock(entity: Any, ident: Any) -> Any:
-                if entity is Teacher:
-                    return mock_teacher
-                if entity is AppUser:
-                    return mock_user
-                return None
-
-            async def execute_mock(stmt: Any) -> Any:
-                mock_res = MagicMock()
-                mock_res.scalars.return_value.all.return_value = []
-                mock_res.scalar_one_or_none.return_value = (
-                    mock_user if "app_user" in str(stmt) else mock_teacher
-                )
-                return mock_res
-
-            db.get.side_effect = get_mock
-            db.execute.side_effect = execute_mock
-            return db
-
-        app.dependency_overrides[get_db_session] = mock_session
-        app.dependency_overrides[get_current_user] = lambda: mock_user
-
-        transport = httpx.ASGITransport(app=app)
-        client_kwargs = {
-            "transport": transport,
-            "base_url": "http://testserver",
-            "follow_redirects": True,
-        }
-
-    async with httpx.AsyncClient(**client_kwargs) as client:
-        # 1. Fetch /login (unauthed)
-        res_login = await client.get("/login")
-        login_html = res_login.content
-        login_raw = len(login_html)
-        login_gzip = len(gzip.compress(login_html))
-        measurements.append(
-            AssetMeasurement(
-                name="Login Page (HTML)",
-                path="/login",
-                kind="HTML",
-                raw_bytes=login_raw,
-                gzip_bytes=login_gzip,
-                status_code=res_login.status_code,
-            )
-        )
-
-        # 2. Extract CSRF token if present
-        csrf_token = ""
-        match_meta = re.search(
-            r'<meta[^>]+name=["\']csrf-token["\'][^>]+content=["\']([^"\']+)["\']', res_login.text
-        )
-        if match_meta:
-            csrf_token = match_meta.group(1)
+    overrides_set = False
+    try:
+        if base_url:
+            client_kwargs: dict[str, Any] = {"base_url": base_url, "follow_redirects": True}
         else:
-            match_input = re.search(
-                r'<input[^>]+name=["\']csrf_token["\'][^>]+value=["\']([^"\']+)["\']',
+            from unittest.mock import AsyncMock, MagicMock
+
+            from sqlalchemy.ext.asyncio import AsyncSession
+
+            from backend.app.auth.guards import get_current_user
+            from backend.app.db.models import AppUser, Teacher
+            from backend.app.db.session import get_db_session
+
+            mock_teacher_id = uuid.UUID("00000000-0000-0000-0000-000000000002")
+            mock_teacher = Teacher(
+                id=mock_teacher_id,
+                name="डेमो शिक्षिका 1 (सुमन)",
+                preferred_channel="web",
+                lite_mode=False,
+            )
+            mock_user = AppUser(
+                id=uuid.uuid4(),
+                username="teacher.demo1",
+                role="teacher",
+                teacher_id=mock_teacher_id,
+                display_name="डेमो शिक्षिका 1",
+                password_hash="hash",
+            )
+
+            async def mock_session() -> AsyncSession:
+                db = AsyncMock(spec=AsyncSession)
+
+                async def get_mock(entity: Any, ident: Any) -> Any:
+                    if entity is Teacher:
+                        return mock_teacher
+                    if entity is AppUser:
+                        return mock_user
+                    return None
+
+                async def execute_mock(stmt: Any) -> Any:
+                    mock_res = MagicMock()
+                    mock_res.scalars.return_value.all.return_value = []
+                    mock_res.scalar_one_or_none.return_value = (
+                        mock_user if "app_user" in str(stmt) else mock_teacher
+                    )
+                    return mock_res
+
+                db.get.side_effect = get_mock
+                db.execute.side_effect = execute_mock
+                return db
+
+            app.dependency_overrides[get_db_session] = mock_session
+            app.dependency_overrides[get_current_user] = lambda: mock_user
+            overrides_set = True
+
+            transport = httpx.ASGITransport(app=app)
+            client_kwargs = {
+                "transport": transport,
+                "base_url": "http://testserver",
+                "follow_redirects": True,
+            }
+
+        async with httpx.AsyncClient(**client_kwargs) as client:
+            # 1. Fetch /login (unauthed)
+            res_login = await client.get("/login")
+            login_html = res_login.content
+            login_raw = len(login_html)
+            login_gzip = len(gzip.compress(login_html))
+            measurements.append(
+                AssetMeasurement(
+                    name="Login Page (HTML)",
+                    path="/login",
+                    kind="HTML",
+                    raw_bytes=login_raw,
+                    gzip_bytes=login_gzip,
+                    status_code=res_login.status_code,
+                )
+            )
+
+            # 2. Extract CSRF token if present
+            csrf_token = ""
+            match_meta = re.search(
+                r'<meta[^>]+name=["\']csrf-token["\'][^>]+content=["\']([^"\']+)["\']',
                 res_login.text,
             )
-            if match_input:
-                csrf_token = match_input.group(1)
+            if match_meta:
+                csrf_token = match_meta.group(1)
+            else:
+                match_input = re.search(
+                    r'<input[^>]+name=["\']csrf_token["\'][^>]+value=["\']([^"\']+)["\']',
+                    res_login.text,
+                )
+                if match_input:
+                    csrf_token = match_input.group(1)
 
-        # 3. Log in as teacher.demo1
-        post_data = {
-            "username": "teacher.demo1",
-            "password": settings.DEMO_PASSWORD,
-        }
-        if csrf_token:
-            post_data["csrf_token"] = csrf_token
+            # 3. Log in as teacher.demo1
+            post_data = {
+                "username": "teacher.demo1",
+                "password": settings.DEMO_PASSWORD,
+            }
+            if csrf_token:
+                post_data["csrf_token"] = csrf_token
 
-        res_post = await client.post("/login", data=post_data)
-        logger.info("Login response status: %d", res_post.status_code)
+            res_post = await client.post("/login", data=post_data)
+            logger.info("Login response status: %d", res_post.status_code)
+            if base_url and res_post.status_code >= 400:
+                logger.error(
+                    "Login failed against %s with status %d: %s",
+                    base_url,
+                    res_post.status_code,
+                    res_post.text[:200],
+                )
+                sys.exit(1)
 
-        # 4. Fetch /teacher (authed)
-        res_teacher = await client.get("/teacher")
-        teacher_html = res_teacher.content
-        teacher_raw = len(teacher_html)
-        teacher_gzip = len(gzip.compress(teacher_html))
-        measurements.append(
-            AssetMeasurement(
-                name="Teacher Chat PWA (HTML)",
-                path="/teacher",
-                kind="HTML",
-                raw_bytes=teacher_raw,
-                gzip_bytes=teacher_gzip,
-                status_code=res_teacher.status_code,
+            # 4. Fetch /teacher (authed)
+            res_teacher = await client.get("/teacher")
+            if base_url:
+                if str(res_teacher.url).rstrip("/").endswith("/login"):
+                    logger.error(
+                        "Authentication failed: /teacher redirected to %s", res_teacher.url
+                    )
+                    sys.exit(1)
+                if res_teacher.status_code != 200:
+                    logger.error(
+                        "Fetching /teacher returned unexpected status %d", res_teacher.status_code
+                    )
+                    sys.exit(1)
+
+            teacher_html = res_teacher.content
+            teacher_raw = len(teacher_html)
+            teacher_gzip = len(gzip.compress(teacher_html))
+            measurements.append(
+                AssetMeasurement(
+                    name="Teacher Chat PWA (HTML)",
+                    path="/teacher",
+                    kind="HTML",
+                    raw_bytes=teacher_raw,
+                    gzip_bytes=teacher_gzip,
+                    status_code=res_teacher.status_code,
+                )
             )
-        )
 
-        # 5. Extract and fetch all referenced assets
-        referenced_paths = _extract_asset_paths(res_teacher.text)
-        # Ensure standard PWA offline assets are audited
-        for extra in (
-            "/static/app.css",
-            "/static/chat.js",
-            "/static/recorder.js",
-            "/static/sw.js",
-            "/sw.js",
-            "/offline.html",
-            "/manifest.json",
-        ):
-            if extra not in referenced_paths:
-                referenced_paths.append(extra)
+            # 5. Extract and fetch all referenced assets
+            referenced_paths = _extract_asset_paths(res_teacher.text)
+            # Ensure standard PWA offline assets are audited
+            for extra in (
+                "/static/app.css",
+                "/static/chat.js",
+                "/static/recorder.js",
+                "/static/sw.js",
+                "/sw.js",
+                "/offline.html",
+                "/manifest.json",
+            ):
+                if extra not in referenced_paths:
+                    referenced_paths.append(extra)
 
-        seen_paths: set[str] = set()
-        for p in referenced_paths:
-            if p in seen_paths:
-                continue
-            seen_paths.add(p)
+            seen_paths: set[str] = set()
+            for p in referenced_paths:
+                if p in seen_paths:
+                    continue
+                seen_paths.add(p)
 
-            res_asset = await client.get(p)
-            if res_asset.status_code == 200:
-                asset_content = res_asset.content
-                kind = (
-                    "CSS"
-                    if p.endswith(".css")
-                    else (
-                        "JS" if p.endswith(".js") else ("JSON" if p.endswith(".json") else "HTML")
+                res_asset = await client.get(p)
+                if res_asset.status_code == 200:
+                    asset_content = res_asset.content
+                    kind = (
+                        "CSS"
+                        if p.endswith(".css")
+                        else (
+                            "JS"
+                            if p.endswith(".js")
+                            else ("JSON" if p.endswith(".json") else "HTML")
+                        )
                     )
-                )
-                measurements.append(
-                    AssetMeasurement(
-                        name=Path(p).name,
-                        path=p,
-                        kind=kind,
-                        raw_bytes=len(asset_content),
-                        gzip_bytes=len(gzip.compress(asset_content)),
-                        status_code=res_asset.status_code,
+                    measurements.append(
+                        AssetMeasurement(
+                            name=Path(p).name,
+                            path=p,
+                            kind=kind,
+                            raw_bytes=len(asset_content),
+                            gzip_bytes=len(gzip.compress(asset_content)),
+                            status_code=res_asset.status_code,
+                        )
                     )
-                )
+    finally:
+        if overrides_set:
+            from backend.app.auth.guards import get_current_user
+            from backend.app.db.session import get_db_session
+
+            app.dependency_overrides.pop(get_db_session, None)
+            app.dependency_overrides.pop(get_current_user, None)
 
     # Compute key bundle sizes
     # Peak First Load: /teacher HTML + active CSS + active JS (recorder.js, chat.js)
@@ -280,7 +313,7 @@ async def measure_first_load(
 def generate_report(
     measurements: list[AssetMeasurement],
     summary: dict[str, Any],
-    label: str = "local, mock providers",
+    label: str = "local, mock providers, mock DB, empty chat history",
 ) -> str:
     """Renders GitHub markdown report formatted per spec/09 §9.2 and spec/11."""
     now_iso = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -293,6 +326,8 @@ def generate_report(
         f"**Environment**: `{label}`  ",
         f"**Timestamp**: {now_iso}  ",
         f"**Status**: {status_badge} (Budget: < {summary['budget_limit_kb']} KB)  ",
+        "",
+        "> Note: In the local test run, `/teacher` HTML is measured with mock providers, a mock DB, and an empty chat history, which represents a lower bound for the page size.",
         "",
         "## 1. Executive Summary",
         "",
@@ -319,16 +354,16 @@ def generate_report(
             "",
             "## 3. Low-Connectivity Verification Matrix",
             "",
-            "| Feature | Implementation | Verified |",
+            "| Feature | Implementation | Status |",
             "|---|---|---|",
-            "| **Server-rendered HTML** | Jinja2 templates (`teacher.html`, `login.html`), no React or JS framework build step | Yes |",
-            "| **Single CSS bundle** | `/static/app.css` (4.0 KB gzip) containing all styles, typography, and responsive layouts | Yes |",
-            "| **Vanilla JS Client** | `/static/chat.js` (5.7 KB gzip) with IndexedDB outbox queue & auto-retry | Yes |",
-            "| **Voice Recorder** | `/static/recorder.js` (1.6 KB gzip) MediaRecorder 16 kbps mono recorder | Yes |",
-            "| **Service Worker** | `/static/sw.js` cache-first for static assets, LRU 30 audio cache, offline navigation fallback | Yes |",
-            "| **Offline Outbox** | Queues text and audio messages in IndexedDB `outbox` table during disconnects | Yes |",
-            "| **Offline Fallback Page** | `/offline.html` cached by Service Worker; displays last 50 cached messages & peer checklist | Yes |",
-            "| **Lite Mode (लाइट मोड)** | Hides audio autoplay; renders on-demand audio on tap to preserve 2G/3G data bundles | Yes |",
+            "| **Server-rendered HTML** | Jinja2 templates (`teacher.html`, `login.html`), no React or JS framework build step | Measured |",
+            "| **Single CSS bundle** | `/static/app.css` containing all styles, typography, and responsive layouts | Measured |",
+            "| **Vanilla JS Client** | `/static/chat.js` with IndexedDB outbox queue & auto-retry | Measured |",
+            "| **Voice Recorder** | `/static/recorder.js` MediaRecorder 16 kbps mono recorder | Measured |",
+            "| **Service Worker** | `/static/sw.js` cache-first for static assets, LRU 30 audio cache, offline navigation fallback | Code present (not exercised) |",
+            "| **Offline Outbox** | Queues text and audio messages in IndexedDB `outbox` table during disconnects | Code present (not exercised) |",
+            "| **Offline Fallback Page** | `/offline.html` cached by Service Worker; displays last 50 cached messages & peer checklist | Code present (not exercised) |",
+            "| **Lite Mode (लाइट मोड)** | Hides audio autoplay; renders on-demand audio on tap to preserve 2G/3G data bundles | Code present (not exercised) |",
             "",
             "## 4. Assertion",
             "",
@@ -353,7 +388,9 @@ async def main() -> None:
     )
     args = parser.parse_args()
 
-    label = f"hosted, {args.url}" if args.url else "local, mock providers"
+    label = (
+        f"hosted, {args.url}" if args.url else "local, mock providers, mock DB, empty chat history"
+    )
     logger.info("Running first load measurement (%s)...", label)
 
     measurements, summary = await measure_first_load(base_url=args.url)
