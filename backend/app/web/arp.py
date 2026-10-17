@@ -85,6 +85,8 @@ async def get_arp_dashboard(
             saved_msg = get_message("ui_arp_observation_success")
         elif msg_param == "ans":
             saved_msg = get_message("ui_arp_answer_success")
+        elif msg_param == "ans_wa_fail":
+            saved_msg = get_message("ui_arp_answer_saved_wa_undelivered")
 
     resp = templates.TemplateResponse(
         request=request,
@@ -262,24 +264,52 @@ async def post_arp_answer(
     channel = teacher.preferred_channel or "web"
     header = get_message("ui_arp_answer_header")
     full_text = f"{header}\n\n{clean_answer}"
+    wa_delivered = False
 
     if channel == "whatsapp":
         from backend.app.channels.whatsapp.channel import WhatsAppChannel
+        from backend.app.channels.whatsapp.templates import is_template_approved
         from backend.app.core.types import OutboundMessage
 
         wa_channel = WhatsAppChannel()
-        outbound = OutboundMessage(
-            kind="text",
-            text_hi=full_text,
-            template_name="abhyas_arp_answer",
-            speaker="arp",
-        )
-        try:
-            await wa_channel.send(teacher, [outbound], session=db)
-        except Exception as exc:  # Rule C: WhatsApp dispatch can raise network, HTTP, or decryption errors; avoid failing ARP flow and log without adding fake delivered message row
-            logger.error(
-                "Failed to dispatch WhatsApp ARP answer to teacher %s: %s", teacher.id, exc
+        within_window = await wa_channel.can_send_freeform(teacher)
+        can_deliver_wa = within_window or is_template_approved("abhyas_arp_answer")
+
+        if can_deliver_wa:
+            outbound = OutboundMessage(
+                kind="text",
+                text_hi=full_text,
+                template_name="abhyas_arp_answer",
+                speaker="arp",
             )
+            try:
+                await wa_channel.send(teacher, [outbound], session=db)
+                wa_delivered = True
+            except Exception as exc:  # Rule C: WhatsApp dispatch can raise network, HTTP, or decryption errors; avoid failing ARP flow and fall back to web Message row
+                logger.error(
+                    "Failed to dispatch WhatsApp ARP answer to teacher %s: %s", teacher.id, exc
+                )
+                wa_delivered = False
+        else:
+            logger.warning(
+                "WhatsApp template 'abhyas_arp_answer' is unapproved outside 24h window for teacher %s; falling back to web message",
+                teacher.id,
+            )
+            wa_delivered = False
+
+        if not wa_delivered:
+            # Fallback to web channel Message row so teacher sees the answer in the app
+            fallback_msg = Message(
+                teacher_id=teacher.id,
+                direction="out",
+                channel="web",
+                channel_msg_id=f"arp-ans-{question.id}-{uuid.uuid4().hex[:6]}",
+                kind="text",
+                text=full_text,
+                speaker="arp",
+                state_at="ASK",
+            )
+            db.add(fallback_msg)
     else:
         outbound_msg = Message(
             teacher_id=teacher.id,
@@ -295,10 +325,17 @@ async def post_arp_answer(
     await db.commit()
 
     logger.info(
-        "ARP %s answered question %s for teacher %s; review item resolved: %s",
+        "ARP %s answered question %s for teacher %s; review item resolved: %s; wa_delivered: %s",
         current_user.id,
         question.id,
         teacher.id,
         bool(review_item),
+        wa_delivered,
     )
-    return RedirectResponse(url="/arp?saved=1&msg=ans", status_code=status.HTTP_303_SEE_OTHER)
+    redirect_msg = "ans"
+    if channel == "whatsapp" and not wa_delivered:
+        redirect_msg = "ans_wa_fail"
+
+    return RedirectResponse(
+        url=f"/arp?saved=1&msg={redirect_msg}", status_code=status.HTTP_303_SEE_OTHER
+    )
