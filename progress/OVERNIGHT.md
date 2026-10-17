@@ -24,7 +24,13 @@ Status: ALL TASKS COMPLETED (100% GREEN CI)
 | **Lane B (T23)** Move Path Scoring | `lane-b` | [PR #4](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/4) | **MERGED into main** (`c9602ea`) | `b27c2fe` | [Run 39002009955](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39002009955) | Pulled `path_score.py` from `lane-e`, wired deterministic `rank_moves` into `sessions/path.py`, resolved package hygiene narrow exceptions. |
 | **Coord (PR #5)** Reviewer Follow-ups Polish | `coord/polish-and-p0` | [PR #5](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/5) | **MERGED into main** (`9d6c902`) | `7b7a869` | [Run 39002622557](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39002622557) | Addressed reviewer follow-ups for PR #2 & PR #3: test DB drop schema guard (`assert "test" in url or CI`), demo_chips JSON loading dynamically into PWA chat interface, mock STT clean fallbacks, and 100% green CI against Postgres. |
 | **Coord (T38, T39, T41)** Golden Fixtures, Audio Samples, Latency Report | `coord/p0-eval` | [PR #6](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/6) | **MERGED into main** (`e54b7ff`) | `9e1b297` | [Run 39008573282](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39008573282) | **T38**: Golden test fixtures (≥5 pass + fail fixtures per role) for all 7 runtime roles, README documenting hand-written synthetic provenance, `test_golden_fixtures.py`.<br>**T39**: `render_samples.py` enforces real TTS provider, silent WAVs removed from git, `is_wav_non_silent` computes `audio_available` dynamically with text fallback in PWA chips.<br>**T41**: Multi-concurrency latency benchmark harness, stage timing breakdown, `eval/latency/REPORT.md` honest mock status ("NOT MEASURED (mock providers)" and mock payload estimates), verified in-code optimizations with file links. |
-| **Coord (PR #7)** Reviewer Follow-ups & Blockers (Fake Audio Guard, Timeout Exclusion, Auth Fix) | `coord/followups-eval` | [PR #7](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/7) | **Awaiting Review** | `9b47598` | [Run 39011709739](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39011709739) | **Blocker 1**: Exit non-zero in `--url` mode if evaluator sample WAVs are missing or silent.<br>**Blocker 2**: Exclude timed-out or errored turns from p50/p95 percentiles, add `ok: bool` to `TurnMeasurement`, report completed turns in Table 1, and ensure polling waits for non-pending outbound reply.<br>**Blocker 3**: Remove silent login fallback to `username` at c=3 to avoid per-teacher lock contention.<br>**Follow-ups (a & c)**: Display effective provider in header, format low data transfer in KB.<br>**Tests**: `test_latency_benchmark.py` testing timeout exclusion and missing audio error exit. |
+| **Coord (PR #7)** Reviewer Follow-ups & Blockers (Fake Audio Guard, Timeout Exclusion, Auth Fix) | `coord/followups-eval` | [PR #7](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/7) | **MERGED into main** (`220377c`) | `e7d0897` | [Run 39011897840](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39011897840) | Blocker 1: audio validation on disk. Blocker 2: timeout exclusion from p50/p95. Blocker 3: auth fallback removed. Effective provider reporting in header. |
+| **Lane E (T48, T49, T50)** Security Headers, Rate Limits, Docs, Smoke Tests | `lane-e-docs` | [PR #8](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/8) | **Awaiting Review** | `39bb179` | [Run 39014169543](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39014169543) | T48 security headers (CSP self-only, HSTS, nosniff, frame-ancestors none) & chat burst/minute rate limiter; T49 comprehensive documentation (README, video script, deck assets, runbook, checklist); T50 hosted smoke test script. |
+| **Coord (T43)** Guard Failure Analysis & Report | `coord/guards-report` | [PR #9](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/9) | **Awaiting Review** | `5578119` | [Run 39015099396](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39015099396) | T43 guard report evaluation script (`eval/guards/generate_report.py`), golden trace evaluation across 6 runtime roles, automated `REPORT.md` generation with markdown summary table and failure category taxonomy. |
+| **Coord (T32)** ARP Weekly Digest & Interventions | `coord/arp-digest` | [PR #10](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/10) | **Awaiting Review** | `4e5fda6` | [Run 39016335193](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39016335193) | T32 ARP web dashboard (`/arp`) per spec/09 §9.3: weekly activity overview, consenting teacher progress table with rubric score dots and escalation flags, suggested classroom visit list with printable checklist link and observation recording, escalated questions resolver, non-consenting aggregate count row. |
+| **Coord (T33)** Trainer View with n<10 Suppression | `coord/trainer-view` | [PR #11](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/11) | **Awaiting Review** | `4f18375` | [Run 39017590919](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39017590919) | T33 trainer view (`/trainer`) per spec/09 §9.4: batch × move metrics from `agg_module_batch`, strict $n < 10$ suppression displaying "समूह छोटा है (n<10) — गोपनीयता हेतु छिपाया गया" across all metric cells, programmatic pedagogical insight box (≥40% missed key points), CSV export endpoint, zero teacher PII guarantee. |
+| **Coord (T34)** Coach Review Console & Calibration | `coord/review-console` | [PR #12](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/12) | **Awaiting Review** | `f37cb28` | [Run 39019393863](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39019393863) | T34 coach review console (`/review`) per spec/09 §9.5: queue tabs (कम भरोसा स्कोर, प्रश्न, गार्ड विफलताएँ, सामग्री), speaker-coloured rehearsal detail view with acts and confidence highlights, score correction saving to `review_item.resolution` and `calibration_label`, blind double-coding mode (`/review/calibrate`), JSONL export (`/review/calibration.jsonl`), move editor with raw YAML validation and 2-distinct-coach approval requirement (`MOVE_APPROVALS_REQUIRED = 2`). |
+| **Coord (T35)** Admin Operations Dashboard | `coord/admin` | [PR #13](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/13) | **Awaiting Review** | `8b58b6d` | [Run 39021127576](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39021127576) | T35 admin dashboard (`/admin`) per spec/09 §9.6: latency p50/p95 last 24h & 7d (by stage/role), turns count last 24h/7d/all-time by role, guard pass/retry/fallback % and recent failures, LLM calls and input/output tokens by role, WhatsApp template sends & estimated weekly cost (INR), scheduled jobs monitoring (pending/done/failed), active content release info, demo reset (`POST /admin/reset-demo`), fast-forward teacher (`POST /admin/fast-forward`). |
 
 ---
 
@@ -104,4 +110,41 @@ Status: ALL TASKS COMPLETED (100% GREEN CI)
     - Updated `REPORT.md` to record provider modes and report `NOT MEASURED (mock providers)` when running in mock dev/CI mode, with data budgets labeled `estimate on mock payloads`.
     - Retained only verified in-code optimizations with exact file links in Section 5.
     - Unit tests in `test_latency_benchmark.py`.
+
+### 5. Coord: T34 Coach Review Console & Calibration
+- **Branch**: `coord/review-console`
+- **PR**: [shashwatkhandelwal-debug/Abhyas#12](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/12)
+- **Head SHA**: `f37cb28`
+- **CI Status**: [Run 39019393863 — Completed / Success](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39019393863)
+- **Key Deliverables**:
+  - `backend/app/web/review.py` & templates (`review.html`, `review_detail.html`, `review_calibrate.html`, `review_move.html`):
+    - 4 queue tabs (`rehearsal_score` / `explain_score`, `question`, `guard_failure`, `moves`) with badge counts and status filter.
+    - Detail view with speaker-coloured chat bubbles, turn acts, AI confidence badges, evidence quotes, and score resolution form.
+    - Resolution saves scores (0/1/2) and coach notes to `review_item.resolution` and logs `CalibrationLabel(blind=False)`.
+    - Blind double-coding calibration mode (`GET/POST /review/calibrate`): transcript stripped of AI scores, acts, or quotes; saves to `CalibrationLabel(blind=True)`.
+    - Calibration export (`GET /review/calibration.jsonl`): stream-downloads all double-coded calibration labels as newline-delimited JSON.
+    - Move editor with key points, rubric levels, approvals counter, and raw YAML validator against `MoveCard` schema; marks `approved` when 2 distinct coaches approve (`MOVE_APPROVALS_REQUIRED = 2`).
+
+### 6. Coord: T35 Admin Operations Dashboard
+- **Branch**: `coord/admin`
+- **PR**: [shashwatkhandelwal-debug/Abhyas#13](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/13)
+- **Head SHA**: `8b58b6d`
+- **CI Status**: [Run 39021127576 — Completed / Success](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39021127576)
+  - `lint`: Success (ruff check + ruff format clean, mypy strict clean)
+  - `secrets`: Success (gitleaks clean)
+  - `content`: Success (all messages and seed content validated)
+  - `test`: Success (PostgreSQL integration + unit tests)
+- **Key Deliverables**:
+  - `backend/app/web/admin.py` & `backend/app/web/templates/admin.html`:
+    - Full system dashboard at `GET /admin` with environment & provider cards (LLM, STT, TTS, active release).
+    - Latency cards: overall p50 & p95 for last 24h & 7d, plus stage/role breakdown table (`coach`, `child_voice`, `act_tagger`, etc.).
+    - Turn activity cards: turns count last 24h, 7d, and total, with speaker breakdown.
+    - Guard metrics card: pass, retry, and fallback % with recent failure review items.
+    - LLM token consumption table: calls, input tokens, output tokens, total tokens by role.
+    - WhatsApp templates & weekly cost card: sends count and estimated INR cost this week by template category and name.
+    - Scheduled jobs monitoring: pending, done, failed, cancelled badges and recent jobs table.
+    - Demo controls:
+      - `POST /admin/reset-demo`: resets demo teachers (demo1..3) to clean initial state.
+      - `POST /admin/fast-forward`: fast-forwards pending scheduled jobs for a selected teacher.
+  - Comprehensive unit tests in `test_admin_dashboard.py` (9/9 pass) and PostgreSQL integration tests in `test_admin_integration.py`.
 
