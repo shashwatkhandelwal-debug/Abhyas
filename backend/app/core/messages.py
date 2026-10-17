@@ -156,10 +156,10 @@ class MessageCatalog:
 _catalog: MessageCatalog | None = None
 
 
-def get_catalog() -> MessageCatalog:
+def get_catalog(catalog_path: Path | str | None = None) -> MessageCatalog:
     global _catalog
-    if _catalog is None:
-        _catalog = MessageCatalog()
+    if _catalog is None or catalog_path is not None:
+        _catalog = MessageCatalog(catalog_path)
     return _catalog
 
 

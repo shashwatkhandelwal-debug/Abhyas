@@ -56,3 +56,6 @@ None.
   2. BM25 Hindi retrieval: `backend/app/retrieval/search.py` implements `GuideRetriever` using `rank_bm25.BM25Okapi` with Unicode-aware whitespace/punctuation tokenization preserving matras, returning top-k scored `RetrievedChunk`s.
   3. ASK conversation flow: Wired into `SessionService.handle_inbound`, classifying questions via `classify_question`, handling clarifications, retrieving BM25 chunks, generating answers via `answer_guide_question`, creating `ReviewItem` for admin/escalated questions, and cleanly resuming prior state with state-specific prompt resumption.
   4. Move path ranking: `backend/app/sessions/path.py` wires `rank_moves` from `path_score.py` fed with loaded `MoveCard`s, preserving `DEFAULT_INDUCTION_ORDER` fallback when `content/induction_track.yaml` is absent and passing zero-broad-exception hygiene checks.
+
+## Rule C type-ignore log
+- `backend/app/retrieval/search.py`: `rank_bm25` has no PEP 561 py.typed marker or type stubs on PyPI; `type: ignore[import-untyped]` used for `BM25Okapi` import.

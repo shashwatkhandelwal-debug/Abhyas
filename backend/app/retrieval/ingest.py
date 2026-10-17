@@ -13,12 +13,17 @@ from typing import Any
 
 import yaml
 
+from backend.app.core.messages import get_catalog, get_message
+
 logger = logging.getLogger("abhyas.retrieval.ingest")
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 MOVES_DIR = REPO_ROOT / "content" / "moves"
 CHUNKS_DIR = REPO_ROOT / "content" / "chunks"
 SEED_CHUNKS_FILE = CHUNKS_DIR / "seed_from_moves.jsonl"
+CATALOG_FILE = REPO_ROOT / "content" / "messages_hi.yaml"
+if CATALOG_FILE.exists():
+    get_catalog(CATALOG_FILE)
 
 
 def extract_chunks_from_move(move_data: dict[str, Any]) -> list[dict[str, Any]]:
@@ -27,9 +32,12 @@ def extract_chunks_from_move(move_data: dict[str, Any]) -> list[dict[str, Any]]:
     title_hi = unicodedata.normalize("NFC", str(move_data.get("title_hi", "")))
     tags = list(move_data.get("tags", []))
     module_ref = move_data.get("module_ref", {}) or {}
-    source_id = str(module_ref.get("source_id", "up_ganit_sandarshika_c2"))
+    source_id = str(module_ref.get("source_id", "abhyas_move_card"))
+    summary_title = get_message("ingest_summary_title")
+    method_title = get_message("ingest_method_title")
+    key_points_title = get_message("ingest_key_points_title")
     base_section = unicodedata.normalize(
-        "NFC", str(module_ref.get("section") or title_hi or "सीखने का तरीका")
+        "NFC", str(module_ref.get("section") or title_hi or method_title)
     )
 
     chunks: list[dict[str, Any]] = []
@@ -42,8 +50,8 @@ def extract_chunks_from_move(move_data: dict[str, Any]) -> list[dict[str, Any]]:
             {
                 "chunk_id": f"{move_id}_learn",
                 "source": source_id,
-                "source_short_hi": "अभ्यास मूव सारांश",
-                "section": f"{base_section}: सीखने का तरीका",
+                "source_short_hi": summary_title,
+                "section": f"{base_section}: {method_title}",
                 "text": norm_text,
                 "move_id": move_id,
                 "tags": tags,
@@ -62,8 +70,8 @@ def extract_chunks_from_move(move_data: dict[str, Any]) -> list[dict[str, Any]]:
             {
                 "chunk_id": f"{move_id}_{kp_id}",
                 "source": source_id,
-                "source_short_hi": "अभ्यास मूव सारांश",
-                "section": f"{base_section}: मुख्य बिंदु ({kp_id})",
+                "source_short_hi": summary_title,
+                "section": f"{base_section}: {key_points_title} ({kp_id})",
                 "text": norm_kp_text,
                 "move_id": move_id,
                 "tags": tags,

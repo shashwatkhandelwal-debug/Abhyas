@@ -8,12 +8,19 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel
-from rank_bm25 import BM25Okapi  # type: ignore[import-untyped]
+import yaml
+from pydantic import BaseModel, Field
+from rank_bm25 import (  # type: ignore[import-untyped]  # rank_bm25 has no PEP 561 type stubs
+    BM25Okapi,
+)
 
-from backend.app.retrieval.ingest import SEED_CHUNKS_FILE, build_seed_chunks
+from backend.app.core.messages import get_catalog, get_message
+from backend.app.retrieval.ingest import CATALOG_FILE, SEED_CHUNKS_FILE, build_seed_chunks
 
 logger = logging.getLogger("abhyas.retrieval.search")
+
+if CATALOG_FILE.exists():
+    get_catalog(CATALOG_FILE)
 
 
 def tokenize_hindi(text: str) -> list[str]:
@@ -33,7 +40,7 @@ class RetrievedChunk(BaseModel):
     section: str
     text: str
     similarity_score: float
-    source_short_hi: str = "अभ्यास मूव सारांश"
+    source_short_hi: str = Field(default_factory=lambda: get_message("ingest_summary_title"))
     move_id: str = ""
     tags: list[str] = []
 
@@ -56,7 +63,7 @@ class GuideRetriever:
         if not self.chunks_file.exists():
             try:
                 build_seed_chunks(output_file=self.chunks_file)
-            except Exception as e:
+            except (OSError, yaml.YAMLError, ValueError, KeyError) as e:
                 logger.warning("Failed to build seed chunks on init: %s", e)
 
         if self.chunks_file.exists():
@@ -99,7 +106,8 @@ class GuideRetriever:
                     section=chunk.get("section", ""),
                     text=chunk.get("text", ""),
                     similarity_score=round(score, 4),
-                    source_short_hi=chunk.get("source_short_hi", "अभ्यास मूव सारांश"),
+                    source_short_hi=chunk.get("source_short_hi")
+                    or get_message("ingest_summary_title"),
                     move_id=chunk.get("move_id", ""),
                     tags=chunk.get("tags", []),
                 )

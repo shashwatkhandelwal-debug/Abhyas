@@ -73,6 +73,22 @@ async def test_bm25_retrieval_subtraction_query() -> None:
 
 
 @pytest.mark.asyncio
+async def test_bm25_retrieval_subtraction_regrouping_realistic_teacher_query() -> None:
+    """Verifies a realistic teacher query about subtraction regrouping / borrowing
+    matches NUM_SUB_REGROUP_BUNDLES chunks with positive BM25 similarity score."""
+    retriever = GuideRetriever()
+    query = "जब बच्चे 43 में से 27 घटाते समय हासिल में अटकें तो बंडल खोलना कैसे समझाएं?"
+    results = await retriever.retrieve(query, top_k=3)
+
+    assert len(results) > 0
+    assert any(c.move_id == "NUM_SUB_REGROUP_BUNDLES" for c in results)
+    sub_chunk = next(c for c in results if c.move_id == "NUM_SUB_REGROUP_BUNDLES")
+    assert sub_chunk.similarity_score > 0
+    assert sub_chunk.source_short_hi == "अभ्यास मूव सारांश"
+    assert "घटाव" in sub_chunk.section or "घटाव" in sub_chunk.text or "बंडल" in sub_chunk.text
+
+
+@pytest.mark.asyncio
 async def test_bm25_retrieval_place_value_query() -> None:
     """Tests BM25 retrieval returns relevant place value chunks."""
     retriever = GuideRetriever()
