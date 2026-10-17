@@ -4,7 +4,7 @@
 Executes a 4-step end-to-end verification without requiring external secrets:
 - Step 1: GET /healthz -> 200 OK and valid status ('ok')
 - Step 2: GET /login -> extract CSRF token and cookie
-- Step 3: POST /login with demo credentials (teacher.demo1 / abhyas-demo-2026) -> redirect or 200, session cookie
+- Step 3: POST /login with demo credentials (teacher.demo1 / DEMO_PASSWORD) -> redirect or 200, session cookie
 - Step 4: POST /api/chat/text -> 202 Accepted
 - Step 5: Prints formatted pass/fail summary and exits 0 on success, 1 on failure.
 
@@ -22,6 +22,8 @@ import uuid
 from typing import Any
 
 import httpx
+
+from backend.app.config import settings
 
 CSRF_COOKIE_NAME = "abhyas_csrf"
 SESSION_COOKIE_NAME = "abhyas_session"
@@ -42,8 +44,13 @@ def extract_csrf_token(html_text: str, cookies: httpx.Cookies) -> str | None:
     return cookies.get(CSRF_COOKIE_NAME)
 
 
-def run_smoke_test(base_url: str, client: httpx.Client | None = None) -> bool:
+def run_smoke_test(
+    base_url: str,
+    client: httpx.Client | None = None,
+    password: str | None = None,
+) -> bool:
     """Executes the 4 smoke test steps against base_url."""
+    effective_password = password or os.environ.get("DEMO_PASSWORD") or settings.DEMO_PASSWORD
     base_url = base_url.rstrip("/")
     print("=" * 60)
     print("Abhyas Deployment Smoke Test")
@@ -110,7 +117,7 @@ def run_smoke_test(base_url: str, client: httpx.Client | None = None) -> bool:
         try:
             login_data = {
                 "username": "teacher.demo1",
-                "password": "abhyas-demo-2026",
+                "password": effective_password,
                 "csrf_token": csrf_token,
             }
             r3 = client.post("/login", data=login_data)
@@ -200,9 +207,14 @@ def main() -> None:
         default=default_url,
         help=f"Base URL of Abhyas instance (default: {default_url})",
     )
+    parser.add_argument(
+        "--password",
+        default=None,
+        help="Password for demo user (default: env DEMO_PASSWORD or settings.DEMO_PASSWORD)",
+    )
     args = parser.parse_args()
 
-    success = run_smoke_test(base_url=args.base_url)
+    success = run_smoke_test(base_url=args.base_url, password=args.password)
     sys.exit(0 if success else 1)
 
 

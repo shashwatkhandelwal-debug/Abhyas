@@ -100,39 +100,62 @@ def test_extract_csrf_token() -> None:
     assert extract_csrf_token("<div>no form</div>", cookies) == "token_from_cookie"
 
 
-def test_smoke_test_with_mock_client() -> None:
-    """Verifies that run_smoke_test succeeds end-to-end with valid responses."""
+def _make_mock_smoke_client() -> MagicMock:
     mock_client = MagicMock()
-
-    # Step 1: GET /healthz
     r1 = MagicMock()
     r1.status_code = 200
     r1.json.return_value = {"status": "ok", "git_sha": "test-sha"}
-
-    # Step 2: GET /login
     r2 = MagicMock()
     r2.status_code = 200
     r2.text = '<input type="hidden" name="csrf_token" value="test-csrf">'
-
-    # Step 3: POST /login
     r3 = MagicMock()
     r3.status_code = 303
     r3.headers = {"location": "/teacher"}
-
-    # Step 4: POST /api/chat/text
     r4 = MagicMock()
     r4.status_code = 202
     r4.headers = {"content-type": "application/json"}
     r4.json.return_value = {"message_id": "msg-123"}
-
     mock_client.get.side_effect = [r1, r2]
     mock_client.post.side_effect = [r3, r4]
-
     mock_cookies = {
         CSRF_COOKIE_NAME: "test-csrf",
         SESSION_COOKIE_NAME: "test-session",
     }
     mock_client.cookies.get = lambda k: mock_cookies.get(k)
+    return mock_client
 
+
+def test_smoke_test_with_mock_client() -> None:
+    """Verifies that run_smoke_test succeeds end-to-end with valid responses."""
+    mock_client = _make_mock_smoke_client()
     result = run_smoke_test(base_url="http://testserver", client=mock_client)
     assert result is True
+
+
+def test_smoke_test_custom_password() -> None:
+    """Verifies that an explicitly passed password argument is used for login."""
+    client = _make_mock_smoke_client()
+    result = run_smoke_test(base_url="http://testserver", client=client, password="custom-secret")
+    assert result is True
+    login_call = client.post.call_args_list[0]
+    assert login_call.kwargs["data"]["password"] == "custom-secret"
+
+
+def test_smoke_test_env_password(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verifies fallback to DEMO_PASSWORD env variable when no argument is passed."""
+    monkeypatch.setenv("DEMO_PASSWORD", "env-secret-pass")
+    client = _make_mock_smoke_client()
+    result = run_smoke_test(base_url="http://testserver", client=client)
+    assert result is True
+    login_call = client.post.call_args_list[0]
+    assert login_call.kwargs["data"]["password"] == "env-secret-pass"
+
+
+def test_smoke_test_settings_fallback_password(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verifies fallback to settings.DEMO_PASSWORD when neither arg nor env is set."""
+    monkeypatch.delenv("DEMO_PASSWORD", raising=False)
+    client = _make_mock_smoke_client()
+    result = run_smoke_test(base_url="http://testserver", client=client)
+    assert result is True
+    login_call = client.post.call_args_list[0]
+    assert login_call.kwargs["data"]["password"] == settings.DEMO_PASSWORD

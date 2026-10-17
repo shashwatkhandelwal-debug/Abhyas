@@ -317,3 +317,8 @@ All items from `spec/15_human_inputs.md` are currently open:
   - Updated ARP observation date recording to use IST date (`datetime.now(IST).date()`).
 - **README.md**: Updated admin username from `admin.demo` to `admin` in credentials table to align with `spec/13_submission.md`.
 
+### Deploy Fixes (`deploy-fixes`)
+- **scripts/smoke_test.py**: Added `--password` CLI argument and fallback to `os.environ.get("DEMO_PASSWORD")` and `settings.DEMO_PASSWORD`; eliminated hardcoded `"abhyas-demo-2026"` password string from test execution. Added unit tests in `test_health.py` for explicit password argument, `DEMO_PASSWORD` environment variable, and settings fallback (12/12 passing).
+- **backend/app/db/seed.py**: Sanitized log output by removing `DEMO_PASSWORD` formatting from `logger.info("Starting database seed")`.
+- **docs/DEPLOY.md**: Updated §1.3 and Table 2 for `ALEMBIC_DATABASE_URL` to specify Supabase Session Pooler URI on port 5432 (`postgresql://...`) instead of the direct connection host (`db.[PROJECT-REF].supabase.co`), documenting that Supabase direct host defaults to IPv6 which causes connection failures on platforms without IPv6 routing (such as Render or standard Docker).
+- **.env.example**: Updated local `DATABASE_URL` and `ALEMBIC_DATABASE_URL` default passwords from `postgres` to `postgrespassword` to match `infra/docker-compose.yml`.
