@@ -1,0 +1,13 @@
+{
+  "role": "intent_router",
+  "input": {
+    "text": "क्या कक्षा 1 के बच्चों को हासिल का घटाव सिखाना सही है?",
+    "state": "LEARN",
+    "state_description_hi": "शिक्षण तकनीक को समझना",
+    "expected_input": "आगे बढ़ने का संकेत या सवाल"
+  },
+  "output": {
+    "intent": "question",
+    "confidence": 0.92
+  }
+}

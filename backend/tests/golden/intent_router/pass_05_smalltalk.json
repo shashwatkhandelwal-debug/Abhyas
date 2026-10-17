@@ -1,0 +1,13 @@
+{
+  "role": "intent_router",
+  "input": {
+    "text": "नमस्ते दीदी! आपका बहुत-बहुत धन्यवाद, यह ऐप बहुत मददगार है।",
+    "state": "DONE",
+    "state_description_hi": "साप्ताहिक अभ्यास पूर्ण",
+    "expected_input": "समापन प्रतिक्रिया"
+  },
+  "output": {
+    "intent": "smalltalk",
+    "confidence": 0.96
+  }
+}

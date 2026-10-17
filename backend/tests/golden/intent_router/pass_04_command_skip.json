@@ -1,0 +1,13 @@
+{
+  "role": "intent_router",
+  "input": {
+    "text": "मैं अभी यह चरण छोड़ना चाहती हूँ, सीधे अभ्यास पर जाना है।",
+    "state": "MODEL",
+    "state_description_hi": "आदर्श अभ्यास सुनना",
+    "expected_input": "सुनने या अभ्यास करने का चुनाव"
+  },
+  "output": {
+    "intent": "command_skip",
+    "confidence": 0.91
+  }
+}

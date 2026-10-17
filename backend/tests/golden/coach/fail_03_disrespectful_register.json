@@ -1,0 +1,27 @@
+{
+  "role": "coach",
+  "input": {
+    "move_id": "NUM_SUB_REGROUP_BUNDLES",
+    "teacher_lines": [
+      "रवि, कैसे किया?"
+    ],
+    "rubric_criterion_ids": [
+      "crit_explaining"
+    ],
+    "rubric_rewards_not_telling": false,
+    "current_item_answer": 35
+  },
+  "output": {
+    "scores": {
+      "crit_explaining": 1
+    },
+    "evidence": {
+      "crit_explaining": "रवि, कैसे किया?"
+    },
+    "strength_hi": "तुमने अच्छा सवाल पूछा।",
+    "change_hi": "अगली बार बंडल लाओ।",
+    "exact_words_hi": "बंडल खोलो।",
+    "improved_since_last": false,
+    "confidence": 0.8
+  }
+}

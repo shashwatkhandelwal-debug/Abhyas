@@ -1,5 +1,6 @@
 """Unit tests for coach role and fallback scoring (spec/05 §5.6)."""
 
+import json
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -752,3 +753,43 @@ async def test_coach_feedback_raises_file_not_found_if_prompt_missing() -> None:
                 target_child_id="ravi",
                 current_item_answer=16,
             )
+
+
+# ── Golden Fixtures Verification ─────────────────────────────────────────────
+
+
+def test_coach_golden_fixtures() -> None:
+    """Verifies all golden fixtures in backend/tests/golden/coach/ match guards."""
+    golden_dir = Path(__file__).resolve().parent.parent / "golden" / "coach"
+    assert golden_dir.exists(), f"Golden directory not found: {golden_dir}"
+
+    pass_files = sorted(golden_dir.glob("pass_*.json"))
+    fail_files = sorted(golden_dir.glob("fail_*.json"))
+    assert len(pass_files) >= 5, f"Expected >= 5 pass fixtures, found {len(pass_files)}"
+    assert len(fail_files) >= 3, f"Expected >= 3 fail fixtures, found {len(fail_files)}"
+
+    for pf in pass_files:
+        data = json.loads(pf.read_text(encoding="utf-8"))
+        fb = CoachFeedbackOutput.model_validate(data["output"])
+        inp = data["input"]
+        valid, msg = guard_coach(
+            output=fb,
+            rubric_criterion_ids=inp["rubric_criterion_ids"],
+            teacher_lines=inp["teacher_lines"],
+            rubric_rewards_not_telling=inp["rubric_rewards_not_telling"],
+            current_item_answer=inp["current_item_answer"],
+        )
+        assert valid is True, f"Pass fixture {pf.name} failed guard_coach: {msg}"
+
+    for ff in fail_files:
+        data = json.loads(ff.read_text(encoding="utf-8"))
+        fb = CoachFeedbackOutput.model_validate(data["output"])
+        inp = data["input"]
+        valid, _ = guard_coach(
+            output=fb,
+            rubric_criterion_ids=inp["rubric_criterion_ids"],
+            teacher_lines=inp["teacher_lines"],
+            rubric_rewards_not_telling=inp["rubric_rewards_not_telling"],
+            current_item_answer=inp["current_item_answer"],
+        )
+        assert valid is False, f"Fail fixture {ff.name} unexpectedly passed guard_coach"

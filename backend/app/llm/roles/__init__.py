@@ -9,6 +9,7 @@ from backend.app.llm.roles.fidelity_checker import (
     compose_fidelity_reply,
     fallback_fidelity,
 )
+from backend.app.llm.roles.intent_router import fallback_intent_router, route_intent
 
 __all__ = [
     "CoachResult",
@@ -18,7 +19,9 @@ __all__ = [
     "compose_fidelity_reply",
     "fallback_coach_feedback",
     "fallback_fidelity",
+    "fallback_intent_router",
     "fallback_tag_act",
+    "route_intent",
     "tag_act",
     "template_line",
     "voice_child_line",

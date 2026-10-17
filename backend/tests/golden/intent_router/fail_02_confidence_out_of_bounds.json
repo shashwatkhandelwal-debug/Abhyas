@@ -1,0 +1,13 @@
+{
+  "role": "intent_router",
+  "input": {
+    "text": "आगे बढ़ो",
+    "state": "LEARN",
+    "state_description_hi": "शिक्षण तकनीक को समझना",
+    "expected_input": "संकेत"
+  },
+  "output": {
+    "intent": "command_next",
+    "confidence": 1.5
+  }
+}

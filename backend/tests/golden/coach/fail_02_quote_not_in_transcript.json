@@ -1,0 +1,27 @@
+{
+  "role": "coach",
+  "input": {
+    "move_id": "NUM_SUB_REGROUP_BUNDLES",
+    "teacher_lines": [
+      "शाबाश रवि!"
+    ],
+    "rubric_criterion_ids": [
+      "crit_explaining"
+    ],
+    "rubric_rewards_not_telling": false,
+    "current_item_answer": 35
+  },
+  "output": {
+    "scores": {
+      "crit_explaining": 2
+    },
+    "evidence": {
+      "crit_explaining": "45 आया था!"
+    },
+    "strength_hi": "आपने अच्छा काम किया।",
+    "change_hi": "अगली बार बंडल लाएँ।",
+    "exact_words_hi": "बंडल खोलो।",
+    "improved_since_last": false,
+    "confidence": 0.8
+  }
+}

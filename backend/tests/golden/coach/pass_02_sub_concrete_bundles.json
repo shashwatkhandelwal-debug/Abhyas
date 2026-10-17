@@ -1,0 +1,30 @@
+{
+  "role": "coach",
+  "input": {
+    "move_id": "NUM_SUB_REGROUP_BUNDLES",
+    "teacher_lines": [
+      "रवि, 52 में 5 बंडल और 2 तीलियाँ हैं, एक बंडल खोलो।"
+    ],
+    "rubric_criterion_ids": [
+      "crit_concrete",
+      "crit_no_telling"
+    ],
+    "rubric_rewards_not_telling": true,
+    "current_item_answer": 35
+  },
+  "output": {
+    "scores": {
+      "crit_concrete": 2,
+      "crit_no_telling": 2
+    },
+    "evidence": {
+      "crit_concrete": "5 बंडल और 2 तीलियाँ हैं, एक बंडल खोलो।",
+      "crit_no_telling": "5 बंडल और 2 तीलियाँ हैं, एक बंडल खोलो।"
+    },
+    "strength_hi": "आपने मूर्त सामग्री यानी बंडल-तीली का बहुत अच्छा प्रयोग कराया।",
+    "change_hi": "अगली बार बच्चे को खुद बंडल खोलने का मौका दीजिए।",
+    "exact_words_hi": "रवि, तुम खुद एक बंडल खोलकर बताओ कितनी तीलियाँ हुईं।",
+    "improved_since_last": true,
+    "confidence": 0.88
+  }
+}
