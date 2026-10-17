@@ -10,8 +10,8 @@
 
 | Page | Method | Confidence | Conjuncts & Matras Assessment | Status |
 |---|---|---|---|---|
-| 1 | pdfplumber | 1.00 | स्वच्छ (Clean): संयुक्ताक्षर और मात्राएं सही रूप में प्रस्तुत हैं | PASS |
-| 2 | pdfplumber | 1.00 | स्वच्छ (Clean): संयुक्ताक्षर और मात्राएं सही रूप में प्रस्तुत हैं | PASS |
+| 1 | pdfplumber | 1.00 | Clean: Conjuncts and matras rendered correctly | PASS |
+| 2 | pdfplumber | 1.00 | Clean: Conjuncts and matras rendered correctly | PASS |
 
 ## 2. Page Text Comparisons (Raw vs NFC Normalized)
 
@@ -21,7 +21,7 @@
   > FLN Shikshak Sandarshika Ganit Class 2 Place Value Bundles
 - **NFC Normalized & Cleaned Snippet**:
   > FLN Shikshak Sandarshika Ganit Class 2 Place Value Bundles
-- **Assessment**: स्वच्छ (Clean): संयुक्ताक्षर और मात्राएं सही रूप में प्रस्तुत हैं
+- **Assessment**: Clean: Conjuncts and matras rendered correctly
 
 ### Page 2
 - **Method**: pdfplumber (Confidence: 1.00)
@@ -29,4 +29,4 @@
   > FLN Shikshak Sandarshika Ganit Class 2 Subtraction Regrouping
 - **NFC Normalized & Cleaned Snippet**:
   > FLN Shikshak Sandarshika Ganit Class 2 Subtraction Regrouping
-- **Assessment**: स्वच्छ (Clean): संयुक्ताक्षर और मात्राएं सही रूप में प्रस्तुत हैं
+- **Assessment**: Clean: Conjuncts and matras rendered correctly

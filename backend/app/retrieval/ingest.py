@@ -98,7 +98,7 @@ def run_ocr_on_page(
     if _ocr_mock_handler is not None:
         try:
             return _ocr_mock_handler(page_num, pdf_path.read_bytes())
-        except Exception as exc:
+        except (RuntimeError, ValueError, OSError, TypeError) as exc:
             logger.warning("Mock OCR handler failed on page %d: %s", page_num, exc)
             return ("", 0.0)
 
@@ -149,7 +149,7 @@ def run_ocr_on_page(
             mean_conf = (sum(confs) / len(confs) / 100.0) if confs else 0.0
             extracted_text = unicodedata.normalize("NFC", " ".join(words))
             return (extracted_text, mean_conf)
-        except Exception as exc:
+        except (RuntimeError, ValueError, OSError, TypeError, ImportError) as exc:
             logger.warning("Tesseract OCR execution failed on page %d: %s", page_num, exc)
             return ("", 0.0)
 
@@ -166,7 +166,7 @@ def run_ocr_on_page(
 def assess_hindi_typography(text: str) -> str:
     """Analyzes Hindi Devanagari text for clean rendering of conjuncts and matras."""
     if not text.strip():
-        return "रिक्त पृष्ठ (Empty page)"
+        return "Empty page"
 
     issues: list[str] = []
 
@@ -189,8 +189,8 @@ def assess_hindi_typography(text: str) -> str:
         issues.append(f"High replacement character ratio ({replacement_chars})")
 
     if issues:
-        return "विसंगति (Anomalies): " + "; ".join(issues)
-    return "स्वच्छ (Clean): संयुक्ताक्षर और मात्राएं सही रूप में प्रस्तुत हैं"
+        return "Anomalies: " + "; ".join(issues)
+    return "Clean: Conjuncts and matras rendered correctly"
 
 
 def generate_spotcheck_markdown(
@@ -231,7 +231,7 @@ def generate_spotcheck_markdown(
         conf = p["confidence"]
         text = p["cleaned_text"]
         assessment = assess_hindi_typography(text)
-        status = "DROPPED" if p.get("dropped") else ("PASS" if "स्वच्छ" in assessment else "REVIEW")
+        status = "DROPPED" if p.get("dropped") else ("PASS" if "Clean" in assessment else "REVIEW")
         lines.append(f"| {p_num} | {method} | {conf:.2f} | {assessment} | {status} |")
 
     lines.extend(
@@ -471,7 +471,7 @@ def ingest_pdf(
             pages_to_extract = pdf.pages[:max_pages] if max_pages is not None else pdf.pages
             for page in pages_to_extract:
                 raw_pages.append(page.extract_text() or "")
-    except Exception as exc:
+    except (ImportError, OSError, ValueError, RuntimeError, AttributeError) as exc:
         logger.info(
             "pdfplumber extraction failed or not available (%s); falling back to pypdf", exc
         )
