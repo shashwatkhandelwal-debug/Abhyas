@@ -200,14 +200,21 @@ All items from `spec/15_human_inputs.md` are currently open:
 ## 8. Current Status & Active Lanes
 
 ### STOPPED AT:
-- **Main Branch**: Merged PR #1, PR #2 (`d9eeaac`), PR #3 (`3b0a41b`), PR #4 (`c9602ea`), and PR #5 (`9d6c902`).
+- **Main Branch**: Merged PR #1, PR #2 (`d9eeaac`), PR #3 (`3b0a41b`), PR #4 (`c9602ea`), PR #5 (`9d6c902`), and PR #6 (`e54b7ff`).
   - **Full CI Green across all 4 workflows** (`secrets`, `lint`, `content`, `test`):
     - Real PostgreSQL testing in GitHub Actions CI with live `pgvector/pgvector:pg16` container.
     - Code quality: `ruff check` clean, `ruff format --check` clean, `mypy --strict backend/app` clean across all 106 source files.
-- **Coord Evaluation Suite (PR #6, `coord/p0-eval` at `496b9dc`) — 100% Green CI (Run 39006375699)**:
+- **Coord Evaluation Suite (PR #6, `coord/p0-eval` APPROVED and MERGED into main at `e54b7ff`)**:
   - **T38 (Golden Fixtures)**: Golden test fixtures (≥5 pass + fail fixtures per role) for all 7 runtime roles (`act_tagger`, `child_voice`, `coach`, `fidelity_checker`, `guide_answerer`, `question_classifier`, `intent_router`). Added `intent_router` role runner and filtered out fail fixtures in MockLLM output selection. Comprehensive unit verification suite in `test_golden_fixtures.py`.
-  - **T39 (Evaluator Audio Samples & Demo Chips)**: `scripts/render_samples.py` rendering all 5 evaluator voice note samples (`s1_ask_ravi.wav`, `s2_bundles_all.wav`, `s3_tell_answer_hinglish.wav`, `s4_explain_back.wav`, `s5_question_multigrade.wav`) in `eval/samples/audio/`. Generated `eval/samples/demo_chips.json` with Hindi labels and `audio_available: true`. Added `GET /api/demo-sample/{sample_id}.{ext}` endpoint and client-side tap playback. Updated `.gitignore` to track `eval/samples/audio/*.wav` per spec 14 T01.
-  - **T41 (Latency Benchmark & Report)**: Multi-concurrency latency benchmark harness, stage timing breakdown, `eval/latency/REPORT.md` (p95 = 0.05s vs < 20s target, normal 0.17 MB vs < 2 MB, lite 66.9 KB vs < 300 KB, 0.00% fallback).
+  - **T39 (Evaluator Audio Samples & Demo Chips)**: `scripts/render_samples.py` requiring real TTS API keys or explicit `--allow-mock`. Removed silent MockTTS audio from git and added `is_wav_non_silent` waveform verification. Demo chips dynamically fall back to text when audio is absent/silent.
+  - **T41 (Latency Benchmark & Report)**: Multi-concurrency latency benchmark harness, stage timing breakdown, `eval/latency/REPORT.md`.
+- **Reviewer Follow-ups & Blocker Resolutions (Branch `coord/followups-eval`, PR #7)**:
+  - Follow-up (a): `get_effective_provider()` displays effective runtime provider in report header (e.g. `mock (no ANTHROPIC_API_KEY)`), resolving configured vs effective contradictions.
+  - Follow-up (b) / Blocker 1 (Fake audio guard): In `--url` HTTP mode, verified all 5 evaluator sample inputs have valid, non-silent WAV files on disk via `is_wav_non_silent`; exits non-zero with `"run 'make samples' first"` if any are missing or silent. Local simulation mode uses labelled payload (`b"RIFF_MOCK_SIMULATION_PAYLOAD"`).
+  - Follow-up (b) / Blocker 2 (Timeout exclusion & turn completion): Added `ok: bool` and `error_msg` to `TurnMeasurement`. Excluded failed or timed-out turns from percentile calculations (p50, p95). Table 1 reports `{completed_turns}/{total_turns} completed`. If any turn times out or errors, report status and compliance are marked `FAILED`. HTTP polling loop verifies `not pending` and presence of outbound message before concluding turn.
+  - Follow-up (b) / Blocker 3 (Auth fallback elimination): Removed fallback to primary `username` when logging in `teacher.demoN` workers during concurrency 3 benchmarking; raises error immediately to avoid lock contention and artificial latency spikes.
+  - Follow-up (c): In Table 4, data budget formats low estimates in KB (`**7.6 KB** (estimate on mock payloads)`) to eliminate "0.00 MB" display.
+  - Enhanced unit tests in `test_latency_benchmark.py` (7 tests passing) testing effective provider detection, report formatting, timeout exclusion from p95, and `--url` missing audio validation.
 - **Lane C Completed & Merged**:
   - T31 Demo Data Cohort, T29 Teacher Progress & Purge, T25 Auth & Demo Users, T30 First Hosted Deploy.
   - T26 Web Channel API & T27 Teacher Chat PWA.
