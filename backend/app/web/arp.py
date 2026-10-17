@@ -13,6 +13,7 @@ import uuid
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Annotated
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -42,6 +43,7 @@ from backend.app.db.session import get_db_session
 from backend.app.reports.arp_digest import build_arp_digest
 
 logger = logging.getLogger("abhyas.web.arp")
+IST = ZoneInfo("Asia/Kolkata")
 
 router = APIRouter(prefix="/arp", tags=["arp"])
 
@@ -147,12 +149,12 @@ async def post_arp_observation(
             item_name = key[len("check_") :]
             checklist[item_name] = str(val).lower() in ("true", "1", "on", "yes")
 
-    obs_date = date.today()
+    obs_date = datetime.now(IST).date()
     if observed_on:
         try:
             obs_date = datetime.strptime(observed_on, "%Y-%m-%d").date()
         except ValueError:
-            obs_date = date.today()
+            obs_date = datetime.now(IST).date()
 
     observation = ARPObservation(
         arp_user_id=current_user.id,
@@ -259,17 +261,48 @@ async def post_arp_answer(
     # Dispatch outbound message to teacher
     channel = teacher.preferred_channel or "web"
     header = get_message("ui_arp_answer_header")
-    outbound_msg = Message(
-        teacher_id=teacher.id,
-        direction="out",
-        channel=channel,
-        channel_msg_id=f"arp-ans-{question.id}-{uuid.uuid4().hex[:6]}",
-        kind="text",
-        text=f"{header}\n\n{clean_answer}",
-        speaker="arp",
-        state_at="ASK",
-    )
-    db.add(outbound_msg)
+    full_text = f"{header}\n\n{clean_answer}"
+
+    if channel == "whatsapp":
+        from backend.app.channels.whatsapp.channel import WhatsAppChannel
+        from backend.app.core.types import OutboundMessage
+
+        wa_channel = WhatsAppChannel()
+        outbound = OutboundMessage(
+            kind="text",
+            text_hi=full_text,
+            template_name="abhyas_arp_answer",
+            speaker="arp",
+        )
+        try:
+            await wa_channel.send(teacher, [outbound], session=db)
+        except Exception as exc:
+            logger.error(
+                "Failed to dispatch WhatsApp ARP answer to teacher %s: %s", teacher.id, exc
+            )
+            outbound_msg = Message(
+                teacher_id=teacher.id,
+                direction="out",
+                channel="whatsapp",
+                channel_msg_id=f"arp-ans-{question.id}-{uuid.uuid4().hex[:6]}",
+                kind="text",
+                text=full_text,
+                speaker="arp",
+                state_at="ASK",
+            )
+            db.add(outbound_msg)
+    else:
+        outbound_msg = Message(
+            teacher_id=teacher.id,
+            direction="out",
+            channel=channel,
+            channel_msg_id=f"arp-ans-{question.id}-{uuid.uuid4().hex[:6]}",
+            kind="text",
+            text=full_text,
+            speaker="arp",
+            state_at="ASK",
+        )
+        db.add(outbound_msg)
     await db.commit()
 
     logger.info(

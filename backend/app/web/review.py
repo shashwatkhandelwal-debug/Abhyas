@@ -328,32 +328,6 @@ async def review_item_detail(
                             }
                         )
 
-        if not criteria_view:
-            # Fallback standard FLN subtraction criteria
-            criteria_view = [
-                {
-                    "id": "accuracy",
-                    "title": "सटीकता",
-                    "desc": "सही संख्याएँ और घटाव",
-                    "ai_score": None,
-                    "evidence": None,
-                },
-                {
-                    "id": "bundle_opening",
-                    "title": "बंडल खोलना",
-                    "desc": "दहाई का बंडल खोलकर 10 तीलियाँ मिलाना",
-                    "ai_score": None,
-                    "evidence": None,
-                },
-                {
-                    "id": "contrast",
-                    "title": "ग़लत-सही तुलना",
-                    "desc": "दोनों बच्चों के उत्तर की तुलना कराना",
-                    "ai_score": None,
-                    "evidence": None,
-                },
-            ]
-
     elif item.kind == "explain_score" and _is_valid_uuid(item.ref_id):
         exp_uuid = uuid.UUID(item.ref_id)
         exp = await session.get(ExplainScore, exp_uuid)
@@ -620,15 +594,37 @@ async def save_blind_calibration(
             detail="A blind calibration label already exists for this coach and scene",
         )
 
+    valid_crit_ids = {crit.id for crit in cards[0].rubric.criteria}
+
     form_data = await request.form()
     scores_dict: dict[str, int] = {}
     for k, v in form_data.items():
         if k.startswith("score_"):
             crit_name = k.replace("score_", "", 1)
+            if crit_name not in valid_crit_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Unknown rubric criterion '{crit_name}' for move {scene.move_id}",
+                )
             try:
-                scores_dict[crit_name] = int(str(v))
+                score_val = int(str(v))
             except (ValueError, TypeError):
-                continue
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid score value for criterion '{crit_name}'",
+                ) from None
+            if score_val not in (0, 1, 2):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Score value {score_val} for criterion '{crit_name}' must be 0, 1, or 2",
+                )
+            scores_dict[crit_name] = score_val
+
+    if not scores_dict:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one rubric score must be provided",
+        )
 
     calib = CalibrationLabel(
         scene_id=scene_uuid,

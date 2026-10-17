@@ -248,6 +248,7 @@ All items from `spec/15_human_inputs.md` are currently open:
   - Database chunk loader (`load_chunks_to_db` into `DocChunk` table, integrated into `seed_database()` for `make db-seed`).
   - Enhanced `GuideRetriever` supporting multi-file chunk directory loading, normalized BM25 scoring with theoretical max IDF denominator, and positive IDF floor for small corpora.
   - Golden retrieval test suite in `backend/tests/integration/test_retrieval.py` (22 tests passing) testing garble detection, text cleaning, header suppression, synthetic PDF ingestion, DB loading, multi-file corpus loading, and 10 realistic FLN teacher questions with precision and score bounds.
+  - *Limitation / Status note*: `backend/app/llm/prompts/page_ocr.v1.md` prompt is authored and checked in, but Vision LLM OCR fallback is not wired into the automated ingestion pipeline (pure text-layer extraction via `pypdf`/`pdfplumber` is used; garbled legacy font pages log clear warning).
 
 ### NEXT (Autonomous Overnight Queue):
 1. **T42 (Kappa Evaluation Harness)** · Priority: P1 (spec/11 §11.4, quadratic-weighted Cohen's kappa calculation for coach rubric scoring vs expert ratings).
@@ -274,4 +275,16 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **Savepoint Isolation**: Wrapped `schedule_followup_try_in_class` in `async with self.repo.session.begin_nested():` at both retry limit and continue transition points in `service.py`, preventing transaction failure poisoning on scheduler error.
 - **Rule C Exception Narrowing**: Narrowed exception around `load_move_card` in `handle_followup_try_in_class` to `(FileNotFoundError, ValueError, OSError)`.
 - **Unit Tests**: Added unit tests in `test_job_handlers.py` verifying reminder scheduling on unfinished steps, omission on DONE, Fri->Mon rollover follow-up, and 48-hour default tunable.
+
+### Carry-over Review Nits & Hardening (`coord/nits`)
+- **#11 (Trainer View)**: `ladder_counts` safely handles empty `ladder_dist` by emitting keys 1..5 as 0; dropped unused `district_summary` from `TrainerReport`.
+- **#12 (Review Console)**: Whitelisted `POST /review/calibrate` score keys to move rubric criterion IDs, validating 0-2 bounds and rejecting unknown keys with 400 Bad Request; removed hardcoded fallback criteria (`accuracy`, `bundle_opening`, `contrast`) from `review_item_detail`.
+- **#15 (Source Ingestion)**: Removed duplicate `retrieval/stopwords_hi.txt` via `git rm` (retained `backend/app/retrieval/stopwords_hi.txt`); noted that `page_ocr.v1.md` is authored but OCR vision fallback is not wired to automated pipeline.
+- **#17 (Hardening Verification)**: Verified `chat.js` handles dynamic closures and server-rendered data attributes without event double-firing; verified `coach`/`arp` bypass teacher audio ownership checks; confirmed `/chat` and `/teacher` routes both render `teacher.html` (`chat.html` retained as identical copy for test backwards compatibility).
+- **#14 Follow-ups (WhatsApp Channel)**:
+  - Bounded `_PROCESSED_MESSAGE_IDS` using an LRU `BoundedSet` governed by `WHATSAPP_PROCESSED_CACHE_SIZE` in `config.py`.
+  - Added in-memory sliding-window rate limiting for teacher auto-creation from unknown numbers governed by `WHATSAPP_TEACHER_CREATION_RATE_LIMIT_PER_MINUTE` in `config.py`.
+  - Routed ARP answers in `post_arp_answer` for teachers with `preferred_channel == "whatsapp"` through `WhatsAppChannel.send` using template `abhyas_arp_answer`.
+  - Updated ARP observation date recording to use IST date (`datetime.now(IST).date()`).
+- **README.md**: Updated admin username from `admin.demo` to `admin` in credentials table to align with `spec/13_submission.md`.
 
