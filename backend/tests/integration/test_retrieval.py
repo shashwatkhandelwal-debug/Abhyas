@@ -478,13 +478,10 @@ def test_ingest_synthetic_pdf_hindi_phrase_with_ocr_fallback(tmp_path: Path) -> 
         set_ocr_mock_handler(None)
 
 
-def test_ingest_pdf_drops_low_confidence_ocr_pages(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
-) -> None:
+def test_ingest_pdf_drops_low_confidence_ocr_pages(tmp_path: Path) -> None:
     """Verifies that pages with OCR confidence below threshold are dropped and logged."""
     import logging
 
-    caplog.set_level(logging.WARNING)
     pdf_file = tmp_path / "fln_multipage_poor.pdf"
     pdf_bytes = _make_synthetic_pdf(["  ", "  "])
     pdf_file.write_bytes(pdf_bytes)
@@ -494,6 +491,16 @@ def test_ingest_pdf_drops_low_confidence_ocr_pages(
             return ("कक्षा 2 में जोड़ सिखाने की गतिविधि।", 0.85)
         # Page 2 has poor quality confidence (0.20 < threshold 0.40)
         return ("धुंधला और अधूरा पाठ", 0.20)
+
+    log_messages: list[str] = []
+
+    class _CaptureHandler(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            log_messages.append(record.getMessage())
+
+    capture_handler = _CaptureHandler()
+    ingest_logger = logging.getLogger("abhyas.retrieval.ingest")
+    ingest_logger.addHandler(capture_handler)
 
     set_ocr_mock_handler(_mock_ocr_low_conf)
     try:
@@ -510,13 +517,11 @@ def test_ingest_pdf_drops_low_confidence_ocr_pages(
         assert len(chunks) == 1
         assert chunks[0]["page"] == 1
         assert "जोड़ सिखाने" in chunks[0]["text"]
-        # Verify drop log warning
-        assert any(
-            "Dropped page 2" in rec.getMessage() and "below threshold" in rec.getMessage()
-            for rec in caplog.records
-        )
+        # Verify drop log warning was emitted
+        assert any("Dropped page 2" in msg and "below threshold" in msg for msg in log_messages)
     finally:
         set_ocr_mock_handler(None)
+        ingest_logger.removeHandler(capture_handler)
 
 
 def test_guide_citations_format_and_real_chunk_pages() -> None:
