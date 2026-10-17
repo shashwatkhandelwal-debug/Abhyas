@@ -171,6 +171,9 @@ ask_clarify_generic:
 ask_source_line:
   text: "स्रोत: {source}{page_part}"
   audio: false
+ask_source_citation:
+  text: "[{source}, p. {page}]"
+  audio: false
 ask_try_this_week:
   text: "इस हफ्ते आज़माएँ: {tip}"
   audio: false

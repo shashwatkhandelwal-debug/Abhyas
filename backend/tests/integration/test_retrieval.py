@@ -20,6 +20,11 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from backend.app.llm.roles.guide_answerer import (
+    compose_guide_reply,
+    format_guide_citation,
+)
+from backend.app.llm.schemas import GuideAnswererOutput, RetrievedChunk
 from backend.app.retrieval.ingest import (
     CHUNKS_DIR,
     SEED_CHUNKS_FILE,
@@ -29,6 +34,7 @@ from backend.app.retrieval.ingest import (
     ingest_pdf,
     is_hindi_garbled,
     load_chunks_to_db,
+    set_ocr_mock_handler,
     suppress_repeated_headers_footers,
 )
 from backend.app.retrieval.search import (
@@ -419,3 +425,147 @@ async def test_retrieval_out_of_domain_query_filtered() -> None:
         "कंप्यूटर प्रोग्रामिंग पायथन सॉफ्टवेयर विकास", top_k=5, min_score=0.25
     )
     assert len(results) == 0
+
+
+# ── 10. Synthetic Hindi PDF & OCR Extraction Tests (T64) ───────────────────────
+
+
+def test_ingest_synthetic_pdf_hindi_phrase_with_ocr_fallback(tmp_path: Path) -> None:
+    """Builds a small synthetic PDF with missing text layer and tests OCR extraction of a known Hindi phrase."""
+    pdf_file = tmp_path / "fln_hindi_guide.pdf"
+    # Build synthetic PDF with minimal empty text stream
+    pdf_bytes = _make_synthetic_pdf(["   "])
+    pdf_file.write_bytes(pdf_bytes)
+
+    known_phrase = "स्थानीय मान की समझ के लिए 10-10 तीलियों के बंडल और खुली तीलियों का उपयोग करें।"
+    spotcheck_dir = tmp_path / "spotchecks"
+
+    def _mock_ocr(page_num: int, raw_pdf: bytes) -> tuple[str, float]:
+        assert page_num == 1
+        return (known_phrase, 0.95)
+
+    set_ocr_mock_handler(_mock_ocr)
+    try:
+        chunks = ingest_pdf(
+            pdf_path=pdf_file,
+            source_id="test_hindi_fln_doc",
+            short_hi="बुनियादी गणित",
+            lang="hi",
+            ocr_engine="tesseract",
+            confidence_threshold=0.4,
+            save_spotcheck=True,
+            spotcheck_dir=spotcheck_dir,
+        )
+
+        assert len(chunks) >= 1
+        chunk = chunks[0]
+        assert chunk["source"] == "test_hindi_fln_doc"
+        assert chunk["page"] == 1
+        assert "स्थानीय मान" in chunk["text"]
+        assert "तीलियों" in chunk["text"]
+        assert "tokens" in chunk
+        assert "स्थानीय" in chunk["tokens"]
+
+        # Verify spotcheck file was generated
+        spotcheck_file = spotcheck_dir / "test_hindi_fln_doc_spotcheck.md"
+        assert spotcheck_file.exists()
+        content = spotcheck_file.read_text(encoding="utf-8")
+        assert "test_hindi_fln_doc" in content
+        assert "बुनियादी गणित" in content
+        assert "PASS" in content
+        assert "Clean" in content
+    finally:
+        set_ocr_mock_handler(None)
+
+
+def test_ingest_pdf_drops_low_confidence_ocr_pages(tmp_path: Path) -> None:
+    """Verifies that pages with OCR confidence below threshold are dropped and logged."""
+    import logging
+
+    pdf_file = tmp_path / "fln_multipage_poor.pdf"
+    pdf_bytes = _make_synthetic_pdf(["  ", "  "])
+    pdf_file.write_bytes(pdf_bytes)
+
+    def _mock_ocr_low_conf(page_num: int, raw_pdf: bytes) -> tuple[str, float]:
+        if page_num == 1:
+            return ("कक्षा 2 में जोड़ सिखाने की गतिविधि।", 0.85)
+        # Page 2 has poor quality confidence (0.20 < threshold 0.40)
+        return ("धुंधला और अधूरा पाठ", 0.20)
+
+    log_messages: list[str] = []
+
+    class _CaptureHandler(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            log_messages.append(record.getMessage())
+
+    capture_handler = _CaptureHandler()
+    ingest_logger = logging.getLogger("abhyas.retrieval.ingest")
+    orig_level = ingest_logger.level
+    ingest_logger.setLevel(logging.DEBUG)
+    ingest_logger.addHandler(capture_handler)
+
+    set_ocr_mock_handler(_mock_ocr_low_conf)
+    try:
+        chunks = ingest_pdf(
+            pdf_path=pdf_file,
+            source_id="test_drop_doc",
+            short_hi="जोड़ संदर्शिका",
+            lang="hi",
+            confidence_threshold=0.4,
+            save_spotcheck=False,
+        )
+
+        # Page 1 kept, Page 2 dropped
+        assert len(chunks) == 1
+        assert chunks[0]["page"] == 1
+        assert "जोड़ सिखाने" in chunks[0]["text"]
+        # Verify drop log warning was emitted
+        assert any("Dropped page 2" in msg and "below threshold" in msg for msg in log_messages)
+    finally:
+        set_ocr_mock_handler(None)
+        ingest_logger.removeHandler(capture_handler)
+        ingest_logger.setLevel(orig_level)
+
+
+def test_guide_citations_format_and_real_chunk_pages() -> None:
+    """Verifies guide citations match [source, p. XX] format and cite real chunk pages."""
+    chunk1 = RetrievedChunk(
+        chunk_id="chunk_fln_c2_p45",
+        source="up_ganit_sandarshika_c2",
+        source_short_hi="गणित संदर्शिका",
+        section="घटाव गतिविधि",
+        page=45,
+        text="हासिल के घटाव में तीली और बंडल का उपयोग करें।",
+        similarity_score=0.9,
+    )
+    chunk2 = RetrievedChunk(
+        chunk_id="chunk_fln_c1_p12",
+        source="up_bhasha_sandarshika_c1",
+        source_short_hi="भाषा संदर्शिका",
+        section="वर्ण पहचान",
+        page=12,
+        text="अक्षर ग्रिड और चित्र कार्ड से अभ्यास कराएं।",
+        similarity_score=0.85,
+    )
+
+    # 1. Bracketed citation format [source, p. XX]
+    cit1 = format_guide_citation(chunk1.source_short_hi, chunk1.page)
+    cit2 = format_guide_citation(chunk2.source_short_hi, chunk2.page)
+    assert cit1 == "[गणित संदर्शिका, p. 45]"
+    assert cit2 == "[भाषा संदर्शिका, p. 12]"
+
+    # 2. Page None fallback
+    cit_no_page = format_guide_citation("निपुण दिशानिर्देश", None)
+    assert cit_no_page == "[निपुण दिशानिर्देश]"
+
+    # 3. Catalog message ask_source_line format
+    out = GuideAnswererOutput(
+        answer_hi="हासिल वाला घटाव सिखाते समय बंडल खोलें।",
+        source_ids=["chunk_fln_c2_p45"],
+        try_this_week_hi="कक्षा में तीलियों से घटाव कराएं।",
+        confidence=0.92,
+    )
+    reply = compose_guide_reply(out, [chunk1], address_form="m")
+    assert "स्रोत: गणित संदर्शिका, पृष्ठ 45" in reply
+    assert "हासिल वाला घटाव" in reply
+    assert "इस हफ्ते आज़माएँ:" in reply
