@@ -16,10 +16,11 @@ import logging
 import uuid
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Final, cast
 
-from sqlalchemy import ColumnElement, select
+from sqlalchemy import ColumnElement, delete, or_, select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.channels.base import Channel
@@ -30,11 +31,13 @@ from backend.app.db.models import (
     AdoptionEvidence,
     AggModuleBatch,
     ARPAssignment,
+    Message,
     Question,
     RehearsalScore,
     ScheduledJob,
     SessionState,
     Teacher,
+    Turn,
 )
 from backend.app.jobs import schedule, tunables
 from backend.app.reports.arp_digest import generate_arp_digest
@@ -45,8 +48,13 @@ logger = logging.getLogger("abhyas.jobs.handlers")
 KIND_FOLLOWUP_QUESTION: Final = "followup_question"
 KIND_ARP_DIGEST: Final = "arp_digest"
 KIND_AGGREGATES: Final = "aggregates"
+KIND_REMINDER: Final = "reminder"
+KIND_FOLLOWUP_TRY_IN_CLASS: Final = "followup_try_in_class"
+KIND_RETENTION_PURGE: Final = "retention_purge"
 
 TEMPLATE_FOLLOWUP_QUESTION: Final = "tpl_followup_question"
+TEMPLATE_REMINDER: Final = "tpl_reminder"
+TEMPLATE_TRY_IN_CLASS_FOLLOWUP: Final = "tpl_try_in_class_followup"
 
 # (button id, messages_hi.yaml key); titles always come from the catalog.
 FOLLOWUP_BUTTONS: Final = (
@@ -451,6 +459,343 @@ async def handle_aggregates(ctx: JobContext, job: ScheduledJob) -> None:
     job.payload = {**_payload(job), "pairs": len(pairs), "computed_at": ctx.now.isoformat()}
 
 
+# ── reminder ─────────────────────────────────────────────────────────────
+
+
+async def handle_reminder(ctx: JobContext, job: ScheduledJob) -> None:
+    """Sends a gentle nudge if teacher has not interacted in REMINDER_HOURS (spec/08 §8.5, §8.6)."""
+    payload = _payload(job)
+    teacher_id = _uuid_field(payload, "teacher_id")
+    teacher = await ctx.session.get(Teacher, teacher_id)
+    if teacher is None:
+        raise JobSkipped("teacher not found")
+    if not teacher.consent_service:
+        raise JobSkipped("teacher has not consented to the service")
+    if not teacher.name:
+        raise JobSkipped("teacher has no name for the greeting")
+
+    week_start = schedule.week_start_ist(ctx.now)
+    stmt = select(SessionState).where(
+        SessionState.teacher_id == teacher.id,
+        SessionState.week_start == week_start,
+    )
+    session_state = (await ctx.session.execute(stmt)).scalar_one_or_none()
+    if session_state is None:
+        raise JobSkipped("no active session for the current week")
+    if session_state.state == SessionStateEnum.DONE.value:
+        raise JobSkipped("teacher already completed the weekly loop")
+
+    if teacher.last_inbound_at is not None:
+        elapsed = ctx.now - teacher.last_inbound_at
+        if elapsed < timedelta(hours=tunables.REMINDER_HOURS):
+            raise JobSkipped("teacher has interacted recently")
+
+    # Enforce maximum 1 reminder per week
+    week_start_dt = datetime.combine(
+        week_start, datetime.min.time(), tzinfo=schedule.IST
+    ).astimezone(UTC)
+    stmt_rem = select(ScheduledJob).where(
+        ScheduledJob.kind == KIND_REMINDER,
+        ScheduledJob.status == "done",
+        _payload_text("teacher_id") == str(teacher.id),
+        ScheduledJob.run_at >= week_start_dt,
+        ScheduledJob.id != job.id,
+    )
+    if (await ctx.session.execute(stmt_rem)).scalar_one_or_none() is not None:
+        raise JobSkipped("already sent a reminder this week")
+
+    channel = ctx.resolve_channel(teacher)
+    freeform = await channel.can_send_freeform(teacher)
+    if freeform:
+        text_hi = get_message(
+            "reminder",
+            name=teacher.name,
+            address_form=teacher.address_form,
+        )
+        buttons = [
+            Button(
+                id="btn_continue",
+                title_hi=get_message("btn_continue", address_form=teacher.address_form),
+            ),
+            Button(
+                id="btn_restart",
+                title_hi=get_message("btn_restart", address_form=teacher.address_form),
+            ),
+        ]
+        messages = [
+            OutboundMessage(kind="buttons", text_hi=text_hi, buttons=buttons, speaker="abhyas")
+        ]
+    else:
+        messages = [
+            OutboundMessage(
+                kind="template",
+                template_name=TEMPLATE_REMINDER,
+                template_params=[teacher.name],
+                speaker="abhyas",
+            )
+        ]
+
+    await channel.send(teacher, messages)
+    job.payload = {
+        **payload,
+        "sent_at": ctx.now.isoformat(),
+        "mode": "freeform" if freeform else "template",
+    }
+
+
+async def schedule_reminder(
+    session: AsyncSession | None,
+    teacher_id: uuid.UUID,
+    *,
+    now: datetime,
+) -> ScheduledJob | None:
+    """Queues a reminder job for teacher_id +REMINDER_HOURS ahead with IST date slot dedupe."""
+    if session is None:
+        return None
+    run_at = now + timedelta(hours=tunables.REMINDER_HOURS)
+    slot = schedule.to_ist(run_at).date().isoformat()
+    existing = await session.execute(
+        select(ScheduledJob).where(
+            ScheduledJob.kind == KIND_REMINDER,
+            _payload_text("teacher_id") == str(teacher_id),
+            _payload_text("slot") == slot,
+            ScheduledJob.status != "cancelled",
+        )
+    )
+    if existing.scalars().first() is not None:
+        return None
+
+    job = ScheduledJob(
+        kind=KIND_REMINDER,
+        run_at=run_at,
+        payload={
+            "teacher_id": str(teacher_id),
+            "slot": slot,
+        },
+    )
+    session.add(job)
+    return job
+
+
+# ── followup_try_in_class ────────────────────────────────────────────────
+
+
+async def handle_followup_try_in_class(ctx: JobContext, job: ScheduledJob) -> None:
+    """Prompts teacher to reflect or share evidence after TRY_IN_CLASS (spec/08 §8.5, §8.6)."""
+    payload = _payload(job)
+    teacher_id = _uuid_field(payload, "teacher_id")
+    move_id = str(payload.get("move_id") or "")
+    if not move_id:
+        raise JobSkipped("payload.move_id missing")
+
+    teacher = await ctx.session.get(Teacher, teacher_id)
+    if teacher is None:
+        raise JobSkipped("teacher not found")
+    if not teacher.consent_service:
+        raise JobSkipped("teacher has not consented to the service")
+    if not teacher.name:
+        raise JobSkipped("teacher has no name for the greeting")
+
+    week_start = schedule.week_start_ist(ctx.now)
+    stmt = select(SessionState).where(
+        SessionState.teacher_id == teacher.id,
+        SessionState.week_start == week_start,
+    )
+    session_state = (await ctx.session.execute(stmt)).scalar_one_or_none()
+    if session_state is None:
+        raise JobSkipped("no active session for the current week")
+    if session_state.state != SessionStateEnum.TRY_IN_CLASS.value:
+        raise JobSkipped(f"teacher no longer in TRY_IN_CLASS, state is {session_state.state}")
+
+    stmt_ev = select(AdoptionEvidence).where(
+        AdoptionEvidence.teacher_id == teacher.id,
+        AdoptionEvidence.move_id == move_id,
+        AdoptionEvidence.level >= 2,
+    )
+    if (await ctx.session.execute(stmt_ev)).scalars().first() is not None:
+        raise JobSkipped("evidence level >= 2 already recorded for this move")
+
+    try:
+        from backend.app.rehearsal.scene_runner import load_move_card
+
+        move_card = load_move_card(move_id)
+        move_title = move_card.title_hi
+    except Exception:
+        move_title = move_id
+
+    channel = ctx.resolve_channel(teacher)
+    freeform = await channel.can_send_freeform(teacher)
+    if freeform:
+        text_hi = get_message(
+            "followup_try_in_class",
+            name=teacher.name,
+            move_title=move_title,
+            address_form=teacher.address_form,
+        )
+        buttons = [
+            Button(
+                id="btn_peer", title_hi=get_message("btn_peer", address_form=teacher.address_form)
+            ),
+            Button(
+                id="btn_self", title_hi=get_message("btn_self", address_form=teacher.address_form)
+            ),
+            Button(
+                id="btn_later", title_hi=get_message("btn_later", address_form=teacher.address_form)
+            ),
+        ]
+        messages = [
+            OutboundMessage(kind="buttons", text_hi=text_hi, buttons=buttons, speaker="abhyas")
+        ]
+    else:
+        messages = [
+            OutboundMessage(
+                kind="template",
+                template_name=TEMPLATE_TRY_IN_CLASS_FOLLOWUP,
+                template_params=[teacher.name, move_title],
+                speaker="abhyas",
+            )
+        ]
+
+    await channel.send(teacher, messages)
+    job.payload = {
+        **payload,
+        "sent_at": ctx.now.isoformat(),
+        "mode": "freeform" if freeform else "template",
+    }
+
+
+async def schedule_followup_try_in_class(
+    session: AsyncSession | None,
+    teacher_id: uuid.UUID,
+    move_id: str,
+    *,
+    now: datetime,
+) -> ScheduledJob | None:
+    """Queues a followup_try_in_class job +FOLLOWUP_TRY_IN_CLASS_HOURS ahead with IST date slot dedupe."""
+    if session is None:
+        return None
+    run_at = now + timedelta(hours=tunables.FOLLOWUP_TRY_IN_CLASS_HOURS)
+    slot = schedule.to_ist(run_at).date().isoformat()
+    existing = await session.execute(
+        select(ScheduledJob).where(
+            ScheduledJob.kind == KIND_FOLLOWUP_TRY_IN_CLASS,
+            _payload_text("teacher_id") == str(teacher_id),
+            _payload_text("move_id") == str(move_id),
+            _payload_text("slot") == slot,
+            ScheduledJob.status != "cancelled",
+        )
+    )
+    if existing.scalars().first() is not None:
+        return None
+
+    job = ScheduledJob(
+        kind=KIND_FOLLOWUP_TRY_IN_CLASS,
+        run_at=run_at,
+        payload={
+            "teacher_id": str(teacher_id),
+            "move_id": str(move_id),
+            "slot": slot,
+        },
+    )
+    session.add(job)
+    return job
+
+
+# ── retention_purge ──────────────────────────────────────────────────────
+
+
+async def handle_retention_purge(ctx: JobContext, job: ScheduledJob) -> None:
+    """Purges transcripts and message texts past retention window; never touches demo teachers; logs counts only."""
+    cutoff = ctx.now - timedelta(days=tunables.DATA_RETENTION_DAYS)
+
+    # Demo teacher IDs must NEVER be touched
+    demo_ids = list(
+        (await ctx.session.execute(select(Teacher.id).where(Teacher.is_demo.is_(True))))
+        .scalars()
+        .all()
+    )
+
+    # Non-demo teachers who withdrew consent > 24 h ago
+    withdrawn_cutoff = ctx.now - timedelta(hours=24)
+    stmt_withdrawn = select(Teacher.id).where(
+        Teacher.consent_service.is_(False),
+        Teacher.is_demo.is_(False),
+        (Teacher.last_inbound_at <= withdrawn_cutoff) | (Teacher.last_inbound_at.is_(None)),
+    )
+    withdrawn_ids = list((await ctx.session.execute(stmt_withdrawn)).scalars().all())
+
+    # Build targets for transcript and message purge
+    purge_teacher_filters: list[ColumnElement[bool]] = []
+    if withdrawn_ids:
+        purge_teacher_filters.append(Turn.teacher_id.in_(withdrawn_ids))
+    purge_teacher_filters.append(Turn.created_at < cutoff)
+
+    turn_where: list[ColumnElement[bool]] = [Turn.transcript.is_not(None)]
+    if demo_ids:
+        turn_where.append(Turn.teacher_id.not_in(demo_ids))
+    turn_where.append(or_(*purge_teacher_filters))
+
+    res_turns = await ctx.session.execute(update(Turn).where(*turn_where).values(transcript=None))
+    purged_turns = (
+        res_turns.rowcount
+        if isinstance(res_turns, CursorResult)
+        and res_turns.rowcount is not None
+        and res_turns.rowcount >= 0
+        else 0
+    )
+
+    msg_teacher_filters: list[ColumnElement[bool]] = []
+    if withdrawn_ids:
+        msg_teacher_filters.append(Message.teacher_id.in_(withdrawn_ids))
+    msg_teacher_filters.append(Message.created_at < cutoff)
+
+    msg_where: list[ColumnElement[bool]] = [Message.text.is_not(None)]
+    if demo_ids:
+        msg_where.append(Message.teacher_id.not_in(demo_ids))
+    msg_where.append(or_(*msg_teacher_filters))
+
+    res_messages = await ctx.session.execute(update(Message).where(*msg_where).values(text=None))
+    purged_messages = (
+        res_messages.rowcount
+        if isinstance(res_messages, CursorResult)
+        and res_messages.rowcount is not None
+        and res_messages.rowcount >= 0
+        else 0
+    )
+
+    res_jobs = await ctx.session.execute(
+        delete(ScheduledJob).where(
+            ScheduledJob.status.in_(["done", "cancelled"]),
+            ScheduledJob.run_at < cutoff,
+            ScheduledJob.id != job.id,
+        )
+    )
+    deleted_jobs = (
+        res_jobs.rowcount
+        if isinstance(res_jobs, CursorResult)
+        and res_jobs.rowcount is not None
+        and res_jobs.rowcount >= 0
+        else 0
+    )
+
+    logger.info(
+        "retention_purge completed: purged %d turn transcripts, %d message texts, %d expired scheduled jobs (cutoff: %s)",
+        purged_turns,
+        purged_messages,
+        deleted_jobs,
+        cutoff.date().isoformat(),
+    )
+
+    payload = _payload(job)
+    job.payload = {
+        **payload,
+        "purged_at": ctx.now.isoformat(),
+        "purged_turns": purged_turns,
+        "purged_messages": purged_messages,
+        "deleted_jobs": deleted_jobs,
+    }
+
+
 # ── recurring-job planner ────────────────────────────────────────────────
 
 
@@ -464,7 +809,7 @@ async def _slot_rows(session: AsyncSession, kind: str, slot: str) -> list[Schedu
 
 
 async def plan_recurring_jobs(session: AsyncSession, now: datetime) -> list[ScheduledJob]:
-    """Idempotently queues the next nightly aggregates run and each ARP's Saturday digest.
+    """Idempotently queues the next nightly aggregates run, Saturday digest, and nightly retention purge.
 
     Dedupes on a `slot` (IST date) in the payload, so it is safe to call on every start
     and on a timer; caller commits. Replaces the spec's "daily planner job" because it
@@ -478,6 +823,17 @@ async def plan_recurring_jobs(session: AsyncSession, now: datetime) -> list[Sche
         created.append(
             ScheduledJob(
                 kind=KIND_AGGREGATES, run_at=aggregates_at, payload={"slot": aggregates_slot}
+            )
+        )
+
+    purge_at = schedule.next_daily_at(now, tunables.RETENTION_PURGE_HOUR_IST)
+    purge_slot = schedule.to_ist(purge_at).date().isoformat()
+    if not await _slot_rows(session, KIND_RETENTION_PURGE, purge_slot):
+        created.append(
+            ScheduledJob(
+                kind=KIND_RETENTION_PURGE,
+                run_at=purge_at,
+                payload={"slot": purge_slot},
             )
         )
 
@@ -512,4 +868,7 @@ HANDLERS: Final[Mapping[str, JobHandler]] = {
     KIND_FOLLOWUP_QUESTION: handle_followup_question,
     KIND_ARP_DIGEST: handle_arp_digest,
     KIND_AGGREGATES: handle_aggregates,
+    KIND_REMINDER: handle_reminder,
+    KIND_FOLLOWUP_TRY_IN_CLASS: handle_followup_try_in_class,
+    KIND_RETENTION_PURGE: handle_retention_purge,
 }

@@ -7,6 +7,7 @@ from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.intents import (
@@ -1122,6 +1123,16 @@ class SessionService:
                             ),
                         )
                     ]
+                if self.repo.session is not None:
+                    try:
+                        from backend.app.jobs.handlers import schedule_followup_try_in_class
+
+                        await schedule_followup_try_in_class(
+                            self.repo.session, teacher_id, ctx.current_move_id, now=now
+                        )
+                    except (SQLAlchemyError, ValueError):
+                        logger.warning("Could not schedule followup_try_in_class", exc_info=True)
+
                 return [
                     OutboundMessage(kind="text", text_hi=get_message("retry_limit", address_form)),
                     OutboundMessage(
@@ -1137,6 +1148,16 @@ class SessionService:
             if matched_intent == Intent.NEXT or btn_id == "btn_continue":
                 wsm.transition("btn_continue")
                 await self._sync_context_to_db(ctx, teacher_id)
+                if self.repo.session is not None:
+                    try:
+                        from backend.app.jobs.handlers import schedule_followup_try_in_class
+
+                        await schedule_followup_try_in_class(
+                            self.repo.session, teacher_id, ctx.current_move_id, now=now
+                        )
+                    except (SQLAlchemyError, ValueError):
+                        logger.warning("Could not schedule followup_try_in_class", exc_info=True)
+
                 return [
                     OutboundMessage(
                         kind="buttons",

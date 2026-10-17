@@ -29,9 +29,13 @@ from backend.app.db.models import (
     ScheduledJob,
     SessionState,
     Teacher,
+    Turn,
 )
 from backend.app.jobs import tunables
 from backend.app.jobs.handlers import (
+    KIND_FOLLOWUP_TRY_IN_CLASS,
+    KIND_REMINDER,
+    KIND_RETENTION_PURGE,
     JobContext,
     latest_arp_digest_snapshot,
     plan_recurring_jobs,
@@ -616,3 +620,166 @@ async def test_aggregates_upserts_one_row_per_batch_and_move(
             .all()
         )
     assert sorted(r.move_id for r in rows) == ["MOVE_A", "MOVE_B"]
+
+
+# ── reminder & followup_try_in_class & retention_purge ───────────────────
+
+
+async def test_reminder_job_runs_on_postgres(
+    factory: async_sessionmaker[AsyncSession],
+) -> None:
+    fake_ch = FakeChannel(freeform=True)
+    async with factory() as session:
+        cluster_id = await _cluster(session)
+        teacher = await _teacher(
+            session,
+            cluster_id,
+            name="सुनीता",
+            last_inbound_at=NOW - timedelta(hours=80),
+        )
+        session.add(
+            SessionState(
+                teacher_id=teacher.id,
+                week_start=WEEK_START,
+                move_id="MOVE_A",
+                state="REHEARSE",
+                context={},
+            )
+        )
+        job = await _job(
+            session,
+            KIND_REMINDER,
+            NOW - timedelta(minutes=1),
+            teacher_id=str(teacher.id),
+            slot="2026-10-14",
+        )
+        await session.commit()
+
+    outcomes = await run_due_jobs(
+        session_factory=factory,
+        clock=lambda: NOW,
+        resolve_channel=lambda t: fake_ch,
+    )
+    assert len(outcomes) == 1
+    assert outcomes[0].status == "done"
+    assert (await _reload(factory, job.id)).status == "done"
+    assert len(fake_ch.sent) == 1
+    sent_msgs = fake_ch.sent[0][1]
+    assert len(sent_msgs) == 1
+    assert sent_msgs[0].kind == "buttons"
+
+
+async def test_followup_try_in_class_job_runs_on_postgres(
+    factory: async_sessionmaker[AsyncSession],
+) -> None:
+    fake_ch = FakeChannel(freeform=True)
+    async with factory() as session:
+        cluster_id = await _cluster(session)
+        teacher = await _teacher(session, cluster_id, name="सुनीता")
+        session.add(
+            SessionState(
+                teacher_id=teacher.id,
+                week_start=WEEK_START,
+                move_id="MOVE_A",
+                state="TRY_IN_CLASS",
+                context={},
+            )
+        )
+        job = await _job(
+            session,
+            KIND_FOLLOWUP_TRY_IN_CLASS,
+            NOW - timedelta(minutes=1),
+            teacher_id=str(teacher.id),
+            move_id="MOVE_A",
+            slot="2026-10-14",
+        )
+        await session.commit()
+
+    outcomes = await run_due_jobs(
+        session_factory=factory,
+        clock=lambda: NOW,
+        resolve_channel=lambda t: fake_ch,
+    )
+    assert len(outcomes) == 1
+    assert outcomes[0].status == "done"
+    assert (await _reload(factory, job.id)).status == "done"
+    assert len(fake_ch.sent) == 1
+    buttons = [b.id for b in (fake_ch.sent[0][1][0].buttons or [])]
+    assert "btn_peer" in buttons
+    assert "btn_self" in buttons
+
+
+async def test_retention_purge_job_runs_on_postgres(
+    factory: async_sessionmaker[AsyncSession],
+) -> None:
+    async with factory() as session:
+        cluster_id = await _cluster(session)
+        # 1. Demo teacher (must never be touched)
+        demo_t = await _teacher(session, cluster_id, name="डेमो शिक्षक", is_demo=True)
+        demo_turn = Turn(
+            id=uuid.uuid4(),
+            teacher_id=demo_t.id,
+            idx=0,
+            role="teacher",
+            transcript="डेमो सुरक्षित पाठ",
+            created_at=NOW - timedelta(days=120),
+        )
+        session.add(demo_turn)
+
+        # 2. Non-demo teacher with old activity (> 90 days)
+        old_t = await _teacher(session, cluster_id, name="पुराना शिक्षक", is_demo=False)
+        old_turn = Turn(
+            id=uuid.uuid4(),
+            teacher_id=old_t.id,
+            idx=0,
+            role="teacher",
+            transcript="पुराना पाठ जो मिटना चाहिए",
+            created_at=NOW - timedelta(days=120),
+        )
+        session.add(old_turn)
+
+        # 3. Non-demo teacher who withdrew consent > 24 h ago
+        withdrawn_t = await _teacher(
+            session,
+            cluster_id,
+            name="सहमति वापस ली",
+            is_demo=False,
+            consent_service=False,
+            last_inbound_at=NOW - timedelta(hours=30),
+        )
+        withdrawn_turn = Turn(
+            id=uuid.uuid4(),
+            teacher_id=withdrawn_t.id,
+            idx=0,
+            role="teacher",
+            transcript="सहमति रद्द वाला पाठ",
+            created_at=NOW - timedelta(days=5),
+        )
+        session.add(withdrawn_turn)
+
+        # 4. Retention purge job
+        job = await _job(
+            session,
+            KIND_RETENTION_PURGE,
+            NOW - timedelta(minutes=1),
+            slot="2026-10-14",
+        )
+        await session.commit()
+
+    outcomes = await run_due_jobs(session_factory=factory, clock=lambda: NOW)
+    assert len(outcomes) == 1
+    assert outcomes[0].status == "done"
+    assert (await _reload(factory, job.id)).status == "done"
+
+    async with factory() as session:
+        reloaded_demo_turn = await session.get(Turn, demo_turn.id)
+        assert reloaded_demo_turn is not None
+        assert reloaded_demo_turn.transcript == "डेमो सुरक्षित पाठ"
+
+        reloaded_old_turn = await session.get(Turn, old_turn.id)
+        assert reloaded_old_turn is not None
+        assert reloaded_old_turn.transcript is None
+
+        reloaded_withdrawn_turn = await session.get(Turn, withdrawn_turn.id)
+        assert reloaded_withdrawn_turn is not None
+        assert reloaded_withdrawn_turn.transcript is None

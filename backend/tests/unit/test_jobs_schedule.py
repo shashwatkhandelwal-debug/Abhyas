@@ -112,4 +112,11 @@ def test_low_criteria_handles_both_score_shapes() -> None:
 
 
 def test_handler_registry_covers_the_t24_kinds() -> None:
-    assert set(HANDLERS) == {"followup_question", "arp_digest", "aggregates"}
+    assert set(HANDLERS) == {
+        "followup_question",
+        "arp_digest",
+        "aggregates",
+        "reminder",
+        "followup_try_in_class",
+        "retention_purge",
+    }
