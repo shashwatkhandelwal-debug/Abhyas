@@ -18,14 +18,14 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.access import SUPPRESSION_MESSAGE
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
 from backend.app.core.messages import get_message
-from backend.app.db.models import AggModuleBatch, AppUser, Batch
+from backend.app.db.models import AggModuleBatch, AppUser, Batch, SessionState, Teacher
 from backend.app.jobs.aggregates import compute_aggregates_for_batch
 from backend.app.sessions.path import load_all_move_cards
 
@@ -57,6 +57,7 @@ class TrainerReport:
     selected_move_id: str | None
     rows: list[TrainerRowView]
     insight_text: str | None
+    district_summary: Any = None
 
 
 def generate_rubric_svg(rubric_dist: dict[str, Any] | None) -> str:
@@ -175,19 +176,39 @@ async def build_trainer_report(
     selected_move_id: str | None = None,
 ) -> TrainerReport:
     """Builds trainer view aggregates with strict privacy-by-design suppression (spec/09 §9.4)."""
-    user_district = user.district or "Kanpur Nagar"
+    # 1. District scoping: fail closed when district is None or has no batches
+    if user.role != "admin" and not user.district:
+        return TrainerReport(
+            district="—",
+            batches=[],
+            moves=[],
+            selected_batch_id=selected_batch_id,
+            selected_move_id=selected_move_id,
+            rows=[],
+            insight_text=None,
+            district_summary=None,
+        )
 
-    # 1. Fetch batches scoped to district (or all batches if admin / district has no batches)
+    user_district = user.district or ("Kanpur Nagar" if user.role == "admin" else "—")
+
     stmt_batches = select(Batch)
-    if user.role != "admin" and user.district:
-        stmt_batches = stmt_batches.where(Batch.district == user.district)
+    if user.role != "admin":
+        stmt_batches = stmt_batches.where(Batch.district == user_district)
     stmt_batches = stmt_batches.order_by(Batch.id.asc())
     batches = list((await session.execute(stmt_batches)).scalars().all())
 
-    # Fallback to all batches if district filter returned empty (e.g. demo mode)
+    # Fail closed: no batches in district -> return empty report
     if not batches:
-        stmt_all_b = select(Batch).order_by(Batch.id.asc())
-        batches = list((await session.execute(stmt_all_b)).scalars().all())
+        return TrainerReport(
+            district=user_district,
+            batches=[],
+            moves=[],
+            selected_batch_id=selected_batch_id,
+            selected_move_id=selected_move_id,
+            rows=[],
+            insight_text=None,
+            district_summary=None,
+        )
 
     # 2. Load all MoveCards
     all_moves = load_all_move_cards()
@@ -237,10 +258,14 @@ async def build_trainer_report(
                     )
                 )
             else:
-                # Calculate completion %
-                ladder = agg.ladder_dist or {}
-                completed_count = sum(int(ladder.get(str(lvl), 0)) for lvl in range(1, 6))
-                completed_pct = round((completed_count / max(n_teachers, 1)) * 100)
+                # Calculate completion % from SessionState where state == "DONE"
+                stmt_done = select(func.count(func.distinct(SessionState.teacher_id))).where(
+                    SessionState.teacher_id.in_(select(Teacher.id).where(Teacher.batch_id == b.id)),
+                    SessionState.move_id == m.id,
+                    SessionState.state == "DONE",
+                )
+                done_count = (await session.execute(stmt_done)).scalar() or 0
+                completed_pct = round((done_count / max(n_teachers, 1)) * 100)
                 pct_str = f"{completed_pct}%"
 
                 # Top missed key point
@@ -269,7 +294,9 @@ async def build_trainer_report(
                         ladder_summary=ladder_str,
                         rubric_avg=rubric_avg,
                         ladder_counts={
-                            str(lvl): int(ladder.get(str(lvl), 0)) for lvl in range(1, 6)
+                            str(lvl): int(ladder.get(str(lvl), 0))
+                            for lvl in range(1, 6)
+                            if (ladder := agg.ladder_dist or {})
                         },
                     )
                 )
@@ -277,14 +304,15 @@ async def build_trainer_report(
     await session.commit()
 
     # 4. Deterministic insight box (spec/09 §9.4)
-    # "बैच KNP-B1 में 64% शिक्षक 'बंडल खोलना' वाला बिंदु छोड़ रहे हैं — अगली ट्रेनिंग में इस पर 10 मिनट दें।"
     insight_text: str | None = None
     if top_insight_candidate:
         cand_batch, _cand_move, cand_rate, cand_kp = top_insight_candidate
         pct = round(cand_rate * 100)
-        insight_text = (
-            f"बैच {cand_batch} में {pct}% शिक्षक '{cand_kp}' वाला बिंदु छोड़ रहे हैं — "
-            f"अगली ट्रेनिंग में इस पर 10 मिनट दें।"
+        insight_text = get_message(
+            "ui_trainer_insight_recommendation",
+            batch=cand_batch,
+            pct=pct,
+            key_point=cand_kp,
         )
     elif rows and any(not r.suppressed for r in rows):
         insight_text = get_message("ui_trainer_insight_all_good")
@@ -297,6 +325,7 @@ async def build_trainer_report(
         selected_move_id=selected_move_id,
         rows=rows,
         insight_text=insight_text,
+        district_summary=None,
     )
 
 

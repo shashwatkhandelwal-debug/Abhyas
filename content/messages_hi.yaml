@@ -346,4 +346,5 @@ ui_trainer_export_csv: {text: "CSV डाउनलोड करें", audio: f
 ui_trainer_no_data: {text: "कोई डेटा उपलब्ध नहीं है", audio: false}
 ui_trainer_suppression_notice: {text: "समूह छोटा है (n<10) — गोपनीयता हेतु छिपाया गया", audio: false}
 ui_trainer_insight_all_good: {text: "सभी बैचों में मुख्य बिंदुओं पर शिक्षकों की समझ अच्छी है।", audio: false}
+ui_trainer_insight_recommendation: {text: "बैच {batch} में {pct}% शिक्षक '{key_point}' वाला बिंदु छोड़ रहे हैं — अगली ट्रेनिंग में इस पर 10 मिनट दें।", audio: false}
 

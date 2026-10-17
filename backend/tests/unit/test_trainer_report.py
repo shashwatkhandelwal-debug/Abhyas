@@ -1,11 +1,18 @@
 """Unit tests for Trainer view reporting, suppression, and CSV formatting (spec/09 §9.4, T33)."""
 
-from __future__ import annotations
+import uuid
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.access import SUPPRESSION_MESSAGE
+from backend.app.core.messages import get_message
+from backend.app.db.models import AggModuleBatch, AppUser, Batch
 from backend.app.reports.trainer_aggregates import (
     TrainerReport,
     TrainerRowView,
+    build_trainer_report,
     compute_rubric_average,
     format_ladder_summary,
     generate_rubric_svg,
@@ -128,3 +135,126 @@ def test_generate_trainer_csv_suppression() -> None:
     # Privacy guarantee: zero teacher names, phones or IDs anywhere in CSV
     assert "सुनीता" not in csv_data
     assert "98765" not in csv_data
+
+
+@pytest.mark.asyncio
+async def test_build_trainer_report_fails_closed_when_district_has_no_batches() -> None:
+    """A trainer whose district has no batches sees an empty report, never all UP batches."""
+    mock_session = AsyncMock(spec=AsyncSession)
+    scalars_mock = MagicMock()
+    scalars_mock.all.return_value = []
+    exec_mock = MagicMock()
+    exec_mock.scalars.return_value = scalars_mock
+    mock_session.execute.return_value = exec_mock
+
+    trainer_user = AppUser(
+        id=uuid.uuid4(),
+        username="trainer.dehat",
+        role="trainer",
+        district="Kanpur Dehat",
+        password_hash="hash",
+    )
+
+    report = await build_trainer_report(session=mock_session, user=trainer_user)
+    assert report.district == "Kanpur Dehat"
+    assert report.batches == []
+    assert report.rows == []
+    assert report.district_summary is None
+    assert report.insight_text is None
+
+
+@pytest.mark.asyncio
+async def test_build_trainer_report_fails_closed_when_district_is_none() -> None:
+    """A trainer with district=None fails closed immediately with empty report."""
+    mock_session = AsyncMock(spec=AsyncSession)
+    trainer_user = AppUser(
+        id=uuid.uuid4(),
+        username="trainer.nodistrict",
+        role="trainer",
+        district=None,
+        password_hash="hash",
+    )
+
+    report = await build_trainer_report(session=mock_session, user=trainer_user)
+    assert report.batches == []
+    assert report.rows == []
+    assert report.district_summary is None
+    assert report.insight_text is None
+    # No DB queries should be executed
+    assert mock_session.execute.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_batch_completion_rate_zero_when_teachers_in_rehearse() -> None:
+    """A batch where all teachers are in REHEARSE reports 0% completed, not 100%."""
+    mock_session = AsyncMock(spec=AsyncSession)
+    batch = Batch(
+        id="TEST-B1",
+        name="परीक्षण बैच 1",
+        district="Kanpur Nagar",
+        module="NUM_SUB_REGROUP_BUNDLES",
+    )
+
+    trainer_user = AppUser(
+        id=uuid.uuid4(),
+        username="trainer.demo",
+        role="trainer",
+        district="Kanpur Nagar",
+        password_hash="hash",
+    )
+
+    # 1st execute: select(Batch) -> [batch]
+    batches_scalars = MagicMock()
+    batches_scalars.all.return_value = [batch]
+    batches_exec = MagicMock()
+    batches_exec.scalars.return_value = batches_scalars
+
+    # 2nd execute: select(AggModuleBatch) -> mock agg with n_teachers = 15 (unsuppressed)
+    agg = AggModuleBatch(
+        batch_id="TEST-B1",
+        move_id="NUM_SUB_REGROUP_BUNDLES",
+        n_teachers=15,
+        explain_missing={"kp1": 2},
+        rubric_dist={"crit1": {"1": 10}},
+        ladder_dist={"1": 15},  # Ladder level 1 evidence present
+        active_rate=1.0,
+    )
+    agg_exec = MagicMock()
+    agg_exec.scalar_one_or_none.return_value = agg
+
+    # 3rd execute: select(func.count(distinct(SessionState.teacher_id))) -> 0 (all in REHEARSE, none DONE)
+    done_count_exec = MagicMock()
+    done_count_exec.scalar.return_value = 0
+
+    mock_session.execute.side_effect = [
+        batches_exec,
+        agg_exec,
+        done_count_exec,
+    ]
+
+    report = await build_trainer_report(
+        session=mock_session,
+        user=trainer_user,
+        selected_batch_id="TEST-B1",
+        selected_move_id="NUM_SUB_REGROUP_BUNDLES",
+    )
+
+    assert len(report.rows) == 1
+    row = report.rows[0]
+    assert not row.suppressed
+    # Must report 0% completed because zero teachers reached state "DONE"
+    assert row.pct_completed == "0%"
+
+
+def test_insight_text_uses_catalog_template() -> None:
+    """Insight text is retrieved from content/messages_hi.yaml and formatted without hardcoding."""
+    formatted = get_message(
+        "ui_trainer_insight_recommendation",
+        batch="KNP-B1",
+        pct=64,
+        key_point="बंडल खोलना",
+    )
+    assert "KNP-B1" in formatted
+    assert "64%" in formatted
+    assert "बंडल खोलना" in formatted
+    assert "अगली ट्रेनिंग में इस पर 10 मिनट दें" in formatted
