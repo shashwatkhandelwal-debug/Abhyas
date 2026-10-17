@@ -326,6 +326,30 @@ ingest_key_points_title:
   text: "मुख्य बिंदु"
   audio: false
 
+# ── Coach Review Console labels ──────────────────────────────
+ui_review_title: {text: "कोच समीक्षा कंसोल", audio: false}
+ui_review_tab_scores: {text: "कम भरोसे वाले स्कोर", audio: false}
+ui_review_tab_questions: {text: "ARP को भेजे प्रश्न", audio: false}
+ui_review_tab_guards: {text: "गार्ड विफलताएँ", audio: false}
+ui_review_tab_moves: {text: "सामग्री (मूव्स)", audio: false}
+ui_review_tab_calibrate: {text: "ब्लाइंड कैलिब्रेशन", audio: false}
+ui_review_filter_open: {text: "लंबित", audio: false}
+ui_review_filter_resolved: {text: "सुलझाए गए", audio: false}
+ui_review_filter_all: {text: "सभी", audio: false}
+ui_review_export_calibration: {text: "कैलिब्रेशन डेटा डाउनलोड (.jsonl)", audio: false}
+ui_review_resolve_button: {text: "समीक्षा पूरी करें और अंक दर्ज करें", audio: false}
+ui_review_approve_move: {text: "मंज़ूरी दें", audio: false}
+ui_review_approved_badge: {text: "मंज़ूर", audio: false}
+ui_review_pending_badge: {text: "समीक्षाधीन", audio: false}
+ui_review_no_items: {text: "कोई समीक्षा आइटम नहीं मिला।", audio: false}
+ui_review_transcript_title: {text: "अभ्यास बातचीत (ट्रांसक्रिप्ट)", audio: false}
+ui_review_ai_score: {text: "AI द्वारा दिया गया स्कोर", audio: false}
+ui_review_coach_score: {text: "कोच द्वारा संशोधित स्कोर", audio: false}
+ui_review_notes_label: {text: "कोच की टिप्पणी", audio: false}
+ui_review_blind_banner: {text: "ब्लाइंड कैलिब्रेशन मोड — यहाँ AI स्कोर छिपाए गए हैं।", audio: false}
+ui_review_success_notice: {text: "समीक्षा सफलतापूर्वक दर्ज हुई।", audio: false}
+ui_review_calibrate_empty: {text: "सभी उपलब्ध रिहर्सल जांची जा चुकी हैं", audio: false}
+
 # ── Trainer View UI Strings (spec/09 §9.4, T33) ───────────────
 ui_trainer_title: {text: "प्रशिक्षक डैशबोर्ड (DIET / SCERT)", audio: false}
 ui_trainer_district: {text: "ज़िला", audio: false}

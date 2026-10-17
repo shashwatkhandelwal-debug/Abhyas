@@ -29,8 +29,8 @@ Status: ALL TASKS COMPLETED (100% GREEN CI)
 | **Coord (T43)** Guard Report & Harness | `coord/guards-report` | [PR #9](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/9) | **MERGED into main** (`a9ae0fe`) | `5578119` | [Run 39015099396](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39015099396) | Guard benchmark evaluation script and report. |
 | **Coord (T28)** WhatsApp Channel & Webhook | `coord/whatsapp` | [PR #14](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/14) | **MERGED into main** (`ba1cf73`) | `e7d41b7` | [Run 39035854362](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39035854362) | WhatsApp Cloud API channel, webhook verification, HMAC signature check, salted SHA-256 phone hash teacher lookup/creation, Fernet phone encryption, 24h service window, outside-window utility template fallback & tracking, and full unit & integration tests against PostgreSQL. |
 | **Coord (T32)** ARP Digest | `coord/arp-digest` | [PR #10](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/10) | **MERGED into main** (`81787c5`) | `6b922a9` | [Run 39036474523](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39036474523) | Weekly ARP digest generation, n<10 suppression, consent filtering. |
-| **Coord (T33)** Trainer View | `coord/trainer-view` | [PR #11](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/11) | **Awaiting Merge** | `4f377af` | [Run 39028730457](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39028730457) | Trainer view & district aggregate dashboard with privacy guarantees. |
-| **Coord (T34)** Coach Review Console | `coord/review-console` | [PR #12](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/12) | **Awaiting Review** | `a539a04` | [Run 39029205709](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39029205709) | Coach review console for escalations and flagged turns. |
+| **Coord (T33)** Trainer View | `coord/trainer-view` | [PR #11](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/11) | **MERGED into main** (`5767c16`) | `b4e8a4d` | [Run 39037199360](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39037199360) | Trainer view & district aggregate dashboard with privacy guarantees. |
+| **Coord (T34)** Coach Review Console | `coord/review-console` | [PR #12](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/12) | **Merging origin/main** | `a539a04` | [Run 39029205709](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39029205709) | Coach review console for escalations and flagged turns. |
 | **Coord (T35)** Admin Console | `coord/admin` | [PR #13](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/13) | **Awaiting Review** | `02e5b4a` | [Run 39029959589](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39029959589) | Admin console for user management and system health. |
 
 ---
@@ -168,4 +168,23 @@ Status: ALL TASKS COMPLETED (100% GREEN CI)
   - Unit tests in `backend/tests/unit/test_trainer_report.py` and PostgreSQL integration tests in `backend/tests/integration/test_trainer_view_integration.py`.
 - **What is stubbed**:
   - None. Fully functional against live database rows and computed aggregates.
+
+### 8. Coord: T34 Coach Review Console & Calibration
+- **Branch**: `coord/review-console`
+- **PR**: [shashwatkhandelwal-debug/Abhyas#12](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/12)
+- **Head SHA**: `a539a04`
+- **CI Status**: [Run 39029205709 — Completed / Success](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39029205709)
+  - `lint`: Success
+  - `secrets`: Success
+  - `test`: Success (PostgreSQL integration + unit tests)
+  - `content`: Success
+- **Key Deliverables**:
+  - `backend/app/web/review.py` & templates (`review.html`, `review_detail.html`, `review_calibrate.html`, `review_move.html`):
+    - 4 queue tabs (`rehearsal_score` / `explain_score`, `question`, `guard_failure`, `moves`) with badge counts and status filter.
+    - Detail view with speaker-coloured chat bubbles, turn acts, AI confidence badges, evidence quotes, and score resolution form.
+    - Resolution saves scores (0/1/2) and coach notes to `review_item.resolution` and logs `CalibrationLabel(blind=False)`.
+    - Blind double-coding calibration mode (`GET/POST /review/calibrate`): transcript stripped of AI scores, acts, or quotes; saves to `CalibrationLabel(blind=True)`.
+    - Calibration export (`GET /review/calibration.jsonl`): stream-downloads all double-coded calibration labels as newline-delimited JSON.
+    - Move editor with key points, rubric levels, approvals counter, and raw YAML validator against `MoveCard` schema; marks `approved` when 2 distinct coaches approve (`MOVE_APPROVALS_REQUIRED = 2`).
+  - Unit and PostgreSQL integration tests in `test_review_console.py` and `test_review_console_integration.py`.
 
