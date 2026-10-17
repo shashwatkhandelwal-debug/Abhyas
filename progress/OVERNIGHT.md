@@ -25,8 +25,13 @@ Status: ALL TASKS COMPLETED (100% GREEN CI)
 | **Coord (PR #5)** Reviewer Follow-ups Polish | `coord/polish-and-p0` | [PR #5](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/5) | **MERGED into main** (`9d6c902`) | `7b7a869` | [Run 39002622557](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39002622557) | Addressed reviewer follow-ups for PR #2 & PR #3: test DB drop schema guard (`assert "test" in url or CI`), demo_chips JSON loading dynamically into PWA chat interface, mock STT clean fallbacks, and 100% green CI against Postgres. |
 | **Coord (T38, T39, T41)** Golden Fixtures, Audio Samples, Latency Report | `coord/p0-eval` | [PR #6](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/6) | **MERGED into main** (`e54b7ff`) | `9e1b297` | [Run 39008573282](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39008573282) | **T38**: Golden test fixtures (≥5 pass + fail fixtures per role) for all 7 runtime roles, README documenting hand-written synthetic provenance, `test_golden_fixtures.py`.<br>**T39**: `render_samples.py` enforces real TTS provider, silent WAVs removed from git, `is_wav_non_silent` computes `audio_available` dynamically with text fallback in PWA chips.<br>**T41**: Multi-concurrency latency benchmark harness, stage timing breakdown, `eval/latency/REPORT.md` honest mock status ("NOT MEASURED (mock providers)" and mock payload estimates), verified in-code optimizations with file links. |
 | **Coord (PR #7)** Reviewer Follow-ups & Blockers (Fake Audio Guard, Timeout Exclusion, Auth Fix) | `coord/followups-eval` | [PR #7](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/7) | **Awaiting Review** | `9b47598` | [Run 39011709739](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39011709739) | **Blocker 1**: Exit non-zero in `--url` mode if evaluator sample WAVs are missing or silent.<br>**Blocker 2**: Exclude timed-out or errored turns from p50/p95 percentiles, add `ok: bool` to `TurnMeasurement`, report completed turns in Table 1, and ensure polling waits for non-pending outbound reply.<br>**Blocker 3**: Remove silent login fallback to `username` at c=3 to avoid per-teacher lock contention.<br>**Follow-ups (a & c)**: Display effective provider in header, format low data transfer in KB.<br>**Tests**: `test_latency_benchmark.py` testing timeout exclusion and missing audio error exit. |
-| **Lane 1 (T32)** ARP Digest (`/arp`) | `coord/arp-digest` | [PR #10](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/10) | **Awaiting Review (100% Green CI)** | `4e5fda6` | [Run 39016329706](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39016329706) | Cluster-scoped ARP weekly digest, consent-filtered teacher names (`शिक्षक #<hash>` when consent not given), anonymous score masking, audio sample players (`/api/audio/{ref}.wav`), 4 action cards for school visits with 20-min visit playbooks, `test_arp_digest_integration.py`. |
-| **Lane 2 (T33)** Trainer View (`/trainer`) | `coord/trainer-view` | [PR #11](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/11) | **Awaiting Review (100% Green CI)** | `06a7b64` | [Run 39017590919](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39017590919) | District-scoped trainer view backed by `AggModuleBatch` with dynamic fallback, P0 privacy suppression for $n < 10$ (`समूह छोटा है (n<10) — गोपनीयता हेतु छिपाया गया`), zero teacher PII in HTML or CSV, inline SVG rubric bars (0/1/2), ladder distribution, deterministic insight box for top missed points (>=40%), CSV export `GET /trainer/export.csv`. |
+| **Lane E (T48, T43, T49)** Security, Guards, Docs | `lane-e-docs` | [PR #8](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/8) | **MERGED into main** (`ab0f0af`) | `39bb179` | [Run 39014169543](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39014169543) | T48 security headers, chat rate limiting, T43 guard benchmark evaluation report, T49 documentation pass. |
+| **Coord (T43)** Guard Report & Harness | `coord/guards-report` | [PR #9](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/9) | **MERGED into main** (`a9ae0fe`) | `5578119` | [Run 39015099396](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39015099396) | Guard benchmark evaluation script and report. |
+| **Coord (T28)** WhatsApp Channel & Webhook | `coord/whatsapp` | [PR #14](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/14) | **MERGED into main** (`ba1cf73`) | `e7d41b7` | [Run 39035854362](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39035854362) | WhatsApp Cloud API channel, webhook verification, HMAC signature check, salted SHA-256 phone hash teacher lookup/creation, Fernet phone encryption, 24h service window, outside-window utility template fallback & tracking, and full unit & integration tests against PostgreSQL. |
+| **Coord (T32)** ARP Digest | `coord/arp-digest` | [PR #10](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/10) | **MERGED into main** (`81787c5`) | `6b922a9` | [Run 39036474523](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39036474523) | Weekly ARP digest generation, n<10 suppression, consent filtering. |
+| **Coord (T33)** Trainer View | `coord/trainer-view` | [PR #11](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/11) | **Awaiting Merge** | `4f377af` | [Run 39028730457](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39028730457) | Trainer view & district aggregate dashboard with privacy guarantees. |
+| **Coord (T34)** Coach Review Console | `coord/review-console` | [PR #12](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/12) | **Awaiting Review** | `a539a04` | [Run 39029205709](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39029205709) | Coach review console for escalations and flagged turns. |
+| **Coord (T35)** Admin Console | `coord/admin` | [PR #13](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/13) | **Awaiting Review** | `02e5b4a` | [Run 39029959589](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39029959589) | Admin console for user management and system health. |
 
 ---
 
@@ -107,11 +112,49 @@ Status: ALL TASKS COMPLETED (100% GREEN CI)
     - Retained only verified in-code optimizations with exact file links in Section 5.
     - Unit tests in `test_latency_benchmark.py`.
 
-### 5. Lane 2: T33 Trainer View (/trainer) & Aggregates Export
+### 5. Step 0: Guardrails Report & Dependency Audit Pass
+- **Branch**: `coord/guards-report`
+- **PR**: [shashwatkhandelwal-debug/Abhyas#9](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/9)
+- **Head SHA**: `5578119`
+- **CI Status**: [Run 39013578734 — Completed / Success](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39013578734)
+  - `lint`: Success (ruff check + ruff format clean)
+  - `secrets`: Success (gitleaks zero secrets)
+  - `content`: Success (all moves, personas, messages conform to schemas)
+  - `test`: Success (all unit, integration with PostgreSQL, and migration tests passing)
+- **Key Deliverables**:
+  - `eval/guards/guard_report.py`: Ran full guard evaluation harness (`make eval-guards`), generating `eval/guards/REPORT.md`. All 8/8 adversarial child-line probes blocked deterministically by output guards.
+  - `progress/audit.md`: Audited PR #8 CI job log `117338685650`. Documented `setuptools 79.0.1` (`PYSEC-2026-3447`) finding in GitHub Actions toolcache with zero vulnerabilities in repo-managed `pyproject.toml`.
+
+### 6. Lane 1: T32 DB-Backed ARP Digest & Question Answering
+- **Branch**: `coord/arp-digest`
+- **PR**: [shashwatkhandelwal-debug/Abhyas#10](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/10)
+- **Head SHA**: `6b922a9`
+- **CI Status**: [Run 39036474523 — Completed / Success](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39036474523)
+  - `lint`: Success (ruff check + ruff format clean, mypy strict clean)
+  - `secrets`: Success (gitleaks zero secrets)
+  - `content`: Success (all moves, personas, messages conform to schemas)
+  - `test`: Success (914 tests passing against real PostgreSQL container)
+- **What works**:
+  - `build_arp_digest` in `backend/app/reports/arp_digest.py` dynamically queries PostgreSQL:
+    - Overview metrics (active/completed teachers, moves practiced, average rehearsal scores).
+    - Privacy-by-design consent separation: non-consenting teachers strictly excluded from individual score tables and suggested visit lists; aggregated into `अन्य N शिक्षक (स्कोर साझा नहीं)`.
+    - Suggested visits list with printable 5-minute peer observation checklist.
+    - Escalated questions: non-consenting teachers displayed as anonymised `शिक्षक #<short hash>`.
+  - Routes in `backend/app/web/arp.py`:
+    - `GET /arp`: Renders weekly digest with week-selector (last 6 Mondays), protected by `require_role("arp")`.
+    - `POST /arp/observation`: CSRF protected; validates teacher cluster membership and consent; records `ARPObservation` and creates Level-4 `AdoptionEvidence(source="arp_observation")`.
+    - `POST /arp/answer`: CSRF protected; updates `Question.answer_hi` and `Question.status="arp_answered"`; resolves `ReviewItem(kind="question")`; queues outbound WhatsApp/Web message (`direction="out"`) for the teacher.
+  - Jinja2 template `backend/app/web/templates/arp.html` with clean responsive layout and `@media print` styling for offline school visits.
+  - Added gender-neutral strings `ui_arp_*` in `content/messages_hi.yaml` (free of feminine markers).
+  - Unit tests in `backend/tests/unit/test_arp_digest.py` and PostgreSQL integration tests in `backend/tests/integration/test_arp_digest_integration.py`.
+- **What is stubbed**:
+  - Outbound messaging queues message in DB (`Message` table); real WhatsApp dispatch relies on Meta Graph API credentials.
+
+### 7. Lane 2: T33 Trainer View (/trainer) & Aggregates Export
 - **Branch**: `coord/trainer-view`
 - **PR**: [shashwatkhandelwal-debug/Abhyas#11](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/11)
-- **Head SHA**: `06a7b64`
-- **CI Status**: [Run 39017590919 — Completed / Success (100% Green)](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39017590919)
+- **Head SHA**: `4f377af`
+- **CI Status**: [Run 39028730457 — Completed / Success (100% Green)](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39028730457)
 - **What works**:
   - `build_trainer_report` in `backend/app/reports/trainer_aggregates.py` reading from `AggModuleBatch` with on-demand fallback computation.
   - Privacy-by-design aggregation suppression: any cohort/batch with $n < 10$ (e.g. `KNP-B3` with 8 teachers) strictly replaces all sensitive metrics with:
@@ -122,8 +165,7 @@ Status: ALL TASKS COMPLETED (100% GREEN CI)
   - Deterministic training insight box highlighting top missed key points with failure rate >= 40% (e.g. `"बैच KNP-B1 में 67% शिक्षक '...' वाला बिंदु छोड़ रहे हैं — अगली ट्रेनिंग में इस पर 10 मिनट दें।"`).
   - CSV export endpoint `GET /trainer/export.csv` respecting identical privacy suppression.
   - Added gender-neutral catalog strings `ui_trainer_*` in `content/messages_hi.yaml` (clean of feminine markers).
-  - 6 unit tests in `backend/tests/unit/test_trainer_report.py` and 2 PostgreSQL integration tests in `backend/tests/integration/test_trainer_view_integration.py`.
+  - Unit tests in `backend/tests/unit/test_trainer_report.py` and PostgreSQL integration tests in `backend/tests/integration/test_trainer_view_integration.py`.
 - **What is stubbed**:
   - None. Fully functional against live database rows and computed aggregates.
-
 
