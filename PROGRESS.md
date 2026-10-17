@@ -224,8 +224,15 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **Lane E Completed & Merged**:
   - T24 Scheduler, jobs, aggregates & ARP digest.
 
+- **Autonomous Night 3 Branches Awaiting Review**:
+  - **PR #8 (`lane-e-docs`)**: T48 security headers (CSP, HSTS) & rate limits, T49 comprehensive documentation, T50 hosted smoke tests. CI run 39014169543 green on `39bb179`.
+  - **PR #9 (`coord/guards-report`)**: T43 guard report evaluation pipeline (`eval/guards/generate_report.py`). CI run 39015099396 green on `5578119`.
+  - **PR #10 (`coord/arp-digest`)**: T32 ARP dashboard (`/arp`) with consenting teacher table, visit list, question resolver. CI run 39016335193 green on `4e5fda6`.
+  - **PR #11 (`coord/trainer-view`)**: T33 Trainer view (`/trainer`) with strict $n<10$ suppression and missed key-points insight. CI run 39017590919 green on `4f18375`.
+  - **PR #12 (`coord/review-console`)**: T34 Coach review console (`/review`) with queue tabs, blind calibration, JSONL export, and 2-coach move approval. CI run 39019393863 green on `f37cb28`.
+
 ### NEXT (Autonomous Overnight Queue):
-1. **T40 (Source Ingestion Pipeline)** · Priority: P1 (spec/10 §10.4, chunking script, NIPUN/NCERT PDF ingestion).
-2. **T42 (Kappa Evaluation Harness)** · Priority: P1 (spec/11 §11.4, quadratic-weighted Cohen's kappa calculation for coach rubric scoring vs expert ratings).
-3. **T48 (Security & Privacy Pass)** · Priority: P0 (spec/12, spec/14, CSP headers, rate-limiting, audit verification).
-4. **T49 (Docs & Freeze)** · Priority: P0 (spec/13, submission checklist, sample inputs, demo script).
+1. **T35 (Admin Dashboard `/admin`)** · Priority: P1 (spec/09 §9.6: latency percentiles by stage, turns count, guard pass/retry/fallback %, LLM calls & token usage, scheduled jobs status, demo controls: reset demo, fast-forward).
+2. **T28 (WhatsApp Channel Audit & Tests)** · Priority: P0 code (spec/07 §7.2: idempotency, window checks, mock Graph API tests).
+3. **T40 (Source Ingestion Pipeline)** · Priority: P1 (spec/10 §10.4: chunking script, retrieval evaluation).
+4. **T42 (Kappa Evaluation Harness)** · Priority: P1 (spec/11 §11.4: quadratic-weighted Cohen's kappa).
