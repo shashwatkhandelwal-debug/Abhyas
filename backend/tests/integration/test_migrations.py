@@ -32,6 +32,14 @@ def test_alembic_migrations_round_trip() -> None:
     alembic_cfg = Config("alembic.ini")
     alembic_cfg.set_main_option("sqlalchemy.url", sync_url)
 
+    db_name = sync_url.rsplit("/", 1)[-1].split("?")[0].lower()
+    is_ci = os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true"
+    if "test" not in db_name and not is_ci:
+        pytest.skip(
+            f"Refusing to run destructive migration test on database '{db_name}' "
+            "(name must contain 'test' or CI must be set to prevent accidental drops)"
+        )
+
     engine = create_engine(sync_url)
     try:
         with engine.connect() as conn:

@@ -50,7 +50,7 @@
     {% endif %}
 
     <!-- Network Alert Banner -->
-    <div id="network-banner" class="network-banner" role="status" aria-live="polite" data-offline-text="{{ get_message('ui_offline_banner') }}">{% if not is_online and is_online is defined %}{{ get_message('ui_offline_banner') }}{% endif %}</div>
+    <div id="network-banner" class="network-banner" role="status" aria-live="polite" data-offline-text="{{ get_message('ui_offline_banner') }}" data-slow-text="{{ get_message('ui_slow_banner') }}">{% if not is_online and is_online is defined %}{{ get_message('ui_offline_banner') }}{% endif %}</div>
 
     <!-- REHEARSE Strip (Problem & 3 Children) (§9.2) -->
     <div class="rehearse-strip" id="rehearse-strip">

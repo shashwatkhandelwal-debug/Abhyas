@@ -56,7 +56,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if scheduler is not None and getattr(scheduler, "running", False):
         try:
             scheduler.shutdown(wait=False)
-        except Exception as e:
+        except RuntimeError as e:
             logger.debug("Scheduler shutdown error: %s", e)
     await _cleanup_clients()
 

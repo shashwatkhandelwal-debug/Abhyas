@@ -11,6 +11,7 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
+# Rule C justification: scripts/ directory is not an installed package; sys.path modified before local import
 from ci_status import get_github_token  # noqa: E402
 
 
