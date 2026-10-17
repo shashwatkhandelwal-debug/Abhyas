@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ get_message("ui_review_tab_calibrate") }} — {{ get_message("ui_review_title") }}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <style>
+    .calibrate-container {
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 1rem;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .calibrate-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.8rem 0;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 1rem;
+    }
+    .blind-banner {
+      background: #FFF6DD;
+      border: 1px solid var(--accent);
+      color: #7A4B00;
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-sm);
+      margin-bottom: 1.5rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grid-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+    @media (max-width: 768px) {
+      .grid-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+    .section-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .section-card h2 {
+      margin-top: 0;
+      font-size: 1.2rem;
+      color: var(--brand);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+    .transcript-box {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      max-height: 600px;
+      overflow-y: auto;
+      padding-right: 0.5rem;
+    }
+    .turn-bubble {
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-md);
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    .turn-teacher {
+      background: #E4EFEA;
+      border: 1px solid #C2DFD4;
+      align-self: flex-end;
+      max-width: 85%;
+    }
+    .turn-ravi {
+      background: #EBF2FD;
+      border: 1px solid #C4D9FB;
+      align-self: flex-start;
+      max-width: 85%;
+    }
+    .turn-priya {
+      background: #FAEDF3;
+      border: 1px solid #F2C9DE;
+      align-self: flex-start;
+      max-width: 85%;
+    }
+    .turn-aman {
+      background: #F1EDF9;
+      border: 1px solid #D6CAEF;
+      align-self: flex-start;
+      max-width: 85%;
+    }
+    .speaker-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 0.2rem;
+      display: block;
+    }
+    .criterion-row {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem;
+      margin-bottom: 1rem;
+      background: var(--bg);
+    }
+    .criterion-title {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--ink);
+      margin-bottom: 0.25rem;
+    }
+    .criterion-desc {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.6rem;
+    }
+    .score-selector {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+    .score-option {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-submit {
+      background: var(--brand);
+      color: var(--brand-ink);
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      min-height: 48px;
+    }
+    .btn-submit:hover {
+      opacity: 0.9;
+    }
+    textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem;
+      font-family: inherit;
+      font-size: 0.95rem;
+      box-sizing: border-box;
+      min-height: 80px;
+    }
+    .alert-success {
+      background: #E4EFEA;
+      color: var(--brand);
+      border: 1px solid var(--brand);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="calibrate-container">
+    <header class="calibrate-header">
+      <div>
+        <a href="/review" style="color:var(--muted); text-decoration:none; font-size:0.9rem;">← समीक्षा कंसोल पर वापस जाएँ</a>
+        <h1 style="margin:0.25rem 0 0 0; font-size:1.4rem; color:var(--brand);">
+          {{ get_message("ui_review_tab_calibrate") }}
+        </h1>
+        <small style="color:var(--muted);">मूव: {{ move_title }}</small>
+      </div>
+      <div>
+        <a href="/review/calibration.jsonl" class="btn-action" style="background:var(--surface); border:1px solid var(--border); padding:0.4rem 0.8rem; border-radius:var(--radius-sm); text-decoration:none; color:var(--ink); font-weight:600;">
+          {{ get_message("ui_review_export_calibration") }}
+        </a>
+      </div>
+    </header>
+
+    {% if success %}
+    <div class="alert-success">
+      ब्लाइंड कैलिब्रेशन स्कोर सफलतापूर्वक दर्ज हुआ! अगला यादृच्छिक अभ्यास नीचे प्रदर्शित है।
+    </div>
+    {% endif %}
+
+    <div class="blind-banner">
+      <span>🛡️</span>
+      <span>{{ get_message("ui_review_blind_banner") }}</span>
+    </div>
+
+    <div class="grid-layout">
+      <!-- Left Column: Pure Rehearsal Transcript (No AI scores, no tags) -->
+      <div class="section-card">
+        <h2>{{ get_message("ui_review_transcript_title") }}</h2>
+        {% if turns %}
+        <div class="transcript-box">
+          {% for t in turns %}
+          <div class="turn-bubble turn-{{ t.role }}">
+            <span class="speaker-tag" style="{% if t.role == 'teacher' %}color:var(--brand);{% elif t.role == 'ravi' %}color:var(--child-ravi);{% elif t.role == 'priya' %}color:var(--child-priya);{% elif t.role == 'aman' %}color:var(--child-aman);{% else %}color:var(--muted);{% endif %}">
+              {{ t.speaker }}
+            </span>
+            <div>{{ t.text }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p style="color:var(--muted);">कोई अभ्यास बातचीत उपलब्ध नहीं है। पहले शिक्षक अभ्यास पूरा करें।</p>
+        {% endif %}
+      </div>
+
+      <!-- Right Column: Blind Scoring Form -->
+      <div class="section-card">
+        <h2>स्वतंत्र कोच मूल्यांकन (Blind Scoring)</h2>
+        <p style="font-size:0.85rem; color:var(--muted); margin-top:0;">
+          ट्रांसक्रिप्ट पढ़कर प्रत्येक मानदंड पर निष्पक्ष रूप से 0, 1 या 2 अंक दें।
+        </p>
+
+        {% if scene %}
+        <form method="POST" action="/review/calibrate">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="scene_id" value="{{ scene.id }}">
+
+          {% for crit in criteria %}
+          <div class="criterion-row">
+            <div class="criterion-title">{{ crit.title }}</div>
+            <div class="criterion-desc">{{ crit.desc }}</div>
+
+            <div class="score-selector">
+              <label class="score-option">
+                <input type="radio" name="score_{{ crit.id }}" value="0" required>
+                <span>0 (अधूरी)</span>
+              </label>
+              <label class="score-option">
+                <input type="radio" name="score_{{ crit.id }}" value="1">
+                <span>1 (आंशिक)</span>
+              </label>
+              <label class="score-option">
+                <input type="radio" name="score_{{ crit.id }}" value="2">
+                <span>2 (पूरी / सही)</span>
+              </label>
+            </div>
+          </div>
+          {% endfor %}
+
+          <div style="margin-bottom:1.25rem;">
+            <label for="note" style="font-weight:600; font-size:0.95rem; display:block; margin-bottom:0.4rem;">
+              {{ get_message("ui_review_notes_label") }}
+            </label>
+            <textarea id="note" name="note" placeholder="कोच की मूल्यांकन टिप्पणी (वैकल्पिक)..."></textarea>
+          </div>
+
+          <button type="submit" class="btn-submit">
+            ब्लाइंड स्कोर सुरक्षित करें
+          </button>
+        </form>
+        {% else %}
+        <p style="color:var(--muted);">मूल्यांकन हेतु कोई दृश्य उपलब्ध नहीं है।</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</body>
+</html>
