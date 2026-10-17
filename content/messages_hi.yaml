@@ -189,6 +189,9 @@ ask_resume:
 followup_question:
   text: "{name} जी, आपने '{topic}' के बारे में पूछा था। क्या सुझाव काम आया?"
   audio: false
+followup_try_in_class:
+  text: "{name} जी, क्या आपने '{move_title}' कक्षा में आज़माया? अपने अनुभव साझा करने के लिए एक विकल्प चुनें:"
+  audio: false
 arp_answer_delivered:
   text: "आपके सवाल का जवाब आपके ARP ने भेजा है: {answer}"
   audio: true

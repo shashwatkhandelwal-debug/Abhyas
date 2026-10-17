@@ -135,6 +135,9 @@ class Settings(BaseSettings):
     ARP_DIGEST_WEEKDAY: int = 5  # Saturday
     ARP_DIGEST_HOUR_IST: int = 17
     FOLLOWUP_TOPIC_MAX_WORDS: int = 6
+    FOLLOWUP_TRY_IN_CLASS_HOURS: int = 48
+    RETENTION_PURGE_HOUR_IST: int = 3
+    DATA_RETENTION_DAYS: int = 90
 
     # ── Demo / Evaluation & Observability ────────────────────────────────
     SERVE_IN_REVIEW_TO_DEMO: bool = True
