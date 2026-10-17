@@ -349,7 +349,7 @@ All items from `spec/15_human_inputs.md` are currently open:
     - `test_ingest_pdf_drops_low_confidence_ocr_pages`: Verifies low-confidence OCR pages ($< 0.40$) are dropped and logged.
     - `test_guide_citations_format_and_real_chunk_pages`: Verifies `[source, p. XX]` format and catalog `ask_source_line` formatting.
   - Verified `backend/tests/unit/test_guide_answerer.py` (10/10 tests passing).
-- **Rule C Justifications**:
-  - `backend/app/retrieval/ingest.py`: `# type: ignore[import-not-found]` on `import pdf2image` because `pdf2image` is an optional OCR image renderer; mock fallback used when poppler/pdf2image is not installed in CI.
-  - `backend/app/retrieval/ingest.py`: `# type: ignore[import-untyped]` on `import pytesseract` because `pytesseract` lacks a `py.typed` marker; mock fallback used in headless/CI environments.
+- **Rule C / Dependency Management**:
+  - `backend/app/retrieval/ingest.py`: uses dynamic `importlib.import_module("pdf2image")` and `importlib.import_module("pytesseract")` to safely import optional OCR engines at runtime; gracefully catches `ImportError` and falls back to mock OCR when external libraries/binaries are not installed in headless/CI environments.
+
 

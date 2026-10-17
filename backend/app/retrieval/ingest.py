@@ -113,8 +113,10 @@ def run_ocr_on_page(
             return ("", 0.0)
 
         try:
-            import pdf2image  # type: ignore[import-not-found]  # Rule C: optional OCR PDF renderer; mock fallback used in headless/CI
-            import pytesseract  # type: ignore[import-untyped]  # Rule C: pytesseract lacks py.typed marker; mock fallback used in headless/CI
+            import importlib
+
+            pdf2image = importlib.import_module("pdf2image")
+            pytesseract = importlib.import_module("pytesseract")
 
             images = pdf2image.convert_from_path(
                 str(pdf_path),
