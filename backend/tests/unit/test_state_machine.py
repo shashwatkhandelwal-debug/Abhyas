@@ -835,14 +835,17 @@ async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence(
 
 
 def test_sessions_package_hygiene_no_broad_exceptions_and_no_devanagari() -> None:
-    """Verifies all .py files in backend/app/sessions/ have zero broad exceptions,
-    zero '_in_memory' constructs, and zero Devanagari literals."""
-    sessions_dir = Path(__file__).parents[2] / "app" / "sessions"
+    """Verifies all .py files in backend/app/sessions/ and backend/app/retrieval/
+    have zero broad exceptions, zero '_in_memory' constructs, and zero Devanagari literals."""
+    app_dir = Path(__file__).parents[2] / "app"
+    sessions_dir = app_dir / "sessions"
+    retrieval_dir = app_dir / "retrieval"
     assert sessions_dir.is_dir(), f"sessions directory not found at {sessions_dir}"
+    assert retrieval_dir.is_dir(), f"retrieval directory not found at {retrieval_dir}"
 
-    py_files = list(sessions_dir.glob("*.py"))
-    assert len(py_files) >= 5, (
-        f"Expected at least 5 .py files in {sessions_dir}, found {len(py_files)}"
+    py_files = list(sessions_dir.glob("*.py")) + list(retrieval_dir.glob("*.py"))
+    assert len(py_files) >= 7, (
+        f"Expected at least 7 .py files in {sessions_dir} and {retrieval_dir}, found {len(py_files)}"
     )
 
     broad_exc_pattern = re.compile(
