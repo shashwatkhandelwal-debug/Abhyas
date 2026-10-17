@@ -616,10 +616,22 @@ function setupMicEvents() {
 function setupDemoChips() {
   const chips = document.querySelectorAll('.demo-chip');
   chips.forEach((c) => {
-    c.onclick = () => {
+    c.onclick = async () => {
+      const id = c.getAttribute('data-id');
       const audioAvailable = c.getAttribute('data-audio-available') === 'true';
       const text = c.getAttribute('data-text') || c.textContent.trim();
-      // If chip has audio_available=false, send its text directly (§9.2)
+      if (audioAvailable && id) {
+        try {
+          const res = await fetch(`/api/demo-sample/${id}.wav`);
+          if (res.ok) {
+            const blob = await res.blob();
+            await handleSendAudio(blob, 4);
+            return;
+          }
+        } catch (err) {
+          console.warn('Failed to load demo sample audio, falling back to text:', err);
+        }
+      }
       handleSendText(text);
     };
   });

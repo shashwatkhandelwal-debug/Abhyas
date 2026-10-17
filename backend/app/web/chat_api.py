@@ -11,9 +11,11 @@ Endpoints:
 """
 
 import logging
+import re
 import unicodedata
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from fastapi import (
@@ -473,3 +475,26 @@ async def update_settings(
 
     await db.commit()
     return {"ok": True, "lite_mode": teacher.lite_mode}
+
+
+@router.get("/demo-sample/{sample_id}.{ext}")
+async def get_demo_sample_audio(
+    sample_id: str,
+    ext: Literal["ogg", "wav"],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
+) -> Response:
+    """Returns rendered demo sample audio from eval/samples/audio/ (§9.2)."""
+    clean_id = re.sub(r"[^a-zA-Z0-9_-]", "", sample_id)
+    candidates = [
+        Path("eval/samples/audio") / f"{clean_id}.{ext}",
+        Path(__file__).resolve().parents[3] / "eval" / "samples" / "audio" / f"{clean_id}.{ext}",
+    ]
+    for p in candidates:
+        if p.is_file():
+            media_type = "audio/wav" if ext == "wav" else "audio/ogg"
+            return Response(content=p.read_bytes(), media_type=media_type)
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Sample audio not found",
+    )
