@@ -251,3 +251,116 @@ async def test_post_webhook_valid_signature_success(
             assert resp.status_code == 200
             assert resp.json() == {"status": "ok"}
             mock_dispatch.assert_called_once()
+
+
+def test_bounded_set_lru_eviction() -> None:
+    """BoundedSet enforces maximum size and evicts oldest items first."""
+    from backend.app.channels.whatsapp.webhook import BoundedSet
+
+    bset = BoundedSet(maxsize=3)
+    bset.add("msg1")
+    bset.add("msg2")
+    bset.add("msg3")
+    assert len(bset) == 3
+    assert "msg1" in bset
+
+    # Adding 4th item evicts "msg1"
+    bset.add("msg4")
+    assert len(bset) == 3
+    assert "msg1" not in bset
+    assert "msg2" in bset
+    assert "msg3" in bset
+    assert "msg4" in bset
+
+
+@pytest.mark.asyncio
+async def test_webhook_deduplication_skips_second_dispatch(
+    whatsapp_app: FastAPI, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Duplicate message ID within in-memory window is ignored on second post."""
+    from backend.app.channels.whatsapp.webhook import reset_webhook_caches
+
+    reset_webhook_caches()
+    secret = "production-grade-test-secret-999"
+    monkeypatch.setattr(settings, "WHATSAPP_ENABLED", True)
+    monkeypatch.setattr(settings, "WHATSAPP_APP_SECRET", secret)
+
+    payload = {
+        "object": "whatsapp_business_account",
+        "entry": [
+            {
+                "id": "123456",
+                "changes": [
+                    {
+                        "value": {
+                            "messaging_product": "whatsapp",
+                            "messages": [
+                                {
+                                    "from": "919876543210",
+                                    "id": "wamid.dedupe.001",
+                                    "timestamp": "1700000000",
+                                    "type": "text",
+                                    "text": {"body": "नमस्ते"},
+                                }
+                            ],
+                        },
+                        "field": "messages",
+                    }
+                ],
+            }
+        ],
+    }
+    body_bytes = json.dumps(payload).encode("utf-8")
+    valid_sig = _sign_payload(body_bytes, secret)
+
+    with patch(
+        "backend.app.channels.whatsapp.webhook._dispatch_inbound_message",
+        new_callable=AsyncMock,
+    ) as mock_dispatch:
+        async with AsyncClient(
+            transport=ASGITransport(app=whatsapp_app), base_url="http://test"
+        ) as client:
+            resp1 = await client.post(
+                "/whatsapp/webhook",
+                content=body_bytes,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Hub-Signature-256": valid_sig,
+                },
+            )
+            assert resp1.status_code == 200
+            assert mock_dispatch.call_count == 1
+
+            # Second POST with identical payload / msg_id
+            resp2 = await client.post(
+                "/whatsapp/webhook",
+                content=body_bytes,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Hub-Signature-256": valid_sig,
+                },
+            )
+            assert resp2.status_code == 200
+            # mock_dispatch should NOT have been called a second time
+            assert mock_dispatch.call_count == 1
+
+
+def test_teacher_creation_rate_limiting(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Rate limiter allows up to limit per minute, then returns False."""
+    from backend.app.channels.whatsapp.webhook import (
+        _check_teacher_creation_rate_limit,
+        reset_webhook_caches,
+    )
+
+    reset_webhook_caches()
+    monkeypatch.setattr(settings, "WHATSAPP_TEACHER_CREATION_RATE_LIMIT_PER_MINUTE", 3)
+
+    t0 = 1000.0
+    assert _check_teacher_creation_rate_limit(t0) is True
+    assert _check_teacher_creation_rate_limit(t0 + 10) is True
+    assert _check_teacher_creation_rate_limit(t0 + 20) is True
+    # 4th in same minute rejected
+    assert _check_teacher_creation_rate_limit(t0 + 30) is False
+
+    # After 61 seconds, window slides and permits again
+    assert _check_teacher_creation_rate_limit(t0 + 65) is True

@@ -95,6 +95,8 @@ class Settings(BaseSettings):
     WHATSAPP_VERIFY_TOKEN: str = "abhyas_webhook_verify_token"
     WHATSAPP_DISPLAY_NUMBER: str = ""
     WHATSAPP_UTILITY_COST_INR: float = 0.12
+    WHATSAPP_PROCESSED_CACHE_SIZE: int = 10_000
+    WHATSAPP_TEACHER_CREATION_RATE_LIMIT_PER_MINUTE: int = 10
 
     # ── Retrieval (Dense Vectors & Hybrid Search) — H16 ──────────────────
     VOYAGE_API_KEY: str = ""
@@ -133,6 +135,9 @@ class Settings(BaseSettings):
     ARP_DIGEST_WEEKDAY: int = 5  # Saturday
     ARP_DIGEST_HOUR_IST: int = 17
     FOLLOWUP_TOPIC_MAX_WORDS: int = 6
+    FOLLOWUP_TRY_IN_CLASS_HOURS: int = 48
+    RETENTION_PURGE_HOUR_IST: int = 3
+    DATA_RETENTION_DAYS: int = 90
 
     # ── Demo / Evaluation & Observability ────────────────────────────────
     SERVE_IN_REVIEW_TO_DEMO: bool = True

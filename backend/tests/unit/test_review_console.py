@@ -376,8 +376,8 @@ async def test_blind_calibration_mode_and_export() -> None:
         post_data = {
             "csrf_token": token,
             "scene_id": str(scene_id),
-            "score_accuracy": "2",
-            "score_bundle_opening": "2",
+            "score_crit_explain": "2",
+            "score_crit_concrete": "2",
             "note": "ब्लाइंड मूल्यांकन पूरा हुआ।",
         }
         res_post = await client.post(
@@ -392,7 +392,7 @@ async def test_blind_calibration_mode_and_export() -> None:
         calibs = fake_session.items[CalibrationLabel]
         assert len(calibs) == 1
         assert calibs[0].blind is True
-        assert calibs[0].scores == {"accuracy": 2, "bundle_opening": 2}
+        assert calibs[0].scores == {"crit_explain": 2, "crit_concrete": 2}
 
         # 3. GET /review/calibration.jsonl
         res_jsonl = await client.get("/review/calibration.jsonl")
@@ -403,7 +403,47 @@ async def test_blind_calibration_mode_and_export() -> None:
         assert data["scene_id"] == str(scene_id)
         assert data["coach_user_id"] == str(coach_user.id)
         assert data["blind"] is True
-        assert data["scores"] == {"accuracy": 2, "bundle_opening": 2}
+        assert data["scores"] == {"crit_explain": 2, "crit_concrete": 2}
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_blind_calibration_rejects_unknown_criterion_with_400() -> None:
+    """POST /review/calibrate rejects unknown score criteria with 400."""
+    fake_session = FakeAsyncSession()
+    scene_id = uuid.uuid4()
+    scene = Scene(
+        id=scene_id,
+        teacher_id=uuid.uuid4(),
+        move_id="NUM_SUB_REGROUP_BUNDLES",
+        status="ended",
+        mode="normal",
+        engine_state={},
+    )
+    fake_session.items[Scene].append(scene)
+
+    coach_user = _make_coach_user("coach.demo", role="coach")
+    app.dependency_overrides[get_db_session] = lambda: fake_session
+    app.dependency_overrides[get_current_user] = lambda: coach_user
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        token = generate_csrf_token()
+        client.cookies.set(CSRF_COOKIE_NAME, token)
+
+        post_data = {
+            "csrf_token": token,
+            "scene_id": str(scene_id),
+            "score_unknown_crit": "2",
+        }
+        res = await client.post(
+            "/review/calibrate",
+            data=post_data,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        assert res.status_code == 400
+        assert "Unknown rubric criterion" in res.text
 
     app.dependency_overrides.clear()
 
@@ -557,7 +597,7 @@ async def test_blind_calibration_duplicate_post_rejected_with_409() -> None:
         post_data = {
             "csrf_token": token,
             "scene_id": str(scene_id),
-            "score_accuracy": "2",
+            "score_crit_explain": "2",
         }
         # First submission succeeds (303 redirect)
         res1 = await client.post(

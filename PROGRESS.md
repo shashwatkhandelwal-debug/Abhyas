@@ -248,6 +248,7 @@ All items from `spec/15_human_inputs.md` are currently open:
   - Database chunk loader (`load_chunks_to_db` into `DocChunk` table, integrated into `seed_database()` for `make db-seed`).
   - Enhanced `GuideRetriever` supporting multi-file chunk directory loading, normalized BM25 scoring with theoretical max IDF denominator, and positive IDF floor for small corpora.
   - Golden retrieval test suite in `backend/tests/integration/test_retrieval.py` (22 tests passing) testing garble detection, text cleaning, header suppression, synthetic PDF ingestion, DB loading, multi-file corpus loading, and 10 realistic FLN teacher questions with precision and score bounds.
+  - *Limitation / Status note*: `backend/app/llm/prompts/page_ocr.v1.md` prompt is authored and checked in, but Vision LLM OCR fallback is not wired into the automated ingestion pipeline (pure text-layer extraction via `pypdf`/`pdfplumber` is used; garbled legacy font pages log clear warning).
 
 ### NEXT (Autonomous Overnight Queue):
 1. **T42 (Kappa Evaluation Harness)** · Priority: P1 (spec/11 §11.4, quadratic-weighted Cohen's kappa calculation for coach rubric scoring vs expert ratings).
@@ -271,12 +272,33 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **Step 1 PR Merges Completed (All CI Green on `main` at `1134d71`)**:
   - Merged #8 (`lane-e-docs` -> `ab0f0af`), #9 (`coord/guards-report` -> `a9ae0fe`), #14 (`coord/whatsapp` -> `ba1cf73`), #10 (`coord/arp-digest` -> `81787c5`), #11 (`coord/trainer-view` -> `5767c16`), #12 (`coord/review-console` -> `ce1fddf`), #13 (`coord/admin` -> `04b6aa1`), #15 (`coord/ingestion` -> `4fe9191`), and #17 (`coord/hardening` -> `1134d71`).
   - All CI jobs green on main.
-- **PR #19 (`coord/nits`) — Open for Review (Do NOT merge)**:
+- **PR #19 (`coord/nits`) — Merged to main at `d48b70e`**:
   - Addressed carry-over nits for #11 (ladder_counts defaults on empty dist, dropped unused district_summary), #12 (whitelisted calibrate score keys against rubric criteria), #15 (removed duplicate stopwords_hi.txt; documented page_ocr.v1.md vision prompt is not automated), #17 (verified no double-firing handlers; verified coach/arp audio bypass; documented /chat and /teacher both render teacher.html), WhatsApp follow-ups (_PROCESSED_MESSAGE_IDS bounded LRU cache, teacher auto-creation rate limit 10/min, ARP answer WhatsApp dispatch, IST-date observed_on), and admin credential docs.
   - Head SHA: `4bcf5f2`, CI Run `39048051782` (100% success).
-- **PR #16 (`coord/t24-jobs`) — Open for Review (Do NOT merge)**:
+- **PR #16 (`coord/t24-jobs`) — Merged to main at `8adb8ed`**:
   - Merged main. Wired `schedule_reminder` on unfinished weekly steps (IST-slot deduped), lowered `FOLLOWUP_TRY_IN_CLASS_HOURS` from 72 to 48, resilient week rollover querying latest SessionState, wrapped schedule operations in `begin_nested()` savepoints, narrowed load_move_card exception handling. Added 4 unit tests.
   - Head SHA: `06d423e`, CI Run `39048766813` (100% success).
-- **PR #18 (`coord/low-network`) — Open for Review (Do NOT merge)**:
+- **PR #18 (`coord/low-network`) — Merging to main**:
   - Merged main. Wrapped `dependency_overrides` cleanup in `finally` in `check_first_load.py`; added login status checks and non-login redirect assertions in `--url` mode; updated report table status to "Code present (not exercised)" for unexercised PWA features and "Measured" for bundle sizes; labelled local run as lower bound with mock DB and empty chat history; rendered `data-created-at` from server templates (`teacher.html`, `chat.html`) and updated `chat.js` `initRenderedMessagesFromDom()` to read it without inventing timestamps; updated unit test assertions.
+  - Head SHA: `4bc58f4`, CI Run `39049496081` (100% success).
+
+### T24 Jobs Review Fixes (`coord/t24-jobs`)
+- **Reminder Wiring**: Wired `schedule_reminder` in `SessionService._sync_context_to_db` within `begin_nested()` savepoint whenever a teacher in `READY` onboarding state leaves a weekly step unfinished (`current_state != DONE`). Deduped by IST date slot.
+- **Tunables alignment**: Updated `FOLLOWUP_TRY_IN_CLASS_HOURS` from 72 to 48 in `config.py` and `tunables.py` matching spec/08 §8.5 (48-hour follow-up).
+- **Week Rollover Resilience**: Updated `handle_followup_try_in_class` to query the latest `SessionState` for the teacher ordered by `week_start.desc()` instead of strictly matching the current week, supporting Fri->Mon week rollover without skipping.
+- **Savepoint Isolation**: Wrapped `schedule_followup_try_in_class` in `async with self.repo.session.begin_nested():` at both retry limit and continue transition points in `service.py`, preventing transaction failure poisoning on scheduler error.
+- **Rule C Exception Narrowing**: Narrowed exception around `load_move_card` in `handle_followup_try_in_class` to `(FileNotFoundError, ValueError, OSError)`.
+- **Unit Tests**: Added unit tests in `test_job_handlers.py` verifying reminder scheduling on unfinished steps, omission on DONE, Fri->Mon rollover follow-up, and 48-hour default tunable.
+
+### Carry-over Review Nits & Hardening (`coord/nits`)
+- **#11 (Trainer View)**: `ladder_counts` safely handles empty `ladder_dist` by emitting keys 1..5 as 0; dropped unused `district_summary` from `TrainerReport`.
+- **#12 (Review Console)**: Whitelisted `POST /review/calibrate` score keys to move rubric criterion IDs, validating 0-2 bounds and rejecting unknown keys with 400 Bad Request; removed hardcoded fallback criteria (`accuracy`, `bundle_opening`, `contrast`) from `review_item_detail`.
+- **#15 (Source Ingestion)**: Removed duplicate `retrieval/stopwords_hi.txt` via `git rm` (retained `backend/app/retrieval/stopwords_hi.txt`); noted that `page_ocr.v1.md` is authored but OCR vision fallback is not wired to automated pipeline.
+- **#17 (Hardening Verification)**: Verified `chat.js` handles dynamic closures and server-rendered data attributes without event double-firing; verified `coach`/`arp` bypass teacher audio ownership checks; confirmed `/chat` and `/teacher` routes both render `teacher.html` (`chat.html` retained as identical copy for test backwards compatibility).
+- **#14 Follow-ups (WhatsApp Channel)**:
+  - Bounded `_PROCESSED_MESSAGE_IDS` using an LRU `BoundedSet` governed by `WHATSAPP_PROCESSED_CACHE_SIZE` in `config.py`.
+  - Added in-memory sliding-window rate limiting for teacher auto-creation from unknown numbers governed by `WHATSAPP_TEACHER_CREATION_RATE_LIMIT_PER_MINUTE` in `config.py`.
+  - Routed ARP answers in `post_arp_answer` for teachers with `preferred_channel == "whatsapp"` through `WhatsAppChannel.send` using template `abhyas_arp_answer`.
+  - Updated ARP observation date recording to use IST date (`datetime.now(IST).date()`).
+- **README.md**: Updated admin username from `admin.demo` to `admin` in credentials table to align with `spec/13_submission.md`.
 

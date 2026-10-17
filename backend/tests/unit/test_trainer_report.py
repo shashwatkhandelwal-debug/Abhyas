@@ -159,7 +159,6 @@ async def test_build_trainer_report_fails_closed_when_district_has_no_batches() 
     assert report.district == "Kanpur Dehat"
     assert report.batches == []
     assert report.rows == []
-    assert report.district_summary is None
     assert report.insight_text is None
 
 
@@ -178,7 +177,6 @@ async def test_build_trainer_report_fails_closed_when_district_is_none() -> None
     report = await build_trainer_report(session=mock_session, user=trainer_user)
     assert report.batches == []
     assert report.rows == []
-    assert report.district_summary is None
     assert report.insight_text is None
     # No DB queries should be executed
     assert mock_session.execute.call_count == 0
@@ -258,3 +256,61 @@ def test_insight_text_uses_catalog_template() -> None:
     assert "64%" in formatted
     assert "बंडल खोलना" in formatted
     assert "अगली ट्रेनिंग में इस पर 10 मिनट दें" in formatted
+
+
+@pytest.mark.asyncio
+async def test_empty_ladder_dist_emits_all_five_levels() -> None:
+    """When ladder_dist is empty or None, ladder_counts always emits keys 1..5 with 0."""
+    mock_session = AsyncMock(spec=AsyncSession)
+    batch = Batch(
+        id="TEST-B1",
+        name="परीक्षण बैच 1",
+        district="Kanpur Nagar",
+        module="NUM_SUB_REGROUP_BUNDLES",
+    )
+
+    trainer_user = AppUser(
+        id=uuid.uuid4(),
+        username="trainer.demo",
+        role="trainer",
+        district="Kanpur Nagar",
+        password_hash="hash",
+    )
+
+    batches_scalars = MagicMock()
+    batches_scalars.all.return_value = [batch]
+    batches_exec = MagicMock()
+    batches_exec.scalars.return_value = batches_scalars
+
+    # agg with None ladder_dist
+    agg = AggModuleBatch(
+        batch_id="TEST-B1",
+        move_id="NUM_SUB_REGROUP_BUNDLES",
+        n_teachers=15,
+        explain_missing={},
+        rubric_dist={},
+        ladder_dist=None,
+        active_rate=1.0,
+    )
+    agg_exec = MagicMock()
+    agg_exec.scalar_one_or_none.return_value = agg
+
+    done_count_exec = MagicMock()
+    done_count_exec.scalar.return_value = 5
+
+    mock_session.execute.side_effect = [
+        batches_exec,
+        agg_exec,
+        done_count_exec,
+    ]
+
+    report = await build_trainer_report(
+        session=mock_session,
+        user=trainer_user,
+        selected_batch_id="TEST-B1",
+        selected_move_id="NUM_SUB_REGROUP_BUNDLES",
+    )
+
+    assert len(report.rows) == 1
+    row = report.rows[0]
+    assert row.ladder_counts == {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}

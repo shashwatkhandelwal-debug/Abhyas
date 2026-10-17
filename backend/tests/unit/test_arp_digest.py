@@ -321,3 +321,72 @@ async def test_arp_post_answer_success_uses_catalog_header(
         assert messages[0].text is not None
         assert messages[0].text.startswith(expected_header)
         assert "पहले 10-10 के बंडल बनवाएँ।" in messages[0].text
+
+
+@pytest.mark.asyncio
+async def test_arp_post_answer_dispatches_via_whatsapp_for_whatsapp_teacher(
+    arp_app: FastAPI,
+    arp_user: AppUser,
+) -> None:
+    """post_arp_answer routes through WhatsAppChannel.send when teacher.preferred_channel == 'whatsapp'."""
+    from unittest.mock import patch
+
+    mock_db = AsyncMock(spec=AsyncSession)
+    arp_app.dependency_overrides[get_current_user] = lambda: arp_user
+    arp_app.dependency_overrides[get_db_session] = lambda: mock_db
+
+    t_id = uuid.uuid4()
+    q_id = uuid.uuid4()
+    teacher = Teacher(
+        id=t_id,
+        name="सुनीता देवी",
+        cluster_id=arp_user.cluster_id,
+        consent_share_scores=True,
+        preferred_channel="whatsapp",
+    )
+    escalated_q = Question(
+        id=q_id,
+        teacher_id=t_id,
+        text="बच्चों को जोड़ में हासिल का संप्रत्यय कैसे समझाएँ?",
+        status="escalated",
+    )
+
+    mock_db.get.side_effect = lambda model, obj_id: (
+        escalated_q if model is Question else (teacher if model is Teacher else None)
+    )
+
+    scalars_mock = MagicMock()
+    scalars_mock.first.return_value = None
+    mock_db.scalars.return_value = scalars_mock
+
+    csrf_token = generate_csrf_token()
+    transport = ASGITransport(app=arp_app)
+
+    with patch(
+        "backend.app.channels.whatsapp.channel.WhatsAppChannel.send",
+        new_callable=AsyncMock,
+    ) as mock_wa_send:
+        async with AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+            cookies={"abhyas_csrf": csrf_token},
+        ) as client:
+            res = await client.post(
+                "/arp/answer",
+                data={
+                    "csrf_token": csrf_token,
+                    "question_id": str(q_id),
+                    "answer_hi": "तीलियों और रबर बैंड से बंडल बनाकर समझाएँ।",
+                },
+                follow_redirects=False,
+            )
+            assert res.status_code == 303
+            assert "/arp?saved=1&msg=ans" in res.headers["location"]
+            mock_wa_send.assert_called_once()
+            call_teacher = mock_wa_send.call_args[0][0]
+            call_outbounds = mock_wa_send.call_args[0][1]
+            assert call_teacher.id == t_id
+            assert len(call_outbounds) == 1
+            assert call_outbounds[0].template_name == "abhyas_arp_answer"
+            assert call_outbounds[0].speaker == "arp"
+            assert "तीलियों और रबर बैंड" in call_outbounds[0].text_hi
