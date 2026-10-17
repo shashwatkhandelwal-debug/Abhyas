@@ -326,6 +326,28 @@ ingest_key_points_title:
   text: "मुख्य बिंदु"
   audio: false
 
+# ── Trainer View UI Strings (spec/09 §9.4, T33) ───────────────
+ui_trainer_title: {text: "प्रशिक्षक डैशबोर्ड (DIET / SCERT)", audio: false}
+ui_trainer_district: {text: "ज़िला", audio: false}
+ui_trainer_filter_batch: {text: "बैच चुनें", audio: false}
+ui_trainer_filter_move: {text: "तरीका चुनें", audio: false}
+ui_trainer_all_batches: {text: "सभी बैच", audio: false}
+ui_trainer_all_moves: {text: "सभी तरीके", audio: false}
+ui_trainer_filter_btn: {text: "फ़िल्टर करें", audio: false}
+ui_trainer_insight_heading: {text: "प्रशिक्षण सुझाव (डेटा विश्लेषण)", audio: false}
+ui_trainer_col_batch: {text: "बैच", audio: false}
+ui_trainer_col_move: {text: "शिक्षण तरीका", audio: false}
+ui_trainer_col_n: {text: "शिक्षक संख्या", audio: false}
+ui_trainer_col_completed_pct: {text: "पूर्ण चक्र", audio: false}
+ui_trainer_col_missed_point: {text: "अधिकतर छूटा बिंदु", audio: false}
+ui_trainer_col_rubric: {text: "रुब्रिक वितरण (0/1/2)", audio: false}
+ui_trainer_col_ladder: {text: "प्रमाण सोपान (स्तर 1-5)", audio: false}
+ui_trainer_export_csv: {text: "CSV डाउनलोड करें", audio: false}
+ui_trainer_no_data: {text: "कोई डेटा उपलब्ध नहीं है", audio: false}
+ui_trainer_suppression_notice: {text: "समूह छोटा है (n<10) — गोपनीयता हेतु छिपाया गया", audio: false}
+ui_trainer_insight_all_good: {text: "सभी बैचों में मुख्य बिंदुओं पर शिक्षकों की समझ अच्छी है।", audio: false}
+ui_trainer_insight_recommendation: {text: "बैच {batch} में {pct}% शिक्षक '{key_point}' वाला बिंदु छोड़ रहे हैं — अगली ट्रेनिंग में इस पर 10 मिनट दें।", audio: false}
+
 # ── ARP Digest UI Strings (spec/09 §9.3) ─────────────────────
 ui_arp_title: {text: "ARP साप्ताहिक संकलन", audio: false}
 ui_arp_section_overview: {text: "इस सप्ताह का अवलोकन", audio: false}
@@ -353,5 +375,4 @@ ui_arp_observation_success: {text: "कक्षा अवलोकन सफल
 ui_arp_answer_success: {text: "उत्तर शिक्षक को भेज दिया गया और प्रश्न हल हो गया।", audio: false}
 ui_arp_checklist_peer_link: {text: "कक्षा अवलोकन सूची (प्रिंट योग्य)", audio: false}
 ui_arp_answer_header: {text: "आपके प्रश्न का उत्तर (ARP द्वारा):", audio: false}
-
 
