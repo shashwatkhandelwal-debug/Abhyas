@@ -513,6 +513,12 @@ async function toggleLiteMode(forceValue = null) {
   const target = forceValue !== null ? forceValue : !state.liteMode;
   state.liteMode = target;
 
+  try {
+    localStorage.setItem('abhyas_lite_mode', target ? 'true' : 'false');
+  } catch (e) {
+    // ignore storage quota / sandbox errors
+  }
+
   const btn = document.getElementById('lite-mode-menu-btn');
   if (btn) {
     btn.textContent = target ? 'लाइट मोड: चालू ✓' : 'लाइट मोड: बंद';
@@ -647,6 +653,39 @@ function registerServiceWorker() {
   }
 }
 
+// ── DOM Message Seeding & Offline Cache Population ─────────────────────────
+function initRenderedMessagesFromDom() {
+  const container = document.getElementById('chat-messages');
+  if (!container) return;
+
+  const rows = container.querySelectorAll('.msg-row');
+  const cachedBatch = [];
+
+  rows.forEach((row) => {
+    const rawId = row.id ? row.id.replace(/^msg-/, '') : null;
+    if (rawId) {
+      state.renderedMsgIds.add(rawId);
+      state.lastMessageId = rawId;
+
+      const textEl = row.querySelector('.bubble-text');
+      const speakerEl = row.querySelector('.speaker-tag');
+      const isOut = row.classList.contains('outbound');
+
+      cachedBatch.push({
+        id: rawId,
+        direction: isOut ? 'out' : 'in',
+        speaker: speakerEl ? speakerEl.textContent.trim() : null,
+        text: textEl ? textEl.textContent.trim() : '',
+        created_at: new Date().toISOString(),
+      });
+    }
+  });
+
+  if (cachedBatch.length > 0) {
+    cacheMessages(cachedBatch).catch((err) => console.warn('Cache initial msgs error:', err));
+  }
+}
+
 // ── Initialization ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   // 1. Online / Offline listeners
@@ -654,7 +693,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.addEventListener('offline', updateOnlineStatus);
   updateOnlineStatus();
 
-  // 2. Form submission
+  // 2. Sync Lite Mode from button or localStorage
+  const liteBtn = document.getElementById('lite-mode-menu-btn');
+  let savedLite = false;
+  try {
+    savedLite = localStorage.getItem('abhyas_lite_mode') === 'true';
+  } catch (e) {}
+
+  if (liteBtn && liteBtn.textContent.includes('चालू')) {
+    state.liteMode = true;
+  } else if (savedLite) {
+    state.liteMode = true;
+    if (liteBtn) {
+      liteBtn.textContent = 'लाइट मोड: चालू ✓';
+    }
+  }
+
+  // 3. Form submission
   const form = document.getElementById('composer-form');
   const input = document.getElementById('chat-input');
   if (form && input) {
@@ -664,14 +719,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
   }
 
-  // 3. Setup Mic & Demo Chips
+  // 4. Setup Mic & Demo Chips
   setupMicEvents();
   setupDemoChips();
 
-  // 4. Register SW
+  // 5. Register SW
   registerServiceWorker();
 
-  // 5. Initial poll and outbox drain
+  // 6. Seed rendered messages into IndexedDB & state
+  initRenderedMessagesFromDom();
+
+  // 7. Initial poll and outbox drain
   await drainOutbox();
   pollMessages();
 });
