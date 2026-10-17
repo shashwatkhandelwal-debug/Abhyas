@@ -117,7 +117,7 @@ A comprehensive audit comparing the current scaffold against `spec/02_architectu
 - [x] **T37 User-testing kit** · Priority: P0 · Finish-by: 14 Oct (completed 11 Oct via Lane D)
 - [ ] **T38 Golden fixtures** · Priority: P0 · Finish-by: 17 Oct
 - [ ] **T39 Evaluator samples** · Priority: P0 · Finish-by: 22 Oct
-- [ ] **T40 Source ingestion** · Priority: P1 · Finish-by: 23 Oct
+- [x] **T40 Source ingestion** · Priority: P1 · Finish-by: 23 Oct (completed 17 Oct)
 - [ ] **T41 Latency benchmark** · Priority: P0 · Finish-by: 24 Oct (re-run 30 Oct)
 - [ ] **T42 Kappa harness** · Priority: P1 · Finish-by: 27 Oct
 - [ ] **T43 Guard report** · Priority: P1 · Finish-by: 29 Oct
@@ -224,8 +224,20 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **Lane E Completed & Merged**:
   - T24 Scheduler, jobs, aggregates & ARP digest.
 
+- **T40 (Source Ingestion Pipeline Completed, PR #15)**:
+  - Hindi stopwords catalog (`stopwords_hi.txt` with 174 NFC-normalized common words).
+  - Enhanced tokenizer with stopword filtering (`tokenize_hindi(filter_stopwords=True)`).
+  - Robust garble detection (`is_hindi_garbled` flagging non-Devanagari text ratio < 0.3 on Hindi pages, identifying corrupted legacy fonts like Kruti Dev/Chanakya).
+  - Page cleaning (`clean_page_text` with NFC normalization, linebreak de-hyphenation, newline collapse).
+  - Multi-page header/footer suppression (`suppress_repeated_headers_footers` across > 50% of pages).
+  - Semantic chunker (`chunk_text` with 250-400 words chunks preserving section headings and page IDs `<source_id>:p<page>:<n>`).
+  - PDF ingestion engine (`ingest_pdf` via `pypdf`/`pdfplumber`).
+  - Sources manifest loader (`ingest_all_sources` checking `content/sources/sources.yaml`, logging clear notice when PDFs are absent under HUMAN INPUT H7, and retaining seed chunks).
+  - Database chunk loader (`load_chunks_to_db` into `DocChunk` table, integrated into `seed_database()` for `make db-seed`).
+  - Enhanced `GuideRetriever` supporting multi-file chunk directory loading, normalized BM25 scoring with theoretical max IDF denominator, and positive IDF floor for small corpora.
+  - Golden retrieval test suite in `backend/tests/integration/test_retrieval.py` (22 tests passing) testing garble detection, text cleaning, header suppression, synthetic PDF ingestion, DB loading, multi-file corpus loading, and 10 realistic FLN teacher questions with precision and score bounds.
+
 ### NEXT (Autonomous Overnight Queue):
-1. **T40 (Source Ingestion Pipeline)** · Priority: P1 (spec/10 §10.4, chunking script, NIPUN/NCERT PDF ingestion).
-2. **T42 (Kappa Evaluation Harness)** · Priority: P1 (spec/11 §11.4, quadratic-weighted Cohen's kappa calculation for coach rubric scoring vs expert ratings).
-3. **T48 (Security & Privacy Pass)** · Priority: P0 (spec/12, spec/14, CSP headers, rate-limiting, audit verification).
-4. **T49 (Docs & Freeze)** · Priority: P0 (spec/13, submission checklist, sample inputs, demo script).
+1. **T42 (Kappa Evaluation Harness)** · Priority: P1 (spec/11 §11.4, quadratic-weighted Cohen's kappa calculation for coach rubric scoring vs expert ratings).
+2. **T48 (Security & Privacy Pass)** · Priority: P0 (spec/12, spec/14, CSP headers, rate-limiting, audit verification).
+3. **T49 (Docs & Freeze)** · Priority: P0 (spec/13, submission checklist, sample inputs, demo script).
