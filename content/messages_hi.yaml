@@ -348,4 +348,5 @@ ui_review_coach_score: {text: "कोच द्वारा संशोधि�
 ui_review_notes_label: {text: "कोच की टिप्पणी", audio: false}
 ui_review_blind_banner: {text: "ब्लाइंड कैलिब्रेशन मोड — यहाँ AI स्कोर छिपाए गए हैं।", audio: false}
 ui_review_success_notice: {text: "समीक्षा सफलतापूर्वक दर्ज हुई।", audio: false}
+ui_review_calibrate_empty: {text: "सभी उपलब्ध रिहर्सल जांची जा चुकी हैं", audio: false}
 

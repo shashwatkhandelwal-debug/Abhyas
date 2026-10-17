@@ -29,6 +29,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.csrf import (
+    CSRF_COOKIE_NAME,
     generate_csrf_token,
     set_csrf_cookie,
     verify_csrf_token,
@@ -482,29 +483,59 @@ async def blind_calibrate_view(
     scene_id: str | None = None,
 ) -> Response:
     """Shows rehearsal transcript WITHOUT AI scores for blind double-coding (§9.5)."""
-    csrf_token = generate_csrf_token()
+    csrf_token = request.cookies.get(CSRF_COOKIE_NAME)
+    token_to_set: str | None = None
+    if not csrf_token:
+        csrf_token = generate_csrf_token()
+        token_to_set = csrf_token
 
     scene: Scene | None = None
     if scene_id and _is_valid_uuid(scene_id):
         scene = await session.get(Scene, uuid.UUID(scene_id))
 
     if not scene:
-        # Pick the latest ended scene or any scene with turns
-        stmt_scene = (
-            select(Scene).where(Scene.status == "ended").order_by(Scene.started_at.desc()).limit(1)
+        # Pick randomly among ended scenes this coach has NOT yet labelled with blind=True
+        subq = (
+            select(CalibrationLabel.scene_id)
+            .where(
+                CalibrationLabel.coach_user_id == current_user.id,
+                CalibrationLabel.blind.is_(True),
+                CalibrationLabel.scene_id.is_not(None),
+            )
+            .scalar_subquery()
         )
-        scene = (await session.execute(stmt_scene)).scalar_one_or_none()
-
-    if not scene:
-        # Fallback to any scene
-        stmt_any = select(Scene).order_by(Scene.started_at.desc()).limit(1)
-        scene = (await session.execute(stmt_any)).scalar_one_or_none()
+        stmt_scenes = (
+            select(Scene)
+            .where(
+                Scene.status == "ended",
+                Scene.id.not_in(subq),
+            )
+            .order_by(func.random())
+            .limit(1)
+        )
+        scene = (await session.execute(stmt_scenes)).scalar_one_or_none()
 
     turns_view: list[dict[str, Any]] = []
     criteria_view: list[dict[str, Any]] = []
-    move_title = "ब्लाइंड कैलिब्रेशन अभ्यास"
+    move_title = ""
 
-    if scene:
+    if scene and scene.move_id:
+        cards = [c for c in load_all_move_cards() if c.id == scene.move_id]
+        if cards and cards[0].rubric and cards[0].rubric.criteria:
+            move_title = cards[0].title_hi
+            for crit in cards[0].rubric.criteria:
+                lvl_desc = (
+                    ", ".join(f"{k}: {v}" for k, v in crit.levels.items()) if crit.levels else ""
+                )
+                criteria_view.append(
+                    {
+                        "id": crit.id,
+                        "title": crit.text_hi,
+                        "desc": lvl_desc,
+                    }
+                )
+
+    if scene and criteria_view:
         stmt_turns = select(Turn).where(Turn.scene_id == scene.id).order_by(Turn.idx)
         raw_turns = (await session.execute(stmt_turns)).scalars().all()
         for t in raw_turns:
@@ -520,35 +551,10 @@ async def blind_calibrate_view(
                     ),
                 }
             )
-
-        if scene.move_id:
-            cards = [c for c in load_all_move_cards() if c.id == scene.move_id]
-            if cards:
-                move_title = cards[0].title_hi
-                for crit in cards[0].rubric.criteria:
-                    lvl_desc = (
-                        ", ".join(f"{k}: {v}" for k, v in crit.levels.items())
-                        if crit.levels
-                        else ""
-                    )
-                    criteria_view.append(
-                        {
-                            "id": crit.id,
-                            "title": crit.text_hi,
-                            "desc": lvl_desc,
-                        }
-                    )
-
-    if not criteria_view:
-        criteria_view = [
-            {"id": "accuracy", "title": "सटीकता", "desc": "सही संख्याएँ और घटाव"},
-            {
-                "id": "bundle_opening",
-                "title": "बंडल खोलना",
-                "desc": "दहाई का बंडल खोलकर 10 तीलियाँ मिलाना",
-            },
-            {"id": "contrast", "title": "ग़लत-सही तुलना", "desc": "दोनों बच्चों के उत्तर की तुलना कराना"},
-        ]
+    else:
+        # Scene has no valid move/rubric or no unlabelled scene exists: empty state
+        scene = None
+        criteria_view = []
 
     response = templates.TemplateResponse(
         request=request,
@@ -564,7 +570,8 @@ async def blind_calibrate_view(
             "success": request.query_params.get("success"),
         },
     )
-    set_csrf_cookie(response, csrf_token)
+    if token_to_set:
+        set_csrf_cookie(response, token_to_set)
     return response
 
 
@@ -582,6 +589,37 @@ async def save_blind_calibration(
     if not _is_valid_uuid(scene_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid scene ID")
 
+    scene_uuid = uuid.UUID(scene_id)
+    scene = await session.get(Scene, scene_uuid)
+    if not scene:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scene not found")
+
+    # Enforce: scene must have a valid move with rubric criteria (no uncalibrated labels)
+    if not scene.move_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Scene has no move associated",
+        )
+    cards = [c for c in load_all_move_cards() if c.id == scene.move_id]
+    if not cards or not cards[0].rubric or not cards[0].rubric.criteria:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Move card or rubric criteria missing for scene",
+        )
+
+    # Enforce one blind label per (coach, scene)
+    stmt_existing = select(CalibrationLabel).where(
+        CalibrationLabel.scene_id == scene_uuid,
+        CalibrationLabel.coach_user_id == current_user.id,
+        CalibrationLabel.blind.is_(True),
+    )
+    existing = (await session.execute(stmt_existing)).scalars().first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A blind calibration label already exists for this coach and scene",
+        )
+
     form_data = await request.form()
     scores_dict: dict[str, int] = {}
     for k, v in form_data.items():
@@ -593,7 +631,7 @@ async def save_blind_calibration(
                 continue
 
     calib = CalibrationLabel(
-        scene_id=uuid.UUID(scene_id),
+        scene_id=scene_uuid,
         coach_user_id=current_user.id,
         scores=scores_dict,
         note=note.strip() if note else None,
@@ -754,6 +792,8 @@ async def validate_move_yaml(
     current_user: Annotated[AppUser, Depends(require_role("coach"))],
 ) -> JSONResponse:
     """Validates raw YAML content against the MoveCard schema (§9.5)."""
+    await verify_csrf_token(request)
+
     try:
         body = await request.json()
         yaml_content = body.get("yaml_content", "")

@@ -69,6 +69,9 @@ class FakeAsyncSession:
             def scalar_one_or_none(self) -> Any | None:
                 return self._data[0] if self._data else None
 
+            def first(self) -> Any | None:
+                return self._data[0] if self._data else None
+
             def scalar(self) -> Any:
                 return len(self._data)
 
@@ -85,7 +88,17 @@ class FakeAsyncSession:
         if "FROM turn" in stmt_str:
             return FakeResult(list(self.items.get(Turn, [])))
         if "FROM scene" in stmt_str:
-            return FakeResult(list(self.items.get(Scene, [])))
+            data = list(self.items.get(Scene, []))
+            if "status = :status_1" in stmt_str or "status = 'ended'" in stmt_str:
+                data = [x for x in data if getattr(x, "status", None) == "ended"]
+            if "NOT IN" in stmt_str or "not_in" in stmt_str:
+                labelled_ids = {
+                    getattr(c, "scene_id", None)
+                    for c in self.items.get(CalibrationLabel, [])
+                    if getattr(c, "blind", False)
+                }
+                data = [x for x in data if getattr(x, "id", None) not in labelled_ids]
+            return FakeResult(data)
         if "FROM rehearsal_score" in stmt_str:
             return FakeResult(list(self.items.get(RehearsalScore, [])))
         if "FROM calibration_label" in stmt_str:
@@ -492,5 +505,161 @@ async def test_move_review_and_two_coach_approval() -> None:
         )
         assert res_inval.status_code == 200
         assert res_inval.json()["valid"] is False
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_validate_move_yaml_requires_csrf() -> None:
+    """POST /review/moves/{id}/validate-yaml without CSRF token must return 403 Forbidden."""
+    fake_session = FakeAsyncSession()
+    coach = _make_coach_user("coach.demo", role="coach")
+    app.dependency_overrides[get_db_session] = lambda: fake_session
+    app.dependency_overrides[get_current_user] = lambda: coach
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        res = await client.post(
+            "/review/moves/NUM_SUB_REGROUP_BUNDLES/validate-yaml",
+            json={"yaml_content": "id: test"},
+        )
+        assert res.status_code == 403
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_blind_calibration_duplicate_post_rejected_with_409() -> None:
+    """Duplicate blind calibration POST for same (coach, scene) must return 409 Conflict."""
+    fake_session = FakeAsyncSession()
+    scene_id = uuid.uuid4()
+    scene = Scene(
+        id=scene_id,
+        teacher_id=uuid.uuid4(),
+        move_id="NUM_SUB_REGROUP_BUNDLES",
+        status="ended",
+        mode="normal",
+        engine_state={},
+    )
+    fake_session.items[Scene].append(scene)
+
+    coach = _make_coach_user("coach.demo", role="coach")
+    app.dependency_overrides[get_db_session] = lambda: fake_session
+    app.dependency_overrides[get_current_user] = lambda: coach
+
+    token = generate_csrf_token()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://testserver",
+        cookies={CSRF_COOKIE_NAME: token},
+    ) as client:
+        post_data = {
+            "csrf_token": token,
+            "scene_id": str(scene_id),
+            "score_accuracy": "2",
+        }
+        # First submission succeeds (303 redirect)
+        res1 = await client.post(
+            "/review/calibrate",
+            data=post_data,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            follow_redirects=False,
+        )
+        assert res1.status_code == 303
+
+        # Second submission by same coach on same scene returns 409 Conflict
+        res2 = await client.post(
+            "/review/calibrate",
+            data=post_data,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            follow_redirects=False,
+        )
+        assert res2.status_code == 409
+        assert "already exists" in res2.json()["detail"]
+        assert len(fake_session.items[CalibrationLabel]) == 1
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_blind_calibration_refuses_scene_without_move_or_rubric() -> None:
+    """A scene without valid move or rubric criteria refuses POST and renders empty state on GET."""
+    fake_session = FakeAsyncSession()
+    scene_id = uuid.uuid4()
+    scene_no_move = Scene(
+        id=scene_id,
+        teacher_id=uuid.uuid4(),
+        move_id="UNKNOWN_MOVE_NO_RUBRIC",
+        status="ended",
+        mode="normal",
+        engine_state={},
+    )
+    fake_session.items[Scene].append(scene_no_move)
+
+    coach = _make_coach_user("coach.demo", role="coach")
+    app.dependency_overrides[get_db_session] = lambda: fake_session
+    app.dependency_overrides[get_current_user] = lambda: coach
+
+    token = generate_csrf_token()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://testserver",
+        cookies={CSRF_COOKIE_NAME: token},
+    ) as client:
+        # GET renders empty state because move rubric is missing
+        res_get = await client.get(f"/review/calibrate?scene_id={scene_id}")
+        assert res_get.status_code == 200
+        assert "सभी उपलब्ध रिहर्सल जांची जा चुकी हैं" in res_get.text
+
+        # POST is refused with 400 Bad Request
+        res_post = await client.post(
+            "/review/calibrate",
+            data={"csrf_token": token, "scene_id": str(scene_id)},
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            follow_redirects=False,
+        )
+        assert res_post.status_code == 400
+        assert "rubric criteria missing" in res_post.json()["detail"]
+        assert len(fake_session.items[CalibrationLabel]) == 0
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_blind_calibration_all_labelled_renders_empty_state() -> None:
+    """When all ended scenes have been labelled with blind=True, GET /review/calibrate renders empty state."""
+    fake_session = FakeAsyncSession()
+    coach = _make_coach_user("coach.demo", role="coach")
+    scene_id = uuid.uuid4()
+    scene = Scene(
+        id=scene_id,
+        teacher_id=uuid.uuid4(),
+        move_id="NUM_SUB_REGROUP_BUNDLES",
+        status="ended",
+        mode="normal",
+        engine_state={},
+    )
+    fake_session.items[Scene].append(scene)
+
+    # Label the scene
+    label = CalibrationLabel(
+        id=uuid.uuid4(),
+        scene_id=scene_id,
+        coach_user_id=coach.id,
+        scores={"accuracy": 2},
+        blind=True,
+    )
+    fake_session.items[CalibrationLabel].append(label)
+
+    app.dependency_overrides[get_db_session] = lambda: fake_session
+    app.dependency_overrides[get_current_user] = lambda: coach
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        res = await client.get("/review/calibrate")
+        assert res.status_code == 200
+        assert "सभी उपलब्ध रिहर्सल जांची जा चुकी हैं" in res.text
 
     app.dependency_overrides.clear()

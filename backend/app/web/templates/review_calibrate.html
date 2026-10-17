@@ -198,6 +198,13 @@
       <span>{{ get_message("ui_review_blind_banner") }}</span>
     </div>
 
+    {% if not scene or not criteria %}
+    <div class="section-card" style="text-align:center; padding:3rem 1.5rem;">
+      <p style="font-size:1.1rem; color:var(--muted); margin:0;">
+        {{ get_message("ui_review_calibrate_empty") }}
+      </p>
+    </div>
+    {% else %}
     <div class="grid-layout">
       <!-- Left Column: Pure Rehearsal Transcript (No AI scores, no tags) -->
       <div class="section-card">
@@ -214,7 +221,7 @@
           {% endfor %}
         </div>
         {% else %}
-        <p style="color:var(--muted);">कोई अभ्यास बातचीत उपलब्ध नहीं है। पहले शिक्षक अभ्यास पूरा करें।</p>
+        <p style="color:var(--muted);">कोई अभ्यास बातचीत उपलब्ध नहीं है।</p>
         {% endif %}
       </div>
 
@@ -225,7 +232,6 @@
           ट्रांसक्रिप्ट पढ़कर प्रत्येक मानदंड पर निष्पक्ष रूप से 0, 1 या 2 अंक दें।
         </p>
 
-        {% if scene %}
         <form method="POST" action="/review/calibrate">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <input type="hidden" name="scene_id" value="{{ scene.id }}">
@@ -263,11 +269,9 @@
             ब्लाइंड स्कोर सुरक्षित करें
           </button>
         </form>
-        {% else %}
-        <p style="color:var(--muted);">मूल्यांकन हेतु कोई दृश्य उपलब्ध नहीं है।</p>
-        {% endif %}
       </div>
     </div>
+    {% endif %}
   </div>
 </body>
 </html>
