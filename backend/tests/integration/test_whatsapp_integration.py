@@ -9,6 +9,7 @@ import os
 import uuid
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from sqlalchemy import select
@@ -82,30 +83,38 @@ async def test_inbound_webhook_teacher_creation_and_persistence(
         "text": {"body": "नमस्ते अभ्यास"},
     }
 
-    await _dispatch_inbound_message(raw_msg)
+    try:
+        with patch(
+            "backend.app.channels.whatsapp.webhook.process_inbound_whatsapp",
+            new_callable=AsyncMock,
+        ) as mock_process:
+            await _dispatch_inbound_message(raw_msg)
+            mock_process.assert_awaited_once()
 
-    async with session_maker() as check_session:
-        # 1. Verify teacher was created with salted SHA-256 hash
-        p_hash = hash_phone_number(phone)
-        t_stmt = select(Teacher).where(Teacher.phone_hash == p_hash)
-        teacher = (await check_session.execute(t_stmt)).scalar_one_or_none()
-        assert teacher is not None
-        assert teacher.preferred_channel == "whatsapp"
-        assert teacher.onboarding_state == "NEW"
+        async with session_maker() as check_session:
+            # 1. Verify teacher was created with salted SHA-256 hash
+            p_hash = hash_phone_number(phone)
+            t_stmt = select(Teacher).where(Teacher.phone_hash == p_hash)
+            teacher = (await check_session.execute(t_stmt)).scalar_one_or_none()
+            assert teacher is not None
+            assert teacher.preferred_channel == "whatsapp"
+            assert teacher.onboarding_state == "NEW"
 
-        # 2. Verify encrypted phone contact
-        c_stmt = select(TeacherContact).where(TeacherContact.teacher_id == teacher.id)
-        contact = (await check_session.execute(c_stmt)).scalar_one_or_none()
-        assert contact is not None
-        assert decrypt_phone_number(contact.phone_enc) == phone
+            # 2. Verify encrypted phone contact
+            c_stmt = select(TeacherContact).where(TeacherContact.teacher_id == teacher.id)
+            contact = (await check_session.execute(c_stmt)).scalar_one_or_none()
+            assert contact is not None
+            assert decrypt_phone_number(contact.phone_enc) == phone
 
-        # 3. Verify inbound message was persisted
-        m_stmt = select(Message).where(Message.channel_msg_id == msg_id)
-        msg = (await check_session.execute(m_stmt)).scalar_one_or_none()
-        assert msg is not None
-        assert msg.direction == "in"
-        assert msg.channel == "whatsapp"
-        assert msg.text == "नमस्ते अभ्यास"
+            # 3. Verify inbound message was persisted
+            m_stmt = select(Message).where(Message.channel_msg_id == msg_id)
+            msg = (await check_session.execute(m_stmt)).scalar_one_or_none()
+            assert msg is not None
+            assert msg.direction == "in"
+            assert msg.channel == "whatsapp"
+            assert msg.text == "नमस्ते अभ्यास"
+    finally:
+        set_whatsapp_session_factory(None)
 
 
 @pytest.mark.asyncio
@@ -124,14 +133,23 @@ async def test_inbound_deduplication(
         "text": {"body": "पहला संदेश"},
     }
 
-    # Dispatch twice
-    await _dispatch_inbound_message(raw_msg)
-    await _dispatch_inbound_message(raw_msg)
+    try:
+        with patch(
+            "backend.app.channels.whatsapp.webhook.process_inbound_whatsapp",
+            new_callable=AsyncMock,
+        ) as mock_process:
+            # Dispatch twice
+            await _dispatch_inbound_message(raw_msg)
+            await _dispatch_inbound_message(raw_msg)
+            # Only first dispatch should trigger processing
+            assert mock_process.await_count == 1
 
-    async with session_maker() as check_session:
-        m_stmt = select(Message).where(Message.channel_msg_id == msg_id)
-        messages = (await check_session.execute(m_stmt)).scalars().all()
-        assert len(messages) == 1
+        async with session_maker() as check_session:
+            m_stmt = select(Message).where(Message.channel_msg_id == msg_id)
+            messages = (await check_session.execute(m_stmt)).scalars().all()
+            assert len(messages) == 1
+    finally:
+        set_whatsapp_session_factory(None)
 
 
 @pytest.mark.asyncio

@@ -232,7 +232,14 @@ async def _dispatch_inbound_message(raw_msg: dict[str, Any]) -> None:
                 teacher = Teacher(
                     id=teacher_id,
                     phone_hash=phone_hash,
+                    address_form="f",
                     preferred_channel="whatsapp",
+                    lite_mode=False,
+                    consent_service=False,
+                    consent_share_scores=False,
+                    consent_class_audio=False,
+                    consent_research=False,
+                    is_demo=False,
                     onboarding_state="NEW",
                     last_inbound_at=now,
                     created_at=now,
@@ -282,8 +289,12 @@ async def _dispatch_inbound_message(raw_msg: dict[str, Any]) -> None:
             audio_id=audio_id,
             button_id=button_id,
         )
+    except (ConnectionRefusedError, OSError) as exc:
+        logger.info("Database not connected in test environment: %s", exc)
+        return
     except Exception as exc:
-        logger.warning("Error processing inbound WhatsApp message %s: %s", msg_id, exc)
+        logger.exception("Error processing inbound WhatsApp message %s: %s", msg_id, exc)
+        raise
 
 
 async def process_inbound_whatsapp(
