@@ -14,7 +14,7 @@ import uuid
 from collections import defaultdict
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Any, Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +22,8 @@ from backend.app.core.conversation import ConversationService
 from backend.app.core.types import InboundMessage, OutboundMessage
 from backend.app.db.models import Message, Teacher
 from backend.app.db.session import async_session_factory
+from backend.app.sessions.service import SessionService
+from backend.app.speech.audio import to_wav16k
 from backend.app.speech.stt import get_stt_provider
 
 logger = logging.getLogger("abhyas.channels.web")
@@ -58,24 +60,71 @@ def unmark_teacher_pending(teacher_id: uuid.UUID) -> None:
 
 
 def reset_web_channel_state() -> None:
-    """Resets in-memory locks and pending counters (used in tests)."""
+    """Resets in-memory locks, pending counters, and mock factories (used in tests)."""
     _teacher_locks.clear()
     _teacher_pending_count.clear()
+    global _session_factory, _session_service_factory, _conversation_service_factory
+    _session_factory = None
+    _session_service_factory = None
+    _conversation_service_factory = None
 
 
-# ── Pluggable Conversation Service Hook ─────────────────────────────────────
-_conversation_service_factory: Callable[[], ConversationService] = ConversationService
+# ── Pluggable Session / Session Factory Hooks ──────────────────────────────
+_session_factory: Callable[[], Any] | None = None
+_session_service_factory: Callable[[AsyncSession], Any] | None = None
+_conversation_service_factory: Callable[[], Any] | None = None
 
 
-def get_conversation_service() -> ConversationService:
-    """Returns active ConversationService instance."""
-    return _conversation_service_factory()
+def get_channel_session_factory() -> Any:
+    """Returns the database session factory (or test override)."""
+    if _session_factory is not None:
+        return _session_factory
+    return async_session_factory
 
 
-def set_conversation_service_factory(factory: Callable[[], ConversationService]) -> None:
-    """Overrides ConversationService factory for tests."""
+def set_channel_session_factory(factory: Any) -> None:
+    """Overrides database session factory for tests."""
+    global _session_factory
+    _session_factory = factory
+
+
+def get_session_service(session: AsyncSession) -> Any:
+    """Returns active SessionService instance (or test override)."""
+    if _session_service_factory is not None:
+        return _session_service_factory(session)
+    if _conversation_service_factory is not None:
+        target = _conversation_service_factory()
+
+        class _Adapter:
+            def __init__(self, obj: Any) -> None:
+                self.obj = obj
+
+            async def handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
+                if hasattr(self.obj, "handle_inbound"):
+                    return await self.obj.handle_inbound(inbound)  # type: ignore[no-any-return]
+                return await self.obj.handle(inbound)  # type: ignore[no-any-return]
+
+        return _Adapter(target)
+    return SessionService(db_session=session)
+
+
+def set_session_service_factory(factory: Callable[[AsyncSession], Any] | None) -> None:
+    """Overrides SessionService factory for tests."""
+    global _session_service_factory
+    _session_service_factory = factory
+
+
+def set_conversation_service_factory(factory: Callable[[], Any] | None) -> None:
+    """Overrides ConversationService factory for tests (backward compatibility)."""
     global _conversation_service_factory
     _conversation_service_factory = factory
+
+
+def get_conversation_service() -> Any:
+    """Returns active ConversationService instance."""
+    if _conversation_service_factory is not None:
+        return _conversation_service_factory()
+    return ConversationService()
 
 
 # ── WebChannel Class (§7.3) ──────────────────────────────────────────────────
@@ -150,7 +199,8 @@ async def process_inbound_web(
     try:
         lock = get_teacher_lock(teacher_id)
         async with lock:
-            async with async_session_factory() as session:
+            factory = get_channel_session_factory()
+            async with factory() as session:
                 teacher = await session.get(Teacher, teacher_id)
                 if not teacher:
                     logger.error("Teacher %s not found for inbound processing", teacher_id)
@@ -160,8 +210,13 @@ async def process_inbound_web(
 
                 # Step 2: STT if audio
                 if kind == "audio" and audio_bytes:
+                    wav_data = audio_bytes
+                    try:
+                        wav_data = await to_wav16k(audio_bytes)
+                    except Exception:
+                        pass
                     stt = get_stt_provider()
-                    transcript = await stt.transcribe(audio_bytes)
+                    transcript = await stt.transcribe(wav_data)
                     final_text = unicodedata.normalize("NFC", transcript.text)
                     db_msg = await session.get(Message, message_id)
                     if db_msg:
@@ -176,7 +231,7 @@ async def process_inbound_web(
                         db_msg.text = button_id
                         await session.commit()
 
-                # Step 4: Dispatch to ConversationService
+                # Step 4: Dispatch to SessionService
                 inbound = InboundMessage(
                     channel="web",
                     channel_msg_id=str(message_id),
@@ -187,12 +242,8 @@ async def process_inbound_web(
                     received_at=datetime.now(UTC),
                 )
 
-                conv_service = get_conversation_service()
-                try:
-                    outbounds = await conv_service.handle(inbound)
-                except NotImplementedError:
-                    logger.info("ConversationService.handle pending implementation in Lane B (T18)")
-                    outbounds = []
+                session_service = get_session_service(session)
+                outbounds = await session_service.handle_inbound(inbound)
 
                 # Step 5: Send outbounds via WebChannel
                 if outbounds:

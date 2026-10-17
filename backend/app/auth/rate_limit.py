@@ -44,7 +44,7 @@ def check_login_rate_limit(request: Request) -> None:
     if len(attempts) >= settings.MAX_LOGIN_ATTEMPTS_PER_MINUTE:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="बहुत अधिक लॉगिन प्रयास। कृपया 1 मिनट बाद पुनः प्रयास करें (Too many login attempts. Please try again after 1 minute.)",
+            detail="Too many login attempts. Please try again after 1 minute.",
         )
 
     # Record current attempt

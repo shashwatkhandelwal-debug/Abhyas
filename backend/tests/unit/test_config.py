@@ -25,6 +25,7 @@ def test_production_mode_missing_anthropic_fails_fast() -> None:
     with pytest.raises(ValidationError) as exc_info:
         Settings(
             ENVIRONMENT="production",
+            LLM_PROVIDER="anthropic",
             ANTHROPIC_API_KEY="",  # missing!
             SARVAM_API_KEY="valid-sarvam-key",
             SESSION_SECRET="a" * 64,

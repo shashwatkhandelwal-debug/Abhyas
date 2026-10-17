@@ -61,7 +61,7 @@ async def get_current_user(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="लॉगिन आवश्यक है (Authentication required)",
+            detail="Authentication required",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
@@ -79,7 +79,7 @@ def require_role(*allowed_roles: str) -> Callable[..., Any]:
 
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"इस पृष्ठ के लिए अनुमति नहीं है (Role required: {', '.join(allowed_roles)})",
+            detail=f"Role required: {', '.join(allowed_roles)}",
         )
 
     return role_checker

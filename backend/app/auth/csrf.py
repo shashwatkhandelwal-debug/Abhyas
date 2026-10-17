@@ -49,7 +49,7 @@ async def verify_csrf_token(request: Request) -> None:
     if not cookie_token:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="CSRF सुरक्षा टोकन अनुपस्थित है (CSRF token missing)",
+            detail="CSRF token missing",
         )
 
     # Check header first (common for JSON/fetch requests)
@@ -73,5 +73,5 @@ async def verify_csrf_token(request: Request) -> None:
     if not submitted_token or not hmac.compare_digest(cookie_token, submitted_token):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="अमान्य CSRF सुरक्षा टोकन (Invalid CSRF token)",
+            detail="Invalid CSRF token",
         )

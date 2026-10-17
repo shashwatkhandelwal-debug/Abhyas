@@ -479,10 +479,13 @@ function updateOnlineStatus() {
 
   if (!navigator.onLine) {
     banner.className = 'network-banner offline';
-    banner.textContent = 'इंटरनेट नहीं है — संदेश भेजे जाने के लिए रखे गए हैं';
+    const offlineMsg = banner.getAttribute('data-offline-text') || 'आप ऑफ़लाइन हैं — इंटरनेट नहीं है, संदेश भेजे जाने के लिए रखे गए हैं';
+    banner.textContent = offlineMsg;
+    banner.style.display = 'block';
   } else {
     banner.className = 'network-banner';
     banner.textContent = '';
+    banner.style.display = 'none';
     drainOutbox();
     triggerImmediatePoll();
   }
