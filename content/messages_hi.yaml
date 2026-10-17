@@ -329,3 +329,124 @@ ingest_key_points_title:
   text: "मुख्य बिंदु"
   audio: false
 
+# ── Coach Review Console labels ──────────────────────────────
+ui_review_title: {text: "कोच समीक्षा कंसोल", audio: false}
+ui_review_tab_scores: {text: "कम भरोसे वाले स्कोर", audio: false}
+ui_review_tab_questions: {text: "ARP को भेजे प्रश्न", audio: false}
+ui_review_tab_guards: {text: "गार्ड विफलताएँ", audio: false}
+ui_review_tab_moves: {text: "सामग्री (मूव्स)", audio: false}
+ui_review_tab_calibrate: {text: "ब्लाइंड कैलिब्रेशन", audio: false}
+ui_review_filter_open: {text: "लंबित", audio: false}
+ui_review_filter_resolved: {text: "सुलझाए गए", audio: false}
+ui_review_filter_all: {text: "सभी", audio: false}
+ui_review_export_calibration: {text: "कैलिब्रेशन डेटा डाउनलोड (.jsonl)", audio: false}
+ui_review_resolve_button: {text: "समीक्षा पूरी करें और अंक दर्ज करें", audio: false}
+ui_review_approve_move: {text: "मंज़ूरी दें", audio: false}
+ui_review_approved_badge: {text: "मंज़ूर", audio: false}
+ui_review_pending_badge: {text: "समीक्षाधीन", audio: false}
+ui_review_no_items: {text: "कोई समीक्षा आइटम नहीं मिला।", audio: false}
+ui_review_transcript_title: {text: "अभ्यास बातचीत (ट्रांसक्रिप्ट)", audio: false}
+ui_review_ai_score: {text: "AI द्वारा दिया गया स्कोर", audio: false}
+ui_review_coach_score: {text: "कोच द्वारा संशोधित स्कोर", audio: false}
+ui_review_notes_label: {text: "कोच की टिप्पणी", audio: false}
+ui_review_blind_banner: {text: "ब्लाइंड कैलिब्रेशन मोड — यहाँ AI स्कोर छिपाए गए हैं।", audio: false}
+ui_review_success_notice: {text: "समीक्षा सफलतापूर्वक दर्ज हुई।", audio: false}
+ui_review_calibrate_empty: {text: "सभी उपलब्ध रिहर्सल जांची जा चुकी हैं", audio: false}
+
+# ── Trainer View UI Strings (spec/09 §9.4, T33) ───────────────
+ui_trainer_title: {text: "प्रशिक्षक डैशबोर्ड (DIET / SCERT)", audio: false}
+ui_trainer_district: {text: "ज़िला", audio: false}
+ui_trainer_filter_batch: {text: "बैच चुनें", audio: false}
+ui_trainer_filter_move: {text: "तरीका चुनें", audio: false}
+ui_trainer_all_batches: {text: "सभी बैच", audio: false}
+ui_trainer_all_moves: {text: "सभी तरीके", audio: false}
+ui_trainer_filter_btn: {text: "फ़िल्टर करें", audio: false}
+ui_trainer_insight_heading: {text: "प्रशिक्षण सुझाव (डेटा विश्लेषण)", audio: false}
+ui_trainer_col_batch: {text: "बैच", audio: false}
+ui_trainer_col_move: {text: "शिक्षण तरीका", audio: false}
+ui_trainer_col_n: {text: "शिक्षक संख्या", audio: false}
+ui_trainer_col_completed_pct: {text: "पूर्ण चक्र", audio: false}
+ui_trainer_col_missed_point: {text: "अधिकतर छूटा बिंदु", audio: false}
+ui_trainer_col_rubric: {text: "रुब्रिक वितरण (0/1/2)", audio: false}
+ui_trainer_col_ladder: {text: "प्रमाण सोपान (स्तर 1-5)", audio: false}
+ui_trainer_export_csv: {text: "CSV डाउनलोड करें", audio: false}
+ui_trainer_no_data: {text: "कोई डेटा उपलब्ध नहीं है", audio: false}
+ui_trainer_suppression_notice: {text: "समूह छोटा है (n<10) — गोपनीयता हेतु छिपाया गया", audio: false}
+ui_trainer_insight_all_good: {text: "सभी बैचों में मुख्य बिंदुओं पर शिक्षकों की समझ अच्छी है।", audio: false}
+ui_trainer_insight_recommendation: {text: "बैच {batch} में {pct}% शिक्षक '{key_point}' वाला बिंदु छोड़ रहे हैं — अगली ट्रेनिंग में इस पर 10 मिनट दें।", audio: false}
+
+# ── ARP Digest UI Strings (spec/09 §9.3) ─────────────────────
+ui_arp_title: {text: "ARP साप्ताहिक संकलन", audio: false}
+ui_arp_section_overview: {text: "इस सप्ताह का अवलोकन", audio: false}
+ui_arp_active_teachers: {text: "सक्रिय शिक्षक", audio: false}
+ui_arp_completed_loops: {text: "पूर्ण किए गए चक्र", audio: false}
+ui_arp_moves_practised: {text: "अभ्यास किए गए शिक्षण तरीके", audio: false}
+ui_arp_section_teachers: {text: "कौन अभ्यास कर रहा है", audio: false}
+ui_arp_col_teacher: {text: "शिक्षक", audio: false}
+ui_arp_col_school: {text: "विद्यालय", audio: false}
+ui_arp_col_move: {text: "तरीका", audio: false}
+ui_arp_col_step: {text: "वर्तमान चरण", audio: false}
+ui_arp_col_evidence: {text: "प्रमाण स्तर", audio: false}
+ui_arp_col_rubric: {text: "रुब्रिक अंक", audio: false}
+ui_arp_col_help: {text: "स्थिति", audio: false}
+ui_arp_needs_help: {text: "मदद चाहिए", audio: false}
+ui_arp_status_ok: {text: "प्रगति पर", audio: false}
+ui_arp_non_consenting_row: {text: "अन्य {count} शिक्षक (स्कोर साझा नहीं)", audio: false}
+ui_arp_section_visits: {text: "सुझाव: कक्षा-भ्रमण सूची", audio: false}
+ui_arp_visit_reason: {text: "कम अंक / मदद की आवश्यकता", audio: false}
+ui_arp_btn_record_observation: {text: "अवलोकन दर्ज करें", audio: false}
+ui_arp_section_questions: {text: "अनुत्तरित प्रश्न", audio: false}
+ui_arp_btn_answer: {text: "उत्तर भेजें", audio: false}
+ui_arp_answer_placeholder: {text: "शिक्षक के लिए स्पष्ट व व्यावहारिक उत्तर लिखें...", audio: false}
+ui_arp_observation_success: {text: "कक्षा अवलोकन सफलता से दर्ज हुआ और प्रमाण स्तर 4 जुड़ गया।", audio: false}
+ui_arp_answer_success: {text: "उत्तर शिक्षक को भेज दिया गया और प्रश्न हल हो गया।", audio: false}
+ui_arp_checklist_peer_link: {text: "कक्षा अवलोकन सूची (प्रिंट योग्य)", audio: false}
+ui_arp_answer_header: {text: "आपके प्रश्न का उत्तर (ARP द्वारा):", audio: false}
+
+# ── Admin Dashboard labels ───────────────────────────────────
+ui_admin_title:
+  text: "अभ्यास एडमिन डैशबोर्ड"
+  audio: false
+ui_admin_subtitle:
+  text: "सिस्टम मेट्रिक्स, विलंबता, टोकन उपयोग और डेमो नियंत्रण"
+  audio: false
+ui_admin_env:
+  text: "पर्यावरण व प्रदाता"
+  audio: false
+ui_admin_latency:
+  text: "विलंबता (p50 / p95)"
+  audio: false
+ui_admin_turns:
+  text: "टर्न गतिविधि"
+  audio: false
+ui_admin_guards:
+  text: "गार्ड प्रदर्शन"
+  audio: false
+ui_admin_tokens:
+  text: "एलएलएम टोकन व उपयोग"
+  audio: false
+ui_admin_templates:
+  text: "टेम्पलेट प्रेषण व अनुमानित लागत"
+  audio: false
+ui_admin_jobs:
+  text: "निर्धारित कार्य (Jobs)"
+  audio: false
+ui_admin_demo_controls:
+  text: "डेमो नियंत्रण"
+  audio: false
+ui_admin_reset_demo:
+  text: "डेमो शिक्षक डेटा रीसेट करें"
+  audio: false
+ui_admin_reset_confirm:
+  text: "क्या आप सभी डेमो शिक्षकों का अभ्यास डेटा रीसेट करना चाहते हैं?"
+  audio: false
+ui_admin_fast_forward:
+  text: "कार्य आगे बढ़ाएँ (Fast Forward)"
+  audio: false
+ui_admin_success_reset:
+  text: "डेमो शिक्षक डेटा सफलतापूर्वक रीसेट किया गया।"
+  audio: false
+ui_admin_success_ff:
+  text: "निर्धारित कार्य सफलतापूर्वक आगे बढ़ाए गए।"
+  audio: false
+

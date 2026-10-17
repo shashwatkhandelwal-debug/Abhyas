@@ -38,6 +38,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from backend.app.config import settings  # noqa: E402 — sys.path configured before app imports
+
+# Rule C justification: eval script runs standalone; sys.path configured before app imports
 from backend.app.speech.audio import is_wav_non_silent  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")

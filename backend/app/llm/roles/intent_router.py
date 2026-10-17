@@ -15,6 +15,7 @@ from pydantic import ValidationError
 
 from backend.app.config import settings
 from backend.app.llm.client import LLMUnavailable, call_tool
+from backend.app.llm.guard_stats import record_guard_event
 from backend.app.llm.guards import guard_intent_router
 from backend.app.llm.prompts import load_prompt
 from backend.app.llm.schemas import IntentRouterOutput
@@ -92,6 +93,7 @@ async def route_intent(
             )
             output = IntentRouterOutput.model_validate(tool_data)
             is_valid, msg = guard_intent_router(output)
+            record_guard_event("intent_router", attempt, is_valid, msg)
             if is_valid:
                 # spec §5.3 guard: confidence < 0.5 -> treat as answer_for_step
                 # if current state expects free speech (EXPLAIN_BACK, REFLECT), else unclear.

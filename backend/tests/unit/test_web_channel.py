@@ -94,6 +94,12 @@ def web_test_app(mock_user: AppUser, mock_teacher: Teacher) -> FastAPI:
     async def get_mock(entity: Any, ident: Any) -> Any:
         if entity is Teacher and ident == mock_teacher.id:
             return mock_teacher
+        if (
+            entity is Teacher
+            and hasattr(app.state, "teachers_db")
+            and ident in app.state.teachers_db
+        ):
+            return app.state.teachers_db[ident]
         if entity is Message:
             return messages_db.get(ident)
         return None
@@ -108,19 +114,25 @@ def web_test_app(mock_user: AppUser, mock_teacher: Teacher) -> FastAPI:
         mock_res = MagicMock()
         str_stmt = str(stmt)
         if "FROM message" in str_stmt:
-            # Check channel_msg_id dedupe via parameters
+            # Check channel_msg_id dedupe or audio_ref via parameters
             params = list(getattr(stmt.compile(), "params", {}).values())
+            uuid_params = [p for p in params if isinstance(p, uuid.UUID)]
             matched = None
             for p in params:
                 for msg in messages_db.values():
-                    if msg.channel_msg_id == p:
+                    if msg.channel_msg_id == p or msg.audio_ref == p:
+                        if uuid_params and msg.teacher_id not in uuid_params:
+                            continue
                         matched = msg
                         break
                 if matched:
                     break
 
             if matched:
-                mock_res.scalar_one_or_none.return_value = matched
+                is_id_only = (
+                    "SELECT message.id \nFROM" in str_stmt or "SELECT message.id FROM" in str_stmt
+                )
+                mock_res.scalar_one_or_none.return_value = matched.id if is_id_only else matched
                 mock_res.scalars.return_value.all.return_value = [matched]
                 return mock_res
 
@@ -158,6 +170,10 @@ def web_test_app(mock_user: AppUser, mock_teacher: Teacher) -> FastAPI:
     db.add.side_effect = add_mock
     db.execute.side_effect = execute_mock
     db.commit = AsyncMock()
+
+    app.state.messages_db = messages_db
+    app.state.mock_teacher = mock_teacher
+    app.state.db = db
 
     async def mock_db_session() -> AsyncSession:
         return db
@@ -304,9 +320,22 @@ async def test_get_chat_messages_polling_and_pending_status(
 
 
 @pytest.mark.asyncio
-async def test_audio_cache_endpoint_headers(web_test_app: FastAPI) -> None:
+async def test_audio_cache_endpoint_headers(
+    web_test_app: FastAPI, mock_teacher_id: uuid.UUID
+) -> None:
     fixture_wav = Path(__file__).parents[1] / "fixtures" / "audio" / "sample_5s.wav"
     await tts_cache.put_wav("sample_voice_01", fixture_wav.read_bytes())
+
+    # Associate sample_voice_01 with mock_teacher to establish ownership
+    msg_id = uuid.uuid4()
+    web_test_app.state.messages_db[msg_id] = Message(
+        id=msg_id,
+        teacher_id=mock_teacher_id,
+        direction="out",
+        channel="web",
+        channel_msg_id=str(uuid.uuid4()),
+        audio_ref="sample_voice_01",
+    )
 
     async with AsyncClient(
         transport=ASGITransport(app=web_test_app), base_url="http://test"
@@ -319,6 +348,73 @@ async def test_audio_cache_endpoint_headers(web_test_app: FastAPI) -> None:
         assert "max-age=31536000" in cache_control
         assert "immutable" in cache_control
         assert len(res.content) > 0
+
+
+@pytest.mark.asyncio
+async def test_audio_endpoint_ownership_isolation(
+    web_test_app: FastAPI, mock_teacher_id: uuid.UUID
+) -> None:
+    """Verifies that Teacher B accessing Teacher A's audio returns 404, while admin and Teacher A succeed."""
+    fixture_wav = Path(__file__).parents[1] / "fixtures" / "audio" / "sample_5s.wav"
+    await tts_cache.put_wav("audio_teacher_a", fixture_wav.read_bytes())
+
+    # Teacher A owns this audio
+    msg_id = uuid.uuid4()
+    web_test_app.state.messages_db[msg_id] = Message(
+        id=msg_id,
+        teacher_id=mock_teacher_id,
+        direction="out",
+        channel="web",
+        channel_msg_id=str(uuid.uuid4()),
+        audio_ref="audio_teacher_a",
+    )
+
+    # 1. Teacher A accesses their own audio -> 200 OK
+    async with AsyncClient(
+        transport=ASGITransport(app=web_test_app), base_url="http://test"
+    ) as client:
+        res_owner = await client.get("/api/audio/audio_teacher_a.ogg")
+        assert res_owner.status_code == 200
+
+    # 2. Teacher B attempts to access Teacher A's audio -> 404 Not Found
+    teacher_b_id = uuid.uuid4()
+    teacher_b_user = AppUser(
+        id=uuid.uuid4(),
+        username="user_b",
+        password_hash="dummy",
+        role="teacher",
+        teacher_id=teacher_b_id,
+    )
+    teacher_b = Teacher(
+        id=teacher_b_id,
+        phone_hash="hash_b",
+        name="शिक्षक बी",
+        is_demo=False,
+    )
+    if not hasattr(web_test_app.state, "teachers_db"):
+        web_test_app.state.teachers_db = {}
+    web_test_app.state.teachers_db[teacher_b_id] = teacher_b
+
+    web_test_app.dependency_overrides[get_current_user] = lambda: teacher_b_user
+    async with AsyncClient(
+        transport=ASGITransport(app=web_test_app), base_url="http://test"
+    ) as client:
+        res_other = await client.get("/api/audio/audio_teacher_a.ogg")
+        assert res_other.status_code == 404
+
+    # 3. Admin accesses Teacher A's audio -> 200 OK
+    admin_user = AppUser(
+        id=uuid.uuid4(),
+        username="admin_user",
+        password_hash="dummy",
+        role="admin",
+    )
+    web_test_app.dependency_overrides[get_current_user] = lambda: admin_user
+    async with AsyncClient(
+        transport=ASGITransport(app=web_test_app), base_url="http://test"
+    ) as client:
+        res_admin = await client.get("/api/audio/audio_teacher_a.ogg")
+        assert res_admin.status_code == 200
 
 
 @pytest.mark.asyncio
