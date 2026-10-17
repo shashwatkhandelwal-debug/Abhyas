@@ -1,13 +1,13 @@
 # Latency Benchmark Report (spec/11 §11.3, T41)
 
-- **Date:** 2026-10-17 06:18:21 UTC
+- **Date:** 2026-10-17 06:48:40 UTC
 - **Benchmark Target:** Local Pipeline Simulation
 - **LLM Provider (effective):** `mock (no ANTHROPIC_API_KEY)`
 - **STT Provider (effective):** `mock (no SARVAM_API_KEY)`
 - **TTS Provider (effective):** `mock (no SARVAM_API_KEY)`
 - **Target:** Voice-in → voice-out latency p95 < 20.0 s (20000 ms) on hosted deployment
-- **Status:** **NOT MEASURED (mock providers)** (Simulated turn execution: **16.46 s**)
-- **Total Tested Rehearsal Turns:** 40 across 5 evaluator sample inputs
+- **Status:** **NOT MEASURED (mock providers)** (Simulated turn execution: **17.22 s**)
+- **Total Tested Rehearsal Turns:** 40 (40 completed) across 5 evaluator sample inputs
 
 > [!NOTE]
 > **Mock Mode Execution:** Effective providers are running in mock mode:
@@ -20,11 +20,11 @@
 
 ## 1. End-to-End Latency by Concurrency
 
-| Concurrency | Turns | p50 Latency (s) | p95 Latency (s) | Max Latency (s) | Target Compliance (< 20s) |
+| Concurrency | Completed Turns | p50 Latency (s) | p95 Latency (s) | Max Latency (s) | Target Compliance (< 20s) |
 |---|---|---|---|---|---|
-| **Concurrency 1** | 20 | 16.33 s | 16.37 s | 17.26 s | **N/A (mock providers)** |
-| **Concurrency 3** | 20 | 16.41 s | 16.46 s | 16.50 s | **N/A (mock providers)** |
-| **Combined** | 40 | 16.36 s | **16.46 s** | 17.26 s | **N/A (mock providers)** |
+| **Concurrency 1** | 20/20 completed | 16.60 s | 16.65 s | 16.66 s | **N/A (mock providers)** |
+| **Concurrency 3** | 20/20 completed | 16.99 s | 17.26 s | 17.37 s | **N/A (mock providers)** |
+| **Combined** | 40/40 completed | 16.64 s | **17.22 s** | 17.37 s | **N/A (mock providers)** |
 
 ---
 
@@ -32,21 +32,23 @@
 
 | Stage | Description | Mean Latency (ms) | % of Total Time |
 |---|---|---|---|
-| `download` | Ingest and receive inbound audio | 22.5 ms | 0.1% |
-| `convert` | ffmpeg conversion to 16 kHz mono WAV | 0.0 ms | 0.0% |
-| `stt` | Speech-to-text recognition | 1.3 ms | 0.0% |
-| `tagger` | Teaching act tagging (Claude / Mock via tag_act) | 8179.4 ms | 49.9% |
+| `download` | Ingest and receive inbound audio | 68.5 ms | 0.4% |
+| `convert` | ffmpeg conversion to 16 kHz mono WAV | 317.4 ms | 1.9% |
+| `stt` | Speech-to-text recognition | 1.0 ms | 0.0% |
+| `tagger` | Teaching act tagging (Claude / Mock via tag_act) | 8198.4 ms | 48.8% |
 | `engine` | Deterministic rule engine transition | 0.3 ms | 0.0% |
-| `voice` | Child dialogue line selection (Claude / Mock via voice_child_line) | 8150.4 ms | 49.7% |
-| `guard` | Output schema & safety guards validation | 4.2 ms | 0.0% |
-| `tts` | Text-to-speech voice synthesis | 22.9 ms | 0.1% |
-| `send` | Outbound message delivery & dispatch | 9.1 ms | 0.1% |
+| `voice` | Child dialogue line selection (Claude / Mock via voice_child_line) | 8204.7 ms | 48.8% |
+| `guard` | Output schema & safety guards validation | 4.5 ms | 0.0% |
+| `tts` | Text-to-speech voice synthesis | 0.6 ms | 0.0% |
+| `send` | Outbound message delivery & dispatch | 7.6 ms | 0.0% |
 
 ---
 
 ## 3. Reliability & Guard Fallback Statistics
 
 - **Total Evaluated Turns:** 40
+- **Completed Turns:** 40 / 40
+- **Failed / Timed-out Turns:** 0
 - **Guard Fallback Count:** 0
 - **Guard Fallback Rate:** **0.00%** (Target: < 5%)
 - **Deterministic AI Children:** 100% adherence to rule engine state machine.
@@ -59,7 +61,7 @@ Evaluated for a complete weekly learning cycle (LEARN → EXPLAIN_BACK → MODEL
 
 | Mode | Measured Data Transfer | Spec Target | Compliance |
 |---|---|---|---|
-| **Normal Mode** (auto audio preload) | **13.0 KB** (estimate on mock payloads) | < 2.0 MB | **N/A (estimate on mock payloads)** |
+| **Normal Mode** (auto audio preload) | **7.6 KB** (estimate on mock payloads) | < 2.0 MB | **N/A (estimate on mock payloads)** |
 | **Lite Mode** (audio on tap only) | **8.8 KB** (estimate on mock payloads) | < 300 KB | **N/A (estimate on mock payloads)** |
 
 ---

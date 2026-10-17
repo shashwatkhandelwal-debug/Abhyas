@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -11,6 +13,7 @@ import pytest
 from backend.app.config import settings
 from eval.latency.benchmark_latency import (
     TurnMeasurement,
+    async_main,
     generate_report,
     get_effective_provider,
     measure_http_turn,
@@ -71,6 +74,7 @@ def test_generate_report_format_and_thresholds() -> None:
             guard_fallback=False,
             bytes_up=1000,
             bytes_down=2000,
+            ok=True,
         ),
         TurnMeasurement(
             sample_id="s2_bundles_all",
@@ -80,6 +84,7 @@ def test_generate_report_format_and_thresholds() -> None:
             guard_fallback=False,
             bytes_up=1200,
             bytes_down=2200,
+            ok=True,
         ),
     ]
 
@@ -98,6 +103,7 @@ def test_generate_report_format_and_thresholds() -> None:
         assert "estimate on mock payloads" in mock_report
         # Assert follow-up c: does NOT display "0.00 MB"
         assert "0.00 MB" not in mock_report
+        assert "2/2 completed" in mock_report
 
     # Case 2: Real providers configured -> PASSED
     with (
@@ -163,11 +169,80 @@ async def test_measure_http_turn_mock() -> None:
         assert meas.sample_id == "s1_ask_ravi"
         assert meas.concurrency == 1
         assert meas.total_ms > 0
+        assert meas.ok is True
         assert "post_audio" in meas.stage_ms
         assert "polling_roundtrip" in meas.stage_ms
         assert "audio_download" in meas.stage_ms
         assert meas.bytes_up == len(b"RIFF1234WAVE")
         assert meas.bytes_down > 0
+
+
+@pytest.mark.asyncio
+async def test_measure_http_turn_timeout_and_p95_exclusion() -> None:
+    """Verifies that timeouts set ok=False and are excluded from p95 calculations (Blocker 2)."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/chat/audio":
+            return httpx.Response(
+                202, json={"message_id": "test-msg-timeout", "status": "accepted"}
+            )
+        elif request.url.path == "/api/chat/messages":
+            # Never ready: always pending=True, no messages
+            return httpx.Response(200, json={"pending": True, "messages": []})
+        return httpx.Response(404)
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        meas = await measure_http_turn(
+            client=client,
+            csrf_token="test-csrf",
+            sample_id="s1_ask_ravi",
+            audio_bytes=b"RIFF1234WAVE",
+            concurrency=1,
+            timeout_s=0.1,  # fast timeout
+        )
+        assert meas.ok is False
+        assert meas.error_msg is not None
+        assert "timed out" in meas.error_msg.lower()
+
+    # Verify that a failed turn is excluded from p95 and marks the report FAILED
+    good_turn = TurnMeasurement(
+        sample_id="s1_ask_ravi",
+        concurrency=1,
+        total_ms=50.0,
+        stage_ms={"stt": 10.0},
+        ok=True,
+    )
+    failed_turn = TurnMeasurement(
+        sample_id="s2_bundles_all",
+        concurrency=1,
+        total_ms=30000.0,  # 30 seconds timeout
+        stage_ms={"stt": 10.0},
+        ok=False,
+        error_msg="timed out",
+    )
+
+    report = generate_report([good_turn, failed_turn], target_ms=20_000)
+    # The failed 30s turn MUST NOT inflate the p95 to 30.00 s
+    assert "30.00 s" not in report
+    # Completed turns reported as 1/2
+    assert "1/2 completed" in report
+    # Marked FAILED because of turn failure
+    assert "FAILED" in report
+
+
+def test_url_mode_missing_wav_exits_nonzero(monkeypatch: pytest.MonkeyPatch) -> None:
+    """In --url mode, missing or silent WAVs must exit non-zero with 'make samples' instruction (Blocker 1)."""
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["benchmark_latency.py", "--url", "http://testserver", "--turns", "1"],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        asyncio.run(async_main())
+
+    assert exc_info.value.code != 0
 
 
 def test_latency_report_file_exists() -> None:

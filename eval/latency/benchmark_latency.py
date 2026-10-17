@@ -9,7 +9,7 @@ Supports two benchmarking execution targets:
    Invokes STT, tag_act (act tagger), RuleEngine, voice_child_line (child voice),
    guard verification, and TTS directly through internal modules.
 2. Hosted HTTP endpoint (--url <base_url>):
-   Authenticates as demo teacher(s), issues POST /api/chat/audio with sample WAV,
+   Authenticates as demo teacher(s), issues POST /api/chat/audio with real sample WAV,
    polls GET /api/chat/messages?after={id} until pending=False and outbound audio is ready,
    and measures end-to-end network, server processing, and audio retrieval timing.
 
@@ -38,6 +38,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from backend.app.config import settings  # noqa: E402 — sys.path configured before app imports
+from backend.app.speech.audio import is_wav_non_silent  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("abhyas.eval.latency")
@@ -58,6 +59,8 @@ class TurnMeasurement:
     guard_fallback: bool = False
     bytes_up: int = 0
     bytes_down: int = 0
+    ok: bool = True
+    error_msg: str | None = None
 
 
 def percentile(values: Sequence[float], pct: float) -> float:
@@ -127,7 +130,7 @@ async def measure_local_pipeline_turn(
     # 2. Audio Convert (16 kHz mono)
     t_start = time.perf_counter()
     try:
-        converted_wav = await to_wav16k(audio_bytes, source_ext="wav")
+        converted_wav = await to_wav16k(audio_bytes)
     except Exception:
         converted_wav = audio_bytes
     stages["convert"] = (time.perf_counter() - t_start) * 1000.0
@@ -251,6 +254,7 @@ async def measure_local_pipeline_turn(
         guard_fallback=guard_fallback,
         bytes_up=bytes_up,
         bytes_down=bytes_down,
+        ok=True,
     )
 
 
@@ -303,42 +307,80 @@ async def measure_http_turn(
     data = {"client_msg_id": client_msg_id}
     headers = {"x-csrf-token": csrf_token}
 
-    post_resp = await client.post("/api/chat/audio", data=data, files=files, headers=headers)
+    try:
+        post_resp = await client.post("/api/chat/audio", data=data, files=files, headers=headers)
+    except Exception as exc:
+        total_ms = (time.perf_counter() - t0) * 1000.0
+        return TurnMeasurement(
+            sample_id=sample_id,
+            concurrency=concurrency,
+            total_ms=total_ms,
+            stage_ms={},
+            guard_fallback=False,
+            bytes_up=bytes_up,
+            bytes_down=0,
+            ok=False,
+            error_msg=f"HTTP POST /api/chat/audio failed: {exc}",
+        )
+
     stages["post_audio"] = (time.perf_counter() - t_start) * 1000.0
 
     if post_resp.status_code != 202:
-        raise RuntimeError(
-            f"HTTP POST /api/chat/audio returned unexpected status {post_resp.status_code}: {post_resp.text}"
+        total_ms = (time.perf_counter() - t0) * 1000.0
+        return TurnMeasurement(
+            sample_id=sample_id,
+            concurrency=concurrency,
+            total_ms=total_ms,
+            stage_ms=stages,
+            guard_fallback=False,
+            bytes_up=bytes_up,
+            bytes_down=0,
+            ok=False,
+            error_msg=f"HTTP POST /api/chat/audio returned {post_resp.status_code}: {post_resp.text}",
         )
 
     inbound_msg_id = post_resp.json().get("message_id")
 
     # 2. Poll /api/chat/messages?after={inbound_msg_id}
     t_poll_start = time.perf_counter()
-    reply_audio_ready = False
+    reply_ready = False
     download_stage_ms = 0.0
 
     while (time.perf_counter() - t0) < timeout_s:
-        poll_resp = await client.get(f"/api/chat/messages?after={inbound_msg_id}")
+        try:
+            poll_resp = await client.get(f"/api/chat/messages?after={inbound_msg_id}")
+        except Exception as e:
+            logger.warning("Polling error for sample %s: %s", sample_id, e)
+            await asyncio.sleep(0.2)
+            continue
+
         if poll_resp.status_code == 200:
             p_data = poll_resp.json()
             pending = p_data.get("pending", True)
             messages = p_data.get("messages", [])
             outbound_msgs = [m for m in messages if m.get("direction") == "out"]
 
+            # Confirm turn is no longer pending AND final outbound response received
             if not pending and outbound_msgs:
-                # Bot turn processed! Download reply audio if present
                 for om in outbound_msgs:
                     text_str = om.get("text") or ""
                     bytes_down += len(text_str.encode("utf-8"))
                     audio_ref = om.get("audio_ref")
                     if audio_ref:
                         t_dl = time.perf_counter()
-                        dl_resp = await client.get(f"/api/audio/{audio_ref}.wav")
-                        download_stage_ms += (time.perf_counter() - t_dl) * 1000.0
-                        if dl_resp.status_code == 200:
-                            bytes_down += len(dl_resp.content)
-                reply_audio_ready = True
+                        try:
+                            dl_resp = await client.get(f"/api/audio/{audio_ref}.wav")
+                            download_stage_ms += (time.perf_counter() - t_dl) * 1000.0
+                            if dl_resp.status_code == 200:
+                                bytes_down += len(dl_resp.content)
+                        except Exception as dl_err:
+                            logger.warning(
+                                "Failed downloading audio %s for sample %s: %s",
+                                audio_ref,
+                                sample_id,
+                                dl_err,
+                            )
+                reply_ready = True
                 break
 
         await asyncio.sleep(0.2)
@@ -349,11 +391,19 @@ async def measure_http_turn(
 
     total_ms = (time.perf_counter() - t0) * 1000.0
 
-    if not reply_audio_ready:
-        logger.warning(
-            "HTTP turn for sample %s timed out after %.2f s waiting for reply audio",
-            sample_id,
-            total_ms / 1000.0,
+    if not reply_ready:
+        err = f"HTTP turn timed out after {total_ms / 1000.0:.2f} s waiting for reply"
+        logger.warning("HTTP turn for sample %s: %s", sample_id, err)
+        return TurnMeasurement(
+            sample_id=sample_id,
+            concurrency=concurrency,
+            total_ms=total_ms,
+            stage_ms=stages,
+            guard_fallback=False,
+            bytes_up=bytes_up,
+            bytes_down=bytes_down,
+            ok=False,
+            error_msg=err,
         )
 
     return TurnMeasurement(
@@ -364,6 +414,7 @@ async def measure_http_turn(
         guard_fallback=False,
         bytes_up=bytes_up,
         bytes_down=bytes_down,
+        ok=True,
     )
 
 
@@ -390,7 +441,7 @@ async def run_benchmark(
         )
         sem = asyncio.Semaphore(c)
 
-        # In HTTP mode, prepare c authenticated clients
+        # In HTTP mode, prepare c authenticated clients (strictly raising on login failure)
         http_clients: list[tuple[httpx.AsyncClient, str]] = []
         if base_url:
             for i in range(c):
@@ -398,20 +449,8 @@ async def run_benchmark(
                     http_clients.append(client_pool[i])
                 else:
                     user_for_slot = f"teacher.demo{i + 1}" if c > 1 else username
-                    try:
-                        cli, csrf = await setup_http_client(
-                            base_url, user_for_slot, effective_password
-                        )
-                        http_clients.append((cli, csrf))
-                    except Exception as exc:
-                        logger.warning(
-                            "Failed login for %s, falling back to %s: %s",
-                            user_for_slot,
-                            username,
-                            exc,
-                        )
-                        cli, csrf = await setup_http_client(base_url, username, effective_password)
-                        http_clients.append((cli, csrf))
+                    cli, csrf = await setup_http_client(base_url, user_for_slot, effective_password)
+                    http_clients.append((cli, csrf))
 
         async def worker(
             sample: dict[str, Any],
@@ -423,13 +462,22 @@ async def run_benchmark(
             async with curr_sem:
                 sid = sample["id"]
                 txt = sample["text_hi"]
-                audio = audio_files.get(sid, b"RIFF" + b"\x00" * 1000)
+                audio = audio_files.get(sid)
                 if base_url:
+                    if not audio or not is_wav_non_silent(audio):
+                        raise RuntimeError(
+                            f"Sample '{sid}' lacks real non-silent audio recording for hosted benchmarking. "
+                            "Run 'make samples' with real SARVAM_API_KEY first."
+                        )
                     cli, csrf = curr_clients[worker_idx % len(curr_clients)]
                     return await measure_http_turn(
                         cli, csrf, sid, audio, concurrency=curr_c, timeout_s=timeout_s
                     )
-                return await measure_local_pipeline_turn(sid, txt, audio, concurrency=curr_c)
+
+                audio_payload = audio or (b"RIFF_MOCK_SIMULATION_PAYLOAD" + b"\x00" * 1000)
+                return await measure_local_pipeline_turn(
+                    sid, txt, audio_payload, concurrency=curr_c
+                )
 
         tasks = []
         slot_idx = 0
@@ -455,11 +503,17 @@ def generate_report(
     base_url: str | None = None,
 ) -> str:
     """Generates markdown latency report conforming to spec/11 §11.3."""
-    c1_results = [r for r in results if r.concurrency == 1]
-    c3_results = [r for r in results if r.concurrency == 3]
+    c1_all = [r for r in results if r.concurrency == 1]
+    c3_all = [r for r in results if r.concurrency == 3]
 
-    c1_totals = [r.total_ms for r in c1_results]
-    c3_totals = [r.total_ms for r in c3_results]
+    # Exclude timed-out or failed turns from percentile metrics (Blocker 2)
+    c1_ok = [r for r in c1_all if r.ok]
+    c3_ok = [r for r in c3_all if r.ok]
+    all_ok = [r for r in results if r.ok]
+
+    c1_totals = [r.total_ms for r in c1_ok]
+    c3_totals = [r.total_ms for r in c3_ok]
+    all_totals = [r.total_ms for r in all_ok]
 
     p50_c1 = percentile(c1_totals, 0.50)
     p95_c1 = percentile(c1_totals, 0.95)
@@ -469,12 +523,20 @@ def generate_report(
     p95_c3 = percentile(c3_totals, 0.95)
     max_c3 = max(c3_totals) if c3_totals else 0.0
 
-    overall_p95 = percentile([r.total_ms for r in results], 0.95)
-    passed = overall_p95 < target_ms
+    overall_p95 = percentile(all_totals, 0.95)
+    p50_all = percentile(all_totals, 0.50)
+    max_all = max(all_totals) if all_totals else 0.0
 
-    # Aggregate stage metrics across all runs
+    has_failures = any(not r.ok for r in results)
+    c1_has_failures = any(not r.ok for r in c1_all)
+    c3_has_failures = any(not r.ok for r in c3_all)
+
+    # Compliance requires p95 < target AND no timeouts / errors AND non-empty completed turns
+    passed = (overall_p95 < target_ms) and (not has_failures) and (len(all_ok) > 0)
+
+    # Aggregate stage metrics across successful turns
     all_stage_keys: list[str] = []
-    for r in results:
+    for r in all_ok:
         for k in r.stage_ms:
             if k not in all_stage_keys:
                 all_stage_keys.append(k)
@@ -496,27 +558,29 @@ def generate_report(
 
     stage_averages: dict[str, float] = {}
     for k in all_stage_keys:
-        vals = [r.stage_ms.get(k, 0.0) for r in results if k in r.stage_ms]
+        vals = [r.stage_ms.get(k, 0.0) for r in all_ok if k in r.stage_ms]
         stage_averages[k] = sum(vals) / len(vals) if vals else 0.0
 
     total_stage_time = sum(stage_averages.values()) or 1.0
 
     # Guard fallback rate
     total_turns = len(results)
-    fallbacks = sum(1 for r in results if r.guard_fallback)
-    fallback_rate = (fallbacks / total_turns * 100.0) if total_turns else 0.0
+    completed_turns = len(all_ok)
+    fallbacks = sum(1 for r in all_ok if r.guard_fallback)
+    fallback_rate = (fallbacks / completed_turns * 100.0) if completed_turns else 0.0
 
     # Data cost estimation for full weekly loop (approx. 15 inbound turns + 20 outbound bot turns)
-    # Browser and WhatsApp record Opus at 16 kbps mono (spec/06 §6.1, spec/09 §9.2),
-    # which is ~1/11th of uncompressed 16-bit PCM WAV.
     opus_ratio = 16.0 / (22.050 * 16.0)
-    avg_up = (sum(r.bytes_up for r in results) / len(results) if results else 0) * opus_ratio
-    avg_down = (sum(r.bytes_down for r in results) / len(results) if results else 0) * opus_ratio
+    avg_up = (
+        sum(r.bytes_up for r in all_ok) / completed_turns if completed_turns else 0
+    ) * opus_ratio
+    avg_down = (
+        sum(r.bytes_down for r in all_ok) / completed_turns if completed_turns else 0
+    ) * opus_ratio
 
     normal_weekly_bytes = (avg_up * 15) + (avg_down * 20)
     normal_weekly_mb = normal_weekly_bytes / (1024 * 1024)
 
-    # Lite mode (audio only on explicit tap, text only by default: ~5 inbound audio + text)
     lite_weekly_bytes = (avg_up * 5) + (350 * 25)
     lite_weekly_kb = lite_weekly_bytes / 1024
 
@@ -529,7 +593,25 @@ def generate_report(
 
     is_mock = "mock" in effective_llm or "mock" in effective_stt or "mock" in effective_tts
 
-    if is_mock:
+    if has_failures:
+        status_line = f"**FAILED** ({completed_turns}/{total_turns} turns completed, timeouts/errors encountered)"
+        c1_comp = (
+            "FAIL (turn errors)" if c1_has_failures else ("PASS" if p95_c1 < target_ms else "FAIL")
+        )
+        c3_comp = (
+            "FAIL (turn errors)" if c3_has_failures else ("PASS" if p95_c3 < target_ms else "FAIL")
+        )
+        overall_comp = "FAIL (turn errors)"
+        norm_data_disp = (
+            f"**{normal_weekly_bytes / 1024:.1f} KB**"
+            if normal_weekly_mb < 0.05
+            else f"**{normal_weekly_mb:.2f} MB**"
+        )
+        lite_data_disp = f"**{lite_weekly_kb:.1f} KB**"
+        norm_data_comp = "FAIL (incomplete turns)"
+        lite_data_comp = "FAIL (incomplete turns)"
+        mock_note = ""
+    elif is_mock:
         status_line = f"**NOT MEASURED (mock providers)** (Simulated turn execution: **{overall_p95 / 1000.0:.2f} s**)"
         c1_comp = "N/A (mock providers)"
         c3_comp = "N/A (mock providers)"
@@ -580,17 +662,17 @@ def generate_report(
 - **TTS Provider (effective):** `{effective_tts}`
 - **Target:** Voice-in → voice-out latency p95 < 20.0 s ({target_ms} ms) on hosted deployment
 - **Status:** {status_line}
-- **Total Tested Rehearsal Turns:** {total_turns} across {len({r.sample_id for r in results})} evaluator sample inputs
+- **Total Tested Rehearsal Turns:** {total_turns} ({completed_turns} completed) across {len({r.sample_id for r in results})} evaluator sample inputs
 {mock_note}
 ---
 
 ## 1. End-to-End Latency by Concurrency
 
-| Concurrency | Turns | p50 Latency (s) | p95 Latency (s) | Max Latency (s) | Target Compliance (< 20s) |
+| Concurrency | Completed Turns | p50 Latency (s) | p95 Latency (s) | Max Latency (s) | Target Compliance (< 20s) |
 |---|---|---|---|---|---|
-| **Concurrency 1** | {len(c1_results)} | {p50_c1 / 1000.0:.2f} s | {p95_c1 / 1000.0:.2f} s | {max_c1 / 1000.0:.2f} s | **{c1_comp}** |
-| **Concurrency 3** | {len(c3_results)} | {p50_c3 / 1000.0:.2f} s | {p95_c3 / 1000.0:.2f} s | {max_c3 / 1000.0:.2f} s | **{c3_comp}** |
-| **Combined** | {total_turns} | {percentile([r.total_ms for r in results], 0.50) / 1000.0:.2f} s | **{overall_p95 / 1000.0:.2f} s** | {max([r.total_ms for r in results]) / 1000.0:.2f} s | **{overall_comp}** |
+| **Concurrency 1** | {len(c1_ok)}/{len(c1_all)} completed | {p50_c1 / 1000.0:.2f} s | {p95_c1 / 1000.0:.2f} s | {max_c1 / 1000.0:.2f} s | **{c1_comp}** |
+| **Concurrency 3** | {len(c3_ok)}/{len(c3_all)} completed | {p50_c3 / 1000.0:.2f} s | {p95_c3 / 1000.0:.2f} s | {max_c3 / 1000.0:.2f} s | **{c3_comp}** |
+| **Combined** | {completed_turns}/{total_turns} completed | {p50_all / 1000.0:.2f} s | **{overall_p95 / 1000.0:.2f} s** | {max_all / 1000.0:.2f} s | **{overall_comp}** |
 
 ---
 
@@ -605,6 +687,8 @@ def generate_report(
 ## 3. Reliability & Guard Fallback Statistics
 
 - **Total Evaluated Turns:** {total_turns}
+- **Completed Turns:** {completed_turns} / {total_turns}
+- **Failed / Timed-out Turns:** {total_turns - completed_turns}
 - **Guard Fallback Count:** {fallbacks}
 - **Guard Fallback Rate:** **{fallback_rate:.2f}%** (Target: < 5%)
 - **Deterministic AI Children:** 100% adherence to rule engine state machine.
@@ -686,14 +770,35 @@ async def async_main() -> None:
     if not samples:
         raise ValueError("No samples found in samples.yaml")
 
+    # Blocker 1: In --url mode, verify every sample has a real, non-silent audio recording
+    if args.url:
+        missing_samples: list[str] = []
+        for s in samples:
+            sid = s["id"]
+            wav_path = AUDIO_DIR / f"{sid}.wav"
+            if not wav_path.is_file() or not is_wav_non_silent(wav_path):
+                missing_samples.append(sid)
+
+        if missing_samples:
+            missing_list = ", ".join(missing_samples)
+            logger.error(
+                "Hosted benchmark (--url) requires real, non-silent audio recordings for all samples. "
+                "Missing or silent WAVs for: %s. Run 'make samples' with real SARVAM_API_KEY first.",
+                missing_list,
+            )
+            sys.exit(1)
+
     audio_files: dict[str, bytes] = {}
     for s in samples:
         sid = s["id"]
         wav_path = AUDIO_DIR / f"{sid}.wav"
-        if wav_path.is_file():
+        if wav_path.is_file() and is_wav_non_silent(wav_path):
             audio_files[sid] = wav_path.read_bytes()
         else:
-            audio_files[sid] = b"RIFF" + b"\x00" * 1000
+            if args.url:
+                sys.exit(1)
+            # Labelled synthetic payload for local pipeline mock simulation only
+            audio_files[sid] = b"RIFF_MOCK_SIMULATION_PAYLOAD" + b"\x00" * 1000
 
     logger.info("Loaded %d sample inputs and %d audio files.", len(samples), len(audio_files))
     results = await run_benchmark(
