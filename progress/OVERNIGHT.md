@@ -25,6 +25,8 @@ Status: ALL TASKS COMPLETED (100% GREEN CI)
 | **Coord (PR #5)** Reviewer Follow-ups Polish | `coord/polish-and-p0` | [PR #5](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/5) | **MERGED into main** (`9d6c902`) | `7b7a869` | [Run 39002622557](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39002622557) | Addressed reviewer follow-ups for PR #2 & PR #3: test DB drop schema guard (`assert "test" in url or CI`), demo_chips JSON loading dynamically into PWA chat interface, mock STT clean fallbacks, and 100% green CI against Postgres. |
 | **Coord (T38, T39, T41)** Golden Fixtures, Audio Samples, Latency Report | `coord/p0-eval` | [PR #6](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/6) | **MERGED into main** (`e54b7ff`) | `9e1b297` | [Run 39008573282](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39008573282) | **T38**: Golden test fixtures (≥5 pass + fail fixtures per role) for all 7 runtime roles, README documenting hand-written synthetic provenance, `test_golden_fixtures.py`.<br>**T39**: `render_samples.py` enforces real TTS provider, silent WAVs removed from git, `is_wav_non_silent` computes `audio_available` dynamically with text fallback in PWA chips.<br>**T41**: Multi-concurrency latency benchmark harness, stage timing breakdown, `eval/latency/REPORT.md` honest mock status ("NOT MEASURED (mock providers)" and mock payload estimates), verified in-code optimizations with file links. |
 | **Coord (PR #7)** Reviewer Follow-ups & Blockers (Fake Audio Guard, Timeout Exclusion, Auth Fix) | `coord/followups-eval` | [PR #7](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/7) | **Awaiting Review** | `9b47598` | [Run 39011709739](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39011709739) | **Blocker 1**: Exit non-zero in `--url` mode if evaluator sample WAVs are missing or silent.<br>**Blocker 2**: Exclude timed-out or errored turns from p50/p95 percentiles, add `ok: bool` to `TurnMeasurement`, report completed turns in Table 1, and ensure polling waits for non-pending outbound reply.<br>**Blocker 3**: Remove silent login fallback to `username` at c=3 to avoid per-teacher lock contention.<br>**Follow-ups (a & c)**: Display effective provider in header, format low data transfer in KB.<br>**Tests**: `test_latency_benchmark.py` testing timeout exclusion and missing audio error exit. |
+| **Lane 1 (T32)** ARP Digest (`/arp`) | `coord/arp-digest` | [PR #10](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/10) | **Awaiting Review (100% Green CI)** | `4e5fda6` | [Run 39016329706](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39016329706) | Cluster-scoped ARP weekly digest, consent-filtered teacher names (`शिक्षक #<hash>` when consent not given), anonymous score masking, audio sample players (`/api/audio/{ref}.wav`), 4 action cards for school visits with 20-min visit playbooks, `test_arp_digest_integration.py`. |
+| **Lane 2 (T33)** Trainer View (`/trainer`) | `coord/trainer-view` | [PR #11](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/11) | **Awaiting Review (100% Green CI)** | `06a7b64` | [Run 39017590919](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39017590919) | District-scoped trainer view backed by `AggModuleBatch` with dynamic fallback, P0 privacy suppression for $n < 10$ (`समूह छोटा है (n<10) — गोपनीयता हेतु छिपाया गया`), zero teacher PII in HTML or CSV, inline SVG rubric bars (0/1/2), ladder distribution, deterministic insight box for top missed points (>=40%), CSV export `GET /trainer/export.csv`. |
 
 ---
 
@@ -107,6 +109,9 @@ Status: ALL TASKS COMPLETED (100% GREEN CI)
 
 ### 5. Lane 2: T33 Trainer View (/trainer) & Aggregates Export
 - **Branch**: `coord/trainer-view`
+- **PR**: [shashwatkhandelwal-debug/Abhyas#11](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/11)
+- **Head SHA**: `06a7b64`
+- **CI Status**: [Run 39017590919 — Completed / Success (100% Green)](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39017590919)
 - **What works**:
   - `build_trainer_report` in `backend/app/reports/trainer_aggregates.py` reading from `AggModuleBatch` with on-demand fallback computation.
   - Privacy-by-design aggregation suppression: any cohort/batch with $n < 10$ (e.g. `KNP-B3` with 8 teachers) strictly replaces all sensitive metrics with:
@@ -119,5 +124,6 @@ Status: ALL TASKS COMPLETED (100% GREEN CI)
   - Added gender-neutral catalog strings `ui_trainer_*` in `content/messages_hi.yaml` (clean of feminine markers).
   - 6 unit tests in `backend/tests/unit/test_trainer_report.py` and 2 PostgreSQL integration tests in `backend/tests/integration/test_trainer_view_integration.py`.
 - **What is stubbed**:
-  - Fully functional; uses `AggModuleBatch` computed from database rows.
+  - None. Fully functional against live database rows and computed aggregates.
+
 

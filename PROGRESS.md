@@ -224,7 +224,7 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **Lane E Completed & Merged**:
   - T24 Scheduler, jobs, aggregates & ARP digest.
 - **Coord & Feature Lanes (Overnight Run 3)**:
-  - **T33 (Trainer View `/trainer`)**: Built trainer view backed by `AggModuleBatch` with district/batch/move filters, deterministic insight box for missed key points >= 40%, inline SVG stacked rubric bars, adoption evidence ladder distribution, strict $n < 10$ suppression (`समूह छोटा है (n<10) — गोपनीयता हेतु छिपाया गया`), and CSV export with matching privacy enforcement. Zero teacher PII exposed anywhere. Unit and integration tests passing. Branch `coord/trainer-view`.
+  - **T33 (Trainer View `/trainer`)**: Built trainer view backed by `AggModuleBatch` with district/batch/move filters, deterministic insight box for missed key points >= 40%, inline SVG stacked rubric bars, adoption evidence ladder distribution, strict $n < 10$ suppression (`समूह छोटा है (n<10) — गोपनीयता हेतु छिपाया गया`), and CSV export with matching privacy enforcement. Zero teacher PII exposed anywhere. Unit and integration tests passing. Branch `coord/trainer-view` ([PR #11](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/11), 100% Green CI on Run 39017590919).
 
 ### NEXT (Autonomous Overnight Queue):
 1. **T34 (Coach Review Console `/review`)** · Priority: P1 (spec/09 §9.5, review queues, calibration mode, 2-coach move approval).
