@@ -22,7 +22,7 @@
 | ARP (cluster mentor) | `arp.demo` | in the submission form | Weekly digest, visit list, answer an escalated question |
 | Trainer (DIET) | `trainer.demo` | in the submission form | Module × batch view, n < 10 suppression (batch KNP-B3) |
 | FLN coach | `coach.demo` | in the submission form | Review queue, blind calibration, move approval |
-| Admin | `admin.demo` | in the submission form | Latency, guardrail stats, fast-forward timers, reset demo |
+| Admin | `admin` | in the submission form | Latency, guardrail stats, fast-forward timers, reset demo |
 
 WhatsApp: TODO(human): number and join instructions. Meta test numbers only accept pre-registered recipients, so evaluators who want WhatsApp should send their number through the form; everyone else can use the web chat, which runs the same conversation engine.
 

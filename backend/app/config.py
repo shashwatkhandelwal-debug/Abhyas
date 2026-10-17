@@ -95,6 +95,8 @@ class Settings(BaseSettings):
     WHATSAPP_VERIFY_TOKEN: str = "abhyas_webhook_verify_token"
     WHATSAPP_DISPLAY_NUMBER: str = ""
     WHATSAPP_UTILITY_COST_INR: float = 0.12
+    WHATSAPP_PROCESSED_CACHE_SIZE: int = 10_000
+    WHATSAPP_TEACHER_CREATION_RATE_LIMIT_PER_MINUTE: int = 10
 
     # ── Retrieval (Dense Vectors & Hybrid Search) — H16 ──────────────────
     VOYAGE_API_KEY: str = ""
