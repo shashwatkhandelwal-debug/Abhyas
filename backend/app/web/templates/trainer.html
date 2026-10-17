@@ -314,7 +314,7 @@
             <td><strong>{{ r.n_teachers }}</strong></td>
             {% if r.suppressed %}
             <td colspan="4" class="suppressed-cell">
-              <span class="suppressed-badge">{{ r.pct_completed }}</span>
+              <span class="suppressed-badge">{{ r.pct_completed | safe }}</span>
             </td>
             {% else %}
             <td><strong>{{ r.pct_completed }}</strong></td>
