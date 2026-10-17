@@ -411,7 +411,7 @@ async def test_arp_answer_resolves_review_item_and_dispatches_message(
             msg_res = await session.scalars(
                 select(Message).where(
                     Message.teacher_id == t_id,
-                    Message.direction == "outbound",
+                    Message.direction == "out",
                     Message.speaker == "arp",
                 )
             )

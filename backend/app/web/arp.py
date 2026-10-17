@@ -248,7 +248,7 @@ async def post_arp_answer(
     channel = teacher.preferred_channel or "web"
     outbound_msg = Message(
         teacher_id=teacher.id,
-        direction="outbound",
+        direction="out",
         channel=channel,
         channel_msg_id=f"arp-ans-{question.id}-{uuid.uuid4().hex[:6]}",
         kind="text",
