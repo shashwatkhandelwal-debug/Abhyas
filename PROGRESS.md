@@ -322,3 +322,14 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **backend/app/db/seed.py**: Sanitized log output by removing `DEMO_PASSWORD` formatting from `logger.info("Starting database seed")`.
 - **docs/DEPLOY.md**: Updated §1.3 and Table 2 for `ALEMBIC_DATABASE_URL` to specify Supabase Session Pooler URI on port 5432 (`postgresql://...`) instead of the direct connection host (`db.[PROJECT-REF].supabase.co`), documenting that Supabase direct host defaults to IPv6 which causes connection failures on platforms without IPv6 routing (such as Render or standard Docker).
 - **.env.example**: Updated local `DATABASE_URL` and `ALEMBIC_DATABASE_URL` default passwords from `postgres` to `postgrespassword` to match `infra/docker-compose.yml`.
+
+### T65 README, Judging Criteria, Scale Roadmap & Data Protection (`readme-judging`)
+- **README.md Overhaul**:
+  - **Official Ingested Sources & Curricular Coverage**: Documented 5 official government curricula from official portals (`education.gov.in`, `scertup.gov.in`, `ncert.nic.in`) and 4 seeded foundational moves (`NUM_PLACE_VALUE`, `NUM_ADD_CARRY`, `NUM_SUB_REGROUP`, `LIT_MATRA_BLENDING`). Documented status of full-text indexing with OCR fallback vs. official raw PDF ingestion awaiting state sign-off per HUMAN INPUT H7.
+  - **Cost per Teacher**: Computed exact figures from Lane 1 (`cost-report`): Claude Haiku 5.5 ($0.10 in / $0.50 out / $0.01 cache read per MTok), Claude Sonnet 5.5 ($2 in / $10 out / $0.10 cache read), Sarvam STT (₹30/hr), Sarvam TTS (₹30/10k chars), USD/INR assumption 88.00. Total per completed weekly loop: ₹15.66 ($0.178); monthly cost per active teacher: ₹62.64 ($0.712); lite mode: ₹5.16 ($0.059) per loop.
+  - **Hosting & Infrastructure (Today vs. Scale Roadmap)**: Documented Singapore pilot rationale (Render free/starter tier, Supabase pooler, ~35-45 ms network latency to Indian telecom routes) vs. Indian sovereign scale path (AWS Mumbai ap-south-1 / NIC MeghRaj cloud, Bhashini ULCA for on-premise ASR/TTS models on state GPUs).
+  - **Privacy & DPDP Act 2023 Compliance**: Section 16 compliance (teachers practice with simulated children; no real student audio/PII stored or processed; Section 16 parental consent obligations not triggered), ephemeral in-memory audio discarded post-transcription, salted hash phone numbers (`phone_hash`), consent-gated ARP sharing, and $n \ge 10$ suppression on trainer dashboards.
+  - **Limitations & Next Steps**: Turn latency breakdown (STT ~800-1200ms, parallel child voice + act tagger ~400-800ms, DB commit < 50ms, async TTS ~1200-2000ms), teacher accent/dialect variability (Khariboli vs Bhojpuri/Awadhi), and H7 official PDF ingestion sign-off.
+  - Every number computed, cited with vendor URL, or marked `TODO(human)`.
+- **progress/lane-5.md**: Created detailing Task T65 implementation and decisions.
+
