@@ -49,7 +49,8 @@ content/sources/*.pdf
 # Audio files (spec 14 T01: *.wav, *.ogg except eval/samples and content/audio)
 *.wav
 *.ogg
-eval/samples/audio/*
+!eval/samples/audio/*.wav
+!eval/samples/audio/*.ogg
 !eval/samples/audio/README.md
 !content/audio/**/*.ogg
 !content/audio/**/*.wav
