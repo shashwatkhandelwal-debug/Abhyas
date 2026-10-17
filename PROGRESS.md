@@ -223,9 +223,11 @@ All items from `spec/15_human_inputs.md` are currently open:
   - T22 Intents, ASK, BM25 Retrieval & T23 Move Path Scoring.
 - **Lane E Completed & Merged**:
   - T24 Scheduler, jobs, aggregates & ARP digest.
+- **Coord & Feature Lanes (Overnight Run 3)**:
+  - **T33 (Trainer View `/trainer`)**: Built trainer view backed by `AggModuleBatch` with district/batch/move filters, deterministic insight box for missed key points >= 40%, inline SVG stacked rubric bars, adoption evidence ladder distribution, strict $n < 10$ suppression (`समूह छोटा है (n<10) — गोपनीयता हेतु छिपाया गया`), and CSV export with matching privacy enforcement. Zero teacher PII exposed anywhere. Unit and integration tests passing. Branch `coord/trainer-view`.
 
 ### NEXT (Autonomous Overnight Queue):
-1. **T40 (Source Ingestion Pipeline)** · Priority: P1 (spec/10 §10.4, chunking script, NIPUN/NCERT PDF ingestion).
-2. **T42 (Kappa Evaluation Harness)** · Priority: P1 (spec/11 §11.4, quadratic-weighted Cohen's kappa calculation for coach rubric scoring vs expert ratings).
-3. **T48 (Security & Privacy Pass)** · Priority: P0 (spec/12, spec/14, CSP headers, rate-limiting, audit verification).
-4. **T49 (Docs & Freeze)** · Priority: P0 (spec/13, submission checklist, sample inputs, demo script).
+1. **T34 (Coach Review Console `/review`)** · Priority: P1 (spec/09 §9.5, review queues, calibration mode, 2-coach move approval).
+2. **T35 (Admin Dashboard `/admin`)** · Priority: P1 (spec/09 §9.6, admin user, metrics cards, demo reset, fast-forward).
+3. **T28 (WhatsApp Channel)** · Priority: P1 (spec/07 §7.2, idempotency, 24-hr window, mock Graph API).
+4. **Hardening & Small Debts**: Audio endpoint ownership, chat template data- attributes, Rule C line 41 nit, template cleanup.

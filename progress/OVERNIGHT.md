@@ -105,3 +105,19 @@ Status: ALL TASKS COMPLETED (100% GREEN CI)
     - Retained only verified in-code optimizations with exact file links in Section 5.
     - Unit tests in `test_latency_benchmark.py`.
 
+### 5. Lane 2: T33 Trainer View (/trainer) & Aggregates Export
+- **Branch**: `coord/trainer-view`
+- **What works**:
+  - `build_trainer_report` in `backend/app/reports/trainer_aggregates.py` reading from `AggModuleBatch` with on-demand fallback computation.
+  - Privacy-by-design aggregation suppression: any cohort/batch with $n < 10$ (e.g. `KNP-B3` with 8 teachers) strictly replaces all sensitive metrics with:
+    `"समूह छोटा है (n<10) — गोपनीयता हेतु छिपाया गया"`.
+  - P0 Privacy guarantee: NO teacher names, phone numbers, or individual records appear anywhere in HTML or CSV output.
+  - Inline SVG rubric distribution bar (`generate_rubric_svg`) displaying score 0 (red `#B3261E`), score 1 (marigold `#E0A100`), score 2 (brand green `#1F6F5C`).
+  - Adoption evidence ladder summary (levels 1 to 5).
+  - Deterministic training insight box highlighting top missed key points with failure rate >= 40% (e.g. `"बैच KNP-B1 में 67% शिक्षक '...' वाला बिंदु छोड़ रहे हैं — अगली ट्रेनिंग में इस पर 10 मिनट दें।"`).
+  - CSV export endpoint `GET /trainer/export.csv` respecting identical privacy suppression.
+  - Added gender-neutral catalog strings `ui_trainer_*` in `content/messages_hi.yaml` (clean of feminine markers).
+  - 6 unit tests in `backend/tests/unit/test_trainer_report.py` and 2 PostgreSQL integration tests in `backend/tests/integration/test_trainer_view_integration.py`.
+- **What is stubbed**:
+  - Fully functional; uses `AggModuleBatch` computed from database rows.
+
