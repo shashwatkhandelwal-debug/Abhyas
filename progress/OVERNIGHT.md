@@ -120,6 +120,13 @@ Status: ALL TASKS COMPLETED (100% GREEN CI)
 
 ### 6. Lane 1: T32 DB-Backed ARP Digest & Question Answering
 - **Branch**: `coord/arp-digest`
+- **PR**: [shashwatkhandelwal-debug/Abhyas#10](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/10)
+- **Head SHA**: `4e5fda6`
+- **CI Status**: [Run 39016329706 — Completed / Success](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39016329706)
+  - `lint`: Success (ruff check + ruff format clean, mypy strict clean)
+  - `secrets`: Success (gitleaks zero secrets)
+  - `content`: Success (all moves, personas, messages conform to schemas)
+  - `test`: Success (914 tests passing against real PostgreSQL container)
 - **What works**:
   - `build_arp_digest` in `backend/app/reports/arp_digest.py` dynamically queries PostgreSQL:
     - Overview metrics (active/completed teachers, moves practiced, average rehearsal scores).
@@ -129,10 +136,10 @@ Status: ALL TASKS COMPLETED (100% GREEN CI)
   - Routes in `backend/app/web/arp.py`:
     - `GET /arp`: Renders weekly digest with week-selector (last 6 Mondays), protected by `require_role("arp")`.
     - `POST /arp/observation`: CSRF protected; validates teacher cluster membership and consent; records `ARPObservation` and creates Level-4 `AdoptionEvidence(source="arp_observation")`.
-    - `POST /arp/answer`: CSRF protected; updates `Question.answer_hi` and `Question.status="arp_answered"`; resolves `ReviewItem(kind="question")`; queues outbound WhatsApp/Web message for the teacher.
+    - `POST /arp/answer`: CSRF protected; updates `Question.answer_hi` and `Question.status="arp_answered"`; resolves `ReviewItem(kind="question")`; queues outbound WhatsApp/Web message (`direction="out"`) for the teacher.
   - Jinja2 template `backend/app/web/templates/arp.html` with clean responsive layout and `@media print` styling for offline school visits.
   - Added gender-neutral strings `ui_arp_*` in `content/messages_hi.yaml` (free of feminine markers).
-  - 3 unit tests (`test_arp_digest.py`) and 5 PostgreSQL integration tests (`backend/tests/integration/test_arp_digest.py`).
+  - 3 unit tests (`test_arp_digest.py`) and 5 PostgreSQL integration tests (`backend/tests/integration/test_arp_digest_integration.py`).
 - **What is stubbed**:
   - Outbound messaging queues message in DB (`Message` table); real WhatsApp dispatch relies on Meta Graph API credentials.
 
