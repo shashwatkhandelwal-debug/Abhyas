@@ -15,6 +15,7 @@ import yaml
 
 from backend.app.config import settings
 from backend.app.llm.client import LLMUnavailable, call_tool
+from backend.app.llm.guard_stats import record_guard_event
 from backend.app.llm.guards import guard_act_tagger
 from backend.app.llm.hindi_numbers import extract_numbers
 from backend.app.llm.schemas import ActTaggerOutput
@@ -332,6 +333,7 @@ async def tag_act(
 
             parsed = ActTaggerOutput.model_validate(tool_input)
             is_valid, err_msg = guard_act_tagger(parsed, transcript, scene_persona_ids)
+            record_guard_event("act_tagger", attempt, is_valid, err_msg)
             if is_valid:
                 return parsed
 

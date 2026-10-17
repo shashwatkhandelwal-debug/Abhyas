@@ -1,4 +1,4 @@
-.PHONY: help setup dev db-up db-migrate db-seed test test-live eval-latency eval-kappa eval-realism content-validate content-publish samples freeze
+.PHONY: audit eval-guards help setup dev db-up db-migrate db-seed test test-live eval-latency eval-kappa eval-realism content-validate content-publish samples freeze
 
 help:
 	@echo "Abhyas Makefile targets:"
@@ -54,6 +54,9 @@ eval-latency:
 
 eval-kappa:
 	python eval/calibration/evaluate_kappa.py
+
+eval-guards:
+	python eval/guards/guard_report.py $(if $(EVENTS),--events $(EVENTS),)
 
 eval-realism:
 	python eval/realism/survey_analysis.py
