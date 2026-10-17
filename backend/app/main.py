@@ -14,7 +14,16 @@ from backend.app.auth.router import router as auth_router
 from backend.app.config import settings
 from backend.app.jobs.admin_api import router as jobs_admin_router
 from backend.app.jobs.scheduler import start_scheduler
-from backend.app.web import STATIC_DIR, chat_router, teacher_router
+from backend.app.web import (
+    STATIC_DIR,
+    admin_router,
+    arp_router,
+    chat_router,
+    review_router,
+    teacher_router,
+    trainer_router,
+)
+from backend.app.web.security_headers import SecurityHeadersMiddleware
 from backend.app.whatsapp.router import router as whatsapp_router
 
 logging.basicConfig(
@@ -76,6 +85,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(SecurityHeadersMiddleware)
+
 # Mount static files
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
@@ -83,8 +94,12 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 app.include_router(auth_router)
 app.include_router(chat_router)
 app.include_router(teacher_router)
+app.include_router(arp_router)
+app.include_router(review_router)
+app.include_router(trainer_router)
 app.include_router(whatsapp_router)
 app.include_router(jobs_admin_router)
+app.include_router(admin_router)
 
 
 @app.get("/", include_in_schema=False)

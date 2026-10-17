@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>समीक्षा: {{ move_title }} — {{ get_message("ui_review_title") }}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <style>
+    .detail-container {
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 1rem;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.8rem 0;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+    .grid-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+    @media (max-width: 768px) {
+      .grid-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+    .section-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 1.5rem;
+    }
+    .section-card h2 {
+      margin-top: 0;
+      font-size: 1.2rem;
+      color: var(--brand);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+    .transcript-box {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      max-height: 600px;
+      overflow-y: auto;
+      padding-right: 0.5rem;
+    }
+    .turn-bubble {
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-md);
+      font-size: 0.95rem;
+      line-height: 1.5;
+      position: relative;
+    }
+    .turn-teacher {
+      background: #E4EFEA;
+      border: 1px solid #C2DFD4;
+      align-self: flex-end;
+      max-width: 85%;
+    }
+    .turn-ravi {
+      background: #EBF2FD;
+      border: 1px solid #C4D9FB;
+      align-self: flex-start;
+      max-width: 85%;
+    }
+    .turn-priya {
+      background: #FAEDF3;
+      border: 1px solid #F2C9DE;
+      align-self: flex-start;
+      max-width: 85%;
+    }
+    .turn-aman {
+      background: #F1EDF9;
+      border: 1px solid #D6CAEF;
+      align-self: flex-start;
+      max-width: 85%;
+    }
+    .turn-coach {
+      background: #FFF9EB;
+      border: 1px solid #FFE6A8;
+      align-self: center;
+      max-width: 90%;
+    }
+    .speaker-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 0.2rem;
+      display: block;
+    }
+    .act-chips {
+      display: flex;
+      gap: 0.3rem;
+      flex-wrap: wrap;
+      margin-top: 0.4rem;
+    }
+    .act-chip {
+      background: rgba(0, 0, 0, 0.06);
+      border-radius: 4px;
+      padding: 0.1rem 0.4rem;
+      font-size: 0.75rem;
+      font-family: monospace;
+    }
+    .criterion-row {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem;
+      margin-bottom: 1rem;
+      background: var(--bg);
+    }
+    .criterion-title {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--ink);
+      margin-bottom: 0.25rem;
+    }
+    .criterion-desc {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.6rem;
+    }
+    .ai-score-box {
+      background: #FFF;
+      border-left: 3px solid var(--accent);
+      padding: 0.5rem 0.75rem;
+      font-size: 0.85rem;
+      margin-bottom: 0.75rem;
+      border-radius: 0 4px 4px 0;
+    }
+    .evidence-quote {
+      font-style: italic;
+      color: #7A4B00;
+      margin-top: 0.25rem;
+    }
+    .score-selector {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      margin-top: 0.5rem;
+    }
+    .score-option {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-submit {
+      background: var(--brand);
+      color: var(--brand-ink);
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      min-height: 48px;
+    }
+    .btn-submit:hover {
+      opacity: 0.9;
+    }
+    textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem;
+      font-family: inherit;
+      font-size: 0.95rem;
+      box-sizing: border-box;
+      min-height: 80px;
+    }
+  </style>
+</head>
+<body>
+  <div class="detail-container">
+    <header class="detail-header">
+      <div>
+        <a href="/review" style="color:var(--muted); text-decoration:none; font-size:0.9rem;">← समीक्षा कंसोल पर वापस जाएँ</a>
+        <h1 style="margin:0.25rem 0 0 0; font-size:1.4rem; color:var(--brand);">
+          {{ move_title }}
+        </h1>
+        <small style="color:var(--muted);">आइटम ID: <code>{{ item.id }}</code> · प्रकार: {{ item.kind }}</small>
+      </div>
+      <div>
+        <span class="status-badge {% if item.status == 'open' %}status-open{% else %}status-resolved{% endif %}">
+          {% if item.status == 'open' %}{{ get_message("ui_review_filter_open") }}{% else %}{{ get_message("ui_review_filter_resolved") }}{% endif %}
+        </span>
+      </div>
+    </header>
+
+    <div class="grid-layout">
+      <!-- Left Column: Transcript & Act tags -->
+      <div class="section-card">
+        <h2>{{ get_message("ui_review_transcript_title") }}</h2>
+        {% if turns %}
+        <div class="transcript-box">
+          {% for t in turns %}
+          <div class="turn-bubble turn-{{ t.role }}">
+            <span class="speaker-tag" style="{% if t.role == 'teacher' %}color:var(--brand);{% elif t.role == 'ravi' %}color:var(--child-ravi);{% elif t.role == 'priya' %}color:var(--child-priya);{% elif t.role == 'aman' %}color:var(--child-aman);{% else %}color:var(--muted);{% endif %}">
+              {{ t.speaker }}
+            </span>
+            <div>{{ t.text }}</div>
+            {% if t.acts %}
+            <div class="act-chips">
+              {% for act in t.acts %}
+              <span class="act-chip">{{ act }}</span>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% elif explain %}
+        <div>
+          <p><strong>शिक्षक द्वारा समझाया गया विवरण:</strong></p>
+          <div class="turn-bubble turn-teacher">{{ explain.transcript }}</div>
+          <p><strong>मुख्य बिंदु (Points Covered):</strong></p>
+          <pre style="background:#F4EFEA; padding:0.5rem; border-radius:4px;">{{ explain.points | tojson(indent=2) }}</pre>
+        </div>
+        {% elif question %}
+        <div>
+          <p><strong>प्रश्न:</strong> {{ question.text }}</p>
+          <p><strong>श्रेणी:</strong> {{ question.category }}</p>
+          <p><strong>स्थिति:</strong> {{ question.status }}</p>
+          {% if question.answer_hi %}
+          <p><strong>उत्तर:</strong> {{ question.answer_hi }}</p>
+          {% endif %}
+        </div>
+        {% elif guard %}
+        <div>
+          <p><strong>गार्ड विफलता कारण:</strong> {{ guard.reason }}</p>
+          <pre style="background:#F4EFEA; padding:0.5rem; border-radius:4px;">{{ guard.resolution | tojson(indent=2) }}</pre>
+        </div>
+        {% else %}
+        <p style="color:var(--muted);">कोई ट्रांसक्रिप्ट उपलब्ध नहीं है।</p>
+        {% endif %}
+      </div>
+
+      <!-- Right Column: AI Scores, Evidence & Coach Scoring Form -->
+      <div class="section-card">
+        <h2>{{ get_message("ui_review_coach_score") }}</h2>
+
+        {% if ai_score %}
+        <div style="margin-bottom:1rem; font-size:0.9rem; color:var(--muted);">
+          AI भरोसा: <strong>{{ "%.2f" | format(ai_score.confidence or 0.0) }}</strong>
+          {% if ai_score.strength_hi %}
+          <div style="margin-top:0.3rem;"><strong>सशक्त बिंदु:</strong> {{ ai_score.strength_hi }}</div>
+          {% endif %}
+          {% if ai_score.change_hi %}
+          <div style="margin-top:0.3rem;"><strong>सुधार क्षेत्र:</strong> {{ ai_score.change_hi }}</div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <form method="POST" action="/review/items/{{ item.id }}/resolve">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+          {% for crit in criteria %}
+          <div class="criterion-row">
+            <div class="criterion-title">{{ crit.title }}</div>
+            <div class="criterion-desc">{{ crit.desc }}</div>
+
+            {% if crit.ai_score is not none or crit.evidence %}
+            <div class="ai-score-box">
+              <div>{{ get_message("ui_review_ai_score") }}: <strong>{{ crit.ai_score }} / 2</strong></div>
+              {% if crit.evidence %}
+              <div class="evidence-quote">प्रमाण: "{{ crit.evidence }}"</div>
+              {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="score-selector">
+              <label class="score-option">
+                <input type="radio" name="score_{{ crit.id }}" value="0" {% if crit.ai_score == 0 %}checked{% endif %}>
+                <span>0 (अधूरी)</span>
+              </label>
+              <label class="score-option">
+                <input type="radio" name="score_{{ crit.id }}" value="1" {% if crit.ai_score == 1 %}checked{% endif %}>
+                <span>1 (आंशिक)</span>
+              </label>
+              <label class="score-option">
+                <input type="radio" name="score_{{ crit.id }}" value="2" {% if crit.ai_score == 2 or crit.ai_score is none %}checked{% endif %}>
+                <span>2 (पूरी / सही)</span>
+              </label>
+            </div>
+          </div>
+          {% endfor %}
+
+          <div style="margin-bottom:1.25rem;">
+            <label for="note" style="font-weight:600; font-size:0.95rem; display:block; margin-bottom:0.4rem;">
+              {{ get_message("ui_review_notes_label") }}
+            </label>
+            <textarea id="note" name="note" placeholder="कोच की सुधारात्मक टिप्पणी दर्ज करें...">{{ (item.resolution or {}).get("note", "") }}</textarea>
+          </div>
+
+          <button type="submit" class="btn-submit">
+            {{ get_message("ui_review_resolve_button") }}
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

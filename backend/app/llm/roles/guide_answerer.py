@@ -17,6 +17,7 @@ from pydantic import ValidationError
 
 from backend.app.config import settings
 from backend.app.llm.client import LLMUnavailable, call_tool
+from backend.app.llm.guard_stats import record_guard_event
 from backend.app.llm.guards import guard_guide_answerer
 from backend.app.llm.messages import load_catalog_message
 from backend.app.llm.prompts import load_prompt
@@ -215,6 +216,7 @@ async def answer_guide_question(
                 parsed,
                 retrieved_chunks=chunks,
             )
+            record_guard_event("guide_answerer", attempt, is_valid, error_msg)
 
             if is_valid:
                 # Escalation check: confidence below threshold
