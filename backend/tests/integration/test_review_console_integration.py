@@ -85,7 +85,7 @@ async def test_review_console_postgres_end_to_end(
         teacher = Teacher(
             id=uuid.uuid4(),
             name="अनिता वर्मा",
-            school="प्राथमिक विद्यालय",
+            school_id="SCH-001",
             district="Kanpur Nagar",
             is_demo=True,
         )
