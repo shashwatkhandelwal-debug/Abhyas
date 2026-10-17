@@ -326,3 +326,32 @@ ingest_key_points_title:
   text: "मुख्य बिंदु"
   audio: false
 
+# ── ARP Digest UI Strings (spec/09 §9.3) ─────────────────────
+ui_arp_title: {text: "ARP साप्ताहिक संकलन", audio: false}
+ui_arp_section_overview: {text: "इस सप्ताह का अवलोकन", audio: false}
+ui_arp_active_teachers: {text: "सक्रिय शिक्षक", audio: false}
+ui_arp_completed_loops: {text: "पूर्ण किए गए चक्र", audio: false}
+ui_arp_moves_practised: {text: "अभ्यास किए गए शिक्षण तरीके", audio: false}
+ui_arp_section_teachers: {text: "कौन अभ्यास कर रहा है", audio: false}
+ui_arp_col_teacher: {text: "शिक्षक", audio: false}
+ui_arp_col_school: {text: "विद्यालय", audio: false}
+ui_arp_col_move: {text: "तरीका", audio: false}
+ui_arp_col_step: {text: "वर्तमान चरण", audio: false}
+ui_arp_col_evidence: {text: "प्रमाण स्तर", audio: false}
+ui_arp_col_rubric: {text: "रुब्रिक अंक", audio: false}
+ui_arp_col_help: {text: "स्थिति", audio: false}
+ui_arp_needs_help: {text: "मदद चाहिए", audio: false}
+ui_arp_status_ok: {text: "प्रगति पर", audio: false}
+ui_arp_non_consenting_row: {text: "अन्य {count} शिक्षक (स्कोर साझा नहीं)", audio: false}
+ui_arp_section_visits: {text: "सुझाव: कक्षा-भ्रमण सूची", audio: false}
+ui_arp_visit_reason: {text: "कम अंक / मदद की आवश्यकता", audio: false}
+ui_arp_btn_record_observation: {text: "अवलोकन दर्ज करें", audio: false}
+ui_arp_section_questions: {text: "अनुत्तरित प्रश्न", audio: false}
+ui_arp_btn_answer: {text: "उत्तर भेजें", audio: false}
+ui_arp_answer_placeholder: {text: "शिक्षक के लिए स्पष्ट व व्यावहारिक उत्तर लिखें...", audio: false}
+ui_arp_observation_success: {text: "कक्षा अवलोकन सफलता से दर्ज हुआ और प्रमाण स्तर 4 जुड़ गया।", audio: false}
+ui_arp_answer_success: {text: "उत्तर शिक्षक को भेज दिया गया और प्रश्न हल हो गया।", audio: false}
+ui_arp_checklist_peer_link: {text: "कक्षा अवलोकन सूची (प्रिंट योग्य)", audio: false}
+ui_arp_answer_header: {text: "आपके प्रश्न का उत्तर (ARP द्वारा):", audio: false}
+
+

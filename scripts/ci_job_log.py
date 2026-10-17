@@ -45,10 +45,17 @@ def fetch_job_log(job_id: str) -> None:
             content = res.read().decode("utf-8", errors="replace")
             lines = content.splitlines()
             print(f"=== Job {job_id} Log ({len(lines)} lines total) ===")
+            if len(sys.argv) > 2 and sys.argv[2] == "--tail":
+                n = int(sys.argv[3]) if len(sys.argv) > 3 else 80
+                print(f"--- Last {n} lines ---")
+                for line in lines[-n:]:
+                    print(line)
+                return
             keyword = sys.argv[2].lower() if len(sys.argv) > 2 else None
             fail_idx = -1
-            for i, line in enumerate(lines):
-                if "short test summary info" in line.lower() or "=== failures ===" in line.lower():
+            for i in range(len(lines) - 1, -1, -1):
+                line_lower = lines[i].lower()
+                if "short test summary info" in line_lower or "=== failures ===" in line_lower:
                     fail_idx = i
                     break
             if keyword:

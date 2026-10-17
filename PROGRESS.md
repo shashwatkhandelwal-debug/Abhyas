@@ -223,6 +223,9 @@ All items from `spec/15_human_inputs.md` are currently open:
   - T22 Intents, ASK, BM25 Retrieval & T23 Move Path Scoring.
 - **Lane E Completed & Merged**:
   - T24 Scheduler, jobs, aggregates & ARP digest.
+- **Coord & Feature Lanes (Overnight Run 3)**:
+  - **Step 0**: Guardrails report generated (`eval/guards/REPORT.md`, 8/8 adversarial child-line probes blocked) and CI audit documented (`progress/audit.md`); PR #9 (`coord/guards-report`) opened with 100% green CI.
+  - **T32 (ARP Digest)**: DB-backed ARP digest engine (`build_arp_digest`), privacy-by-design consent separation (`अन्य N शिक्षक (स्कोर साझा नहीं)`), suggested visits list with printable observation checklist, `ARPObservation` + L4 `AdoptionEvidence` flow, escalated question answer flow queueing outbound teacher messages, Jinja2 template with `@media print`, 3 unit tests and 5 PostgreSQL integration tests. Branch `coord/arp-digest`.
 
 ### NEXT (Autonomous Overnight Queue):
 1. **T40 (Source Ingestion Pipeline)** · Priority: P1 (spec/10 §10.4, chunking script, NIPUN/NCERT PDF ingestion).
