@@ -23,3 +23,12 @@ settings.LLM_CALL_LOG_ENABLED = False
 async def async_client():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
+
+
+@pytest.fixture(autouse=True)
+def _reset_chat_rate_limits():
+    from backend.app.auth.rate_limit import reset_chat_rate_limits
+
+    reset_chat_rate_limits()
+    yield
+    reset_chat_rate_limits()

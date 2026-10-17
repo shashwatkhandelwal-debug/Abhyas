@@ -59,10 +59,14 @@ def fetch_job_log(job_id: str) -> None:
                     fail_idx = i
                     break
             if keyword:
-                matching_lines = [line for line in lines if keyword in line.lower()]
-                print(f"--- Found {len(matching_lines)} lines matching '{keyword}' ---")
-                for line in matching_lines[:30]:
-                    print(line)
+                matching_indices = [i for i, line in enumerate(lines) if keyword in line.lower()]
+                print(f"--- Found {len(matching_indices)} occurrences of '{keyword}' ---")
+                for idx in matching_indices[:3]:
+                    s = max(0, idx - 5)
+                    e = min(len(lines), idx + 25)
+                    print(f"\n--- Context lines {s}-{e} ---")
+                    for line in lines[s:e]:
+                        print(line)
             elif fail_idx != -1:
                 start = max(0, fail_idx - 10)
                 end = min(len(lines), fail_idx + 80)
