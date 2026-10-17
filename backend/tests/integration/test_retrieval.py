@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import io
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -480,8 +480,6 @@ def test_ingest_synthetic_pdf_hindi_phrase_with_ocr_fallback(tmp_path: Path) -> 
 
 def test_ingest_pdf_drops_low_confidence_ocr_pages(tmp_path: Path) -> None:
     """Verifies that pages with OCR confidence below threshold are dropped and logged."""
-    import logging
-
     pdf_file = tmp_path / "fln_multipage_poor.pdf"
     pdf_bytes = _make_synthetic_pdf(["  ", "  "])
     pdf_file.write_bytes(pdf_bytes)
@@ -492,39 +490,43 @@ def test_ingest_pdf_drops_low_confidence_ocr_pages(tmp_path: Path) -> None:
         # Page 2 has poor quality confidence (0.20 < threshold 0.40)
         return ("धुंधला और अधूरा पाठ", 0.20)
 
-    log_messages: list[str] = []
-
-    class _CaptureHandler(logging.Handler):
-        def emit(self, record: logging.LogRecord) -> None:
-            log_messages.append(record.getMessage())
-
-    capture_handler = _CaptureHandler()
-    ingest_logger = logging.getLogger("abhyas.retrieval.ingest")
-    orig_level = ingest_logger.level
-    ingest_logger.setLevel(logging.DEBUG)
-    ingest_logger.addHandler(capture_handler)
-
+    spotcheck_dir = tmp_path / "spotchecks"
     set_ocr_mock_handler(_mock_ocr_low_conf)
     try:
-        chunks = ingest_pdf(
-            pdf_path=pdf_file,
-            source_id="test_drop_doc",
-            short_hi="जोड़ संदर्शिका",
-            lang="hi",
-            confidence_threshold=0.4,
-            save_spotcheck=False,
-        )
+        with patch("backend.app.retrieval.ingest.logger.warning") as mock_warning:
+            chunks = ingest_pdf(
+                pdf_path=pdf_file,
+                source_id="test_drop_doc",
+                short_hi="जोड़ संदर्शिका",
+                lang="hi",
+                confidence_threshold=0.4,
+                save_spotcheck=True,
+                spotcheck_dir=spotcheck_dir,
+            )
 
         # Page 1 kept, Page 2 dropped
         assert len(chunks) == 1
         assert chunks[0]["page"] == 1
         assert "जोड़ सिखाने" in chunks[0]["text"]
-        # Verify drop log warning was emitted
-        assert any("Dropped page 2" in msg and "below threshold" in msg for msg in log_messages)
+
+        # Verify drop log warning was called
+        mock_warning.assert_called()
+        formatted_warnings = [
+            (call.args[0] % call.args[1:]) if len(call.args) > 1 else str(call.args[0])
+            for call in mock_warning.call_args_list
+        ]
+        assert any(
+            "Dropped page 2" in msg and "below threshold" in msg for msg in formatted_warnings
+        )
+
+        # Verify spotcheck file confirms DROPPED status for page 2
+        spotcheck_file = spotcheck_dir / "test_drop_doc_spotcheck.md"
+        assert spotcheck_file.exists()
+        content = spotcheck_file.read_text(encoding="utf-8")
+        assert "DROPPED" in content
+        assert "ocr_dropped" in content
     finally:
         set_ocr_mock_handler(None)
-        ingest_logger.removeHandler(capture_handler)
-        ingest_logger.setLevel(orig_level)
 
 
 def test_guide_citations_format_and_real_chunk_pages() -> None:
