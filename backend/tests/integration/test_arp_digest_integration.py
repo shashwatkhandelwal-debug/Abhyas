@@ -18,12 +18,13 @@ from uuid import uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
+from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from backend.app.auth.csrf import generate_csrf_token
 from backend.app.auth.guards import get_current_user
+from backend.app.db.base import Base
 from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
@@ -60,13 +61,33 @@ def get_async_db_url() -> str:
 async def session_factory() -> AsyncGenerator[async_sessionmaker[AsyncSession], None]:
     async_url = get_async_db_url()
     engine = create_async_engine(async_url, poolclass=NullPool)
+    async with engine.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        await conn.run_sync(Base.metadata.create_all)
     factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with factory() as session:
         await session.merge(Cluster(id="KNP-C01", name="कल्याणपुर क्लस्टर 1"))
         await session.merge(Cluster(id="KNP-C02", name="कल्याणपुर क्लस्टर 2"))
         await session.commit()
-    yield factory
-    await engine.dispose()
+    try:
+        yield factory
+    finally:
+        async with factory() as session:
+            await session.execute(delete(ARPObservation))
+            await session.execute(delete(AdoptionEvidence))
+            await session.execute(delete(ReviewItem))
+            await session.execute(delete(Message))
+            await session.execute(delete(Question))
+            await session.execute(delete(RehearsalScore))
+            await session.execute(
+                delete(Teacher).where(Teacher.cluster_id.in_(["KNP-C01", "KNP-C02"]))
+            )
+            await session.execute(
+                delete(AppUser).where(AppUser.cluster_id.in_(["KNP-C01", "KNP-C02"]))
+            )
+            await session.commit()
+        await engine.dispose()
 
 
 @pytest.mark.asyncio
