@@ -36,6 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.csrf import verify_csrf_token
 from backend.app.auth.guards import get_current_user
+from backend.app.auth.rate_limit import check_chat_rate_limit
 from backend.app.channels.web import is_teacher_pending, mark_teacher_pending, process_inbound_web
 from backend.app.db.models import AppUser, Message, RealismRating, Teacher
 from backend.app.db.session import get_db_session
@@ -150,6 +151,7 @@ async def send_chat_text(
     request: Request,
 ) -> dict[str, Any]:
     """Inbound text endpoint with deduplication and async processing (§7.3)."""
+    check_chat_rate_limit(str(current_user.id))
     teacher = await get_teacher_for_user(current_user, db, request=request)
     clean_text = unicodedata.normalize("NFC", req.text.strip())
     if not clean_text:
@@ -215,9 +217,10 @@ async def send_chat_audio(
     file: Annotated[UploadFile, File()],
 ) -> dict[str, Any]:
     """Inbound audio upload endpoint (multipart, <= 2 MB) (§7.3)."""
+    check_chat_rate_limit(str(current_user.id))
     teacher = await get_teacher_for_user(current_user, db, request=request)
 
-    audio_bytes = await file.read()
+    audio_bytes = await file.read(MAX_AUDIO_BYTES + 1)
     if len(audio_bytes) > MAX_AUDIO_BYTES:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -285,6 +288,7 @@ async def send_chat_button(
     request: Request,
 ) -> dict[str, Any]:
     """Inbound button reply endpoint (§7.3)."""
+    check_chat_rate_limit(str(current_user.id))
     teacher = await get_teacher_for_user(current_user, db, request=request)
 
     # Deduplication check scoped by teacher_id

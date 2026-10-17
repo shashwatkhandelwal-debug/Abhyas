@@ -50,17 +50,28 @@ def fetch_job_log(job_id: str) -> None:
             content = res.read().decode("utf-8", errors="replace")
             lines = content.splitlines()
             print(f"=== Job {job_id} Log ({len(lines)} lines total) ===")
+            if len(sys.argv) > 2 and sys.argv[2] == "--tail":
+                n = int(sys.argv[3]) if len(sys.argv) > 3 else 80
+                print(f"--- Last {n} lines ---")
+                for line in lines[-n:]:
+                    print(line)
+                return
             keyword = sys.argv[2].lower() if len(sys.argv) > 2 else None
             fail_idx = -1
-            for i, line in enumerate(lines):
-                if "short test summary info" in line.lower() or "=== failures ===" in line.lower():
+            for i in range(len(lines) - 1, -1, -1):
+                line_lower = lines[i].lower()
+                if "short test summary info" in line_lower or "=== failures ===" in line_lower:
                     fail_idx = i
                     break
             if keyword:
-                matching_lines = [line for line in lines if keyword in line.lower()]
-                print(f"--- Found {len(matching_lines)} lines matching '{keyword}' ---")
-                for line in matching_lines[:30]:
-                    print(line)
+                matching_indices = [i for i, line in enumerate(lines) if keyword in line.lower()]
+                print(f"--- Found {len(matching_indices)} occurrences of '{keyword}' ---")
+                for idx in matching_indices[:3]:
+                    s = max(0, idx - 5)
+                    e = min(len(lines), idx + 25)
+                    print(f"\n--- Context lines {s}-{e} ---")
+                    for line in lines[s:e]:
+                        print(line)
             elif fail_idx != -1:
                 start = max(0, fail_idx - 10)
                 end = min(len(lines), fail_idx + 80)
