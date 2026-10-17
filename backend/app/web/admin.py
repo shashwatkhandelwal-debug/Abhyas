@@ -419,8 +419,9 @@ async def admin_dashboard(
     demo_teachers = await get_demo_teachers(db)
 
     response = templates.TemplateResponse(
-        "admin.html",
-        {
+        request=request,
+        name="admin.html",
+        context={
             "request": request,
             "admin_user": _admin,
             "csrf_token": csrf_token,
