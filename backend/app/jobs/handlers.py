@@ -596,14 +596,15 @@ async def handle_followup_try_in_class(ctx: JobContext, job: ScheduledJob) -> No
     if not teacher.name:
         raise JobSkipped("teacher has no name for the greeting")
 
-    week_start = schedule.week_start_ist(ctx.now)
-    stmt = select(SessionState).where(
-        SessionState.teacher_id == teacher.id,
-        SessionState.week_start == week_start,
+    stmt = (
+        select(SessionState)
+        .where(SessionState.teacher_id == teacher.id)
+        .order_by(SessionState.week_start.desc())
+        .limit(1)
     )
     session_state = (await ctx.session.execute(stmt)).scalar_one_or_none()
     if session_state is None:
-        raise JobSkipped("no active session for the current week")
+        raise JobSkipped("no active session for teacher")
     if session_state.state != SessionStateEnum.TRY_IN_CLASS.value:
         raise JobSkipped(f"teacher no longer in TRY_IN_CLASS, state is {session_state.state}")
 
@@ -620,7 +621,7 @@ async def handle_followup_try_in_class(ctx: JobContext, job: ScheduledJob) -> No
 
         move_card = load_move_card(move_id)
         move_title = move_card.title_hi
-    except Exception:
+    except (FileNotFoundError, ValueError, OSError):
         move_title = move_id
 
     channel = ctx.resolve_channel(teacher)

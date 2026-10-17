@@ -369,3 +369,117 @@ async def test_plan_recurring_jobs_includes_retention_purge() -> None:
     kinds = [j.kind for j in created]
     assert KIND_AGGREGATES in kinds
     assert KIND_RETENTION_PURGE in kinds
+
+
+@pytest.mark.asyncio
+async def test_handle_followup_try_in_class_finds_session_after_week_rollover_fri_to_mon() -> None:
+    """Follow-up due on Monday for a Friday TRY_IN_CLASS session must find latest SessionState and succeed."""
+    # Friday session (week_start = Monday 2026-10-05)
+    fri_week_start = datetime(2026, 10, 5, 0, 0, tzinfo=UTC).date()
+    teacher = Teacher(id=uuid.uuid4(), name="सुनीता", consent_service=True, address_form="f")
+    try_session = SessionState(
+        teacher_id=teacher.id,
+        week_start=fri_week_start,
+        state=SessionStateEnum.TRY_IN_CLASS.value,
+    )
+
+    # Now is Monday 2026-10-12 (week rollover occurred)
+    mon_now = datetime(2026, 10, 12, 10, 0, tzinfo=UTC)
+
+    mock_session = AsyncMock(spec=AsyncSession)
+    mock_session.get = AsyncMock(return_value=teacher)
+
+    mock_session_res = MagicMock()
+    mock_session_res.scalar_one_or_none.return_value = try_session
+    mock_ev_res = MagicMock()
+    mock_ev_res.scalars.return_value.first.return_value = None
+    mock_session.execute = AsyncMock(side_effect=[mock_session_res, mock_ev_res])
+
+    channel = FakeChannel(freeform=True)
+    ctx = JobContext(session=mock_session, now=mon_now, resolve_channel=lambda t: channel)
+    job = ScheduledJob(
+        kind=KIND_FOLLOWUP_TRY_IN_CLASS,
+        run_at=mon_now,
+        payload={"teacher_id": str(teacher.id), "move_id": "NUM_SUB_REGROUP_BUNDLES"},
+    )
+
+    await handle_followup_try_in_class(ctx, job)
+    assert len(channel.sent) == 1
+    assert (job.payload or {}).get("mode") == "freeform"
+
+
+def test_followup_try_in_class_hours_default_is_48() -> None:
+    """FOLLOWUP_TRY_IN_CLASS_HOURS must default to 48 hours."""
+    from backend.app.config import settings
+    from backend.app.jobs import tunables
+
+    assert tunables.FOLLOWUP_TRY_IN_CLASS_HOURS == 48
+    assert settings.FOLLOWUP_TRY_IN_CLASS_HOURS == 48
+
+
+@pytest.mark.asyncio
+async def test_service_sync_schedules_reminder_when_weekly_step_unfinished() -> None:
+    """SessionService._sync_context_to_db schedules a reminder job when step is unfinished."""
+    from unittest.mock import patch
+
+    from backend.app.sessions.service import SessionService
+    from backend.app.sessions.state_machine import OnboardingStateEnum, SessionContext
+
+    mock_db = AsyncMock(spec=AsyncSession)
+    mock_nested = AsyncMock()
+    mock_db.begin_nested.return_value.__aenter__ = AsyncMock(return_value=mock_nested)
+    mock_db.begin_nested.return_value.__aexit__ = AsyncMock(return_value=None)
+
+    repo_mock = AsyncMock()
+    repo_mock.session = mock_db
+    repo_mock.get_session_state.return_value = None
+
+    service = SessionService(repository=repo_mock, db_session=mock_db)
+    teacher_id = uuid.uuid4()
+    ctx = SessionContext(
+        teacher_id=str(teacher_id),
+        week_start=datetime.now(UTC).date().isoformat(),
+        current_move_id="NUM_SUB_REGROUP_BUNDLES",
+        onboarding_state=OnboardingStateEnum.READY,
+        current_state=SessionStateEnum.EXPLAIN_BACK,  # Unfinished weekly step
+    )
+
+    with patch(
+        "backend.app.jobs.handlers.schedule_reminder",
+        new_callable=AsyncMock,
+    ) as mock_sched_reminder:
+        await service._sync_context_to_db(ctx, teacher_id)
+        mock_sched_reminder.assert_called_once()
+        assert mock_sched_reminder.call_args[0][0] == mock_db
+        assert mock_sched_reminder.call_args[0][1] == teacher_id
+
+
+@pytest.mark.asyncio
+async def test_service_sync_does_not_schedule_reminder_when_done() -> None:
+    """SessionService._sync_context_to_db does NOT schedule reminder when state is DONE."""
+    from unittest.mock import patch
+
+    from backend.app.sessions.service import SessionService
+    from backend.app.sessions.state_machine import OnboardingStateEnum, SessionContext
+
+    mock_db = AsyncMock(spec=AsyncSession)
+    repo_mock = AsyncMock()
+    repo_mock.session = mock_db
+    repo_mock.get_session_state.return_value = None
+
+    service = SessionService(repository=repo_mock, db_session=mock_db)
+    teacher_id = uuid.uuid4()
+    ctx = SessionContext(
+        teacher_id=str(teacher_id),
+        week_start=datetime.now(UTC).date().isoformat(),
+        current_move_id="NUM_SUB_REGROUP_BUNDLES",
+        onboarding_state=OnboardingStateEnum.READY,
+        current_state=SessionStateEnum.DONE,  # Finished weekly loop
+    )
+
+    with patch(
+        "backend.app.jobs.handlers.schedule_reminder",
+        new_callable=AsyncMock,
+    ) as mock_sched_reminder:
+        await service._sync_context_to_db(ctx, teacher_id)
+        mock_sched_reminder.assert_not_called()

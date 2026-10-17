@@ -267,3 +267,11 @@ All items from `spec/15_human_inputs.md` are currently open:
 - `make eval-guards [EVENTS=file.jsonl]` writes `eval/guards/REPORT.md`: live stats split real vs mock, plus a 10-case adversarial corpus run through the real `guard_child_line` (clearly labelled as test cases, not traffic).
 - Needs a human/agy step: run `make eval-guards` once and commit the generated REPORT.md; re-run with real events after the hosted T41 run (28–30 Oct). Fallbacks from an unavailable LLM are not guard events (see `llm_call.outcome`).
 
+### T24 Jobs Review Fixes (`coord/t24-jobs`)
+- **Reminder Wiring**: Wired `schedule_reminder` in `SessionService._sync_context_to_db` within `begin_nested()` savepoint whenever a teacher in `READY` onboarding state leaves a weekly step unfinished (`current_state != DONE`). Deduped by IST date slot.
+- **Tunables alignment**: Updated `FOLLOWUP_TRY_IN_CLASS_HOURS` from 72 to 48 in `config.py` and `tunables.py` matching spec/08 §8.5 (48-hour follow-up).
+- **Week Rollover Resilience**: Updated `handle_followup_try_in_class` to query the latest `SessionState` for the teacher ordered by `week_start.desc()` instead of strictly matching the current week, supporting Fri->Mon week rollover without skipping.
+- **Savepoint Isolation**: Wrapped `schedule_followup_try_in_class` in `async with self.repo.session.begin_nested():` at both retry limit and continue transition points in `service.py`, preventing transaction failure poisoning on scheduler error.
+- **Rule C Exception Narrowing**: Narrowed exception around `load_move_card` in `handle_followup_try_in_class` to `(FileNotFoundError, ValueError, OSError)`.
+- **Unit Tests**: Added unit tests in `test_job_handlers.py` verifying reminder scheduling on unfinished steps, omission on DONE, Fri->Mon rollover follow-up, and 48-hour default tunable.
+

@@ -168,6 +168,18 @@ class SessionService:
             "clarifying_already_asked": ctx.clarifying_already_asked,
         }
         await self.repo.save_session_state(db_state)
+        if (
+            self.repo.session is not None
+            and ctx.onboarding_state == OnboardingStateEnum.READY
+            and ctx.current_state != SessionStateEnum.DONE
+        ):
+            try:
+                from backend.app.jobs.handlers import schedule_reminder
+
+                async with self.repo.session.begin_nested():
+                    await schedule_reminder(self.repo.session, teacher_uuid, now=datetime.now(UTC))
+            except (SQLAlchemyError, ValueError):
+                logger.warning("Could not schedule reminder", exc_info=True)
 
     async def _get_next_move_title(self, teacher_id: UUID, current_move_id: str) -> str:
         """Determines next move title from teacher's personal move path."""
@@ -1127,9 +1139,10 @@ class SessionService:
                     try:
                         from backend.app.jobs.handlers import schedule_followup_try_in_class
 
-                        await schedule_followup_try_in_class(
-                            self.repo.session, teacher_id, ctx.current_move_id, now=now
-                        )
+                        async with self.repo.session.begin_nested():
+                            await schedule_followup_try_in_class(
+                                self.repo.session, teacher_id, ctx.current_move_id, now=now
+                            )
                     except (SQLAlchemyError, ValueError):
                         logger.warning("Could not schedule followup_try_in_class", exc_info=True)
 
@@ -1152,9 +1165,10 @@ class SessionService:
                     try:
                         from backend.app.jobs.handlers import schedule_followup_try_in_class
 
-                        await schedule_followup_try_in_class(
-                            self.repo.session, teacher_id, ctx.current_move_id, now=now
-                        )
+                        async with self.repo.session.begin_nested():
+                            await schedule_followup_try_in_class(
+                                self.repo.session, teacher_id, ctx.current_move_id, now=now
+                            )
                     except (SQLAlchemyError, ValueError):
                         logger.warning("Could not schedule followup_try_in_class", exc_info=True)
 
