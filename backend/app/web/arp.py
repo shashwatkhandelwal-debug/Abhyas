@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.access import can_access_teacher, can_view_teacher_scores
 from backend.app.auth.csrf import (
+    CSRF_COOKIE_NAME,
     generate_csrf_token,
     set_csrf_cookie,
     verify_csrf_token,
@@ -67,7 +68,11 @@ async def get_arp_dashboard(
 
     digest_data = await build_arp_digest(db, current_user, week_start=selected_week)
 
-    csrf_token = generate_csrf_token()
+    csrf_token = request.cookies.get(CSRF_COOKIE_NAME)
+    token_to_set: str | None = None
+    if not csrf_token:
+        csrf_token = generate_csrf_token()
+        token_to_set = csrf_token
     demo_banner_text = get_message("ui_demo_banner") if current_user.is_demo_account else ""
 
     saved_param = request.query_params.get("saved")
@@ -93,7 +98,8 @@ async def get_arp_dashboard(
             "saved_msg": saved_msg,
         },
     )
-    set_csrf_cookie(resp, csrf_token)
+    if token_to_set:
+        set_csrf_cookie(resp, token_to_set)
     return resp
 
 
@@ -223,6 +229,12 @@ async def post_arp_answer(
             status_code=status.HTTP_404_NOT_FOUND, detail="Teacher not found in cluster"
         )
 
+    if question.status != "escalated":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Question cannot be answered: status is '{question.status}', expected 'escalated'",
+        )
+
     # Update question
     question.answer_hi = clean_answer
     question.status = "arp_answered"
@@ -246,13 +258,14 @@ async def post_arp_answer(
 
     # Dispatch outbound message to teacher
     channel = teacher.preferred_channel or "web"
+    header = get_message("ui_arp_answer_header")
     outbound_msg = Message(
         teacher_id=teacher.id,
         direction="out",
         channel=channel,
         channel_msg_id=f"arp-ans-{question.id}-{uuid.uuid4().hex[:6]}",
         kind="text",
-        text=f"आपके प्रश्न का उत्तर (ARP द्वारा):\n\n{clean_answer}",
+        text=f"{header}\n\n{clean_answer}",
         speaker="arp",
         state_at="ASK",
     )
