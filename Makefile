@@ -1,4 +1,4 @@
-.PHONY: audit eval-guards help setup dev db-up db-migrate db-seed test test-live eval-latency eval-kappa eval-realism content-validate content-publish samples freeze
+.PHONY: audit eval-guards eval-stt help setup dev db-up db-migrate db-seed test test-live eval-latency eval-kappa eval-realism content-validate content-publish samples freeze
 
 help:
 	@echo "Abhyas Makefile targets:"
@@ -11,6 +11,7 @@ help:
 	@echo "  make test-live        - opt-in tests calling real providers (skipped if keys absent)"
 	@echo "  make eval-latency     - run latency benchmark suite"
 	@echo "  make eval-kappa       - run coach calibration kappa evaluation"
+	@echo "  make eval-stt         - evaluate STT accuracy (WER/CER) on recorded samples"
 	@echo "  make eval-realism     - run realism rating analysis"
 	@echo "  make content-validate - validate move cards and content schemas"
 	@echo "  make content-publish  - publish approved content release"
@@ -54,6 +55,9 @@ eval-latency:
 
 eval-kappa:
 	python eval/calibration/evaluate_kappa.py
+
+eval-stt:
+	python eval/stt/stt_accuracy.py
 
 eval-guards:
 	python eval/guards/guard_report.py $(if $(EVENTS),--events $(EVENTS),)

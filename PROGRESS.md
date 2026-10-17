@@ -322,3 +322,11 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **backend/app/db/seed.py**: Sanitized log output by removing `DEMO_PASSWORD` formatting from `logger.info("Starting database seed")`.
 - **docs/DEPLOY.md**: Updated §1.3 and Table 2 for `ALEMBIC_DATABASE_URL` to specify Supabase Session Pooler URI on port 5432 (`postgresql://...`) instead of the direct connection host (`db.[PROJECT-REF].supabase.co`), documenting that Supabase direct host defaults to IPv6 which causes connection failures on platforms without IPv6 routing (such as Render or standard Docker).
 - **.env.example**: Updated local `DATABASE_URL` and `ALEMBIC_DATABASE_URL` default passwords from `postgres` to `postgrespassword` to match `infra/docker-compose.yml`.
+
+### T62 STT Accuracy Evaluation (stt-accuracy)
+- **Harness & Metrics**: Implemented `eval/stt/stt_accuracy.py` reading authentic recorded teacher audio from `eval/samples/recorded/<id>.(wav|ogg|m4a)` matching `eval/samples/samples.yaml`. Computes Word Error Rate (WER) and Character Error Rate (CER) on NFC-normalised Hindi text with punctuation stripping and whitespace collapsing via Wagner-Fischer edit distance algorithm.
+- **Provenance & Truthfulness**: When no human recordings exist, outputs `eval/stt/REPORT.md` explicitly stating "No recordings yet" (n=0) and reporting the active provider name. In accordance with competition rules, synthetic TTS audio is strictly never used as a stand-in for human speech.
+- **Protocol Documentation**: Created `eval/samples/recorded/README.md` defining the recording protocol (mono 16k/48k audio in natural school acoustic environments), canonical `<id>` file naming, informed consent protocol (`consent_form_hi.md`), and strict prohibition of teacher personal names or identifiable info in filenames.
+- **Makefile Integration**: Added `eval-stt` target in `Makefile` and updated help text.
+- **Unit Tests**: Added 5 unit tests in `backend/tests/unit/test_stt_accuracy.py` testing text cleaning, Levenshtein distance, WER/CER calculations, n=0 report generation, and fake provider transcription with WAV/OGG files.
+
