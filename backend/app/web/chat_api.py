@@ -37,7 +37,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.auth.csrf import verify_csrf_token
 from backend.app.auth.guards import get_current_user
 from backend.app.channels.web import is_teacher_pending, mark_teacher_pending, process_inbound_web
-from backend.app.db.models import AppUser, Message, RealismRating, Teacher
+from backend.app.db.models import AppUser, Message, RealismRating, Scene, Teacher
 from backend.app.db.session import get_db_session
 from backend.app.speech.cache import tts_cache
 
@@ -409,8 +409,44 @@ async def get_audio_file(
     audio_ref: str,
     ext: Literal["ogg", "mp3", "wav"],
     current_user: Annotated[AppUser, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    request: Request,
 ) -> Response:
     """Returns cached synthetic audio with private immutable cache-control headers (§7.3)."""
+    # 1. Ownership check: admin, coach, arp have access; teachers can only access their own audio
+    if current_user.role not in ("admin", "coach", "arp"):
+        teacher = await get_teacher_for_user(current_user, db, request=request)
+        is_owner = False
+
+        stmt_msg = (
+            select(Message.id)
+            .where(
+                Message.teacher_id == teacher.id,
+                Message.audio_ref == audio_ref,
+            )
+            .limit(1)
+        )
+        if (await db.execute(stmt_msg)).scalar_one_or_none() is not None:
+            is_owner = True
+        else:
+            stmt_scenes = (
+                select(Scene.engine_state)
+                .where(Scene.teacher_id == teacher.id)
+                .order_by(Scene.started_at.desc())
+                .limit(10)
+            )
+            scenes_res = await db.execute(stmt_scenes)
+            for (state_dict,) in scenes_res.all():
+                if state_dict and audio_ref in str(state_dict):
+                    is_owner = True
+                    break
+
+        if not is_owner:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Audio file not found",
+            )
+
     audio_bytes = await tts_cache.get(audio_ref, ext)
     if not audio_bytes:
         raise HTTPException(

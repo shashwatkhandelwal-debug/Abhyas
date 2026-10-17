@@ -85,7 +85,7 @@
 
           {% if msg.audio_ref %}
           <div class="bubble-audio">
-            <button type="button" class="btn-play" aria-label="आवाज़ सुनें" onclick="playAudioDirect(this, '{{ msg.audio_ref }}')">▶</button>
+            <button type="button" class="btn-play" aria-label="आवाज़ सुनें" data-audio-ref="{{ msg.audio_ref }}">▶</button>
             <span class="audio-duration">ऑडियो संदेश</span>
           </div>
           {% endif %}
@@ -99,7 +99,7 @@
         {% if msg.direction == 'out' and msg.buttons %}
         <div class="quick-replies">
           {% for btn in msg.buttons %}
-          <button type="button" class="reply-chip" onclick="handleSendButton('{{ btn.id }}', '{{ btn.title_hi }}')">
+          <button type="button" class="reply-chip" data-btn-id="{{ btn.id }}" data-btn-title="{{ btn.title_hi }}">
             {{ btn.title_hi }}
           </button>
           {% endfor %}
