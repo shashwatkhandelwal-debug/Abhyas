@@ -26,6 +26,7 @@ from backend.app.db.models import (
     Batch,
     Cluster,
     Question,
+    Scene,
     ScheduledJob,
     SessionState,
     Teacher,
@@ -716,9 +717,18 @@ async def test_retention_purge_job_runs_on_postgres(
         cluster_id = await _cluster(session)
         # 1. Demo teacher (must never be touched)
         demo_t = await _teacher(session, cluster_id, name="डेमो शिक्षक", is_demo=True)
+        demo_scene = Scene(
+            id=uuid.uuid4(),
+            teacher_id=demo_t.id,
+            mode="normal",
+            engine_state={},
+            status="ended",
+        )
+        session.add(demo_scene)
         demo_turn = Turn(
             id=uuid.uuid4(),
             teacher_id=demo_t.id,
+            scene_id=demo_scene.id,
             idx=0,
             role="teacher",
             transcript="डेमो सुरक्षित पाठ",
@@ -728,9 +738,18 @@ async def test_retention_purge_job_runs_on_postgres(
 
         # 2. Non-demo teacher with old activity (> 90 days)
         old_t = await _teacher(session, cluster_id, name="पुराना शिक्षक", is_demo=False)
+        old_scene = Scene(
+            id=uuid.uuid4(),
+            teacher_id=old_t.id,
+            mode="normal",
+            engine_state={},
+            status="ended",
+        )
+        session.add(old_scene)
         old_turn = Turn(
             id=uuid.uuid4(),
             teacher_id=old_t.id,
+            scene_id=old_scene.id,
             idx=0,
             role="teacher",
             transcript="पुराना पाठ जो मिटना चाहिए",
@@ -747,9 +766,18 @@ async def test_retention_purge_job_runs_on_postgres(
             consent_service=False,
             last_inbound_at=NOW - timedelta(hours=30),
         )
+        withdrawn_scene = Scene(
+            id=uuid.uuid4(),
+            teacher_id=withdrawn_t.id,
+            mode="normal",
+            engine_state={},
+            status="ended",
+        )
+        session.add(withdrawn_scene)
         withdrawn_turn = Turn(
             id=uuid.uuid4(),
             teacher_id=withdrawn_t.id,
+            scene_id=withdrawn_scene.id,
             idx=0,
             role="teacher",
             transcript="सहमति रद्द वाला पाठ",
