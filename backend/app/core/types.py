@@ -39,3 +39,5 @@ class OutboundMessage(BaseModel):
     template_name: str | None = None
     template_params: list[str] = Field(default_factory=list)
     speaker: str | None = None  # "abhyas" | persona id | "model_teacher" | "coach"
+    message_id: UUID | None = None
+    already_persisted: bool = False

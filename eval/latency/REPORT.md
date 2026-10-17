@@ -1,13 +1,13 @@
 # Latency Benchmark Report (spec/11 §11.3, T41)
 
-- **Date:** 2026-10-17 06:48:40 UTC
+- **Date:** 2026-10-17 19:13:08 UTC
 - **Benchmark Target:** Local Pipeline Simulation
 - **LLM Provider (effective):** `mock (no ANTHROPIC_API_KEY)`
 - **STT Provider (effective):** `mock (no SARVAM_API_KEY)`
 - **TTS Provider (effective):** `mock (no SARVAM_API_KEY)`
 - **Target:** Voice-in → voice-out latency p95 < 20.0 s (20000 ms) on hosted deployment
-- **Status:** **NOT MEASURED (mock providers)** (Simulated turn execution: **17.22 s**)
-- **Total Tested Rehearsal Turns:** 40 (40 completed) across 5 evaluator sample inputs
+- **Status:** **NOT MEASURED (mock providers)** (Simulated turn execution: **17.52 s**)
+- **Total Tested Rehearsal Turns:** 10 (10 completed) across 5 evaluator sample inputs
 
 > [!NOTE]
 > **Mock Mode Execution:** Effective providers are running in mock mode:
@@ -22,32 +22,39 @@
 
 | Concurrency | Completed Turns | p50 Latency (s) | p95 Latency (s) | Max Latency (s) | Target Compliance (< 20s) |
 |---|---|---|---|---|---|
-| **Concurrency 1** | 20/20 completed | 16.60 s | 16.65 s | 16.66 s | **N/A (mock providers)** |
-| **Concurrency 3** | 20/20 completed | 16.99 s | 17.26 s | 17.37 s | **N/A (mock providers)** |
-| **Combined** | 40/40 completed | 16.64 s | **17.22 s** | 17.37 s | **N/A (mock providers)** |
+| **Concurrency 1** | 5/5 completed | 16.59 s | 17.46 s | 17.46 s | **N/A (mock providers)** |
+| **Concurrency 3** | 5/5 completed | 17.08 s | 17.52 s | 17.52 s | **N/A (mock providers)** |
+| **Combined** | 10/10 completed | 16.85 s | **17.52 s** | 17.52 s | **N/A (mock providers)** |
 
 ---
 
 ## 2. Per-Stage Latency Breakdown (`turn.stage_ms`)
 
-| Stage | Description | Mean Latency (ms) | % of Total Time |
-|---|---|---|---|
-| `download` | Ingest and receive inbound audio | 68.5 ms | 0.4% |
-| `convert` | ffmpeg conversion to 16 kHz mono WAV | 317.4 ms | 1.9% |
-| `stt` | Speech-to-text recognition | 1.0 ms | 0.0% |
-| `tagger` | Teaching act tagging (Claude / Mock via tag_act) | 8198.4 ms | 48.8% |
-| `engine` | Deterministic rule engine transition | 0.3 ms | 0.0% |
-| `voice` | Child dialogue line selection (Claude / Mock via voice_child_line) | 8204.7 ms | 48.8% |
-| `guard` | Output schema & safety guards validation | 4.5 ms | 0.0% |
-| `tts` | Text-to-speech voice synthesis | 0.6 ms | 0.0% |
-| `send` | Outbound message delivery & dispatch | 7.6 ms | 0.0% |
+| Stage | Description | p50 (ms) | p95 (ms) | Mean (ms) | % of Total Time |
+|---|---|---|---|---|---|
+| `download` | Ingest and receive inbound audio | 15.1 ms | 425.0 ms | 96.2 ms | 0.6% |
+| `convert` | ffmpeg conversion to 16 kHz mono WAV | 270.5 ms | 933.9 ms | 411.1 ms | 2.4% |
+| `stt_ms` | Speech-to-text recognition (stt_ms) | 0.9 ms | 16.2 ms | 2.6 ms | 0.0% |
+| `stt` | Speech-to-text recognition | 0.9 ms | 16.2 ms | 2.6 ms | 0.0% |
+| `act_tagger_ms` | Teaching act tagging (Claude / Mock via tag_act) | 8174.4 ms | 8309.1 ms | 8185.6 ms | 48.4% |
+| `tagger` | Teaching act tagging (Claude / Mock via tag_act) | 8174.4 ms | 8309.1 ms | 8185.6 ms | 48.4% |
+| `rule_engine_ms` | Deterministic rule engine transition (rule_engine_ms) | 0.3 ms | 0.7 ms | 0.4 ms | 0.0% |
+| `engine` | Deterministic rule engine transition | 0.3 ms | 0.7 ms | 0.4 ms | 0.0% |
+| `child_voice_ms` | Child dialogue line selection (Claude / Mock via voice_child_line) | 8162.0 ms | 8579.8 ms | 8195.7 ms | 48.4% |
+| `voice` | Child dialogue line selection (Claude / Mock via voice_child_line) | 8162.0 ms | 8579.8 ms | 8195.7 ms | 48.4% |
+| `db_ms` | Database persistence & queries summed (db_ms) | 10.5 ms | 15.1 ms | 9.0 ms | 0.1% |
+| `guard` | Output schema & safety guards validation | 4.5 ms | 5.9 ms | 4.6 ms | 0.0% |
+| `tts_ms` | Text-to-speech voice synthesis (tts_ms) | 0.7 ms | 12.6 ms | 1.9 ms | 0.0% |
+| `tts` | Text-to-speech voice synthesis | 0.7 ms | 12.6 ms | 1.9 ms | 0.0% |
+| `send` | Outbound message delivery & dispatch | 6.6 ms | 23.9 ms | 9.1 ms | 0.1% |
+| `total_ms` | Total turn latency (total_ms) | 16848.2 ms | 17523.5 ms | 16916.2 ms | 100.0% |
 
 ---
 
 ## 3. Reliability & Guard Fallback Statistics
 
-- **Total Evaluated Turns:** 40
-- **Completed Turns:** 40 / 40
+- **Total Evaluated Turns:** 10
+- **Completed Turns:** 10 / 10
 - **Failed / Timed-out Turns:** 0
 - **Guard Fallback Count:** 0
 - **Guard Fallback Rate:** **0.00%** (Target: < 5%)

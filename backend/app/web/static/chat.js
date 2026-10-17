@@ -244,8 +244,59 @@ function triggerImmediatePoll() {
 
 // ── UI Rendering ────────────────────────────────────────────────────────────
 function renderMessage(msg, isLocalOptimistic = false) {
-  if (state.renderedMsgIds.has(msg.id || msg.client_msg_id)) return;
-  state.renderedMsgIds.add(msg.id || msg.client_msg_id);
+  const msgKey = msg.id || msg.client_msg_id;
+  if (state.renderedMsgIds.has(msgKey)) {
+    // Text-first delivery support: attach audio to previously rendered text bubble
+    if (msg.audio_ref) {
+      const existingRow = document.getElementById(`msg-${msgKey}`);
+      if (existingRow && !existingRow.querySelector('.bubble-audio')) {
+        const bubble = existingRow.querySelector('.bubble');
+        if (bubble) {
+          const audioWrap = document.createElement('div');
+          audioWrap.className = 'bubble-audio';
+
+          const playBtn = document.createElement('button');
+          playBtn.className = 'btn-play';
+          playBtn.setAttribute('aria-label', 'आवाज़ सुनें');
+          playBtn.innerHTML = '▶';
+
+          const audioEl = document.createElement('audio');
+          audioEl.preload = state.liteMode ? 'none' : 'metadata';
+          audioEl.src = `/api/audio/${encodeURIComponent(msg.audio_ref)}.ogg`;
+
+          playBtn.onclick = () => {
+            if (audioEl.paused) {
+              audioEl.play().catch(console.error);
+              playBtn.innerHTML = '⏸';
+            } else {
+              audioEl.pause();
+              playBtn.innerHTML = '▶';
+            }
+          };
+          audioEl.onended = () => {
+            playBtn.innerHTML = '▶';
+          };
+
+          const label = document.createElement('span');
+          label.className = 'audio-duration';
+          label.textContent = 'ऑडियो संदेश';
+
+          audioWrap.appendChild(playBtn);
+          audioWrap.appendChild(label);
+          audioWrap.appendChild(audioEl);
+
+          const meta = bubble.querySelector('.bubble-meta');
+          if (meta) {
+            bubble.insertBefore(audioWrap, meta);
+          } else {
+            bubble.appendChild(audioWrap);
+          }
+        }
+      }
+    }
+    return;
+  }
+  state.renderedMsgIds.add(msgKey);
 
   const container = document.getElementById('chat-messages');
   if (!container) return;
