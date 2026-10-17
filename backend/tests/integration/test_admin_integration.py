@@ -21,6 +21,7 @@ from backend.app.auth.csrf import (
     generate_csrf_token,
 )
 from backend.app.auth.guards import get_current_user
+from backend.app.db.demo_data import SEED_TEACHER_IDS
 from backend.app.db.models import (
     AppUser,
     Base,
@@ -94,7 +95,7 @@ async def test_admin_dashboard_postgres_end_to_end(
             display_name="परीक्षण एडमिन",
         )
         demo_teacher = Teacher(
-            id=uuid.uuid4(),
+            id=SEED_TEACHER_IDS[0],
             name="डेमो शिक्षक राजेश",
             school_id="SCH-DEMO-01",
             district="Kanpur Nagar",
@@ -102,7 +103,16 @@ async def test_admin_dashboard_postgres_end_to_end(
             is_demo=True,
             onboarding_state="COMPLETE",
         )
-        session.add_all([admin_user, demo_teacher])
+        cohort_teacher = Teacher(
+            id=uuid.uuid4(),
+            name="डेमो शिक्षक कोहोर्ट",
+            school_id="SCH-DEMO-02",
+            district="Kanpur Nagar",
+            cluster_id="KNP-C01",
+            is_demo=True,
+            onboarding_state="COMPLETE",
+        )
+        session.add_all([admin_user, demo_teacher, cohort_teacher])
         await session.flush()
 
         # Seed Active ContentRelease
@@ -127,7 +137,7 @@ async def test_admin_dashboard_postgres_end_to_end(
         )
         session.add(move)
 
-        # Seed Scene & Turn for demo teacher
+        # Seed Scene & Turn for demo teacher and cohort teacher
         scene = Scene(
             id=uuid.uuid4(),
             teacher_id=demo_teacher.id,
@@ -136,7 +146,15 @@ async def test_admin_dashboard_postgres_end_to_end(
             mode="normal",
             engine_state={},
         )
-        session.add(scene)
+        cohort_scene = Scene(
+            id=uuid.uuid4(),
+            teacher_id=cohort_teacher.id,
+            move_id=move.id,
+            status="ended",
+            mode="normal",
+            engine_state={},
+        )
+        session.add_all([scene, cohort_scene])
         await session.flush()
 
         turn = Turn(
@@ -256,11 +274,13 @@ async def test_admin_dashboard_postgres_end_to_end(
         assert res_reset.status_code == 303
         assert "/admin?msg=reset_ok" in res_reset.headers["location"]
 
-        # Verify in database: demo scene and turn were deleted
+        # Verify in database: demo scene and turn were deleted, background cohort preserved
         async with db_session_factory() as verify_session:
             db_scene = await verify_session.get(Scene, scene.id)
             assert db_scene is None
             db_turn = await verify_session.get(Turn, turn.id)
             assert db_turn is None
+            db_cohort_scene = await verify_session.get(Scene, cohort_scene.id)
+            assert db_cohort_scene is not None
 
     app.dependency_overrides.clear()
