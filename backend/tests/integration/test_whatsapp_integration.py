@@ -48,21 +48,30 @@ def _async_url(url: str) -> str:
 
 
 @pytest.fixture
-async def db_session() -> AsyncIterator[AsyncSession]:
+async def session_maker() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
     assert TEST_DATABASE_URL is not None
     engine = create_async_engine(_async_url(TEST_DATABASE_URL), poolclass=NullPool)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    session_maker = async_sessionmaker(engine, expire_on_commit=False)
-    async with session_maker() as session:
-        yield session
+    sm = async_sessionmaker(engine, expire_on_commit=False)
+    yield sm
     await engine.dispose()
 
 
+@pytest.fixture
+async def db_session(
+    session_maker: async_sessionmaker[AsyncSession],
+) -> AsyncIterator[AsyncSession]:
+    async with session_maker() as session:
+        yield session
+
+
 @pytest.mark.asyncio
-async def test_inbound_webhook_teacher_creation_and_persistence(db_session: AsyncSession) -> None:
+async def test_inbound_webhook_teacher_creation_and_persistence(
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
     """Verifies that an inbound WhatsApp message creates teacher, contact, and message rows."""
-    set_whatsapp_session_factory(lambda: db_session)
+    set_whatsapp_session_factory(session_maker)
     phone = "+919876543299"
     msg_id = f"wamid.test.{uuid.uuid4()}"
 
@@ -75,33 +84,36 @@ async def test_inbound_webhook_teacher_creation_and_persistence(db_session: Asyn
 
     await _dispatch_inbound_message(raw_msg)
 
-    # 1. Verify teacher was created with salted SHA-256 hash
-    p_hash = hash_phone_number(phone)
-    t_stmt = select(Teacher).where(Teacher.phone_hash == p_hash)
-    teacher = (await db_session.execute(t_stmt)).scalar_one_or_none()
-    assert teacher is not None
-    assert teacher.preferred_channel == "whatsapp"
-    assert teacher.onboarding_state == "NEW"
+    async with session_maker() as check_session:
+        # 1. Verify teacher was created with salted SHA-256 hash
+        p_hash = hash_phone_number(phone)
+        t_stmt = select(Teacher).where(Teacher.phone_hash == p_hash)
+        teacher = (await check_session.execute(t_stmt)).scalar_one_or_none()
+        assert teacher is not None
+        assert teacher.preferred_channel == "whatsapp"
+        assert teacher.onboarding_state == "NEW"
 
-    # 2. Verify encrypted phone contact
-    c_stmt = select(TeacherContact).where(TeacherContact.teacher_id == teacher.id)
-    contact = (await db_session.execute(c_stmt)).scalar_one_or_none()
-    assert contact is not None
-    assert decrypt_phone_number(contact.phone_enc) == phone
+        # 2. Verify encrypted phone contact
+        c_stmt = select(TeacherContact).where(TeacherContact.teacher_id == teacher.id)
+        contact = (await check_session.execute(c_stmt)).scalar_one_or_none()
+        assert contact is not None
+        assert decrypt_phone_number(contact.phone_enc) == phone
 
-    # 3. Verify inbound message was persisted
-    m_stmt = select(Message).where(Message.channel_msg_id == msg_id)
-    msg = (await db_session.execute(m_stmt)).scalar_one_or_none()
-    assert msg is not None
-    assert msg.direction == "in"
-    assert msg.channel == "whatsapp"
-    assert msg.text == "नमस्ते अभ्यास"
+        # 3. Verify inbound message was persisted
+        m_stmt = select(Message).where(Message.channel_msg_id == msg_id)
+        msg = (await check_session.execute(m_stmt)).scalar_one_or_none()
+        assert msg is not None
+        assert msg.direction == "in"
+        assert msg.channel == "whatsapp"
+        assert msg.text == "नमस्ते अभ्यास"
 
 
 @pytest.mark.asyncio
-async def test_inbound_deduplication(db_session: AsyncSession) -> None:
+async def test_inbound_deduplication(
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
     """Duplicate message ID must not create duplicate Message rows."""
-    set_whatsapp_session_factory(lambda: db_session)
+    set_whatsapp_session_factory(session_maker)
     phone = "+919876543288"
     msg_id = f"wamid.dup.{uuid.uuid4()}"
 
@@ -116,9 +128,10 @@ async def test_inbound_deduplication(db_session: AsyncSession) -> None:
     await _dispatch_inbound_message(raw_msg)
     await _dispatch_inbound_message(raw_msg)
 
-    m_stmt = select(Message).where(Message.channel_msg_id == msg_id)
-    messages = (await db_session.execute(m_stmt)).scalars().all()
-    assert len(messages) == 1
+    async with session_maker() as check_session:
+        m_stmt = select(Message).where(Message.channel_msg_id == msg_id)
+        messages = (await check_session.execute(m_stmt)).scalars().all()
+        assert len(messages) == 1
 
 
 @pytest.mark.asyncio

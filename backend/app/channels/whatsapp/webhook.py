@@ -298,7 +298,8 @@ async def process_inbound_whatsapp(
     """Processes inbound WhatsApp message under per-teacher serialisation lock."""
     lock = get_teacher_lock(teacher_id)
     async with lock:
-        async with async_session_factory() as session:
+        factory = get_whatsapp_session_factory()
+        async with factory() as session:
             teacher = await session.get(Teacher, teacher_id)
             if not teacher:
                 logger.error("Teacher %s not found in process_inbound_whatsapp", teacher_id)
