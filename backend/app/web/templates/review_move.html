@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>मूव समीक्षा: {{ move.title_hi }} — {{ get_message("ui_review_title") }}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <style>
+    .move-container {
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 1rem;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .move-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.8rem 0;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+    .approval-banner {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .approval-stats {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .approval-approvers {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.3rem;
+    }
+    .approver-tag {
+      background: #E4EFEA;
+      color: var(--brand);
+      border-radius: 999px;
+      padding: 0.2rem 0.6rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .btn-approve {
+      background: var(--brand);
+      color: var(--brand-ink);
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      min-height: 48px;
+    }
+    .btn-approve:disabled {
+      background: var(--border);
+      color: var(--muted);
+      cursor: not-allowed;
+    }
+    .section-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 1.5rem;
+    }
+    .section-card h2 {
+      margin-top: 0;
+      font-size: 1.2rem;
+      color: var(--brand);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+    .yaml-textarea {
+      width: 100%;
+      height: 380px;
+      font-family: monospace;
+      font-size: 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem;
+      box-sizing: border-box;
+      background: #FDFCFB;
+      line-height: 1.4;
+    }
+    .validate-box {
+      margin-top: 0.75rem;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+    .btn-validate {
+      background: var(--surface);
+      color: var(--ink);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .alert-success {
+      background: #E4EFEA;
+      color: var(--brand);
+      border: 1px solid var(--brand);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+      font-weight: 600;
+    }
+    .alert-info {
+      background: #EBF2FD;
+      color: #174EB0;
+      border: 1px solid #C4D9FB;
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="move-container">
+    <header class="move-header">
+      <div>
+        <a href="/review?tab=moves" style="color:var(--muted); text-decoration:none; font-size:0.9rem;">← सामग्री सूची पर वापस जाएँ</a>
+        <h1 style="margin:0.25rem 0 0 0; font-size:1.4rem; color:var(--brand);">
+          {{ move.title_hi }} (<code>{{ move.id }}</code>)
+        </h1>
+        <small style="color:var(--muted);">विषय: {{ move.domain }} · संकुल माह: {{ move.sankul_month or '—' }}</small>
+      </div>
+      <div>
+        <span class="status-badge {% if move.status == 'approved' %}status-approved{% else %}status-pending{% endif %}" style="font-size:0.95rem; padding:0.35rem 0.8rem;">
+          {% if move.status == 'approved' %}{{ get_message("ui_review_approved_badge") }}{% else %}{{ get_message("ui_review_pending_badge") }}{% endif %}
+        </span>
+      </div>
+    </header>
+
+    {% if approved %}
+    <div class="alert-success">
+      आपकी मंज़ूरी सफलतापूर्वक दर्ज की गई!
+    </div>
+    {% endif %}
+
+    <!-- Approval Banner -->
+    <div class="approval-banner">
+      <div class="approval-stats">
+        <div style="font-size:1.1rem; font-weight:700;">
+          मंज़ूरी प्रगति: {{ approvals_count }} / {{ approvals_required }} कोच
+        </div>
+        <div style="font-size:0.85rem; color:var(--muted);">
+          मूव को प्रकाशित करने के लिए कम से कम 2 अलग-अलग कोचों की मंज़ूरी अनिवार्य है।
+        </div>
+        <div class="approval-approvers">
+          {% for a in approvals %}
+          <span class="approver-tag">✓ {{ a.username or a.user_id }}</span>
+          {% endfor %}
+          {% if not approvals %}
+          <span style="font-size:0.85rem; color:var(--muted);">अभी तक किसी कोच ने मंज़ूरी नहीं दी है।</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div>
+        <form method="POST" action="/review/moves/{{ move.id }}/approve">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn-approve" {% if user_already_approved %}disabled{% endif %}>
+            {% if user_already_approved %}
+            ✓ आपकी मंज़ूरी दर्ज है
+            {% else %}
+            {{ get_message("ui_review_approve_move") }}
+            {% endif %}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Form View: Key Points, Rubric, Scenarios -->
+    {% if card %}
+    <div class="section-card">
+      <h2>1. मुख्य शिक्षण बिंदु (Key Points)</h2>
+      <ul>
+        {% for kp in card.key_points %}
+        <li style="margin-bottom:0.4rem;">
+          <strong>{{ kp.id }}:</strong> {{ kp.text_hi }}
+        </li>
+        {% endfor %}
+      </ul>
+
+      <h2>2. मूल्यांकन रूब्रिक (Rubric Criteria)</h2>
+      <div style="display:flex; flex-direction:column; gap:0.75rem;">
+        {% for crit in card.rubric.criteria %}
+        <div style="border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.75rem; background:var(--bg);">
+          <strong>{{ crit.id }} — {{ crit.text_hi }}</strong>
+          <div style="font-size:0.85rem; color:var(--muted); margin-top:0.2rem;">
+            {% for lvl, desc in crit.levels.items() %}
+            <span>[{{ lvl }}]: {{ desc }}</span>{% if not loop.last %} · {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <h2>3. अभ्यास परिदृश्य व मॉडल अभ्यास (Scenario & Model Rehearsal)</h2>
+      <p><strong>कक्षा संदर्भ:</strong> {{ card.scenario.intro_hi if card.scenario else '—' }}</p>
+      {% if card.model_rehearsal %}
+      <p><strong>आदर्श अभ्यास (पहला संवाद):</strong> {{ card.model_rehearsal[0].text_hi }} (वक्ता: {{ card.model_rehearsal[0].speaker }})</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Raw YAML Tab with Server-side Schema Validation -->
+    <div class="section-card">
+      <h2>कच्चा YAML कोड (Raw YAML & Validation)</h2>
+      <textarea id="yamlInput" class="yaml-textarea">{{ raw_yaml }}</textarea>
+
+      <div class="validate-box">
+        <button type="button" class="btn-validate" onclick="validateYaml()">
+          YAML जाँचें (Validate Schema)
+        </button>
+        <span id="validateResult" style="font-size:0.9rem; font-weight:600;"></span>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    async function validateYaml() {
+      const resultSpan = document.getElementById("validateResult");
+      resultSpan.style.color = "var(--muted)";
+      resultSpan.textContent = "जाँच हो रही है...";
+
+      const yamlContent = document.getElementById("yamlInput").value;
+      try {
+        const resp = await fetch("/review/moves/{{ move.id }}/validate-yaml", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-csrf-token": "{{ csrf_token }}"
+          },
+          body: JSON.stringify({ yaml_content: yamlContent })
+        });
+        const data = await resp.json();
+        if (data.valid) {
+          resultSpan.style.color = "var(--brand)";
+          resultSpan.textContent = "✓ मान्य MoveCard स्कीमा (" + data.criteria_count + " रूब्रिक मानदंड)";
+        } else {
+          resultSpan.style.color = "var(--danger)";
+          resultSpan.textContent = "✗ त्रुटि: " + data.error;
+        }
+      } catch (err) {
+        resultSpan.style.color = "var(--danger)";
+        resultSpan.textContent = "✗ नेटवर्क त्रुटि";
+      }
+    }
+  </script>
+</body>
+</html>

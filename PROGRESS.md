@@ -105,7 +105,7 @@ A comprehensive audit comparing the current scaffold against `spec/02_architectu
 - [x] **T25 Auth & demo users** · Priority: P0 · Finish-by: 17 Oct (completed via Lane C)
 - [ ] **T26 Web channel API** · Priority: P0 · Finish-by: 18 Oct
 - [ ] **T27 Teacher chat PWA** · Priority: P0 · Finish-by: 20 Oct
-- [ ] **T28 WhatsApp channel** · Priority: P0 code 21 Oct / P1 live · Finish-by: 21 Oct
+- [x] **T28 WhatsApp channel** · Priority: P0 code 21 Oct / P1 live · Finish-by: 21 Oct (PR #14, CI green)
 - [x] **T29 Progress, consent, delete** · Priority: P1 · Finish-by: 22 Oct (completed via Lane C)
 - [x] **T30 First hosted deploy** · Priority: P0 · Finish-by: 18 Oct (completed 13 Oct via Lane C)
 - [x] **T31 Demo data** · Priority: P1 · Finish-by: 22 Oct (completed via Lane C)
@@ -223,6 +223,10 @@ All items from `spec/15_human_inputs.md` are currently open:
   - T22 Intents, ASK, BM25 Retrieval & T23 Move Path Scoring.
 - **Lane E Completed & Merged**:
   - T24 Scheduler, jobs, aggregates & ARP digest.
+- **Coord & Feature Lanes (Overnight Run 3)**:
+  - **Step 0**: Guardrails report generated (`eval/guards/REPORT.md`, 8/8 adversarial child-line probes blocked) and CI audit documented (`progress/audit.md`); PR #9 (`coord/guards-report`) opened with 100% green CI.
+  - **T32 (ARP Digest)**: DB-backed ARP digest engine (`build_arp_digest`), privacy-by-design consent separation (`अन्य N शिक्षक (स्कोर साझा नहीं)`), suggested visits list with printable observation checklist, `ARPObservation` + L4 `AdoptionEvidence` flow, escalated question answer flow queueing outbound teacher messages, Jinja2 template with `@media print`, 3 unit tests and 5 PostgreSQL integration tests. Branch `coord/arp-digest`.
+  - **T33 (Trainer View `/trainer`)**: Built trainer view backed by `AggModuleBatch` with district/batch/move filters, deterministic insight box for missed key points >= 40%, inline SVG stacked rubric bars, adoption evidence ladder distribution, strict $n < 10$ suppression (`समूह छोटा है (n<10) — गोपनीयता हेतु छिपाया गया`), and CSV export with matching privacy enforcement. Zero teacher PII exposed anywhere. Unit and integration tests passing. Branch `coord/trainer-view` ([PR #11](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/11), 100% Green CI on Run 39017590919).
 
 - **Autonomous Night 3 Branches Awaiting Review**:
   - **PR #8 (`lane-e-docs`)**: T48 security headers (CSP, HSTS) & rate limits, T49 comprehensive documentation, T50 hosted smoke tests. CI run 39014169543 green on `39bb179`.
@@ -233,6 +237,23 @@ All items from `spec/15_human_inputs.md` are currently open:
   - **PR #13 (`coord/admin`)**: T35 Admin operations dashboard (`/admin`) with latency p50/p95 by stage, turn activity, guard metrics, LLM token consumption, WhatsApp template sends & costs, scheduled jobs, and demo controls. CI run 39021127576 green on `8b58b6d`.
 
 ### NEXT (Autonomous Overnight Queue):
-1. **T28 (WhatsApp Channel Audit & Tests)** · Priority: P0 code (spec/07 §7.2: idempotency with DB/TTL, 24-hr window checking, mock Graph API unit tests).
-2. **T40 (Source Ingestion Pipeline)** · Priority: P1 (spec/10 §10.4: chunking script, retrieval golden test).
-3. **T42 (Kappa Evaluation Harness)** · Priority: P1 (spec/11 §11.4: quadratic-weighted Cohen's kappa calculation).
+1. **T35 (Admin Dashboard `/admin`)** · Priority: P1 (spec/09 §9.6: latency percentiles by stage, turns count, guard pass/retry/fallback %, LLM calls & token usage, scheduled jobs status, demo controls: reset demo, fast-forward).
+2. **T28 (WhatsApp Channel Audit & Tests)** · Priority: P0 code (spec/07 §7.2: idempotency, window checks, mock Graph API tests).
+3. **T40 (Source Ingestion Pipeline)** · Priority: P1 (spec/10 §10.4: chunking script, retrieval evaluation, NIPUN/NCERT PDF ingestion).
+4. **T42 (Kappa Evaluation Harness)** · Priority: P1 (spec/11 §11.4: quadratic-weighted Cohen's kappa calculation for coach rubric scoring vs expert ratings).
+5. **T48 (Security & Privacy Pass)** · Priority: P0 (spec/12, spec/14, CSP headers, rate-limiting, audit verification).
+6. **T49 (Docs & Freeze)** · Priority: P0 (spec/13, submission checklist, sample inputs, demo script).
+
+### T48 Security pass (lane-e-docs)
+- Added `SecurityHeadersMiddleware` (CSP, nosniff, X-Frame-Options DENY, Referrer-Policy, Permissions-Policy, HSTS in production). **Deviation:** CSP keeps `'unsafe-inline'` for script/style because templates use inline scripts, `onclick` handlers and style attributes; all other directives are same-origin. Removing it needs templates moved to external JS (post-submission).
+- Per-user chat send limit (`CHAT_MAX_MESSAGES_PER_MINUTE`, default 20) on /api/chat/text, /audio, /button; in-memory, per instance.
+- Audio upload now reads at most `MAX_AUDIO_BYTES + 1` bytes before rejecting.
+- CI `audit` job runs `pip-audit` (advisory, `continue-on-error`).
+- Verified unchanged: CSRF double-submit with `hmac.compare_digest`, WhatsApp HMAC-SHA256 with constant-time compare and 503 when secret unset, login limit 5/min/IP, audio endpoint requires login.
+- Open: audio refs are not scoped to the owning teacher (any logged-in user holding a ref can fetch it; refs are content hashes); WhatsApp dedupe set `_PROCESSED_MESSAGE_IDS` is in-memory and unbounded; `onclick="...'{{ btn.id }}'"` interpolates content strings into JS (content is repo-controlled, not user input).
+
+### T43 Guard report (lane-e-docs)
+- `backend/app/llm/guard_stats.py` records every guard result (role, attempt, passed, reason, mock flag) from all 7 LLM roles; ring buffer in memory, optional JSONL via `GUARD_EVENT_LOG_PATH`. No teacher text is stored.
+- `make eval-guards [EVENTS=file.jsonl]` writes `eval/guards/REPORT.md`: live stats split real vs mock, plus a 10-case adversarial corpus run through the real `guard_child_line` (clearly labelled as test cases, not traffic).
+- Needs a human/agy step: run `make eval-guards` once and commit the generated REPORT.md; re-run with real events after the hosted T41 run (28–30 Oct). Fallbacks from an unavailable LLM are not guard events (see `llm_call.outcome`).
+

@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 from typing import Any
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -232,16 +233,21 @@ async def test_post_webhook_valid_signature_success(
     body_bytes = json.dumps(sample_payload).encode("utf-8")
     valid_sig = _sign_payload(body_bytes, secret)
 
-    async with AsyncClient(
-        transport=ASGITransport(app=whatsapp_app), base_url="http://test"
-    ) as client:
-        resp = await client.post(
-            "/whatsapp/webhook",
-            content=body_bytes,
-            headers={
-                "Content-Type": "application/json",
-                "X-Hub-Signature-256": valid_sig,
-            },
-        )
-        assert resp.status_code == 200
-        assert resp.json() == {"status": "ok"}
+    with patch(
+        "backend.app.channels.whatsapp.webhook._dispatch_inbound_message",
+        new_callable=AsyncMock,
+    ) as mock_dispatch:
+        async with AsyncClient(
+            transport=ASGITransport(app=whatsapp_app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/whatsapp/webhook",
+                content=body_bytes,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Hub-Signature-256": valid_sig,
+                },
+            )
+            assert resp.status_code == 200
+            assert resp.json() == {"status": "ok"}
+            mock_dispatch.assert_called_once()

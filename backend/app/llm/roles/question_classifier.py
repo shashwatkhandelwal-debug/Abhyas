@@ -17,6 +17,7 @@ from pydantic import ValidationError
 
 from backend.app.config import settings
 from backend.app.llm.client import LLMUnavailable, call_tool
+from backend.app.llm.guard_stats import record_guard_event
 from backend.app.llm.guards import guard_question_classifier
 from backend.app.llm.messages import load_catalog_message
 from backend.app.llm.prompts import load_prompt
@@ -109,6 +110,7 @@ async def classify_question(
                     parsed.search_query_hi = clean_question
 
             is_valid, error_msg = guard_question_classifier(parsed)
+            record_guard_event("question_classifier", attempt, is_valid, error_msg)
 
             if is_valid:
                 return QuestionClassificationResult(

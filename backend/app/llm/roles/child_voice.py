@@ -11,6 +11,7 @@ from typing import Any
 from backend.app.config import settings
 from backend.app.content_models import PersonaCard
 from backend.app.llm.client import LLMUnavailable, call_tool
+from backend.app.llm.guard_stats import record_guard_event
 from backend.app.llm.guards import guard_child_line
 from backend.app.llm.schemas import ChildVoiceOutput
 from backend.app.rule_engine.domain import ChildResponse, ResponseKind
@@ -170,6 +171,7 @@ async def voice_child_line(
 
             parsed = ChildVoiceOutput.model_validate(tool_input)
             is_valid, err_msg = guard_child_line(parsed.line_hi, response)
+            record_guard_event("child_voice", attempt, is_valid, err_msg)
             if is_valid:
                 return parsed.line_hi
 

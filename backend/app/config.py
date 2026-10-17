@@ -45,6 +45,8 @@ class Settings(BaseSettings):
     TRUSTED_PROXY_IPS: str = "127.0.0.1"
     MAX_LOGIN_ATTEMPTS_PER_MINUTE: int = 5
     LOGIN_RATE_LIMIT_WINDOW_SECONDS: int = 60
+    CHAT_MAX_MESSAGES_PER_MINUTE: int = 20
+    CHAT_RATE_LIMIT_WINDOW_SECONDS: int = 60
 
     # ── Claude (Anthropic) — H1 ──────────────────────────────────────────
     LLM_PROVIDER: Literal["anthropic", "mock"] = "anthropic"
@@ -57,6 +59,9 @@ class Settings(BaseSettings):
     LLM_TIMEOUT_SECONDS: float = 8.0
     LLM_BUILD_TIMEOUT_SECONDS: float = 60.0
     LLM_MAX_RETRIES: int = 1
+    GUARD_EVENT_RING_SIZE: int = 2000
+    GUARD_EVENT_REASON_MAX_CHARS: int = 200
+    GUARD_EVENT_LOG_PATH: str = ""
 
     # ── Speech (STT / TTS / Audio) — H2 ──────────────────────────────────
     STT_PROVIDER: Literal["sarvam", "bhashini", "google", "mock"] = "sarvam"
