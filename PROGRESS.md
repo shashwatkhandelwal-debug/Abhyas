@@ -278,9 +278,17 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **PR #16 (`coord/t24-jobs`) — Merged to main at `8adb8ed`**:
   - Merged main. Wired `schedule_reminder` on unfinished weekly steps (IST-slot deduped), lowered `FOLLOWUP_TRY_IN_CLASS_HOURS` from 72 to 48, resilient week rollover querying latest SessionState, wrapped schedule operations in `begin_nested()` savepoints, narrowed load_move_card exception handling. Added 4 unit tests.
   - Head SHA: `06d423e`, CI Run `39048766813` (100% success).
-- **PR #18 (`coord/low-network`) — Merging to main**:
+- **PR #18 (`coord/low-network`) — Merged to main at `bedf657`**:
   - Merged main. Wrapped `dependency_overrides` cleanup in `finally` in `check_first_load.py`; added login status checks and non-login redirect assertions in `--url` mode; updated report table status to "Code present (not exercised)" for unexercised PWA features and "Measured" for bundle sizes; labelled local run as lower bound with mock DB and empty chat history; rendered `data-created-at` from server templates (`teacher.html`, `chat.html`) and updated `chat.js` `initRenderedMessagesFromDom()` to read it without inventing timestamps; updated unit test assertions.
   - Head SHA: `4bc58f4`, CI Run `39049496081` (100% success).
+
+### Rule C Follow-ups (`rule-c`)
+- **web/arp.py Exception & Undelivered Message Handling (Rule C)**:
+  - Justification: `wa_channel.send` can raise network, HTTP, or phone decryption errors (`httpx.HTTPError`, `ValueError`, etc.) when communicating with external Meta Graph API; caught with in-code one-line Rule C comment to prevent failing the ARP answer transaction if external delivery fails.
+  - Eliminated phantom delivered message creation: if WhatsApp dispatch fails, error is logged and no fallback `Message` row is added to the database, ensuring undelivered messages are not marked as delivered.
+  - Confirmed and tested that `wa_channel.send(session=db)` delivers and persists exactly one `Message` row on success, with no duplicate added by `arp.py`.
+  - Confirmed and tested that unapproved template `abhyas_arp_answer` outside the 24h window logs a warning and skips cleanly without exception or phantom message persistence.
+  - Added 3 unit tests in `test_arp_digest.py` (all 10/10 passing).
 
 ### T24 Jobs Review Fixes (`coord/t24-jobs`)
 - **Reminder Wiring**: Wired `schedule_reminder` in `SessionService._sync_context_to_db` within `begin_nested()` savepoint whenever a teacher in `READY` onboarding state leaves a weekly step unfinished (`current_state != DONE`). Deduped by IST date slot.

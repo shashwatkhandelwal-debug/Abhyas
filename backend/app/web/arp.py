@@ -276,21 +276,10 @@ async def post_arp_answer(
         )
         try:
             await wa_channel.send(teacher, [outbound], session=db)
-        except Exception as exc:
+        except Exception as exc:  # Rule C: WhatsApp dispatch can raise network, HTTP, or decryption errors; avoid failing ARP flow and log without adding fake delivered message row
             logger.error(
                 "Failed to dispatch WhatsApp ARP answer to teacher %s: %s", teacher.id, exc
             )
-            outbound_msg = Message(
-                teacher_id=teacher.id,
-                direction="out",
-                channel="whatsapp",
-                channel_msg_id=f"arp-ans-{question.id}-{uuid.uuid4().hex[:6]}",
-                kind="text",
-                text=full_text,
-                speaker="arp",
-                state_at="ASK",
-            )
-            db.add(outbound_msg)
     else:
         outbound_msg = Message(
             teacher_id=teacher.id,
