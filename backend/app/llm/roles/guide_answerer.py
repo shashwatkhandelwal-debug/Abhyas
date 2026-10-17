@@ -303,7 +303,27 @@ async def answer_guide_question(
     )
 
 
+def format_guide_citation(
+    source_short_hi: str,
+    page: int | None = None,
+    address_form: str = "f",
+) -> str:
+    """Formats a standard guide citation matching [source, p. XX] or catalog ask_source_citation."""
+    if page is not None:
+        try:
+            return load_catalog_message(
+                "ask_source_citation",
+                address_form=address_form,
+                source=source_short_hi,
+                page=page,
+            )
+        except Exception:
+            return f"[{source_short_hi}, p. {page}]"
+    return f"[{source_short_hi}]"
+
+
 __all__ = [
     "answer_guide_question",
     "compose_guide_reply",
+    "format_guide_citation",
 ]

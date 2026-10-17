@@ -322,3 +322,34 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **backend/app/db/seed.py**: Sanitized log output by removing `DEMO_PASSWORD` formatting from `logger.info("Starting database seed")`.
 - **docs/DEPLOY.md**: Updated §1.3 and Table 2 for `ALEMBIC_DATABASE_URL` to specify Supabase Session Pooler URI on port 5432 (`postgresql://...`) instead of the direct connection host (`db.[PROJECT-REF].supabase.co`), documenting that Supabase direct host defaults to IPv6 which causes connection failures on platforms without IPv6 routing (such as Render or standard Docker).
 - **.env.example**: Updated local `DATABASE_URL` and `ALEMBIC_DATABASE_URL` default passwords from `postgres` to `postgrespassword` to match `infra/docker-compose.yml`.
+
+### T64 Official Source Ingestion, OCR Pipeline & Spot-Checks (`sources-ocr`)
+- **Official Government Sources Registry**:
+  - Registered 5 official government documents in `content/sources/sources.yaml` from official portals (`education.gov.in`, `scertup.gov.in`, `ncert.nic.in`) with URL, SHA-256 (`TODO(human)` per H7), as-of date, and licence notes.
+  - Confirmed `content/sources/*.pdf` is strictly gitignored.
+- **Dual-Layer Extraction & OCR Pipeline**:
+  - Primary extractor: `pdfplumber` with fallback to `pypdf`.
+  - Added Hindi font legibility heuristic (`is_page_text_poor`, `is_hindi_garbled`): detects missing text layers, legacy font ASCII corruption, and high replacement character ratios ($> 15\%$).
+  - Automatic OCR execution: Renders 300 dpi page images via poppler/pdf2image and runs Tesseract 5 (`hin+eng`) with word-level confidence calculation.
+  - Low-confidence dropping: Drops pages with confidence $< 0.40$ (configurable via `--confidence-threshold`), logging clear warnings.
+  - Mock OCR harness: Added `set_ocr_mock_handler` for deterministic CI execution without requiring external C-binaries on system PATH.
+- **CLI Support**:
+  - `python -m backend.app.retrieval.ingest --source <id> [--ocr tesseract|surya] [--confidence-threshold 0.4] [--all] [--no-spotcheck]`
+- **Typographic Spot-Check Generation**:
+  - Automatically produces `eval/sources/<source_id>_spotcheck.md` evaluating up to 10 sample pages per document.
+  - Inspects Unicode NFC normalization, absence of orphaned matras, and trailing viramas/halants.
+- **Guide Citation Formatting**:
+  - Added `format_guide_citation` producing bracketed citations in standard `[source, p. XX]` format.
+  - Added `ask_source_citation: "[{source}, p. {page}]"` to `content/messages_hi.yaml`.
+- **Unused Prompt Note**:
+  - `backend/app/llm/prompts/page_ocr.v1.md` is an authored reference prompt for Vision LLM single-page transcription. It is intentionally **not wired into the automated ingestion pipeline** because processing multi-hundred-page state teacher guides via Claude Sonnet Vision would incur prohibitive token expenses and non-deterministic latency. Automated ingestion uses deterministic local extractors (`pdfplumber` + Tesseract 5 / Surya OCR). `page_ocr.v1.md` is preserved for manual single-page reference only.
+- **Unit & Integration Tests**:
+  - Added 3 new tests in `backend/tests/integration/test_retrieval.py` (25/25 tests passing):
+    - `test_ingest_synthetic_pdf_hindi_phrase_with_ocr_fallback`: Tests synthetic PDF ingestion with OCR fallback on empty text layer, verifying known Hindi phrase extraction and spot-check markdown generation.
+    - `test_ingest_pdf_drops_low_confidence_ocr_pages`: Verifies low-confidence OCR pages ($< 0.40$) are dropped and logged.
+    - `test_guide_citations_format_and_real_chunk_pages`: Verifies `[source, p. XX]` format and catalog `ask_source_line` formatting.
+  - Verified `backend/tests/unit/test_guide_answerer.py` (10/10 tests passing).
+- **Rule C Justifications**:
+  - `backend/app/retrieval/ingest.py`: `# type: ignore[import-not-found]` on `import pdf2image` because `pdf2image` is an optional OCR image renderer; mock fallback used when poppler/pdf2image is not installed in CI.
+  - `backend/app/retrieval/ingest.py`: `# type: ignore[import-untyped]` on `import pytesseract` because `pytesseract` lacks a `py.typed` marker; mock fallback used in headless/CI environments.
+
