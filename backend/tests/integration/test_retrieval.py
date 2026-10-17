@@ -19,7 +19,6 @@ from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest
-from reportlab.pdfgen import canvas
 
 from backend.app.retrieval.ingest import (
     CHUNKS_DIR,
@@ -165,29 +164,58 @@ def test_hindi_stopwords_loaded_and_filtered() -> None:
 # ── 5. Synthetic PDF Ingestion Tests ───────────────────────────────────────────
 
 
+def _make_synthetic_pdf(pages: list[str]) -> bytes:
+    """Generates a minimal valid multi-page PDF 1.4 using standard Python bytes without external deps."""
+    n = len(pages)
+    kids = " ".join(f"{3 + i} 0 R" for i in range(n))
+    font_idx = 3 + 2 * n
+    objs: list[bytes] = [
+        b"1 0 obj\n<</Type/Catalog/Pages 2 0 R>>\nendobj",
+        f"2 0 obj\n<</Type/Pages/Kids[{kids}]/Count {n}>>\nendobj".encode(),
+    ]
+    for i in range(n):
+        page_idx = 3 + i
+        content_idx = 3 + n + i
+        objs.append(
+            f"{page_idx} 0 obj\n<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Contents {content_idx} 0 R/Resources<</Font<</F1 {font_idx} 0 R>>>>>>\nendobj".encode()
+        )
+    for i, text in enumerate(pages):
+        stream = f"BT\n/F1 12 Tf\n72 700 Td\n({text}) Tj\nET".encode()
+        objs.append(
+            f"{3 + n + i} 0 obj\n<</Length {len(stream)}>>\nstream\n".encode()
+            + stream
+            + b"\nendstream\nendobj"
+        )
+    objs.append(
+        f"{font_idx} 0 obj\n<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>\nendobj".encode()
+    )
+
+    out = io.BytesIO()
+    out.write(b"%PDF-1.4\n")
+    offsets = [0]
+    for obj in objs:
+        offsets.append(out.tell())
+        out.write(obj + b"\n")
+    xref_pos = out.tell()
+    out.write(f"xref\n0 {len(objs) + 1}\n0000000000 65535 f \n".encode())
+    for off in offsets[1:]:
+        out.write(f"{off:010d} 00000 n \n".encode())
+    out.write(
+        f"trailer\n<</Size {len(objs) + 1}/Root 1 0 R>>\nstartxref\n{xref_pos}\n%%EOF\n".encode()
+    )
+    return out.getvalue()
+
+
 def test_ingest_pdf_synthetic(tmp_path: Path) -> None:
     """Verifies end-to-end PDF ingestion using a synthetic multi-page PDF."""
     pdf_file = tmp_path / "fln_sample_guide.pdf"
-
-    # Create synthetic PDF with ReportLab
-    buf = io.BytesIO()
-    c = canvas.Canvas(buf)
-
-    # Page 1
-    c.drawString(72, 700, "FLN Shikshak Sandarshika Ganit Class 2")
-    c.drawString(72, 650, "Chapter 1: Number Place Value")
-    c.drawString(72, 600, "Teaching place value using bundles of 10 sticks and loose units.")
-    c.showPage()
-
-    # Page 2
-    c.drawString(72, 700, "FLN Shikshak Sandarshika Ganit Class 2")
-    c.drawString(72, 650, "Chapter 2: Subtraction with Regrouping")
-    c.drawString(72, 600, "When children face 52 minus 17 unbundle one ten into 10 loose sticks.")
-    c.showPage()
-
-    c.save()
-    buf.seek(0)
-    pdf_file.write_bytes(buf.getvalue())
+    pdf_bytes = _make_synthetic_pdf(
+        [
+            "FLN Shikshak Sandarshika Ganit Class 2 Place Value Bundles",
+            "FLN Shikshak Sandarshika Ganit Class 2 Subtraction Regrouping",
+        ]
+    )
+    pdf_file.write_bytes(pdf_bytes)
 
     chunks = ingest_pdf(
         pdf_path=pdf_file,
