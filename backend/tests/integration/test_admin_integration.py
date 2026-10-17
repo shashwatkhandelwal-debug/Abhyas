@@ -12,6 +12,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -22,6 +23,7 @@ from backend.app.auth.csrf import (
 from backend.app.auth.guards import get_current_user
 from backend.app.db.models import (
     AppUser,
+    Base,
     Batch,
     Cluster,
     ContentRelease,
@@ -57,6 +59,11 @@ def get_async_db_url() -> str:
 async def db_session_factory() -> AsyncGenerator[async_sessionmaker[AsyncSession], None]:
     async_url = get_async_db_url()
     engine = create_async_engine(async_url, poolclass=NullPool)
+    async with engine.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        await conn.run_sync(Base.metadata.create_all)
+
     factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
     async with factory() as session:
