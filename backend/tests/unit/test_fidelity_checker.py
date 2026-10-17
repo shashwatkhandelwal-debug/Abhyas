@@ -66,7 +66,7 @@ def test_golden_fixtures_validity() -> None:
 
     pass_files = sorted(golden_dir.glob("pass_*.json"))
     fail_files = sorted(golden_dir.glob("fail_*.json"))
-    assert len(pass_files) >= 3, f"Expected >= 3 pass fixtures, found {len(pass_files)}"
+    assert len(pass_files) >= 5, f"Expected >= 5 pass fixtures, found {len(pass_files)}"
     assert len(fail_files) >= 3, f"Expected >= 3 fail fixtures, found {len(fail_files)}"
 
     for pf in pass_files:

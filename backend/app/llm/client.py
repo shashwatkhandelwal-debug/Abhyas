@@ -316,8 +316,8 @@ class MockLLM:
         if not role_dir.is_dir():
             return None
 
-        # Try to find matching fixture
-        files = sorted(role_dir.glob("*.json"))
+        # Try to find matching fixture (ignore negative test failure fixtures)
+        files = [f for f in sorted(role_dir.glob("*.json")) if not f.stem.startswith("fail")]
         if not files:
             return None
 

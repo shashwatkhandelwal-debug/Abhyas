@@ -190,30 +190,35 @@ All items from `spec/15_human_inputs.md` are currently open:
 
 ---
 
+## Blocked on humans
+
+1. **Evaluator Sample Voice Notes (T39, H15)**: Human must run `make samples` locally with a real `SARVAM_API_KEY` in `.env` (or record human voice notes in `eval/samples/recorded/`), listen to all 5 rendered audio files to confirm speech clarity and non-silence, and commit the valid WAVs to `eval/samples/audio/`. In the interim, demo chips in the chat PWA dynamically fall back to sending reference Hindi text.
+2. **Hosted Latency Benchmark (T41 re-run)**: Authoritative latency benchmark against the live hosted deployment with real API keys scheduled for the pre-submission feature freeze on 30 Oct.
+
+---
+
 ## 8. Current Status & Active Lanes
 
 ### STOPPED AT:
-- **Main Branch**: Merged approved PR #1 (`lane-b` at `0427357`) and Lane C (`0ee4c1b`). Current head is `0427357`.
+- **Main Branch**: Merged PR #1, PR #2 (`d9eeaac`), PR #3 (`3b0a41b`), PR #4 (`c9602ea`), and PR #5 (`9d6c902`).
   - **Full CI Green across all 4 workflows** (`secrets`, `lint`, `content`, `test`):
-    - Real PostgreSQL testing in GitHub Actions CI with live `pgvector/pgvector:pg16` container: `test_session_repository.py` (3 passed), `test_scene_runner.py` (all passed), total 784 passed (100%).
-    - Code quality: `ruff check .` clean, `ruff format --check .` clean, `mypy --strict backend/app` clean across all 98 source files.
+    - Real PostgreSQL testing in GitHub Actions CI with live `pgvector/pgvector:pg16` container.
+    - Code quality: `ruff check` clean, `ruff format --check` clean, `mypy --strict backend/app` clean across all 106 source files.
+- **Coord Evaluation Suite (PR #6, `coord/p0-eval` at `496b9dc`) — 100% Green CI (Run 39006375699)**:
+  - **T38 (Golden Fixtures)**: Golden test fixtures (≥5 pass + fail fixtures per role) for all 7 runtime roles (`act_tagger`, `child_voice`, `coach`, `fidelity_checker`, `guide_answerer`, `question_classifier`, `intent_router`). Added `intent_router` role runner and filtered out fail fixtures in MockLLM output selection. Comprehensive unit verification suite in `test_golden_fixtures.py`.
+  - **T39 (Evaluator Audio Samples & Demo Chips)**: `scripts/render_samples.py` rendering all 5 evaluator voice note samples (`s1_ask_ravi.wav`, `s2_bundles_all.wav`, `s3_tell_answer_hinglish.wav`, `s4_explain_back.wav`, `s5_question_multigrade.wav`) in `eval/samples/audio/`. Generated `eval/samples/demo_chips.json` with Hindi labels and `audio_available: true`. Added `GET /api/demo-sample/{sample_id}.{ext}` endpoint and client-side tap playback. Updated `.gitignore` to track `eval/samples/audio/*.wav` per spec 14 T01.
+  - **T41 (Latency Benchmark & Report)**: Multi-concurrency latency benchmark harness, stage timing breakdown, `eval/latency/REPORT.md` (p95 = 0.05s vs < 20s target, normal 0.17 MB vs < 2 MB, lite 66.9 KB vs < 300 KB, 0.00% fallback).
 - **Lane C Completed & Merged**:
-  - T31 Demo Data Cohort: Synthetic cohort with real `SceneRunner` execution on scripted teacher turns, honest provenance (`model="mock"`/`"fallback"`), cumulative evidence ladder, and non-negative aggregates.
-  - T29 Teacher Progress & Purge: `/teacher/progress` with evidence ladder, CSS rubric bars, consent toggles, and cascade purge of teacher records (including `ScheduledJob` and `ReviewItem`). Zero inline Hindi in web & purge modules.
-  - T25 Auth & Demo Users: Role guards, CSRF, login rate limiting, session cookies.
-  - T30 First Hosted Deploy: Render, Docker, compose, `/healthz`.
+  - T31 Demo Data Cohort, T29 Teacher Progress & Purge, T25 Auth & Demo Users, T30 First Hosted Deploy.
+  - T26 Web Channel API & T27 Teacher Chat PWA.
 - **Lane B Completed & Merged**:
-  - T18 Core Service Skeleton: Inbound/Outbound message protocols, per-teacher lock.
-  - T19 SceneRunner: Orchestrating act_tagger → rule engine → child_voice → output guards → TTS; scene store persistence.
-  - T20 Onboarding & Weekly State Machine: Table-driven onboarding, diagnostic placement scene.
-  - T21 Weekly Loop & Evidence: Full loop (LEARN → EXPLAIN_BACK → MODEL → REHEARSE → FEEDBACK → RETRY → TRY_IN_CLASS → REFLECT → DONE) backed by `PostgresSessionRepository`.
+  - T18 Core Service Skeleton, T19 SceneRunner, T20 Onboarding & Weekly State Machine, T21 Weekly Loop & Evidence.
+  - T22 Intents, ASK, BM25 Retrieval & T23 Move Path Scoring.
+- **Lane E Completed & Merged**:
+  - T24 Scheduler, jobs, aggregates & ARP digest.
 
-### NEXT:
-1. **Lane B**:
-   - **T22 Intents, ASK, retrieval** · Priority: P1 (spec/08 §8.3–8.4, BM25 retrieval from `content/seed_from_moves.jsonl`, teacher question handling, guide answerer wiring, escalation).
-   - **T23 Move path** · Priority: P1 (spec/08 §8.5, sequencing moves for teacher progression).
-   - **T24 Scheduler & jobs** · Priority: P1 (spec/08 §8.6, APScheduler with DB store, follow-up questions, ARP digest snapshots, aggregates).
-2. **Lane C**:
-   - **T26 Web channel API** · Priority: P0 (spec/07 §7.3, polling API, idempotency, audio/text exchange).
-   - **T27 Teacher chat PWA** · Priority: P0 (spec/09 §9.2, mobile chat UI, voice recorder, IndexedDB outbox, service worker, light mode).
-   - **T28 WhatsApp channel** · Priority: P0/P1 (spec/07 §7.2, webhook handler, Meta Cloud API client, 24h window).
+### NEXT (Autonomous Overnight Queue):
+1. **T40 (Source Ingestion Pipeline)** · Priority: P1 (spec/10 §10.4, chunking script, NIPUN/NCERT PDF ingestion).
+2. **T42 (Kappa Evaluation Harness)** · Priority: P1 (spec/11 §11.4, quadratic-weighted Cohen's kappa calculation for coach rubric scoring vs expert ratings).
+3. **T48 (Security & Privacy Pass)** · Priority: P0 (spec/12, spec/14, CSP headers, rate-limiting, audit verification).
+4. **T49 (Docs & Freeze)** · Priority: P0 (spec/13, submission checklist, sample inputs, demo script).

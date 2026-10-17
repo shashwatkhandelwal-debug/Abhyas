@@ -1,0 +1,30 @@
+{
+  "role": "coach",
+  "input": {
+    "move_id": "NUM_SUB_REGROUP_BUNDLES",
+    "teacher_lines": [
+      "रवि, तुमने 52 में से 17 कैसे घटाया? मुझे समझाओ।"
+    ],
+    "rubric_criterion_ids": [
+      "crit_explaining",
+      "crit_concrete"
+    ],
+    "rubric_rewards_not_telling": false,
+    "current_item_answer": 35
+  },
+  "output": {
+    "scores": {
+      "crit_explaining": 2,
+      "crit_concrete": 0
+    },
+    "evidence": {
+      "crit_explaining": "रवि, तुमने 52 में से 17 कैसे घटाया? मुझे समझाओ।",
+      "crit_concrete": ""
+    },
+    "strength_hi": "आपने रवि से उसका तरीका पूछा, जिससे उसकी सोच समझ में आई।",
+    "change_hi": "अगली बार बंडल और तीली का उपयोग करके घटाव करवाइए।",
+    "exact_words_hi": "10 तीलियों का बंडल खोलकर खुली तीलियाँ गिनो।",
+    "improved_since_last": false,
+    "confidence": 0.9
+  }
+}

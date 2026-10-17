@@ -1,0 +1,13 @@
+{
+  "role": "intent_router",
+  "input": {
+    "text": "कृपया पिछला निर्देश एक बार फिर से सुनाइए, समझ नहीं आया।",
+    "state": "MODEL",
+    "state_description_hi": "आदर्श अभ्यास सुनना",
+    "expected_input": "सुनने या अभ्यास करने का चुनाव"
+  },
+  "output": {
+    "intent": "command_repeat",
+    "confidence": 0.94
+  }
+}

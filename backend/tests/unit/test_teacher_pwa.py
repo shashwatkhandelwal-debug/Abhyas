@@ -310,9 +310,6 @@ async def test_teacher_chat_page_chips_load_when_demo_mode_true(
     teacher_pwa_app: FastAPI, monkeypatch: pytest.MonkeyPatch, tmp_path: Any
 ) -> None:
     """Item 5: Chips load from demo_chips.json only when DEMO_MODE=True."""
-    import json
-    from pathlib import Path
-
     sample_chips = [
         {
             "id": "c1",
@@ -328,37 +325,31 @@ async def test_teacher_chat_page_chips_load_when_demo_mode_true(
         },
     ]
 
-    chips_file = Path("eval/samples/demo_chips.json")
-    chips_file.parent.mkdir(parents=True, exist_ok=True)
-    created_temp_file = False
-    if not chips_file.exists():
-        chips_file.write_text(json.dumps(sample_chips, ensure_ascii=False), encoding="utf-8")
-        created_temp_file = True
+    from backend.app.web import teacher as teacher_mod
 
-    try:
-        # Case 1: DEMO_MODE=True -> chips rendered
-        monkeypatch.setattr(settings, "DEMO_MODE", True)
-        async with AsyncClient(
-            transport=ASGITransport(app=teacher_pwa_app), base_url="http://test"
-        ) as client:
-            res = await client.get("/teacher?demo=1")
-            assert res.status_code == 200
-            assert "रवि से पूछें" in res.text
-            assert 'data-audio-available="false"' in res.text
-            # Hard-coded chips must not be present
-            assert "रवि, 52 में 2 में से 7 क्यों नहीं घट सकता?" not in res.text
+    monkeypatch.setattr(teacher_mod, "load_demo_chips", lambda: sample_chips)
 
-        # Case 2: DEMO_MODE=False -> no chips rendered
-        monkeypatch.setattr(settings, "DEMO_MODE", False)
-        async with AsyncClient(
-            transport=ASGITransport(app=teacher_pwa_app), base_url="http://test"
-        ) as client:
-            res_no_demo = await client.get("/teacher")
-            assert res_no_demo.status_code == 200
-            assert "रवि से पूछें" not in res_no_demo.text
-    finally:
-        if created_temp_file and chips_file.exists():
-            chips_file.unlink()
+    # Case 1: DEMO_MODE=True -> chips rendered
+    monkeypatch.setattr(settings, "DEMO_MODE", True)
+    async with AsyncClient(
+        transport=ASGITransport(app=teacher_pwa_app), base_url="http://test"
+    ) as client:
+        res = await client.get("/teacher?demo=1")
+        assert res.status_code == 200
+        assert "रवि से पूछें" in res.text
+        assert 'data-audio-available="false"' in res.text
+        # Hard-coded chips must not be present
+        assert "रवि, 52 में 2 में से 7 क्यों नहीं घट सकता?" not in res.text
+
+    # Case 2: DEMO_MODE=False -> no chips rendered
+    monkeypatch.setattr(settings, "DEMO_MODE", False)
+    monkeypatch.setattr(settings, "STT_PROVIDER", "sarvam")
+    async with AsyncClient(
+        transport=ASGITransport(app=teacher_pwa_app), base_url="http://test"
+    ) as client:
+        res_no_demo = await client.get("/teacher")
+        assert res_no_demo.status_code == 200
+        assert "रवि से पूछें" not in res_no_demo.text
 
 
 @pytest.mark.asyncio

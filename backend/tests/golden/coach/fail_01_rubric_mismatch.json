@@ -1,0 +1,28 @@
+{
+  "role": "coach",
+  "input": {
+    "move_id": "NUM_SUB_REGROUP_BUNDLES",
+    "teacher_lines": [
+      "रवि, बताओ कैसे किया?"
+    ],
+    "rubric_criterion_ids": [
+      "crit_explaining",
+      "crit_concrete"
+    ],
+    "rubric_rewards_not_telling": false,
+    "current_item_answer": 35
+  },
+  "output": {
+    "scores": {
+      "crit_explaining": 2
+    },
+    "evidence": {
+      "crit_explaining": "रवि, बताओ कैसे किया?"
+    },
+    "strength_hi": "आपने अच्छा पूछा।",
+    "change_hi": "अगली बार तीलियाँ दिखाएँ।",
+    "exact_words_hi": "तीलियाँ गिनो।",
+    "improved_since_last": false,
+    "confidence": 0.8
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "role": "coach",
+  "input": {
+    "move_id": "NUM_ADD_CARRY_BUNDLES",
+    "teacher_lines": [
+      "अमन, तुमने 38 और 45 को कैसे जोड़ा? मुझे समझाओ।"
+    ],
+    "rubric_criterion_ids": [
+      "crit_explain",
+      "crit_concrete"
+    ],
+    "rubric_rewards_not_telling": false,
+    "current_item_answer": 83
+  },
+  "output": {
+    "scores": {
+      "crit_explain": 2,
+      "crit_concrete": 0
+    },
+    "evidence": {
+      "crit_explain": "अमन, तुमने 38 और 45 को कैसे जोड़ा? मुझे समझाओ।",
+      "crit_concrete": ""
+    },
+    "strength_hi": "आपने अमन से उसका तरीका पूछकर उसकी समझ जानने का प्रयास किया।",
+    "change_hi": "अगली बार 10 खुली तीलियों का नया बंडल बनवाने का अभ्यास कराइए।",
+    "exact_words_hi": "13 खुली तीलियों में से 10 तीलियाँ बाँधकर एक नया बंडल बनाओ।",
+    "improved_since_last": true,
+    "confidence": 0.91
+  }
+}

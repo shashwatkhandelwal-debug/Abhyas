@@ -1,0 +1,13 @@
+{
+  "role": "intent_router",
+  "input": {
+    "text": "मैंने कक्षा में पहले तीलियाँ बाँटीं और फिर बच्चों से पूछा कि 52 में से 17 कैसे घटाएँगे।",
+    "state": "EXPLAIN_BACK",
+    "state_description_hi": "शिक्षक ने जो सीखा उसे अपनी भाषा में समझाना",
+    "expected_input": "टीचिंग मूव का मुख्य विचार शिक्षक के अपने शब्दों में"
+  },
+  "output": {
+    "intent": "answer_for_step",
+    "confidence": 0.95
+  }
+}

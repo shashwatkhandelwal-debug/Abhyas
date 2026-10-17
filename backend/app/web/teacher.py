@@ -81,6 +81,19 @@ def load_demo_chips() -> list[dict[str, Any]]:
                 content = p.read_text(encoding="utf-8")
                 data = json.loads(content)
                 if isinstance(data, list):
+                    from backend.app.speech.audio import is_wav_non_silent
+
+                    audio_dir = p.parent / "audio"
+                    for item in data:
+                        if isinstance(item, dict):
+                            sid = item.get("id")
+                            wav_path = audio_dir / f"{sid}.wav" if sid else None
+                            is_avail = bool(
+                                wav_path and wav_path.is_file() and is_wav_non_silent(wav_path)
+                            )
+                            item["audio_available"] = is_avail
+                            if not is_avail:
+                                item["audio_url"] = None
                     return data
             except Exception as e:
                 logger.warning("Failed to load demo_chips.json from %s: %s", p, e)

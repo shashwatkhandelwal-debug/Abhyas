@@ -1,0 +1,27 @@
+{
+  "role": "coach",
+  "input": {
+    "move_id": "NUM_SUB_REGROUP_BUNDLES",
+    "teacher_lines": [
+      "बहुत अच्छा! दोनों उत्तर बोर्ड पर लिखकर देखो कि क्या अंतर है।"
+    ],
+    "rubric_criterion_ids": [
+      "crit_contrast"
+    ],
+    "rubric_rewards_not_telling": true,
+    "current_item_answer": 35
+  },
+  "output": {
+    "scores": {
+      "crit_contrast": 2
+    },
+    "evidence": {
+      "crit_contrast": "दोनों उत्तर बोर्ड पर लिखकर देखो कि क्या अंतर है।"
+    },
+    "strength_hi": "आपने दोनों उत्तरों की तुलना कराकर बच्चों को सोचने का मौका दिया।",
+    "change_hi": "शांत बच्चों को भी अपनी राय साझा करने के लिए प्रोत्साहित कीजिए।",
+    "exact_words_hi": "प्रिया, तुम बताओ कि बोर्ड पर कौन सा तरीका सही लग रहा है।",
+    "improved_since_last": false,
+    "confidence": 0.92
+  }
+}

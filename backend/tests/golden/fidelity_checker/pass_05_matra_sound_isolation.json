@@ -1,0 +1,26 @@
+{
+  "role": "fidelity_checker",
+  "input": {
+    "transcript": "मात्रा सिखाते समय पहले ध्वनि को अलग करके सुनना ज़रूरी है, सीधे अक्षर पर मात्रा का चिन्ह नहीं लगाना चाहिए।",
+    "expected_point_ids": [
+      "kp_sound_isolation",
+      "kp_visual_symbol"
+    ]
+  },
+  "output": {
+    "points": [
+      {
+        "id": "kp_sound_isolation",
+        "status": "covered",
+        "quote": "ध्वनि को अलग करके सुनना ज़रूरी है"
+      },
+      {
+        "id": "kp_visual_symbol",
+        "status": "covered",
+        "quote": "सीधे अक्षर पर मात्रा का चिन्ह नहीं लगाना चाहिए"
+      }
+    ],
+    "misconceptions": [],
+    "confidence": 0.93
+  }
+}

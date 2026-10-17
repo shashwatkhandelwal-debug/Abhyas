@@ -1,0 +1,26 @@
+{
+  "role": "fidelity_checker",
+  "input": {
+    "transcript": "पहले बच्चों को वास्तविक स्थिति से जोड़कर सवाल समझाना चाहिए, फिर वस्तुओं द्वारा हल कराना चाहिए।",
+    "expected_point_ids": [
+      "kp_real_world",
+      "kp_representation"
+    ]
+  },
+  "output": {
+    "points": [
+      {
+        "id": "kp_real_world",
+        "status": "covered",
+        "quote": "वास्तविक स्थिति से जोड़कर सवाल समझाना चाहिए"
+      },
+      {
+        "id": "kp_representation",
+        "status": "covered",
+        "quote": "वस्तुओं द्वारा हल कराना चाहिए"
+      }
+    ],
+    "misconceptions": [],
+    "confidence": 0.94
+  }
+}

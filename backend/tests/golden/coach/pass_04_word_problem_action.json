@@ -1,0 +1,30 @@
+{
+  "role": "coach",
+  "input": {
+    "move_id": "NUM_WORD_PROBLEM_CHANGE",
+    "teacher_lines": [
+      "अमन के पास 5 कंचे थे, 3 और मिल गए तो क्या हुआ? अभिनय करके दिखाओ।"
+    ],
+    "rubric_criterion_ids": [
+      "crit_action",
+      "crit_questioning"
+    ],
+    "rubric_rewards_not_telling": false,
+    "current_item_answer": 8
+  },
+  "output": {
+    "scores": {
+      "crit_action": 2,
+      "crit_questioning": 2
+    },
+    "evidence": {
+      "crit_action": "अभिनय करके दिखाओ।",
+      "crit_questioning": "3 और मिल गए तो क्या हुआ?"
+    },
+    "strength_hi": "आपने शाब्दिक सवाल को अभिनय से जोड़कर बहुत सजीव बना दिया।",
+    "change_hi": "अगली बार बच्चों से पूछिए कि कंचे बढ़े या घटे।",
+    "exact_words_hi": "कक्षा, सोचकर बताओ कि अमन के कंचे बढ़े या घटे।",
+    "improved_since_last": true,
+    "confidence": 0.89
+  }
+}
