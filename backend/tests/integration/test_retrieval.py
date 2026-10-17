@@ -500,6 +500,8 @@ def test_ingest_pdf_drops_low_confidence_ocr_pages(tmp_path: Path) -> None:
 
     capture_handler = _CaptureHandler()
     ingest_logger = logging.getLogger("abhyas.retrieval.ingest")
+    orig_level = ingest_logger.level
+    ingest_logger.setLevel(logging.DEBUG)
     ingest_logger.addHandler(capture_handler)
 
     set_ocr_mock_handler(_mock_ocr_low_conf)
@@ -522,6 +524,7 @@ def test_ingest_pdf_drops_low_confidence_ocr_pages(tmp_path: Path) -> None:
     finally:
         set_ocr_mock_handler(None)
         ingest_logger.removeHandler(capture_handler)
+        ingest_logger.setLevel(orig_level)
 
 
 def test_guide_citations_format_and_real_chunk_pages() -> None:
