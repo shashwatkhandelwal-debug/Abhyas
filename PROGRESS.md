@@ -322,3 +322,15 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **backend/app/db/seed.py**: Sanitized log output by removing `DEMO_PASSWORD` formatting from `logger.info("Starting database seed")`.
 - **docs/DEPLOY.md**: Updated §1.3 and Table 2 for `ALEMBIC_DATABASE_URL` to specify Supabase Session Pooler URI on port 5432 (`postgresql://...`) instead of the direct connection host (`db.[PROJECT-REF].supabase.co`), documenting that Supabase direct host defaults to IPv6 which causes connection failures on platforms without IPv6 routing (such as Render or standard Docker).
 - **.env.example**: Updated local `DATABASE_URL` and `ALEMBIC_DATABASE_URL` default passwords from `postgres` to `postgrespassword` to match `infra/docker-compose.yml`.
+
+### Cost Evaluation Reporting (`cost-report` — T61)
+- **backend/app/config.py**: Added Claude and Sarvam pricing tunables with source URLs and as-of dates (2026-10):
+  - Haiku 5.5: $0.10 input / $0.50 output / $0.01 cache read per MTok (`HAIKU_INPUT_USD_PER_MTOK`, `HAIKU_OUTPUT_USD_PER_MTOK`, `HAIKU_CACHE_READ_USD_PER_MTOK`).
+  - Sonnet 5.5: $2.00 input / $10.00 output / $0.10 cache read per MTok (`SONNET_INPUT_USD_PER_MTOK`, `SONNET_OUTPUT_USD_PER_MTOK`, `SONNET_CACHE_READ_USD_PER_MTOK`).
+  - Sarvam STT: ₹30 per hour / ₹0.50 per min (`STT_COST_PER_HOUR_INR`, `STT_COST_PER_MINUTE_INR`).
+  - Sarvam TTS: ₹30 per 10K chars / ₹3.00 per 1K chars (`TTS_COST_PER_10K_CHARS_INR`, `TTS_COST_PER_1000_CHARS_INR`).
+  - `USD_TO_INR`: default 88.0, labelled "assumption, update before submission".
+- **eval/cost/cost_report.py**: Implemented CLI and calculation engine reading `llm_call` and `speech_spend` rows. Computes total spend, cost per teacher, cost per completed weekly loop (`SessionState.state == "DONE"`), daily spend, and model breakdown. Outputs `eval/cost/REPORT.md`. Excludes mock rows unless `--include-mock` is specified, labelling report as `local/mock`.
+- **Makefile**: Added `eval-cost` target to run `python eval/cost/cost_report.py`.
+- **backend/tests/unit/test_cost_report.py**: Added unit tests for Haiku/Sonnet token pricing calculations, end-to-end metrics computation on fixture data, mock mode filtering, and Markdown report formatting (4/4 passing).
+
