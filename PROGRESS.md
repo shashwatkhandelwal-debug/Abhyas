@@ -223,9 +223,13 @@ All items from `spec/15_human_inputs.md` are currently open:
   - T22 Intents, ASK, BM25 Retrieval & T23 Move Path Scoring.
 - **Lane E Completed & Merged**:
   - T24 Scheduler, jobs, aggregates & ARP digest.
+- **Coord & Feature Lanes (Overnight Run 3)**:
+  - **Step 0**: Guardrails report generated (`eval/guards/REPORT.md`, 8/8 adversarial child-line probes blocked) and CI audit documented (`progress/audit.md`); PR #9 (`coord/guards-report`) opened with 100% green CI.
+  - **T32 (ARP Digest)**: DB-backed ARP digest engine (`build_arp_digest`), privacy-by-design consent separation (`अन्य N शिक्षक (स्कोर साझा नहीं)`), suggested visits list with printable observation checklist, `ARPObservation` + L4 `AdoptionEvidence` flow, escalated question answer flow queueing outbound teacher messages, Jinja2 template with `@media print`, 3 unit tests and 5 PostgreSQL integration tests. Branch `coord/arp-digest`.
 
 ### NEXT (Autonomous Overnight Queue):
-1. **T40 (Source Ingestion Pipeline)** · Priority: P1 (spec/10 §10.4, chunking script, NIPUN/NCERT PDF ingestion).
-2. **T42 (Kappa Evaluation Harness)** · Priority: P1 (spec/11 §11.4, quadratic-weighted Cohen's kappa calculation for coach rubric scoring vs expert ratings).
-3. **T48 (Security & Privacy Pass)** · Priority: P0 (spec/12, spec/14, CSP headers, rate-limiting, audit verification).
-4. **T49 (Docs & Freeze)** · Priority: P0 (spec/13, submission checklist, sample inputs, demo script).
+1. **T33 (Trainer View `/trainer`)** · Priority: P1 (spec/09 §9.4, AggModuleBatch, n<10 suppression, stacked SVG bars, CSV export).
+2. **T34 (Coach Review Console `/review`)** · Priority: P1 (spec/09 §9.5, review queues, calibration mode, 2-coach move approval).
+3. **T35 (Admin Dashboard `/admin`)** · Priority: P1 (spec/09 §9.6, admin user, metrics cards, demo reset, fast-forward).
+4. **T28 (WhatsApp Channel)** · Priority: P1 (spec/07 §7.2, idempotency, 24-hr window, mock Graph API).
+5. **Hardening & Small Debts**: Audio endpoint ownership, chat template data- attributes, Rule C line 41 nit, template cleanup.

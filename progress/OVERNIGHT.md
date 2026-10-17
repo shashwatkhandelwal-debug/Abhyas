@@ -105,3 +105,34 @@ Status: ALL TASKS COMPLETED (100% GREEN CI)
     - Retained only verified in-code optimizations with exact file links in Section 5.
     - Unit tests in `test_latency_benchmark.py`.
 
+### 5. Step 0: Guardrails Report & Dependency Audit Pass
+- **Branch**: `coord/guards-report`
+- **PR**: [shashwatkhandelwal-debug/Abhyas#9](https://github.com/shashwatkhandelwal-debug/Abhyas/pull/9)
+- **Head SHA**: `5578119`
+- **CI Status**: [Run 39013578734 — Completed / Success](https://github.com/shashwatkhandelwal-debug/Abhyas/actions/runs/39013578734)
+  - `lint`: Success (ruff check + ruff format clean)
+  - `secrets`: Success (gitleaks zero secrets)
+  - `content`: Success (all moves, personas, messages conform to schemas)
+  - `test`: Success (all unit, integration with PostgreSQL, and migration tests passing)
+- **Key Deliverables**:
+  - `eval/guards/guard_report.py`: Ran full guard evaluation harness (`make eval-guards`), generating `eval/guards/REPORT.md`. All 8/8 adversarial child-line probes blocked deterministically by output guards.
+  - `progress/audit.md`: Audited PR #8 CI job log `117338685650`. Documented `setuptools 79.0.1` (`PYSEC-2026-3447`) finding in GitHub Actions toolcache with zero vulnerabilities in repo-managed `pyproject.toml`.
+
+### 6. Lane 1: T32 DB-Backed ARP Digest & Question Answering
+- **Branch**: `coord/arp-digest`
+- **What works**:
+  - `build_arp_digest` in `backend/app/reports/arp_digest.py` dynamically queries PostgreSQL:
+    - Overview metrics (active/completed teachers, moves practiced, average rehearsal scores).
+    - Privacy-by-design consent separation: non-consenting teachers strictly excluded from individual score tables and suggested visit lists; aggregated into `अन्य N शिक्षक (स्कोर साझा नहीं)`.
+    - Suggested visits list with printable 5-minute peer observation checklist.
+    - Escalated questions: non-consenting teachers displayed as anonymised `शिक्षक #<short hash>`.
+  - Routes in `backend/app/web/arp.py`:
+    - `GET /arp`: Renders weekly digest with week-selector (last 6 Mondays), protected by `require_role("arp")`.
+    - `POST /arp/observation`: CSRF protected; validates teacher cluster membership and consent; records `ARPObservation` and creates Level-4 `AdoptionEvidence(source="arp_observation")`.
+    - `POST /arp/answer`: CSRF protected; updates `Question.answer_hi` and `Question.status="arp_answered"`; resolves `ReviewItem(kind="question")`; queues outbound WhatsApp/Web message for the teacher.
+  - Jinja2 template `backend/app/web/templates/arp.html` with clean responsive layout and `@media print` styling for offline school visits.
+  - Added gender-neutral strings `ui_arp_*` in `content/messages_hi.yaml` (free of feminine markers).
+  - 3 unit tests (`test_arp_digest.py`) and 5 PostgreSQL integration tests (`backend/tests/integration/test_arp_digest.py`).
+- **What is stubbed**:
+  - Outbound messaging queues message in DB (`Message` table); real WhatsApp dispatch relies on Meta Graph API credentials.
+
