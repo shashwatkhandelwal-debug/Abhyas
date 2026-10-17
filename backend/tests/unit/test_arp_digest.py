@@ -2,6 +2,7 @@
 
 import unicodedata
 import uuid
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -343,6 +344,7 @@ async def test_arp_post_answer_dispatches_via_whatsapp_for_whatsapp_teacher(
         cluster_id=arp_user.cluster_id,
         consent_share_scores=True,
         preferred_channel="whatsapp",
+        last_inbound_at=datetime.now(UTC),
     )
     escalated_q = Question(
         id=q_id,
@@ -450,16 +452,18 @@ async def test_arp_post_answer_whatsapp_failure_does_not_persist_undelivered_mes
                 follow_redirects=False,
             )
             assert res.status_code == 303
-            assert "/arp?saved=1&msg=ans" in res.headers["location"]
+            assert "/arp?saved=1&msg=ans_wa_fail" in res.headers["location"]
             # Question is marked answered
             assert escalated_q.status == "arp_answered"
-            # Ensure no Message row was added on failed dispatch (no phantom delivered message)
+            # Exactly one Message row was added on channel "web" so teacher sees answer in app (no whatsapp row)
             added_messages = [
                 call.args[0]
                 for call in mock_db.add.call_args_list
                 if isinstance(call.args[0], Message)
             ]
-            assert len(added_messages) == 0
+            assert len(added_messages) == 1
+            assert added_messages[0].channel == "web"
+            assert added_messages[0].direction == "out"
 
 
 @pytest.mark.asyncio
@@ -631,13 +635,53 @@ async def test_arp_post_answer_whatsapp_outside_window_unapproved_template_skips
                 follow_redirects=False,
             )
             assert res.status_code == 303
+            assert "/arp?saved=1&msg=ans_wa_fail" in res.headers["location"]
             assert not mock_send_tpl.called
-            # No Message row was added (no fake delivery)
+            # Exactly one Message row was added on channel "web" so teacher sees answer in app (no whatsapp row)
             added_messages = [
                 call.args[0]
                 for call in mock_db.add.call_args_list
                 if isinstance(call.args[0], Message)
             ]
-            assert len(added_messages) == 0
+            assert len(added_messages) == 1
+            assert added_messages[0].channel == "web"
+            assert added_messages[0].direction == "out"
             # Question is marked answered
             assert escalated_q.status == "arp_answered"
+
+
+@pytest.mark.asyncio
+async def test_arp_get_dashboard_renders_wa_undelivered_flash_message(
+    arp_app: FastAPI,
+    arp_user: AppUser,
+) -> None:
+    """GET /arp?saved=1&msg=ans_wa_fail displays the catalog message for undelivered WhatsApp answers."""
+    mock_db = AsyncMock(spec=AsyncSession)
+    arp_app.dependency_overrides[get_current_user] = lambda: arp_user
+    arp_app.dependency_overrides[get_db_session] = lambda: mock_db
+
+    cluster_mock = MagicMock()
+    cluster_mock.name = "कल्याणपुर क्लस्टर 1"
+    mock_db.get.return_value = cluster_mock
+
+    empty_scalars = MagicMock()
+    empty_scalars.all.return_value = []
+    empty_exec = MagicMock()
+    empty_exec.all.return_value = []
+
+    mock_db.scalars.side_effect = [
+        empty_scalars,  # teachers query
+        empty_scalars,  # session states query
+        empty_scalars,  # rehearsal scores query
+        empty_scalars,  # questions query
+    ]
+    mock_db.execute.side_effect = [
+        empty_exec,  # evidence query
+    ]
+
+    transport = ASGITransport(app=arp_app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        res = await client.get("/arp?saved=1&msg=ans_wa_fail")
+        assert res.status_code == 200
+        expected_msg = get_message("ui_arp_answer_saved_wa_undelivered")
+        assert expected_msg in res.text

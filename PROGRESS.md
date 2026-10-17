@@ -282,13 +282,20 @@ All items from `spec/15_human_inputs.md` are currently open:
   - Merged main. Wrapped `dependency_overrides` cleanup in `finally` in `check_first_load.py`; added login status checks and non-login redirect assertions in `--url` mode; updated report table status to "Code present (not exercised)" for unexercised PWA features and "Measured" for bundle sizes; labelled local run as lower bound with mock DB and empty chat history; rendered `data-created-at` from server templates (`teacher.html`, `chat.html`) and updated `chat.js` `initRenderedMessagesFromDom()` to read it without inventing timestamps; updated unit test assertions.
   - Head SHA: `4bc58f4`, CI Run `39049496081` (100% success).
 
-### Rule C Follow-ups (`rule-c`)
+### Rule C Follow-ups (`rule-c`) — Merged to main at `9510638`
 - **web/arp.py Exception & Undelivered Message Handling (Rule C)**:
   - Justification: `wa_channel.send` can raise network, HTTP, or phone decryption errors (`httpx.HTTPError`, `ValueError`, etc.) when communicating with external Meta Graph API; caught with in-code one-line Rule C comment to prevent failing the ARP answer transaction if external delivery fails.
   - Eliminated phantom delivered message creation: if WhatsApp dispatch fails, error is logged and no fallback `Message` row is added to the database, ensuring undelivered messages are not marked as delivered.
   - Confirmed and tested that `wa_channel.send(session=db)` delivers and persists exactly one `Message` row on success, with no duplicate added by `arp.py`.
   - Confirmed and tested that unapproved template `abhyas_arp_answer` outside the 24h window logs a warning and skips cleanly without exception or phantom message persistence.
-  - Added 3 unit tests in `test_arp_digest.py` (all 10/10 passing).
+  - Added 3 unit tests in `test_arp_digest.py` (all 10/10 passing). Head SHA: `7193b10`, CI Run `39051660751` (100% success).
+
+### ARP Delivery Fallback & Notification (`arp-delivery`)
+- **post_arp_answer Fallback & Notification**:
+  - When WhatsApp delivery raises or template is unapproved outside 24h window, question status remains `arp_answered` and review item `resolved`.
+  - Redirects ARP to `/arp?saved=1&msg=ans_wa_fail`, rendering new catalog message `ui_arp_answer_saved_wa_undelivered` from `messages_hi.yaml` ("उत्तर सुरक्षित हो गया है, लेकिन WhatsApp पर नहीं भेजा जा सका। शिक्षक इसे ऐप में देख सकते हैं।", no feminine markers).
+  - Stores answer as a `Message` row on channel `"web"` so teacher sees it when logging into the app; never stores an undelivered WhatsApp row.
+  - Added unit tests in `test_arp_digest.py` verifying `ans_wa_fail` redirect, flash message rendering, and web fallback Message row creation (11/11 tests passing).
 
 ### T24 Jobs Review Fixes (`coord/t24-jobs`)
 - **Reminder Wiring**: Wired `schedule_reminder` in `SessionService._sync_context_to_db` within `begin_nested()` savepoint whenever a teacher in `READY` onboarding state leaves a weekly step unfinished (`current_state != DONE`). Deduped by IST date slot.

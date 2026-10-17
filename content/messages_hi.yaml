@@ -402,6 +402,7 @@ ui_arp_observation_success: {text: "कक्षा अवलोकन सफल
 ui_arp_answer_success: {text: "उत्तर शिक्षक को भेज दिया गया और प्रश्न हल हो गया।", audio: false}
 ui_arp_checklist_peer_link: {text: "कक्षा अवलोकन सूची (प्रिंट योग्य)", audio: false}
 ui_arp_answer_header: {text: "आपके प्रश्न का उत्तर (ARP द्वारा):", audio: false}
+ui_arp_answer_saved_wa_undelivered: {text: "उत्तर सुरक्षित हो गया है, लेकिन WhatsApp पर नहीं भेजा जा सका। शिक्षक इसे ऐप में देख सकते हैं।", audio: false}
 
 # ── Admin Dashboard labels ───────────────────────────────────
 ui_admin_title:
