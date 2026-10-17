@@ -344,12 +344,15 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **Unused Prompt Note**:
   - `backend/app/llm/prompts/page_ocr.v1.md` is an authored reference prompt for Vision LLM single-page transcription. It is intentionally **not wired into the automated ingestion pipeline** because processing multi-hundred-page state teacher guides via Claude Sonnet Vision would incur prohibitive token expenses and non-deterministic latency. Automated ingestion uses deterministic local extractors (`pdfplumber` + Tesseract 5 / Surya OCR). `page_ocr.v1.md` is preserved for manual single-page reference only.
 - **Unit & Integration Tests**:
+  - Head SHA: `7752c1b`
+  - GitHub Actions CI Run: `39066252291` (all 5 jobs passed: `audit`, `content`, `lint`, `secrets`, `test`).
   - Added 3 new tests in `backend/tests/integration/test_retrieval.py` (25/25 tests passing):
     - `test_ingest_synthetic_pdf_hindi_phrase_with_ocr_fallback`: Tests synthetic PDF ingestion with OCR fallback on empty text layer, verifying known Hindi phrase extraction and spot-check markdown generation.
-    - `test_ingest_pdf_drops_low_confidence_ocr_pages`: Verifies low-confidence OCR pages ($< 0.40$) are dropped and logged.
+    - `test_ingest_pdf_drops_low_confidence_ocr_pages`: Verifies low-confidence OCR pages ($< 0.40$) are dropped and logged with warning via `patch`.
     - `test_guide_citations_format_and_real_chunk_pages`: Verifies `[source, p. XX]` format and catalog `ask_source_line` formatting.
   - Verified `backend/tests/unit/test_guide_answerer.py` (10/10 tests passing).
+  - Verified `backend/tests/unit/test_state_machine.py` (66/66 tests passing, including hygiene checks).
 - **Rule C / Dependency Management**:
-  - `backend/app/retrieval/ingest.py`: uses dynamic `importlib.import_module("pdf2image")` and `importlib.import_module("pytesseract")` to safely import optional OCR engines at runtime; gracefully catches `ImportError` and falls back to mock OCR when external libraries/binaries are not installed in headless/CI environments.
+  - `backend/app/retrieval/ingest.py`: uses dynamic `importlib.import_module("pdf2image")` and `importlib.import_module("pytesseract")` to safely import optional OCR engines at runtime; gracefully catches `ImportError` and falls back to mock OCR when external libraries/binaries are not installed in headless/CI environments. All broad exceptions narrowed to specific tuples `(RuntimeError, ValueError, OSError, TypeError, ImportError)` and zero Devanagari string literals in app code.
 
 

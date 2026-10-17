@@ -42,7 +42,7 @@ Lane 3 implements the official government document ingestion pipeline, OCR fallb
     - Unicode NFC normalization consistency.
     - Absence of orphaned dependent vowel signs (matras).
     - Absence of uncombined trailing viramas (halants).
-    - Status classification: `PASS` (स्वच्छ), `REVIEW` (विसंगति), or `DROPPED`.
+    - Status classification: `PASS` (Clean: Conjuncts and matras rendered correctly), `REVIEW` (Anomalies), or `DROPPED`. App code retains zero Devanagari literals in accordance with package hygiene rules.
 
 ### 6. Guide Citation Formatting
 - `format_guide_citation`: Formats bracketed citations in standard `[source, p. XX]` format.
@@ -54,9 +54,12 @@ Lane 3 implements the official government document ingestion pipeline, OCR fallb
 - **Why it is not wired into automated ingestion**: Multi-hundred-page state teacher guides (150–300 pages each) would consume millions of Sonnet tokens and introduce non-deterministic latency. Automated ingestion strictly uses local deterministic extractors (`pdfplumber` + Tesseract 5 / Surya OCR). `page_ocr.v1.md` is retained for manual, single-page human evaluation only.
 
 ## 5. Verification & Testing
+- PR #27 Head SHA: `7752c1b`
+- GitHub Actions CI Run: `39066252291` (All 5 jobs passed: `audit`, `content`, `lint`, `secrets`, `test`).
 - `backend/tests/integration/test_retrieval.py` (25/25 tests passing):
   - `test_ingest_synthetic_pdf_hindi_phrase_with_ocr_fallback`: Builds synthetic PDF, tests OCR fallback on poor text layer, verifies chunk extraction of known Hindi phrase, and validates spot-check markdown generation.
-  - `test_ingest_pdf_drops_low_confidence_ocr_pages`: Verifies that pages with confidence $< 0.40$ are dropped and logged with warning.
+  - `test_ingest_pdf_drops_low_confidence_ocr_pages`: Verifies that pages with confidence $< 0.40$ are dropped and logged with warning via `patch`.
   - `test_guide_citations_format_and_real_chunk_pages`: Verifies `[source, p. XX]` bracketed citations, None page fallback, and catalog `ask_source_line` formatting.
 - `backend/tests/unit/test_guide_answerer.py` (10/10 tests passing):
   - Verifies answer composition, quote guarding, and source deduplication.
+- `backend/tests/unit/test_state_machine.py` (66/66 tests passing, including `test_sessions_package_hygiene_no_broad_exceptions_and_no_devanagari`).
