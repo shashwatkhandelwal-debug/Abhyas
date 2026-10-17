@@ -2,6 +2,7 @@
 
 import uuid
 from collections.abc import AsyncIterator
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -13,7 +14,7 @@ from backend.app.auth.csrf import (
     generate_csrf_token,
 )
 from backend.app.auth.guards import get_current_user
-from backend.app.db.models import AppUser
+from backend.app.db.models import AppUser, Teacher
 from backend.app.db.session import get_db_session
 from backend.app.jobs.tick import FastForwardResult, JobOutcome
 from backend.app.main import app
@@ -159,16 +160,28 @@ async def test_admin_reset_demo_success() -> None:
 
 @pytest.mark.asyncio
 async def test_admin_fast_forward_success() -> None:
-    """Verifies POST /admin/fast-forward calls fast_forward_teacher and redirects."""
+    """Verifies POST /admin/fast-forward calls fast_forward_teacher and redirects for demo teachers."""
     admin_user = AppUser(
         id=uuid.uuid4(),
         username="admin",
         role="admin",
     )
+    teacher_id = uuid.uuid4()
+    demo_teacher = Teacher(
+        id=teacher_id,
+        name="सुनीता देवी",
+        is_demo=True,
+    )
+
+    mock_db = AsyncMock(spec=AsyncSession)
+    mock_db.get = AsyncMock(return_value=demo_teacher)
+
+    async def override_db() -> AsyncIterator[AsyncSession]:
+        yield mock_db
 
     app.dependency_overrides[get_current_user] = lambda: admin_user
+    app.dependency_overrides[get_db_session] = override_db
 
-    teacher_id = uuid.uuid4()
     csrf = generate_csrf_token()
     transport = ASGITransport(app=app)
 
@@ -188,6 +201,80 @@ async def test_admin_fast_forward_success() -> None:
             assert res.status_code == 303
             assert "/admin?msg=ff_ok&advanced=2" in res.headers["location"]
             mock_ff.assert_awaited_once_with(teacher_id)
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_admin_fast_forward_rejects_non_demo_teacher() -> None:
+    """Verifies POST /admin/fast-forward rejects non-demo teachers with 400."""
+    admin_user = AppUser(
+        id=uuid.uuid4(),
+        username="admin",
+        role="admin",
+    )
+    teacher_id = uuid.uuid4()
+    real_teacher = Teacher(
+        id=teacher_id,
+        name="असली शिक्षक",
+        is_demo=False,
+    )
+
+    mock_db = AsyncMock(spec=AsyncSession)
+    mock_db.get = AsyncMock(return_value=real_teacher)
+
+    async def override_db() -> AsyncIterator[AsyncSession]:
+        yield mock_db
+
+    app.dependency_overrides[get_current_user] = lambda: admin_user
+    app.dependency_overrides[get_db_session] = override_db
+
+    csrf = generate_csrf_token()
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        client.cookies.set(CSRF_COOKIE_NAME, csrf)
+        res = await client.post(
+            "/admin/fast-forward",
+            data={"csrf_token": csrf, "teacher_id": str(teacher_id)},
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            follow_redirects=False,
+        )
+        assert res.status_code == 400
+        assert "Cannot fast-forward a non-demo teacher" in res.text
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_admin_fast_forward_teacher_not_found() -> None:
+    """Verifies POST /admin/fast-forward returns 404 if teacher does not exist."""
+    admin_user = AppUser(
+        id=uuid.uuid4(),
+        username="admin",
+        role="admin",
+    )
+    mock_db = AsyncMock(spec=AsyncSession)
+    mock_db.get = AsyncMock(return_value=None)
+
+    async def override_db() -> AsyncIterator[AsyncSession]:
+        yield mock_db
+
+    app.dependency_overrides[get_current_user] = lambda: admin_user
+    app.dependency_overrides[get_db_session] = override_db
+
+    csrf = generate_csrf_token()
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        client.cookies.set(CSRF_COOKIE_NAME, csrf)
+        res = await client.post(
+            "/admin/fast-forward",
+            data={"csrf_token": csrf, "teacher_id": str(uuid.uuid4())},
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            follow_redirects=False,
+        )
+        assert res.status_code == 404
 
     app.dependency_overrides.clear()
 
@@ -218,3 +305,37 @@ async def test_admin_fast_forward_invalid_uuid() -> None:
         assert "/admin?msg=error" in res.headers["location"]
 
     app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_reset_demo_data_targets_only_seed_teachers() -> None:
+    """Verifies reset_demo_data targets SEED_TEACHER_IDS and resets demo1..3 states."""
+    from backend.app.db.demo_data import SEED_TEACHER_IDS
+    from backend.app.web.admin import reset_demo_data
+
+    mock_db = AsyncMock(spec=AsyncSession)
+    mock_exec = MagicMock()
+    mock_exec.scalars.return_value.all.return_value = []
+    mock_db.execute = AsyncMock(return_value=mock_exec)
+
+    t1 = Teacher(id=SEED_TEACHER_IDS[0], is_demo=True, onboarding_state="DONE")
+    t2 = Teacher(id=SEED_TEACHER_IDS[1], is_demo=True, onboarding_state="DONE")
+    t3 = Teacher(id=SEED_TEACHER_IDS[2], is_demo=True, onboarding_state="DONE")
+
+    async def fake_get(model: Any, pk: Any) -> Any:
+        if pk == SEED_TEACHER_IDS[0]:
+            return t1
+        elif pk == SEED_TEACHER_IDS[1]:
+            return t2
+        elif pk == SEED_TEACHER_IDS[2]:
+            return t3
+        return None
+
+    mock_db.get = AsyncMock(side_effect=fake_get)
+
+    result = await reset_demo_data(mock_db)
+    assert result == {"reset_teachers": 3}
+    assert t1.onboarding_state == "NEW"
+    assert t2.onboarding_state == "COMPLETE"
+    assert t3.onboarding_state == "COMPLETE"
+    assert mock_db.commit.awaited

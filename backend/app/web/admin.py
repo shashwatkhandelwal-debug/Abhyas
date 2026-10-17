@@ -24,7 +24,7 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Form, Request, Response, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import delete, func, select
@@ -41,6 +41,7 @@ from backend.app.config import settings
 from backend.app.core.messages import get_message
 from backend.app.db.demo_data import SEED_TEACHER_IDS
 from backend.app.db.models import (
+    AdoptionEvidence,
     AppUser,
     CalibrationLabel,
     ContentRelease,
@@ -48,6 +49,7 @@ from backend.app.db.models import (
     LLMCall,
     Message,
     Move,
+    Question,
     RehearsalScore,
     ReviewItem,
     Scene,
@@ -332,18 +334,13 @@ async def get_demo_teachers(db: AsyncSession) -> list[dict[str, Any]]:
 
 
 async def reset_demo_data(session: AsyncSession) -> dict[str, int]:
-    """Resets demo teachers to their clean, predictable initial state (spec/09 §9.6)."""
-    stmt = select(Teacher.id).where(Teacher.is_demo == True)  # noqa: E712
-    demo_teacher_ids = list((await session.execute(stmt)).scalars().all())
+    """Resets evaluator demo teachers (teacher.demo1..3) to clean initial state (spec/09 §9.6).
 
-    for seed_id in SEED_TEACHER_IDS:
-        if seed_id not in demo_teacher_ids:
-            demo_teacher_ids.append(seed_id)
+    Preserves the 51-teacher background cohort so trainer and ARP dashboards remain unsuppressed.
+    """
+    demo_teacher_ids = list(SEED_TEACHER_IDS)
 
-    if not demo_teacher_ids:
-        return {"deleted_scenes": 0, "deleted_turns": 0, "reset_teachers": 0}
-
-    # First clean up any calibration labels referencing demo scenes
+    # 1. Clean up calibration labels referencing demo scenes
     stmt_scenes = select(Scene.id).where(Scene.teacher_id.in_(demo_teacher_ids))
     demo_scene_ids = list((await session.execute(stmt_scenes)).scalars().all())
     if demo_scene_ids:
@@ -351,7 +348,35 @@ async def reset_demo_data(session: AsyncSession) -> dict[str, int]:
             delete(CalibrationLabel).where(CalibrationLabel.scene_id.in_(demo_scene_ids))
         )
 
-    # Delete related activity records for demo teachers only
+    # 2. Clean up review items referencing demo questions or scores
+    stmt_q = select(Question.id).where(Question.teacher_id.in_(demo_teacher_ids))
+    q_ids = [str(qid) for qid in (await session.execute(stmt_q)).scalars().all()]
+
+    stmt_rs = select(RehearsalScore.id).where(RehearsalScore.teacher_id.in_(demo_teacher_ids))
+    rs_ids = [str(rid) for rid in (await session.execute(stmt_rs)).scalars().all()]
+
+    stmt_es = select(ExplainScore.id).where(ExplainScore.teacher_id.in_(demo_teacher_ids))
+    es_ids = [str(eid) for eid in (await session.execute(stmt_es)).scalars().all()]
+
+    ref_ids_to_delete = q_ids + rs_ids + es_ids
+    if ref_ids_to_delete:
+        await session.execute(delete(ReviewItem).where(ReviewItem.ref_id.in_(ref_ids_to_delete)))
+
+    # 3. Clean up scheduled jobs referencing demo teachers
+    stmt_jobs = select(ScheduledJob)
+    all_jobs = (await session.execute(stmt_jobs)).scalars().all()
+    target_t_ids = {str(tid) for tid in demo_teacher_ids}
+    jobs_to_delete = [
+        j.id for j in all_jobs if j.payload and str(j.payload.get("teacher_id")) in target_t_ids
+    ]
+    if jobs_to_delete:
+        await session.execute(delete(ScheduledJob).where(ScheduledJob.id.in_(jobs_to_delete)))
+
+    # 4. Delete questions, evidence, scores, turns, scenes, messages, session states for demo teachers
+    await session.execute(delete(Question).where(Question.teacher_id.in_(demo_teacher_ids)))
+    await session.execute(
+        delete(AdoptionEvidence).where(AdoptionEvidence.teacher_id.in_(demo_teacher_ids))
+    )
     await session.execute(delete(Turn).where(Turn.teacher_id.in_(demo_teacher_ids)))
     await session.execute(delete(Scene).where(Scene.teacher_id.in_(demo_teacher_ids)))
     await session.execute(
@@ -361,7 +386,7 @@ async def reset_demo_data(session: AsyncSession) -> dict[str, int]:
     await session.execute(delete(Message).where(Message.teacher_id.in_(demo_teacher_ids)))
     await session.execute(delete(SessionState).where(SessionState.teacher_id.in_(demo_teacher_ids)))
 
-    # Reset demo 1, 2, 3 to baseline seed states
+    # 5. Reset demo 1, 2, 3 to baseline seed states
     t1 = await session.get(Teacher, SEED_TEACHER_IDS[0])
     if t1:
         t1.onboarding_state = "NEW"
@@ -393,7 +418,7 @@ async def reset_demo_data(session: AsyncSession) -> dict[str, int]:
         t3.last_inbound_at = datetime.now(UTC)
 
     await session.commit()
-    logger.info("Admin reset demo cohort for %d teachers", len(demo_teacher_ids))
+    logger.info("Admin reset demo seed records for %d teachers", len(demo_teacher_ids))
     return {"reset_teachers": len(demo_teacher_ids)}
 
 
@@ -463,12 +488,23 @@ async def admin_reset_demo(
 async def admin_fast_forward(
     teacher_id: Annotated[str, Form(...)],
     _admin: Annotated[AppUser, Depends(require_role("admin"))],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> RedirectResponse:
-    """Handles fast-forwarding scheduled jobs for a selected teacher."""
+    """Handles fast-forwarding scheduled jobs for a selected demo teacher."""
     try:
         t_uuid = uuid.UUID(teacher_id.strip())
     except ValueError:
         return RedirectResponse(url="/admin?msg=error", status_code=status.HTTP_303_SEE_OTHER)
+
+    teacher = await db.get(Teacher, t_uuid)
+    if not teacher:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Teacher not found")
+
+    if not teacher.is_demo:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot fast-forward a non-demo teacher",
+        )
 
     result = await fast_forward_teacher(t_uuid)
     return RedirectResponse(
