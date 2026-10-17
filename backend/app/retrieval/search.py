@@ -18,7 +18,6 @@ from backend.app.core.messages import get_catalog, get_message
 from backend.app.retrieval.ingest import (
     CATALOG_FILE,
     CHUNKS_DIR,
-    REPO_ROOT,
     SEED_CHUNKS_FILE,
     build_seed_chunks,
 )
@@ -35,19 +34,14 @@ def get_hindi_stopwords() -> frozenset[str]:
     """Loads Hindi stopwords from stopwords_hi.txt."""
     global _STOPWORDS_CACHE
     if _STOPWORDS_CACHE is None:
-        stopwords_paths = [
-            Path(__file__).resolve().parent / "stopwords_hi.txt",
-            REPO_ROOT / "retrieval" / "stopwords_hi.txt",
-        ]
+        stopwords_path = Path(__file__).resolve().parent / "stopwords_hi.txt"
         words: set[str] = set()
-        for p in stopwords_paths:
-            if p.exists():
-                with open(p, encoding="utf-8") as f:
-                    for line in f:
-                        w = unicodedata.normalize("NFC", line.strip())
-                        if w:
-                            words.add(w)
-                break
+        if stopwords_path.exists():
+            with open(stopwords_path, encoding="utf-8") as f:
+                for line in f:
+                    w = unicodedata.normalize("NFC", line.strip())
+                    if w:
+                        words.add(w)
         _STOPWORDS_CACHE = frozenset(words)
     return _STOPWORDS_CACHE
 

@@ -20,6 +20,7 @@ from __future__ import annotations
 import logging
 import unicodedata
 import uuid
+from collections import OrderedDict
 from datetime import UTC, datetime
 from typing import Any, Literal
 
@@ -57,8 +58,56 @@ logger = logging.getLogger("abhyas.channels.whatsapp.webhook")
 
 router = APIRouter(tags=["WhatsApp"])
 
-# In-memory deduplication set for fast duplicate rejection
-_PROCESSED_MESSAGE_IDS: set[str] = set()
+
+class BoundedSet:
+    """Fixed-capacity in-memory set with LRU eviction policy."""
+
+    def __init__(self, maxsize: int = 10_000) -> None:
+        self.maxsize = maxsize
+        self._data: OrderedDict[str, None] = OrderedDict()
+
+    def __contains__(self, item: object) -> bool:
+        return item in self._data
+
+    def add(self, item: str) -> None:
+        self._data[item] = None
+        if len(self._data) > self.maxsize:
+            self._data.popitem(last=False)
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def clear(self) -> None:
+        self._data.clear()
+
+
+# In-memory deduplication set with LRU bound for fast duplicate rejection
+_PROCESSED_MESSAGE_IDS: BoundedSet = BoundedSet(maxsize=settings.WHATSAPP_PROCESSED_CACHE_SIZE)
+
+# In-memory timestamp list for teacher auto-creation rate limiting
+_NEW_TEACHER_CREATION_TIMESTAMPS: list[float] = []
+
+
+def _check_teacher_creation_rate_limit(now_ts: float) -> bool:
+    """Returns True if within rate limit, False if rate limit exceeded."""
+    global _NEW_TEACHER_CREATION_TIMESTAMPS
+    cutoff = now_ts - 60.0
+    _NEW_TEACHER_CREATION_TIMESTAMPS = [t for t in _NEW_TEACHER_CREATION_TIMESTAMPS if t >= cutoff]
+    if (
+        len(_NEW_TEACHER_CREATION_TIMESTAMPS)
+        >= settings.WHATSAPP_TEACHER_CREATION_RATE_LIMIT_PER_MINUTE
+    ):
+        return False
+    _NEW_TEACHER_CREATION_TIMESTAMPS.append(now_ts)
+    return True
+
+
+def reset_webhook_caches() -> None:
+    """Resets in-memory deduplication and rate limit caches (for testing)."""
+    global _NEW_TEACHER_CREATION_TIMESTAMPS
+    _PROCESSED_MESSAGE_IDS.clear()
+    _NEW_TEACHER_CREATION_TIMESTAMPS.clear()
+
 
 # Pluggable session factory hook for tests
 _session_factory: Any = None
@@ -228,6 +277,13 @@ async def _dispatch_inbound_message(raw_msg: dict[str, Any]) -> None:
             teacher = (await session.execute(teacher_stmt)).scalar_one_or_none()
 
             if not teacher:
+                now_ts = now.timestamp()
+                if not _check_teacher_creation_rate_limit(now_ts):
+                    logger.warning(
+                        "Rate limit exceeded for new teacher auto-creation; skipping unknown sender %s",
+                        phone_hash[:8],
+                    )
+                    return
                 teacher_id = uuid.uuid4()
                 teacher = Teacher(
                     id=teacher_id,

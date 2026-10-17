@@ -57,7 +57,6 @@ class TrainerReport:
     selected_move_id: str | None
     rows: list[TrainerRowView]
     insight_text: str | None
-    district_summary: Any = None
 
 
 def generate_rubric_svg(rubric_dist: dict[str, Any] | None) -> str:
@@ -186,7 +185,6 @@ async def build_trainer_report(
             selected_move_id=selected_move_id,
             rows=[],
             insight_text=None,
-            district_summary=None,
         )
 
     user_district = user.district or ("Kanpur Nagar" if user.role == "admin" else "—")
@@ -207,7 +205,6 @@ async def build_trainer_report(
             selected_move_id=selected_move_id,
             rows=[],
             insight_text=None,
-            district_summary=None,
         )
 
     # 2. Load all MoveCards
@@ -280,6 +277,9 @@ async def build_trainer_report(
                 ladder_str = format_ladder_summary(agg.ladder_dist)
                 rubric_avg = compute_rubric_average(agg.rubric_dist)
 
+                ladder = agg.ladder_dist or {}
+                ladder_counts = {str(lvl): int(ladder.get(str(lvl), 0)) for lvl in range(1, 6)}
+
                 rows.append(
                     TrainerRowView(
                         batch_id=b.id,
@@ -293,11 +293,7 @@ async def build_trainer_report(
                         rubric_svg=rubric_svg,
                         ladder_summary=ladder_str,
                         rubric_avg=rubric_avg,
-                        ladder_counts={
-                            str(lvl): int(ladder.get(str(lvl), 0))
-                            for lvl in range(1, 6)
-                            if (ladder := agg.ladder_dist or {})
-                        },
+                        ladder_counts=ladder_counts,
                     )
                 )
 
@@ -325,7 +321,6 @@ async def build_trainer_report(
         selected_move_id=selected_move_id,
         rows=rows,
         insight_text=insight_text,
-        district_summary=None,
     )
 
 
