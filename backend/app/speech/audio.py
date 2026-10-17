@@ -545,6 +545,42 @@ async def trim_silence(wav_bytes: bytes) -> bytes:
     return wav_bytes
 
 
+def is_wav_non_silent(wav_input: bytes | Path, rms_threshold: float = 10.0) -> bool:
+    """Returns True if the WAV has non-zero amplitude above silent threshold (spec/06 §6.3)."""
+    import math
+    import struct
+
+    try:
+        if isinstance(wav_input, Path):
+            if not wav_input.is_file():
+                return False
+            f = wave.open(str(wav_input), "rb")
+        else:
+            if not wav_input or len(wav_input) <= 44:
+                return False
+            f = wave.open(io.BytesIO(wav_input), "rb")
+
+        with f:
+            n_frames = f.getnframes()
+            if n_frames == 0:
+                return False
+            sample_width = f.getsampwidth()
+            frames = f.readframes(min(n_frames, 16000 * 5))
+            if not frames:
+                return False
+            if sample_width == 2:
+                count = len(frames) // 2
+                shorts = struct.unpack(f"<{count}h", frames)
+                if len(set(shorts)) <= 1:
+                    return False
+                rms = math.sqrt(sum(s * s for s in shorts) / count)
+                return bool(rms > rms_threshold)
+            else:
+                return len(set(frames)) > 1
+    except Exception:
+        return False
+
+
 __all__ = [
     "AudioProcessingError",
     "AudioTooLongError",
@@ -565,4 +601,5 @@ __all__ = [
     "pitch_shift",
     "split_for_stt",
     "trim_silence",
+    "is_wav_non_silent",
 ]

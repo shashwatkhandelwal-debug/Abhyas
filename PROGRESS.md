@@ -190,6 +190,13 @@ All items from `spec/15_human_inputs.md` are currently open:
 
 ---
 
+## Blocked on humans
+
+1. **Evaluator Sample Voice Notes (T39, H15)**: Human must run `make samples` locally with a real `SARVAM_API_KEY` in `.env` (or record human voice notes in `eval/samples/recorded/`), listen to all 5 rendered audio files to confirm speech clarity and non-silence, and commit the valid WAVs to `eval/samples/audio/`. In the interim, demo chips in the chat PWA dynamically fall back to sending reference Hindi text.
+2. **Hosted Latency Benchmark (T41 re-run)**: Authoritative latency benchmark against the live hosted deployment with real API keys scheduled for the pre-submission feature freeze on 30 Oct.
+
+---
+
 ## 8. Current Status & Active Lanes
 
 ### STOPPED AT:

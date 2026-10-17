@@ -9,14 +9,18 @@ and outputs:
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import json
 import logging
+import sys
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+from backend.app.config import settings
+from backend.app.speech.audio import is_wav_non_silent
 from backend.app.speech.tts import get_tts_provider
 from backend.app.speech.voices import get_voice
 
@@ -38,10 +42,20 @@ CHIP_LABELS: dict[str, str] = {
 }
 
 
-async def render_samples() -> None:
+async def render_samples(allow_mock: bool = False) -> None:
     """Renders all sample audio files and writes demo_chips.json."""
     if not SAMPLES_YAML_PATH.is_file():
         raise FileNotFoundError(f"Missing samples specification: {SAMPLES_YAML_PATH}")
+
+    # Blocker 1: Must error when TTS_PROVIDER is mock unless --allow-mock is passed explicitly
+    if (settings.TTS_PROVIDER == "mock" or not settings.SARVAM_API_KEY) and not allow_mock:
+        logger.error(
+            "TTS_PROVIDER is 'mock' (or SARVAM_API_KEY is not configured). "
+            "Evaluator voice notes must be rendered with a real TTS provider (Sarvam AI) "
+            "or real recorded voice notes, not MockTTS (silent audio). "
+            "To allow mock audio for test execution, pass --allow-mock explicitly."
+        )
+        sys.exit(1)
 
     OUTPUT_AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -57,9 +71,10 @@ async def render_samples() -> None:
     chips: list[dict[str, Any]] = []
 
     logger.info(
-        "Rendering %d evaluator samples using voice '%s'...",
+        "Rendering %d evaluator samples using voice '%s' (provider: %s)...",
         len(raw_samples),
         voice.provider_speaker,
+        settings.TTS_PROVIDER,
     )
 
     for s in raw_samples:
@@ -91,6 +106,9 @@ async def render_samples() -> None:
             audio_bytes = res.audio
             out_wav_path.write_bytes(audio_bytes)
 
+        # audio_available must be computed: file exists and is not silent
+        audio_avail = is_wav_non_silent(out_wav_path)
+
         chips.append(
             {
                 "id": sample_id,
@@ -98,8 +116,8 @@ async def render_samples() -> None:
                 "text_hi": text_hi,
                 "expect": expect,
                 "chip_label": chip_label,
-                "audio_available": len(audio_bytes) > 0,
-                "audio_url": f"/api/demo-sample/{sample_id}.wav",
+                "audio_available": audio_avail,
+                "audio_url": f"/api/demo-sample/{sample_id}.wav" if audio_avail else None,
             }
         )
 
@@ -107,13 +125,20 @@ async def render_samples() -> None:
         json.dumps(chips, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-    logger.info("Successfully rendered %d samples to %s", len(chips), OUTPUT_AUDIO_DIR)
+    logger.info("Successfully processed %d samples in %s", len(chips), OUTPUT_AUDIO_DIR)
     logger.info("Generated demo chips manifest at %s", DEMO_CHIPS_JSON_PATH)
 
 
 def main() -> None:
     """Entry point for make samples."""
-    asyncio.run(render_samples())
+    parser = argparse.ArgumentParser(description="Render evaluator sample voice notes")
+    parser.add_argument(
+        "--allow-mock",
+        action="store_true",
+        help="Allow synthesizing with MockTTS (generates silent audio for testing)",
+    )
+    args = parser.parse_args()
+    asyncio.run(render_samples(allow_mock=args.allow_mock))
 
 
 if __name__ == "__main__":

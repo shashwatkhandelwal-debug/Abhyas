@@ -291,22 +291,62 @@ def generate_report(results: list[TurnMeasurement], target_ms: int = 20_000) -> 
 
     date_str = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
 
+    # Provider status checks (spec/11 §11.3, Blocker 2)
+    is_mock = (
+        settings.LLM_PROVIDER == "mock"
+        or settings.STT_PROVIDER == "mock"
+        or settings.TTS_PROVIDER == "mock"
+        or not settings.ANTHROPIC_API_KEY
+        or not settings.SARVAM_API_KEY
+    )
+
+    if is_mock:
+        status_line = f"**NOT MEASURED (mock providers)** (Simulated turn execution: **{overall_p95 / 1000.0:.2f} s**)"
+        c1_comp = "N/A (mock providers)"
+        c3_comp = "N/A (mock providers)"
+        overall_comp = "N/A (mock providers)"
+        norm_data_disp = f"**{normal_weekly_mb:.2f} MB** (estimate on mock payloads)"
+        lite_data_disp = f"**{lite_weekly_kb:.1f} KB** (estimate on mock payloads)"
+        norm_data_comp = "N/A (estimate on mock payloads)"
+        lite_data_comp = "N/A (estimate on mock payloads)"
+        mock_note = (
+            "\n> [!NOTE]\n"
+            "> **Mock Mode Execution:** One or more configured providers "
+            f"(LLM: `{settings.LLM_PROVIDER}`, STT: `{settings.STT_PROVIDER}`, TTS: `{settings.TTS_PROVIDER}`) "
+            "are running in mock mode. Latency and data costs cannot be meaningfully benchmarked against live targets "
+            "using mock components. Live benchmarking against the hosted deployment with real API keys is scheduled "
+            "for the pre-submission freeze (T41 re-run, 30 Oct).\n"
+        )
+    else:
+        status_line = f"**{'PASSED' if passed else 'FAILED'}** (Measured p95: **{overall_p95 / 1000.0:.2f} s**)"
+        c1_comp = "PASS" if p95_c1 < target_ms else "FAIL"
+        c3_comp = "PASS" if p95_c3 < target_ms else "FAIL"
+        overall_comp = "PASS" if passed else "FAIL"
+        norm_data_disp = f"**{normal_weekly_mb:.2f} MB**"
+        lite_data_disp = f"**{lite_weekly_kb:.1f} KB**"
+        norm_data_comp = "PASS" if normal_weekly_mb < 2.0 else "FAIL"
+        lite_data_comp = "PASS" if lite_weekly_kb < 300.0 else "FAIL"
+        mock_note = ""
+
     md = f"""# Latency Benchmark Report (spec/11 §11.3, T41)
 
 - **Date:** {date_str}
-- **Target:** Voice-in → voice-out latency p95 < 20.0 s ({target_ms} ms)
-- **Status:** **{"PASSED" if passed else "FAILED"}** (Measured p95: **{overall_p95 / 1000.0:.2f} s**)
+- **LLM Provider:** `{settings.LLM_PROVIDER}` ({settings.CLAUDE_MODEL_FAST})
+- **STT Provider:** `{settings.STT_PROVIDER}`
+- **TTS Provider:** `{settings.TTS_PROVIDER}`
+- **Target:** Voice-in → voice-out latency p95 < 20.0 s ({target_ms} ms) on hosted deployment
+- **Status:** {status_line}
 - **Total Tested Rehearsal Turns:** {total_turns} across {len({r.sample_id for r in results})} evaluator sample inputs
-
+{mock_note}
 ---
 
 ## 1. End-to-End Latency by Concurrency
 
 | Concurrency | Turns | p50 Latency (s) | p95 Latency (s) | Max Latency (s) | Target Compliance (< 20s) |
 |---|---|---|---|---|---|
-| **Concurrency 1** | {len(c1_results)} | {p50_c1 / 1000.0:.2f} s | {p95_c1 / 1000.0:.2f} s | {max_c1 / 1000.0:.2f} s | **PASS** |
-| **Concurrency 3** | {len(c3_results)} | {p50_c3 / 1000.0:.2f} s | {p95_c3 / 1000.0:.2f} s | {max_c3 / 1000.0:.2f} s | **PASS** |
-| **Combined** | {total_turns} | {percentile([r.total_ms for r in results], 0.50) / 1000.0:.2f} s | **{overall_p95 / 1000.0:.2f} s** | {max([r.total_ms for r in results]) / 1000.0:.2f} s | **{"PASS" if passed else "FAIL"}** |
+| **Concurrency 1** | {len(c1_results)} | {p50_c1 / 1000.0:.2f} s | {p95_c1 / 1000.0:.2f} s | {max_c1 / 1000.0:.2f} s | **{c1_comp}** |
+| **Concurrency 3** | {len(c3_results)} | {p50_c3 / 1000.0:.2f} s | {p95_c3 / 1000.0:.2f} s | {max_c3 / 1000.0:.2f} s | **{c3_comp}** |
+| **Combined** | {total_turns} | {percentile([r.total_ms for r in results], 0.50) / 1000.0:.2f} s | **{overall_p95 / 1000.0:.2f} s** | {max([r.total_ms for r in results]) / 1000.0:.2f} s | **{overall_comp}** |
 
 ---
 
@@ -341,18 +381,17 @@ Evaluated for a complete weekly learning cycle (LEARN → EXPLAIN_BACK → MODEL
 
 | Mode | Measured Data Transfer | Spec Target | Compliance |
 |---|---|---|---|
-| **Normal Mode** (auto audio preload) | **{normal_weekly_mb:.2f} MB** | < 2.0 MB | **PASS** |
-| **Lite Mode** (audio on tap only) | **{lite_weekly_kb:.1f} KB** | < 300 KB | **PASS** |
+| **Normal Mode** (auto audio preload) | {norm_data_disp} | < 2.0 MB | **{norm_data_comp}** |
+| **Lite Mode** (audio on tap only) | {lite_data_disp} | < 300 KB | **{lite_data_comp}** |
 
 ---
 
-## 5. Architectural Latency Optimisations Implemented
+## 5. Architectural Latency Optimisations Implemented in Code
 
-1. **Perceived Latency Split:** Web channel sends child text lines immediately upon classification and rule execution; audio streams asynchronously in background.
-2. **Parallel TTS Execution:** Pre-warms synthesized prompts and runs child line TTS concurrently with follow-up action chip generation.
-3. **HTTP Connection Pool Warming:** Shared `httpx.AsyncClient` with keep-alive across speech and LLM endpoints eliminates TLS handshake penalties.
-4. **Prompt Caching:** Anthropic prompt caching (`cache_control: {{"type": "ephemeral"}}`) on static role instructions reduces roundtrip token latency.
-5. **Deterministic Rule Engine:** Child responses computed in < 5 ms in pure Python without waiting on LLM generation loops.
+1. **Deterministic Rule Engine:** Child responses and bug state transitions are computed deterministically in pure Python in < 5 ms, avoiding slow recursive LLM generation loops ([`backend/app/rule_engine/engine.py`](file:///C:/Users/ASUS/Downloads/Abhyas/backend/app/rule_engine/engine.py)).
+2. **Anthropic Prompt Caching:** Ephemeral prompt caching (`cache_control: {{"type": "ephemeral"}}`) is applied to static role instructions and schemas, reducing Claude API roundtrip token latency ([`backend/app/llm/client.py#L445`](file:///C:/Users/ASUS/Downloads/Abhyas/backend/app/llm/client.py#L445)).
+3. **HTTP Connection Pooling:** A shared singleton `httpx.AsyncClient` with keep-alive connection pooling (`limits=httpx.Limits(max_connections=20, max_keepalive_connections=10)`) eliminates per-turn TLS handshake overhead ([`backend/app/speech/client.py#L16-L25`](file:///C:/Users/ASUS/Downloads/Abhyas/backend/app/speech/client.py#L16-L25)).
+4. **Static TTS Pre-warming:** Static message catalog prompts and fixed instructional lines are pre-warmed directly into the audio cache to eliminate runtime voice synthesis latency ([`backend/app/speech/spend.py#L182-L245`](file:///C:/Users/ASUS/Downloads/Abhyas/backend/app/speech/spend.py#L182-L245)).
 """
     return md
 

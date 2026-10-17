@@ -23,7 +23,11 @@ def test_percentile_calculation() -> None:
 
 
 def test_generate_report_format_and_thresholds() -> None:
-    """generate_report produces markdown with tables and target verification."""
+    """generate_report produces markdown with tables and mock/live target verification."""
+    from unittest.mock import patch
+
+    from backend.app.config import settings
+
     measurements = [
         TurnMeasurement(
             sample_id="s1_ask_ravi",
@@ -45,20 +49,32 @@ def test_generate_report_format_and_thresholds() -> None:
         ),
     ]
 
-    report = generate_report(measurements, target_ms=20_000)
-    assert "# Latency Benchmark Report" in report
-    assert "Voice-in → voice-out latency p95 < 20.0 s" in report
-    assert "**PASSED**" in report
-    assert "Per-Stage Latency Breakdown" in report
-    assert "On-Device Low-Network Data Transfer Budget" in report
-    assert "Architectural Latency Optimisations Implemented" in report
+    # Case 1: Mock provider active -> NOT MEASURED (mock providers)
+    with patch.object(settings, "LLM_PROVIDER", "mock"):
+        mock_report = generate_report(measurements, target_ms=20_000)
+        assert "# Latency Benchmark Report" in mock_report
+        assert "NOT MEASURED (mock providers)" in mock_report
+        assert "Per-Stage Latency Breakdown" in mock_report
+        assert "estimate on mock payloads" in mock_report
+
+    # Case 2: Real providers configured -> PASSED
+    with (
+        patch.object(settings, "LLM_PROVIDER", "anthropic"),
+        patch.object(settings, "STT_PROVIDER", "sarvam"),
+        patch.object(settings, "TTS_PROVIDER", "sarvam"),
+        patch.object(settings, "ANTHROPIC_API_KEY", "sk-ant-test"),
+        patch.object(settings, "SARVAM_API_KEY", "sarvam-test"),
+    ):
+        live_report = generate_report(measurements, target_ms=20_000)
+        assert "**PASSED**" in live_report
+        assert "Target Compliance (< 20s)" in live_report
 
 
-def test_latency_report_file_exists_and_passes_target() -> None:
-    """eval/latency/REPORT.md must exist and record PASSED status."""
+def test_latency_report_file_exists() -> None:
+    """eval/latency/REPORT.md must exist and record valid benchmark sections."""
     assert REPORT_PATH.is_file(), f"Missing latency report at {REPORT_PATH}"
     content = REPORT_PATH.read_text(encoding="utf-8")
-    assert "**PASSED**" in content
+    assert "# Latency Benchmark Report" in content
     assert "Latency by Concurrency" in content
     assert "Per-Stage Latency Breakdown" in content
     assert "< 20.0 s" in content

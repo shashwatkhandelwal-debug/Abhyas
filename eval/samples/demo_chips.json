@@ -5,8 +5,8 @@
     "text_hi": "रवि, तुमने 43 में से 27 कैसे घटाया? मुझे एक-एक कदम बताओ।",
     "expect": "Act tagged ask_to_explain → Ravi moves to CAN_EXPLAIN and explains his bug: '3 में से 7 नहीं घटता, तो 7 में से 3 घटाया… 24!' (never says 16).",
     "chip_label": "रवि से तरीका पूछें",
-    "audio_available": true,
-    "audio_url": "/api/demo-sample/s1_ask_ravi.wav"
+    "audio_available": false,
+    "audio_url": null
   },
   {
     "id": "s2_bundles_all",
@@ -14,8 +14,8 @@
     "text_hi": "सब लोग देखो, ये 4 बंडल और 3 खुली तीलियाँ हैं। 3 में से 7 नहीं निकलतीं, तो एक बंडल खोलते हैं। अब कितनी तीलियाँ हुईं?",
     "expect": "concrete_representation to the whole class → all children reach PARTIAL; Ravi answers 16 hesitantly; Aman may interject off-topic.",
     "chip_label": "बंडल-तीली से समझाएँ",
-    "audio_available": true,
-    "audio_url": "/api/demo-sample/s2_bundles_all.wav"
+    "audio_available": false,
+    "audio_url": null
   },
   {
     "id": "s3_tell_answer_hinglish",
@@ -23,8 +23,8 @@
     "text_hi": "Aman, sahi answer 16 hai, yaad rakho.",
     "expect": "Hinglish handled. tell_answer → Aman parrots '16…?' without understanding (state unchanged). If the evaluator then says 'अमन, अब 61 में से 28 करो', Aman relapses to his bug (40). Coach later scores 'no telling' = 0 and suggests contrasting answers.",
     "chip_label": "सीधा उत्तर बताएँ (हिंग्लिश)",
-    "audio_available": true,
-    "audio_url": "/api/demo-sample/s3_tell_answer_hinglish.wav"
+    "audio_available": false,
+    "audio_url": null
   },
   {
     "id": "s4_explain_back",
@@ -32,8 +32,8 @@
     "text_hi": "इस तरीके में सबसे पहले बच्चे से पूछना है कि उसने कैसे घटाया। फिर दस-दस तीलियों के बंडल से संख्या बनवानी है, और जब इकाई में कम हो तो एक बंडल खोलना है। उत्तर खुद नहीं बताना।",
     "expect": "Fidelity: kp1, kp2, kp3, kp5 covered with quotes; kp4 missing → reply names the one missing point.",
     "chip_label": "तरीका समझाएँ (Explain-back)",
-    "audio_available": true,
-    "audio_url": "/api/demo-sample/s4_explain_back.wav"
+    "audio_available": false,
+    "audio_url": null
   },
   {
     "id": "s5_question_multigrade",
@@ -41,7 +41,7 @@
     "text_hi": "मेरी कक्षा में पहली और दूसरी कक्षा के बच्चे साथ बैठते हैं। हासिल वाला घटाव दोनों को एक साथ कैसे कराऊँ?",
     "expect": "Classified classroom_management → answer ≤ 80 words citing a source chunk + one thing to try this week; if no good chunk, escalated to ARP (visible on arp.demo).",
     "chip_label": "बहु-कक्षा सवाल (Ask)",
-    "audio_available": true,
-    "audio_url": "/api/demo-sample/s5_question_multigrade.wav"
+    "audio_available": false,
+    "audio_url": null
   }
 ]
