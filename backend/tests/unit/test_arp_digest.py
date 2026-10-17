@@ -390,3 +390,254 @@ async def test_arp_post_answer_dispatches_via_whatsapp_for_whatsapp_teacher(
             assert call_outbounds[0].template_name == "abhyas_arp_answer"
             assert call_outbounds[0].speaker == "arp"
             assert "तीलियों और रबर बैंड" in call_outbounds[0].text_hi
+
+
+@pytest.mark.asyncio
+async def test_arp_post_answer_whatsapp_failure_does_not_persist_undelivered_message(
+    arp_app: FastAPI,
+    arp_user: AppUser,
+) -> None:
+    """If WhatsApp dispatch raises an exception, error is logged and no Message row is persisted (Rule C)."""
+    from unittest.mock import patch
+
+    mock_db = AsyncMock(spec=AsyncSession)
+    arp_app.dependency_overrides[get_current_user] = lambda: arp_user
+    arp_app.dependency_overrides[get_db_session] = lambda: mock_db
+
+    t_id = uuid.uuid4()
+    q_id = uuid.uuid4()
+    teacher = Teacher(
+        id=t_id,
+        name="सुनीता देवी",
+        cluster_id=arp_user.cluster_id,
+        consent_share_scores=True,
+        preferred_channel="whatsapp",
+    )
+    escalated_q = Question(
+        id=q_id,
+        teacher_id=t_id,
+        text="बच्चों को जोड़ में हासिल का संप्रत्यय कैसे समझाएँ?",
+        status="escalated",
+    )
+
+    mock_db.get.side_effect = lambda model, obj_id: (
+        escalated_q if model is Question else (teacher if model is Teacher else None)
+    )
+
+    scalars_mock = MagicMock()
+    scalars_mock.first.return_value = None
+    mock_db.scalars.return_value = scalars_mock
+
+    csrf_token = generate_csrf_token()
+    transport = ASGITransport(app=arp_app)
+
+    with patch(
+        "backend.app.channels.whatsapp.channel.WhatsAppChannel.send",
+        side_effect=RuntimeError("Meta network failure"),
+    ):
+        async with AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+            cookies={"abhyas_csrf": csrf_token},
+        ) as client:
+            res = await client.post(
+                "/arp/answer",
+                data={
+                    "csrf_token": csrf_token,
+                    "question_id": str(q_id),
+                    "answer_hi": "तीलियों और रबर बैंड से बंडल बनाकर समझाएँ।",
+                },
+                follow_redirects=False,
+            )
+            assert res.status_code == 303
+            assert "/arp?saved=1&msg=ans" in res.headers["location"]
+            # Question is marked answered
+            assert escalated_q.status == "arp_answered"
+            # Ensure no Message row was added on failed dispatch (no phantom delivered message)
+            added_messages = [
+                call.args[0]
+                for call in mock_db.add.call_args_list
+                if isinstance(call.args[0], Message)
+            ]
+            assert len(added_messages) == 0
+
+
+@pytest.mark.asyncio
+async def test_arp_post_answer_whatsapp_success_single_message_no_duplicate(
+    arp_app: FastAPI,
+    arp_user: AppUser,
+) -> None:
+    """When WhatsApp send succeeds, exactly one Message row is persisted by wa_channel.send with no duplicates."""
+    from unittest.mock import patch
+
+    from backend.app.db.models import TeacherContact
+
+    mock_db = AsyncMock(spec=AsyncSession)
+    arp_app.dependency_overrides[get_current_user] = lambda: arp_user
+    arp_app.dependency_overrides[get_db_session] = lambda: mock_db
+
+    t_id = uuid.uuid4()
+    q_id = uuid.uuid4()
+    teacher = Teacher(
+        id=t_id,
+        name="सुनीता देवी",
+        cluster_id=arp_user.cluster_id,
+        consent_share_scores=True,
+        preferred_channel="whatsapp",
+    )
+    escalated_q = Question(
+        id=q_id,
+        teacher_id=t_id,
+        text="बच्चों को जोड़ में हासिल का संप्रत्यय कैसे समझाएँ?",
+        status="escalated",
+    )
+
+    mock_db.get.side_effect = lambda model, obj_id: (
+        escalated_q if model is Question else (teacher if model is Teacher else None)
+    )
+
+    scalars_mock = MagicMock()
+    scalars_mock.first.return_value = None
+    mock_db.scalars.return_value = scalars_mock
+
+    contact = TeacherContact(
+        teacher_id=t_id,
+        phone_enc="encrypted_token",
+    )
+    mock_contact_result = MagicMock()
+    mock_contact_result.scalar_one_or_none.return_value = contact
+    mock_db.execute.return_value = mock_contact_result
+
+    csrf_token = generate_csrf_token()
+    transport = ASGITransport(app=arp_app)
+
+    with (
+        patch(
+            "backend.app.channels.whatsapp.channel.WhatsAppChannel.can_send_freeform",
+            return_value=True,
+        ),
+        patch(
+            "backend.app.channels.whatsapp.channel.decrypt_phone_number",
+            return_value="+919876543210",
+        ),
+        patch(
+            "backend.app.channels.whatsapp.channel.whatsapp_client.send_text",
+            new_callable=AsyncMock,
+        ) as mock_send_text,
+    ):
+        async with AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+            cookies={"abhyas_csrf": csrf_token},
+        ) as client:
+            res = await client.post(
+                "/arp/answer",
+                data={
+                    "csrf_token": csrf_token,
+                    "question_id": str(q_id),
+                    "answer_hi": "तीलियों और रबर बैंड से बंडल बनाकर समझाएँ।",
+                },
+                follow_redirects=False,
+            )
+            assert res.status_code == 303
+            assert mock_send_text.called
+            # Exactly one Message was added by wa_channel.send, not duplicated by arp.py
+            added_messages = [
+                call.args[0]
+                for call in mock_db.add.call_args_list
+                if isinstance(call.args[0], Message)
+            ]
+            assert len(added_messages) == 1
+            assert added_messages[0].channel == "whatsapp"
+            assert added_messages[0].direction == "out"
+
+
+@pytest.mark.asyncio
+async def test_arp_post_answer_whatsapp_outside_window_unapproved_template_skips_cleanly(
+    arp_app: FastAPI,
+    arp_user: AppUser,
+) -> None:
+    """Outside the 24h window, unapproved template abhyas_arp_answer logs and skips cleanly without exception or fake delivery."""
+    from unittest.mock import patch
+
+    from backend.app.db.models import TeacherContact
+
+    mock_db = AsyncMock(spec=AsyncSession)
+    arp_app.dependency_overrides[get_current_user] = lambda: arp_user
+    arp_app.dependency_overrides[get_db_session] = lambda: mock_db
+
+    t_id = uuid.uuid4()
+    q_id = uuid.uuid4()
+    teacher = Teacher(
+        id=t_id,
+        name="सुनीता देवी",
+        cluster_id=arp_user.cluster_id,
+        consent_share_scores=True,
+        preferred_channel="whatsapp",
+    )
+    escalated_q = Question(
+        id=q_id,
+        teacher_id=t_id,
+        text="बच्चों को जोड़ में हासिल का संप्रत्यय कैसे समझाएँ?",
+        status="escalated",
+    )
+
+    mock_db.get.side_effect = lambda model, obj_id: (
+        escalated_q if model is Question else (teacher if model is Teacher else None)
+    )
+
+    scalars_mock = MagicMock()
+    scalars_mock.first.return_value = None
+    mock_db.scalars.return_value = scalars_mock
+
+    contact = TeacherContact(
+        teacher_id=t_id,
+        phone_enc="encrypted_token",
+    )
+    mock_contact_result = MagicMock()
+    mock_contact_result.scalar_one_or_none.return_value = contact
+    mock_db.execute.return_value = mock_contact_result
+
+    csrf_token = generate_csrf_token()
+    transport = ASGITransport(app=arp_app)
+
+    # Outside 24h window, template is unapproved (abhyas_arp_answer has approved: false in content/whatsapp_templates.yaml)
+    with (
+        patch(
+            "backend.app.channels.whatsapp.channel.WhatsAppChannel.can_send_freeform",
+            return_value=False,
+        ),
+        patch(
+            "backend.app.channels.whatsapp.channel.decrypt_phone_number",
+            return_value="+919876543210",
+        ),
+        patch(
+            "backend.app.channels.whatsapp.channel.whatsapp_client.send_template",
+            new_callable=AsyncMock,
+        ) as mock_send_tpl,
+    ):
+        async with AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+            cookies={"abhyas_csrf": csrf_token},
+        ) as client:
+            res = await client.post(
+                "/arp/answer",
+                data={
+                    "csrf_token": csrf_token,
+                    "question_id": str(q_id),
+                    "answer_hi": "तीलियों और रबर बैंड से बंडल बनाकर समझाएँ।",
+                },
+                follow_redirects=False,
+            )
+            assert res.status_code == 303
+            assert not mock_send_tpl.called
+            # No Message row was added (no fake delivery)
+            added_messages = [
+                call.args[0]
+                for call in mock_db.add.call_args_list
+                if isinstance(call.args[0], Message)
+            ]
+            assert len(added_messages) == 0
+            # Question is marked answered
+            assert escalated_q.status == "arp_answered"
