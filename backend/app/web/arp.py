@@ -80,8 +80,9 @@ async def get_arp_dashboard(
             saved_msg = get_message("ui_arp_answer_success")
 
     resp = templates.TemplateResponse(
-        "arp.html",
-        {
+        request=request,
+        name="arp.html",
+        context={
             "request": request,
             "digest": digest_data,
             "user": current_user,
