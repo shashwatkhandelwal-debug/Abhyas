@@ -66,7 +66,7 @@ def clean_page_text(text: str) -> str:
     if not text:
         return ""
     norm = unicodedata.normalize("NFC", text)
-    # De-hyphenate words broken across linebreaks (e.g. "गति-\nविधि" -> "गतिविधि")
+    # De-hyphenate words broken across linebreaks
     dehyphen = re.sub(r"(\S+)-[\r\n]+(\S+)", r"\1\2", norm)
     # Normalize newlines
     dehyphen = re.sub(r"\r\n|\r", "\n", dehyphen)
@@ -138,16 +138,16 @@ def chunk_text(
     chunk_idx = 1
 
     heading_keywords = (
-        "अध्याय",
-        "इकाई",
-        "भाग",
-        "पाठ",
-        "चरण",
-        "गतिविधि",
-        "उद्देश्य",
-        "दिशानिर्देश",
-        "सिद्धांत",
-        "निष्कर्ष",
+        "\u0905\u0927\u094d\u092f\u093e\u092f",
+        "\u0907\u0915\u093e\u0908",
+        "\u092d\u093e\u0917",
+        "\u092a\u093e\u0920",
+        "\u091a\u0930\u0923",
+        "\u0917\u0924\u093f\u0935\u093f\u0927\u093f",
+        "\u0909\u0926\u094d\u0926\u0947\u0936\u094d\u092f",
+        "\u0926\u093f\u0936\u093e\u0928\u093f\u0930\u094d\u0926\u0947\u0936",
+        "\u0938\u093f\u0926\u094d\u0927\u093e\u0902\u0924",
+        "\u0928\u093f\u0937\u094d\u0915\u0930\u094d\u0937",
     )
 
     def is_heading(para: str) -> bool:
@@ -158,7 +158,7 @@ def chunk_text(
             return True
         if any(first_line.startswith(kw) for kw in heading_keywords):
             return True
-        return bool(re.match(r"^(\d+|[०-९]+)[\.\)]\s*", first_line))
+        return bool(re.match(r"^(\d+|[\u0966-\u096f]+)[\.\)]\s*", first_line))
 
     for para in paragraphs:
         words = para.split()
