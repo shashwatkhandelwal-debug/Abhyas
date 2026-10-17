@@ -53,7 +53,7 @@ USER_ADMIN_ID = uuid.UUID("00000000-0000-0001-0000-000000000007")
 
 
 async def seed_database() -> None:
-    logger.info("Starting database seed with DEMO_PASSWORD=%s", settings.DEMO_PASSWORD)
+    logger.info("Starting database seed")
     password_hash = hash_password(settings.DEMO_PASSWORD)
 
     async with async_session_factory() as session:

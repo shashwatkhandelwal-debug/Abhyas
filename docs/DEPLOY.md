@@ -33,13 +33,13 @@ Under **Project Settings** -> **Database** -> **Connection string**:
      postgresql+asyncpg://postgres.[PROJECT-REF]:[DB-PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:5432/postgres
      ```
    - This connection string is used by FastAPI's asynchronous SQLAlchemy engine (`asyncpg`).
-2. **Direct Connection URL (for `ALEMBIC_DATABASE_URL`)**:
-   - Select mode **Direct** (port 5432).
-   - Format:
+2. **Session Pooler URL for Migrations (for `ALEMBIC_DATABASE_URL`)**:
+   - Select **URI** tab, mode **Session** (port 5432).
+   - Format (plain `postgresql://` protocol):
      ```text
-     postgresql://postgres:[DB-PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres
+     postgresql://postgres.[PROJECT-REF]:[DB-PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:5432/postgres
      ```
-   - Direct connection bypasses connection pooler transactional locks during Alembic DDL migrations.
+   - `ALEMBIC_DATABASE_URL` must use the Supabase SESSION POOLER URI (port 5432, plain `postgresql://`), not the direct connection. Supabase's direct host defaults to IPv6, which causes connection failures on environments without IPv6 routing (such as Render or Docker). The Session pooler supports full transactional DDL for Alembic migrations.
 
 ### 1.4 Enable Row Level Security (RLS)
 The Abhyas backend interacts with Postgres via server-side credentials and does not expose direct client access to the Supabase data APIs.
@@ -118,7 +118,7 @@ Never commit real production credentials to Git.
 | `PUBLIC_BASE_URL` | Public HTTPS URL of the service (e.g. `https://abhyas.onrender.com`) | Render service URL / Custom domain | **Yes** |
 | `GIT_SHA` | Deployed git commit SHA | Render build / `RENDER_GIT_COMMIT` | Optional (default: `dev`) |
 | `DATABASE_URL` | Supabase session pooler URI (`postgresql+asyncpg://...`) | Supabase Session Pooler | **Yes** |
-| `ALEMBIC_DATABASE_URL` | Supabase direct connection URI (`postgresql://...`) | Supabase Direct Connection | **Yes** |
+| `ALEMBIC_DATABASE_URL` | Supabase session pooler URI (plain `postgresql://...`, port 5432) | Supabase Session Pooler (port 5432) | **Yes** |
 | `SESSION_SECRET` | 64-char random hex string for cookie signing (`token_hex(32)`) | System admin / secrets generator | **Yes** |
 | `PHONE_HASH_SALT` | 32-char random hex string for anonymized phone hashes | System admin / secrets generator | **Yes** |
 | `PHONE_ENC_KEY` | 32-byte Fernet encryption key (`Fernet.generate_key()`) | System admin / Fernet generator | **Yes** |
