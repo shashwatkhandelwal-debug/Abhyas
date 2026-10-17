@@ -351,27 +351,27 @@ async def get_chat_messages(
                             & (Message.id != after_msg.id)
                         ),
                     )
-                    .order_by(Message.created_at.asc())
+                    .order_by(Message.created_at.asc(), Message.id.asc())
                 )
             else:
                 stmt = (
                     select(Message)
                     .where(Message.teacher_id == teacher.id)
-                    .order_by(Message.created_at.asc())
+                    .order_by(Message.created_at.asc(), Message.id.asc())
                     .limit(50)
                 )
         except ValueError:
             stmt = (
                 select(Message)
                 .where(Message.teacher_id == teacher.id)
-                .order_by(Message.created_at.asc())
+                .order_by(Message.created_at.asc(), Message.id.asc())
                 .limit(50)
             )
     else:
         stmt = (
             select(Message)
             .where(Message.teacher_id == teacher.id)
-            .order_by(Message.created_at.asc())
+            .order_by(Message.created_at.asc(), Message.id.asc())
             .limit(50)
         )
 

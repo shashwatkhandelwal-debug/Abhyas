@@ -479,9 +479,13 @@ function updateOnlineStatus() {
 
   if (!navigator.onLine) {
     banner.className = 'network-banner offline';
-    const offlineMsg = banner.getAttribute('data-offline-text') || 'आप ऑफ़लाइन हैं — इंटरनेट नहीं है, संदेश भेजे जाने के लिए रखे गए हैं';
-    banner.textContent = offlineMsg;
-    banner.style.display = 'block';
+    const offlineMsg = banner.getAttribute('data-offline-text');
+    if (offlineMsg) {
+      banner.textContent = offlineMsg;
+      banner.style.display = 'block';
+    } else {
+      console.warn('Network banner element missing data-offline-text attribute');
+    }
   } else {
     banner.className = 'network-banner';
     banner.textContent = '';
@@ -495,7 +499,13 @@ function showSlowNetworkWarning() {
   const banner = document.getElementById('network-banner');
   if (!banner || !navigator.onLine) return;
   banner.className = 'network-banner slow';
-  banner.innerHTML = 'नेटवर्क धीमा है — क्या आप <button type="button" onclick="toggleLiteMode(true)" style="text-decoration:underline;background:none;border:none;color:inherit;font-weight:700;cursor:pointer;">लाइट मोड</button> चालू करना चाहते हैं?';
+  const slowMsg = banner.getAttribute('data-slow-text');
+  if (slowMsg) {
+    banner.textContent = slowMsg;
+    banner.style.display = 'block';
+  } else {
+    console.warn('Network banner element missing data-slow-text attribute');
+  }
 }
 
 // ── Lite Mode Toggle (§9.2) ─────────────────────────────────────────────────

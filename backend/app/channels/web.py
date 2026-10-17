@@ -23,7 +23,7 @@ from backend.app.core.types import InboundMessage, OutboundMessage
 from backend.app.db.models import Message, Teacher
 from backend.app.db.session import async_session_factory
 from backend.app.sessions.service import SessionService
-from backend.app.speech.audio import to_wav16k
+from backend.app.speech.audio import AudioProcessingError, to_wav16k
 from backend.app.speech.stt import get_stt_provider
 
 logger = logging.getLogger("abhyas.channels.web")
@@ -101,7 +101,9 @@ def get_session_service(session: AsyncSession) -> Any:
 
             async def handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
                 if hasattr(self.obj, "handle_inbound"):
+                    # Rule C justification: test mock target is untyped dynamic object conforming to duck-typing
                     return await self.obj.handle_inbound(inbound)  # type: ignore[no-any-return]
+                # Rule C justification: test mock target is untyped dynamic object conforming to duck-typing
                 return await self.obj.handle(inbound)  # type: ignore[no-any-return]
 
         return _Adapter(target)
@@ -213,8 +215,10 @@ async def process_inbound_web(
                     wav_data = audio_bytes
                     try:
                         wav_data = await to_wav16k(audio_bytes)
-                    except Exception:
-                        pass
+                    except (AudioProcessingError, OSError, ValueError) as exc:
+                        logger.warning(
+                            "Audio conversion to_wav16k failed: %s; falling back to raw bytes", exc
+                        )
                     stt = get_stt_provider()
                     transcript = await stt.transcribe(wav_data)
                     final_text = unicodedata.normalize("NFC", transcript.text)
