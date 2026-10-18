@@ -396,3 +396,13 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **Unused Prompt Note**:
   - `backend/app/llm/prompts/page_ocr.v1.md` is an authored reference prompt for Vision LLM single-page transcription. It is intentionally **not wired into the automated ingestion pipeline** because processing multi-hundred-page state teacher guides via Claude Sonnet Vision would incur prohibitive token expenses and non-deterministic latency. Automated ingestion uses deterministic local extractors (`pdfplumber` + Tesseract 5 / Surya OCR). `page_ocr.v1.md` is preserved for manual single-page reference only.
 
+### Honest README & Production Scaling (`readme-honest` — T65)
+- **README.md**: Completely aligned with actual codebase state and evaluator requirements:
+  - Cost per teacher: explicitly cited as `TODO(human) from the hosted run` (via `make eval-cost`); no synthetic numbers claimed as measured.
+  - Latency: points to `eval/latency/REPORT.md`; states dependency on hosted deploy and network quality without claiming unmeasured p95 figures.
+  - FLN sources: clearly states official state guides are not yet ingested (source URLs set to `TODO(human)` awaiting the official PDFs); seed chunks cover the 4 approved moves.
+  - Privacy posture: documents simulated children (no real children's data collected), cross-border inference (Sarvam/Claude under DPDP s.16), ephemeral in-memory audio, Fernet symmetric encryption for stored phone numbers, salted SHA-256 for phone hashes, and $n < 10$ suppression.
+  - Cryptography: accurately documents Fernet (`cryptography.fernet.Fernet`, AES-128-CBC + HMAC-SHA256) and SHA-256 content hashes for TTS audio keys (no false AES-256-GCM claims).
+  - Personas: lists exactly the 3 implemented child personas with temperaments from YAML (Ravi confident, Aman distracted, Priya shy); notes bug rules belong to moves.
+  - Scaling path: documents current single-worker constraint with in-process scheduler and memory locks (`TeacherLockManager` in `backend/app/core/locks.py`), `GET/POST /teacher/delete` in `backend/app/web/teacher.py`, and Supabase session pooler (port 5432).
+
