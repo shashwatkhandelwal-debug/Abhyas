@@ -109,7 +109,7 @@ Abhyas implements explicit data-minimisation and privacy safeguards, noting the 
 
 1. **Simulated Children (No Child Data Collected):**
    - Teachers practice exclusively with three fictional, simulated child personas (Ravi, Aman, Priya).
-   - No real school children, classrooms, or minors are ever recorded, identified, or tracked. Because no personal data of children is collected, Section 16 child consent requirements are not triggered.
+   - No real children's data is collected; the children are simulated.
 2. **Cross-Border Inference (DPDP Section 16 Transfer Rules):**
    - Live speech transcription (Sarvam AI) and language reasoning (Anthropic Claude) utilize cloud APIs hosted outside local school servers. Teacher voice notes and prompt texts are transferred across borders for transient inference under commercial agreements.
 3. **Ephemeral Audio Storage:**
@@ -123,7 +123,7 @@ Abhyas implements explicit data-minimisation and privacy safeguards, noting the 
    - District and trainer consoles enforce **$n < 10$ suppression**: any school cohort or training batch with fewer than 10 teachers displays aggregate statistics only, redacting individual teacher records.
 6. **Data Retention & Right to Erasure:**
    - Automated retention purge job deletes inactive session transcripts after `DATA_RETENTION_DAYS` (default: 90 days).
-   - Teachers can inspect their profile or permanently purge their account and data via `POST /profile/delete`.
+   - Teachers can inspect their profile or permanently purge their account and data via `GET/POST /teacher/delete` (`backend/app/web/teacher.py`).
 7. **Legal Notice:**
    - A complete statutory compliance audit against the DPDP Act 2023 rules is a human legal task.
 
@@ -132,12 +132,12 @@ Abhyas implements explicit data-minimisation and privacy safeguards, noting the 
 ## 7. Scaling Path & Architecture Limits
 
 - **Current Implementation:**
-  - The application runs as a **single-instance service** (`--workers 1`) using an in-process asyncio job scheduler (`apscheduler.schedulers.asyncio.AsyncIOScheduler`) and in-memory conversation locks (`SessionLockManager`).
-  - This architecture is reliable and sufficient for the ~50 concurrent users evaluated in hackathon testing, avoiding distributed lock overhead and split-brain states.
+  - The application runs as a **single-instance service** (`--workers 1`) using an in-process asyncio job scheduler (`apscheduler.schedulers.asyncio.AsyncIOScheduler`) and in-memory conversation locks (`TeacherLockManager` in `backend/app/core/locks.py`).
+  - This architecture avoids distributed lock overhead and split-brain states.
 - **Production Scaling Path:**
   - **Shared Lock Manager:** Replace the in-process conversation lock with a Redis distributed lock (`redlock` / `aioredis`).
   - **Distributed Job Worker:** Decouple APScheduler from the web server process; run background workers using Celery or Arq backed by Redis or PostgreSQL.
-  - **Database & Pooling:** Connect multiple stateless API worker instances to Supabase / RDS PostgreSQL via Supabase's transaction pooler (PgBouncer).
+  - **Database & Pooling:** Connect multiple stateless API worker instances to Supabase / RDS PostgreSQL via Supabase's session pooler (port 5432).
   - **Static & Media Delivery:** Serve cached synthetic audio assets through a CDN (Cloudflare or CloudFront) backed by S3 / Supabase Storage.
 
 ---
@@ -145,9 +145,10 @@ Abhyas implements explicit data-minimisation and privacy safeguards, noting the 
 ## 8. Content & Retrieval Status
 
 - **Personas:** 3 simulated child personas implemented (`content/personas/`):
-  - **Ravi (रवि):** Reversal / smaller-from-larger bug rule.
-  - **Aman (अमन):** Parrot / copy-answer relapse behavior.
-  - **Priya (प्रिया):** Place value and matra blending errors.
+  - **Ravi (रवि):** Confident (`temperament: confident`).
+  - **Aman (अमन):** Distracted (`temperament: distracted`).
+  - **Priya (प्रिया):** Shy (`temperament: shy`).
+  *(Bug rules belong to teaching moves, not personas; each move defines which bug rules apply to children during rehearsal.)*
 - **Teaching Moves:** 4 approved foundational moves implemented (`content/moves/`):
   - `NUM_SUB_REGROUP_BUNDLES`: Subtraction with regrouping using ten-sticks.
   - `NUM_ADD_CARRY_BUNDLES`: Addition with bundle-making.
@@ -156,7 +157,7 @@ Abhyas implements explicit data-minimisation and privacy safeguards, noting the 
 - **Official State Guides (HUMAN INPUT H7):**
   - Source manifests and schemas are defined in `content/sources/sources.yaml`.
   - The extraction and OCR pipeline (`backend/app/retrieval/ingest.py`) supports `pdfplumber` and Tesseract/Surya OCR.
-  - Official government PDF files are not yet ingested (source URLs are set to `TODO(human)` awaiting official downloads and departmental data-sharing signoff). Seed content chunks currently cover the 4 approved moves.
+  - Official government PDF files are not yet ingested (source URLs are set to `TODO(human)` awaiting the official PDFs). Seed content chunks currently cover the 4 approved moves.
 
 ---
 
