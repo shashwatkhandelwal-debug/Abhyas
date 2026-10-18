@@ -1,7 +1,7 @@
 """Unit tests for Web channel API, polling, idempotency, and audio caching (spec/07 §7.3, T26)."""
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -149,10 +149,25 @@ def web_test_app(mock_user: AppUser, mock_teacher: Teacher) -> FastAPI:
                 filtered_msgs = [
                     m
                     for m in all_msgs
-                    if m.created_at
-                    and (
-                        m.created_at > dt_param
-                        or (m.created_at == dt_param and after_id_param and m.id != after_id_param)
+                    if (
+                        (
+                            m.created_at
+                            and (
+                                m.created_at > dt_param
+                                or (
+                                    m.created_at == dt_param
+                                    and after_id_param
+                                    and m.id != after_id_param
+                                )
+                            )
+                        )
+                        or (
+                            m.audio_ref
+                            and getattr(m, "updated_at", None)
+                            and getattr(m, "created_at", None)
+                            and m.updated_at > m.created_at
+                            and m.updated_at >= dt_param
+                        )
                     )
                 ]
                 mock_res.scalars.return_value.all.return_value = filtered_msgs
@@ -1010,3 +1025,62 @@ async def test_missing_audio_returns_404_in_all_environments(
         res_test = await client.get("/api/audio/missing_audio_ref.wav")
         assert res_test.status_code == 404
         assert "Audio file not found" in res_test.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_text_first_delivery_audio_attached_via_normal_poll(
+    web_test_app: FastAPI,
+    mock_teacher_id: uuid.UUID,
+) -> None:
+    """Verifies that text arrives first, then the same bubble receives playable audio via normal poll path."""
+    t0 = datetime(2026, 10, 18, 10, 0, 0, tzinfo=UTC)
+    child_msg_id = uuid.uuid4()
+    child_msg = Message(
+        id=child_msg_id,
+        teacher_id=mock_teacher_id,
+        direction="out",
+        channel="web",
+        channel_msg_id=str(uuid.uuid4()),
+        kind="text",
+        text="उत्तर चौबीस है",
+        speaker="ravi",
+        audio_ref=None,
+        created_at=t0,
+        updated_at=t0,
+    )
+    web_test_app.state.messages_db[child_msg_id] = child_msg
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_test_app), base_url="http://test"
+    ) as client:
+        # 1. Initial poll receives message with text only (audio_ref=None)
+        res_poll1 = await client.get("/api/chat/messages")
+        assert res_poll1.status_code == 200
+        data1 = res_poll1.json()
+        matching1 = [m for m in data1["messages"] if m["id"] == str(child_msg_id)]
+        assert len(matching1) == 1
+        assert matching1[0]["kind"] == "text"
+        assert matching1[0]["text"] == "उत्तर चौबीस है"
+        assert matching1[0]["audio_ref"] is None
+
+        # 2. TTS synthesis completes in background: audio attached and updated_at advanced
+        cached_ref = "voice_ravi_24_demo"
+        (tts_cache.cache_dir / f"{cached_ref}.ogg").write_bytes(b"OGG_AUDIO_BYTES_TEST")
+        child_msg.audio_ref = cached_ref
+        child_msg.kind = "audio"
+        child_msg.updated_at = t0 + timedelta(seconds=2)
+
+        # 3. Client polls via normal path: GET /api/chat/messages?after=<child_msg_id>
+        res_poll2 = await client.get(f"/api/chat/messages?after={child_msg_id}")
+        assert res_poll2.status_code == 200
+        data2 = res_poll2.json()
+        matching2 = [m for m in data2["messages"] if m["id"] == str(child_msg_id)]
+        assert len(matching2) == 1
+        assert matching2[0]["id"] == str(child_msg_id)  # Same bubble ID!
+        assert matching2[0]["kind"] == "audio"
+        assert matching2[0]["audio_ref"] == cached_ref
+
+        # 4. Client fetches the attached audio via /api/audio/<ref>.ogg
+        res_audio = await client.get(f"/api/audio/{cached_ref}.ogg")
+        assert res_audio.status_code == 200
+        assert res_audio.content == b"OGG_AUDIO_BYTES_TEST"

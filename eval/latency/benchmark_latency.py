@@ -142,8 +142,7 @@ async def measure_local_pipeline_turn(
     stt = get_stt_provider()
     stt_res = await stt.transcribe(converted_wav, lang="hi-IN")
     transcript = stt_res.text or text_hi
-    stages["stt_ms"] = (time.perf_counter() - t_start) * 1000.0
-    stages["stt"] = stages["stt_ms"]
+    stages["stt"] = (time.perf_counter() - t_start) * 1000.0
 
     # 4. Act Tagger (Calls Claude fast model or MockLLM via tag_act role)
     t_start = time.perf_counter()
@@ -155,8 +154,7 @@ async def measure_local_pipeline_turn(
         scene_persona_ids=["ravi", "priya", "aman"],
         current_item=Problem(type="sub", a=52, b=17),
     )
-    stages["act_tagger_ms"] = (time.perf_counter() - t_start) * 1000.0
-    stages["tagger"] = stages["act_tagger_ms"]
+    stages["tagger"] = (time.perf_counter() - t_start) * 1000.0
 
     # 5. Rule Engine Step
     t_start = time.perf_counter()
@@ -200,8 +198,7 @@ async def measure_local_pipeline_turn(
     )
     tagged = TaggedTurn(acts=act_output.acts, addressed_child=act_output.addressed_child)
     step_res = RuleEngine.step(scene, tagged)
-    stages["rule_engine_ms"] = (time.perf_counter() - t_start) * 1000.0
-    stages["engine"] = stages["rule_engine_ms"]
+    stages["engine"] = (time.perf_counter() - t_start) * 1000.0
 
     # 6. Child Voice (Calls Claude fast model or MockLLM via voice_child_line role)
     t_start = time.perf_counter()
@@ -225,13 +222,12 @@ async def measure_local_pipeline_turn(
         )
     else:
         child_line_text = "पैंतालीस!"
-    stages["child_voice_ms"] = (time.perf_counter() - t_start) * 1000.0
-    stages["voice"] = stages["child_voice_ms"]
+    stages["voice"] = (time.perf_counter() - t_start) * 1000.0
 
     # 7. Database Persistence (summed db_ms)
     t_start = time.perf_counter()
     await asyncio.sleep(0.002)  # simulate DB scene store update
-    stages["db_ms"] = (time.perf_counter() - t_start) * 1000.0
+    stages["db"] = (time.perf_counter() - t_start) * 1000.0
 
     # 8. Output Guard
     t_start = time.perf_counter()
@@ -247,8 +243,7 @@ async def measure_local_pipeline_turn(
     tts = get_tts_provider()
     voice = get_voice("child_ravi")
     tts_res = await tts.synthesize(child_line_text, voice=voice)
-    stages["tts_ms"] = (time.perf_counter() - t_start) * 1000.0
-    stages["tts"] = stages["tts_ms"]
+    stages["tts"] = (time.perf_counter() - t_start) * 1000.0
 
     # 10. Upload & Send
     t_start = time.perf_counter()
@@ -257,7 +252,7 @@ async def measure_local_pipeline_turn(
     stages["send"] = (time.perf_counter() - t_start) * 1000.0
 
     total_ms = (time.perf_counter() - t0) * 1000.0
-    stages["total_ms"] = total_ms
+    stages["total"] = total_ms
 
     return TurnMeasurement(
         sample_id=sample_id,
@@ -558,19 +553,14 @@ def generate_report(
         "download": "Ingest and receive inbound audio",
         "convert": "ffmpeg conversion to 16 kHz mono WAV",
         "stt": "Speech-to-text recognition",
-        "stt_ms": "Speech-to-text recognition (stt_ms)",
         "tagger": "Teaching act tagging (Claude / Mock via tag_act)",
-        "act_tagger_ms": "Teaching act tagging (Claude / Mock via tag_act)",
         "engine": "Deterministic rule engine transition",
-        "rule_engine_ms": "Deterministic rule engine transition (rule_engine_ms)",
         "voice": "Child dialogue line selection (Claude / Mock via voice_child_line)",
-        "child_voice_ms": "Child dialogue line selection (Claude / Mock via voice_child_line)",
-        "db_ms": "Database persistence & queries summed (db_ms)",
+        "db": "Database persistence & queries summed",
         "guard": "Output schema & safety guards validation",
         "tts": "Text-to-speech voice synthesis",
-        "tts_ms": "Text-to-speech voice synthesis (tts_ms)",
         "send": "Outbound message delivery & dispatch",
-        "total_ms": "Total turn latency (total_ms)",
+        "total": "Total turn latency",
         "post_audio": "HTTP POST /api/chat/audio multipart upload",
         "polling_roundtrip": "HTTP GET /api/chat/messages polling until ready",
         "audio_download": "HTTP GET /api/audio/{ref}.wav response fetch",
@@ -586,12 +576,7 @@ def generate_report(
         stage_p95[k] = percentile(vals, 0.95) if vals else 0.0
 
     total_stage_time = (
-        sum(
-            v
-            for k, v in stage_averages.items()
-            if k not in ("total_ms", "stt", "tagger", "engine", "voice", "tts")
-        )
-        or 1.0
+        sum(v for k, v in stage_averages.items() if k not in ("total", "total_ms")) or 1.0
     )
 
     # Guard fallback rate

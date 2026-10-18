@@ -112,6 +112,8 @@ const state = {
   renderedMsgIds: new Set(),
   playedAudioRefs: new Set(),
   autoPlayDone: false,
+  lastAudioPollAt: null,
+  lastMessageCreated: null,
 };
 
 // ── Outbox Drainer & Backoff Retrier ────────────────────────────────────────
@@ -200,8 +202,15 @@ async function pollMessages() {
   try {
     const startTime = Date.now();
     let url = '/api/chat/messages';
+    const params = [];
     if (state.lastMessageId) {
-      url += `?after=${encodeURIComponent(state.lastMessageId)}`;
+      params.push(`after=${encodeURIComponent(state.lastMessageId)}`);
+    }
+    if (state.lastAudioPollAt) {
+      params.push(`audio_since=${encodeURIComponent(state.lastAudioPollAt)}`);
+    }
+    if (params.length > 0) {
+      url += `?${params.join('&')}`;
     }
 
     const res = await fetch(url);
@@ -211,6 +220,7 @@ async function pollMessages() {
     }
 
     if (res.ok) {
+      state.lastAudioPollAt = new Date().toISOString();
       const data = await res.json();
       state.isPending = data.pending;
       updatePendingIndicator(data.pending);
@@ -218,7 +228,10 @@ async function pollMessages() {
       if (data.messages && data.messages.length > 0) {
         for (const msg of data.messages) {
           renderMessage(msg);
-          state.lastMessageId = msg.id;
+          if (!state.lastMessageCreated || (msg.created_at && msg.created_at >= state.lastMessageCreated)) {
+            state.lastMessageId = msg.id;
+            state.lastMessageCreated = msg.created_at;
+          }
         }
         await cacheMessages(data.messages);
       }

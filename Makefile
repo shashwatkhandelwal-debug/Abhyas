@@ -1,4 +1,4 @@
-.PHONY: audit eval-guards help setup dev db-up db-migrate db-seed test test-live eval-latency eval-kappa eval-realism content-validate content-publish samples freeze
+.PHONY: audit eval-cost eval-guards help setup dev db-up db-migrate db-seed test test-live eval-latency eval-kappa eval-realism content-validate content-publish samples freeze
 
 help:
 	@echo "Abhyas Makefile targets:"
@@ -9,6 +9,7 @@ help:
 	@echo "  make db-seed          - load content and demo data"
 	@echo "  make test             - run ruff, mypy, and unit/integration tests (mocks only)"
 	@echo "  make test-live        - opt-in tests calling real providers (skipped if keys absent)"
+	@echo "  make eval-cost        - run cost evaluation report"
 	@echo "  make eval-latency     - run latency benchmark suite"
 	@echo "  make eval-kappa       - run coach calibration kappa evaluation"
 	@echo "  make eval-realism     - run realism rating analysis"
@@ -57,6 +58,9 @@ eval-kappa:
 
 eval-guards:
 	python eval/guards/guard_report.py $(if $(EVENTS),--events $(EVENTS),)
+
+eval-cost:
+	python eval/cost/cost_report.py
 
 eval-realism:
 	python eval/realism/survey_analysis.py

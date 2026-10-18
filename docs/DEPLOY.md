@@ -12,7 +12,7 @@ This document provides a click-by-click operational runbook for deploying **Abhy
 3. Configure project details:
    - **Name**: `abhyas-prod`
    - **Database Password**: Generate a secure, 32+ character password. Store this securely in a password manager.
-   - **Region**: **Singapore (`ap-southeast-1`)** (critical: co-located with Render Singapore region to achieve < 5 ms round-trip DB latency).
+   - **Region**: **Singapore (`ap-southeast-1`)** (co-located in the same region as the app).
    - **Pricing Plan**: Free or Pro tier.
 4. Click **Create new project** and wait 2–3 minutes for provisioning.
 

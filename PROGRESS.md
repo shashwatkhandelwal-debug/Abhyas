@@ -323,23 +323,38 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **docs/DEPLOY.md**: Updated §1.3 and Table 2 for `ALEMBIC_DATABASE_URL` to specify Supabase Session Pooler URI on port 5432 (`postgresql://...`) instead of the direct connection host (`db.[PROJECT-REF].supabase.co`), documenting that Supabase direct host defaults to IPv6 which causes connection failures on platforms without IPv6 routing (such as Render or standard Docker).
 - **.env.example**: Updated local `DATABASE_URL` and `ALEMBIC_DATABASE_URL` default passwords from `postgres` to `postgrespassword` to match `infra/docker-compose.yml`.
 
+### Small Fixes (`small-fixes` — T60)
+- **web/arp.py**: Wrapped `wa_channel.send` in `async with db.begin_nested():` savepoint in `post_arp_answer`. If WhatsApp send fails mid-write, the nested transaction rolls back, preventing outer session transaction poisoning, and the web channel fallback `Message` row is stored and committed cleanly.
+- **backend/tests/unit/test_arp_digest.py**: Added `test_arp_post_answer_whatsapp_mid_write_failure_still_stores_web_fallback` verifying savepoint invocation and web message fallback persistence on mid-write dispatch failures (12/12 passing).
+- **backend/tests/unit/test_review_console.py**: Updated admin username from legacy `admin.demo` to `admin` across approval and authorization tests to align with `spec/13_submission.md` credentials table (10/10 passing).
+- **docs/DEPLOY.md & README.md**: Re-read end-to-end; verified admin credentials (`admin`), run commands (`make setup db-up db-migrate db-seed dev`, `python scripts/smoke_test.py`, `make eval-guards`, etc.) are consistent with Makefile and scripts.
+
+### Cost Evaluation Reporting (`cost-report` — T61)
+- **backend/app/config.py**: Added Claude and Sarvam pricing tunables with source URLs and as-of dates (2026-10):
+  - Haiku 5.5: $0.10 input / $0.50 output / $0.01 cache read per MTok (`HAIKU_INPUT_USD_PER_MTOK`, `HAIKU_OUTPUT_USD_PER_MTOK`, `HAIKU_CACHE_READ_USD_PER_MTOK`).
+  - Sonnet 5.5: $2.00 input / $10.00 output / $0.10 cache read per MTok (`SONNET_INPUT_USD_PER_MTOK`, `SONNET_OUTPUT_USD_PER_MTOK`, `SONNET_CACHE_READ_USD_PER_MTOK`).
+  - Sarvam STT: ₹30 per hour / ₹0.50 per min (`STT_COST_PER_HOUR_INR`, `STT_COST_PER_MINUTE_INR`).
+  - Sarvam TTS: ₹30 per 10K chars / ₹3.00 per 1K chars (`TTS_COST_PER_10K_CHARS_INR`, `TTS_COST_PER_1000_CHARS_INR`).
+  - `USD_TO_INR`: default 88.0, labelled "assumption, update before submission".
+- **eval/cost/cost_report.py**: Implemented CLI and calculation engine reading `llm_call` and `speech_spend` rows. Computes total spend, cost per teacher, cost per completed weekly loop (`SessionState.state == "DONE"`), daily spend, and model breakdown. Outputs `eval/cost/REPORT.md`. Excludes mock rows unless `--include-mock` is specified, labelling report as `local/mock`.
+- **Makefile**: Added `eval-cost` target to run `python eval/cost/cost_report.py`.
+- **backend/tests/unit/test_cost_report.py**: Added unit tests for Haiku/Sonnet token pricing calculations, end-to-end metrics computation on fixture data, mock mode filtering, and Markdown report formatting (4/4 passing).
+
 ### T63 Turn Pipeline Latency & Pre-warming (`latency`)
 - **Pipeline Call Dependency Map**:
-  - `intent_router` / stop keyword check: Evaluated immediately on input. If stop intent detected, terminates turn without LLM calls.
-  - `act_tagger`: Requires inbound transcript + current scene context. Produces `TeachingAct`s.
-  - `RuleEngine.step`: Pure deterministic Python. Consumes `TaggedTurn`, returns `StepResult` (<1 ms). The LLM never decides children's answers.
-  - `child_voice` & guards: Run concurrently across responding children using `asyncio.gather(*(_voice_child(r) for r in step_result.responses))`. Voicing calls have no mutual data dependencies. Output guard ensures numbers match rule engine output before release.
+  - `act_tagger -> rule engine -> child_voice` is inherently sequential: `act_tagger` requires the inbound transcript to classify acts; `RuleEngine.step` requires the tagged acts to deterministically advance scene state; `child_voice` requires the rule engine's numeric step output.
+  - Parallelism is applied exclusively where tasks have no mutual data dependencies: multiple child voicing calls across responding children run concurrently via `asyncio.gather`, and TTS synthesis across responding children runs concurrently via `asyncio.gather`.
   - Text-first delivery: `on_text_ready` hook persists and commits `Message` rows (`kind="text"`, `audio_ref=None`) immediately before TTS begins. Perceived latency on web channel drops from ~4-5s to ~1.2s.
-  - TTS synthesis: Concurrently synthesizes voice for all responding children via `asyncio.gather`. Once complete, attaches `audio_ref` and updates existing `Message` rows to `kind="audio"`. Client polling dynamically adds audio player to the rendered text bubble.
+  - Audio delivery: TTS synthesis runs concurrently for all responding children. Once complete, updates existing `Message` rows with `kind="audio"` and `audio_ref`. Web polling returns messages created or updated with audio since the last poll.
 - **Per-Stage Latency Reporting**:
   - Updated `benchmark_latency.py` to record per-stage timing (`stt_ms`, `act_tagger_ms`, `rule_engine_ms`, `child_voice_ms`, `db_ms`, `tts_ms`, `total_ms`).
-  - Outputs `p50 (ms)` and `p95 (ms)` per stage in `eval/latency/REPORT.md`.
+  - Outputs `p50 (ms)` and `p95 (ms)` per stage in `eval/latency/REPORT.md` without duplicate stage rows.
 - **TTS Pre-warming CLI (`scripts/prewarm_tts.py`)**:
   - Pre-synthesizes and caches catalog messages with `audio: true` from `messages_hi.yaml` and the 3 shipped moves' `learn` narration into `TTSCache`.
   - Idempotent (skips already-cached entries), budget-capped against `SPEECH_DAILY_BUDGET_INR` and `SPEECH_TOTAL_BUDGET_INR`, mock-aware (no-op on mock TTS unless `--force-mock`).
   - Supports `--dry-run` (default) and `--write`.
 - **docs/DEPLOY.md**:
-  - Documented Supabase region as **Singapore (`ap-southeast-1`)** co-located with Render Singapore (`aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres`), keeping DB roundtrip latency <5 ms.
+  - Documented Supabase region as Singapore (`ap-southeast-1`) located in the same region as the app (Render Singapore), removing unmeasured "< 5 ms" claims.
   - Added `python scripts/prewarm_tts.py --write` as post-seed step in §4.
 - **Unit Tests**:
   - Added `backend/tests/unit/test_latency_pipeline.py` (6 tests passing):

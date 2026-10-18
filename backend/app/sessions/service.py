@@ -970,6 +970,10 @@ class SessionService:
                             if outbound.audio_ref:
                                 early_row.audio_ref = outbound.audio_ref
                                 early_row.kind = "audio"
+                                now_utc = datetime.now(UTC)
+                                if now_utc <= early_row.created_at:
+                                    now_utc = early_row.created_at + timedelta(milliseconds=1)
+                                early_row.updated_at = now_utc
                             outbound.already_persisted = True
                 await self.repo.session.commit()
 

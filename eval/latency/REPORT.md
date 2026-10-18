@@ -34,20 +34,15 @@
 |---|---|---|---|---|---|
 | `download` | Ingest and receive inbound audio | 15.1 ms | 425.0 ms | 96.2 ms | 0.6% |
 | `convert` | ffmpeg conversion to 16 kHz mono WAV | 270.5 ms | 933.9 ms | 411.1 ms | 2.4% |
-| `stt_ms` | Speech-to-text recognition (stt_ms) | 0.9 ms | 16.2 ms | 2.6 ms | 0.0% |
 | `stt` | Speech-to-text recognition | 0.9 ms | 16.2 ms | 2.6 ms | 0.0% |
-| `act_tagger_ms` | Teaching act tagging (Claude / Mock via tag_act) | 8174.4 ms | 8309.1 ms | 8185.6 ms | 48.4% |
 | `tagger` | Teaching act tagging (Claude / Mock via tag_act) | 8174.4 ms | 8309.1 ms | 8185.6 ms | 48.4% |
-| `rule_engine_ms` | Deterministic rule engine transition (rule_engine_ms) | 0.3 ms | 0.7 ms | 0.4 ms | 0.0% |
 | `engine` | Deterministic rule engine transition | 0.3 ms | 0.7 ms | 0.4 ms | 0.0% |
-| `child_voice_ms` | Child dialogue line selection (Claude / Mock via voice_child_line) | 8162.0 ms | 8579.8 ms | 8195.7 ms | 48.4% |
 | `voice` | Child dialogue line selection (Claude / Mock via voice_child_line) | 8162.0 ms | 8579.8 ms | 8195.7 ms | 48.4% |
-| `db_ms` | Database persistence & queries summed (db_ms) | 10.5 ms | 15.1 ms | 9.0 ms | 0.1% |
+| `db` | Database persistence & queries summed | 10.5 ms | 15.1 ms | 9.0 ms | 0.1% |
 | `guard` | Output schema & safety guards validation | 4.5 ms | 5.9 ms | 4.6 ms | 0.0% |
-| `tts_ms` | Text-to-speech voice synthesis (tts_ms) | 0.7 ms | 12.6 ms | 1.9 ms | 0.0% |
 | `tts` | Text-to-speech voice synthesis | 0.7 ms | 12.6 ms | 1.9 ms | 0.0% |
 | `send` | Outbound message delivery & dispatch | 6.6 ms | 23.9 ms | 9.1 ms | 0.1% |
-| `total_ms` | Total turn latency (total_ms) | 16848.2 ms | 17523.5 ms | 16916.2 ms | 100.0% |
+| `total` | Total turn latency | 16848.2 ms | 17523.5 ms | 16916.2 ms | 100.0% |
 
 ---
 
