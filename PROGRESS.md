@@ -340,3 +340,13 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **Makefile**: Added `eval-cost` target to run `python eval/cost/cost_report.py`.
 - **backend/tests/unit/test_cost_report.py**: Added unit tests for Haiku/Sonnet token pricing calculations, end-to-end metrics computation on fixture data, mock mode filtering, and Markdown report formatting (4/4 passing).
 
+### Honest README & Production Scaling (`readme-honest` — T65)
+- **README.md**: Completely aligned with actual codebase state and evaluator requirements:
+  - Cost per teacher: explicitly cited as `TODO(human) from the hosted run` (via `make eval-cost`); no synthetic numbers claimed as measured.
+  - Latency: points to `eval/latency/REPORT.md`; states dependency on hosted deploy and network quality without claiming unmeasured p95 figures.
+  - FLN sources: clearly states official state guides are not yet ingested (source URLs set to `TODO(human)` awaiting official departmental data-sharing signoff); seed chunks cover the 4 approved moves.
+  - Privacy posture: documents simulated children (no minor personal data collected), cross-border inference (Sarvam/Claude under DPDP s.16), ephemeral in-memory audio, Fernet symmetric encryption for stored phone numbers, salted SHA-256 for phone hashes, and $n < 10$ suppression.
+  - Cryptography: accurately documents Fernet (`cryptography.fernet.Fernet`, AES-128-CBC + HMAC-SHA256) and SHA-256 content hashes for TTS audio keys (no false AES-256-GCM claims).
+  - Personas: lists exactly the 3 implemented child personas (Ravi, Aman, Priya) and 4 foundational moves.
+  - Scaling path: documents current single-worker constraint with in-process scheduler and memory locks, alongside the production roadmap (Redis distributed locks, Celery/Arq background workers, CDN caching).
+

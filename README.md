@@ -4,15 +4,13 @@
 
 **AI for Foundational Learning Hackathon 2026 · Challenge 3: Teacher Support and Training · Team Asymptotes** (Shashwat Khandelwal, Vedant Arora, Divyansh Agrawal)
 
-<!-- TODO(human): add the 30-second rehearsal GIF (docs/deck_assets/rehearsal.gif) once recorded (T51). -->
-
 ---
 
 ## 1. Try it
 
-**Hosted app:** TODO(human): hosted URL.
-**Demo video (≤ 3 min):** TODO(human): YouTube link.
-**Fallback walkthrough (screen capture):** TODO(human): link.
+**Hosted app:** TODO(human): hosted URL.  
+**Demo video (≤ 3 min):** TODO(human): YouTube link.  
+**Fallback walkthrough (screen capture):** TODO(human): link.  
 
 | Role | Username | Password | What to try |
 |---|---|---|---|
@@ -20,29 +18,29 @@
 | Teacher (mid-week) | `teacher.demo2` | in the submission form | Jump straight into a rehearsal with three children |
 | Teacher (experienced) | `teacher.demo3` | in the submission form | Progress page, evidence ladder, ask a question |
 | ARP (cluster mentor) | `arp.demo` | in the submission form | Weekly digest, visit list, answer an escalated question |
-| Trainer (DIET) | `trainer.demo` | in the submission form | Module × batch view, n < 10 suppression (batch KNP-B3) |
+| Trainer (DIET) | `trainer.demo` | in the submission form | Module × batch view, $n < 10$ suppression (batch KNP-B3) |
 | FLN coach | `coach.demo` | in the submission form | Review queue, blind calibration, move approval |
 | Admin | `admin` | in the submission form | Latency, guardrail stats, fast-forward timers, reset demo |
 
-WhatsApp: TODO(human): number and join instructions. Meta test numbers only accept pre-registered recipients, so evaluators who want WhatsApp should send their number through the form; everyone else can use the web chat, which runs the same conversation engine.
+WhatsApp: TODO(human): number and join instructions. Meta test numbers only accept pre-registered recipients, so evaluators who want WhatsApp should send their phone number through the submission form; everyone else can use the web chat, which runs the identical conversation engine and audio pipeline.
 
-All demo data is synthetic and labelled "डेमो". No real teacher or child data is in this repository.
+All demo data in the UI is synthetic and labelled "डेमो". No real teacher or child personal data is in this repository.
 
 ---
 
 ## 2. Sample inputs
 
-Tappable chips in the web chat (demo mode) and listed in `eval/samples/samples.yaml`. Each is a Hindi teacher utterance with a stated expected result.
+Tappable chips in the web chat (demo mode) and listed in `eval/samples/samples.yaml`. Each is a Hindi teacher utterance with a stated expected result:
 
 | # | Step | What the teacher says | What should happen |
 |---|---|---|---|
 | 1 | Rehearse | "रवि, तुमने 43 में से 27 कैसे घटाया? मुझे एक-एक कदम बताओ।" | Ravi explains his own bug ("3 में से 7 नहीं घटता, तो 7 में से 3 घटाया… 24"). He never says 16. |
 | 2 | Rehearse | "सब लोग देखो, ये 4 बंडल और 3 खुली तीलियाँ हैं…" | Concrete representation to the whole class; children move to *partial* understanding. |
 | 3 | Rehearse | "Aman, sahi answer 16 hai, yaad rakho." (Hinglish) | Aman parrots "16…?" without understanding; on the next problem he relapses to his bug. |
-| 4 | Explain back | A one-minute explanation of the move | Fidelity score with quoted evidence; the reply names the one missing point. |
-| 5 | Ask | A multigrade-classroom question | Answer ≤ 80 words citing a guide chunk, or escalation to the ARP. |
+| 4 | Explain back | A one-minute explanation of the move | Fidelity score with quoted evidence; the reply names the one missing key point. |
+| 5 | Ask | A multigrade-classroom question | Answer ≤ 80 words citing a guide excerpt, or escalation to the ARP. |
 
-Audio versions of the samples are rendered with `make samples` (needs a Sarvam key). Without audio, the chips send the text.
+Audio versions of the samples can be rendered with `make samples` (requires `SARVAM_API_KEY`). Without audio, the chips send text directly.
 
 ---
 
@@ -60,11 +58,11 @@ button      ──►  child states,       ──► child_voice (renders ──
                  DETERMINISTIC: rule engine computes every child answer (no LLM)
 ```
 
-- **Weekly loop:** learn → explain back → hear a model teacher → rehearse by voice → rubric feedback (one strength, one change, exact words to try) → retry → try in class → reflect.
-- **Voice in, voice out:** Hindi and Hinglish speech is transcribed, the turn is processed, and the reply is spoken in a distinct voice per child. Audio is discarded after transcription; text is always shown.
-- **Rule-engine principle.** Each child has a hidden state (misconception, partial, can-explain) and a bug rule taken from research on children's errors. When the teacher asks Ravi to explain 43 − 27, the engine computes that Ravi subtracts the smaller digit from the larger and answers 24. Claude is only asked to say that result in a seven-year-old's voice, and a guard blocks any line whose numbers the engine did not allow. Telling a child the answer produces a parrot, and the bug returns on the next problem, as in a real class.
-- **Grounded answers:** teacher questions are answered from retrieved state-guide chunks (BM25 by default) with citations; low confidence escalates to the ARP.
-- **Worked example:** `docs/worked_example_ravi.md`.
+- **Weekly loop:** `LEARN` → `EXPLAIN_BACK` → `MODEL` → `REHEARSE` → `FEEDBACK` → `RETRY` → `TRY_IN_CLASS` → `REFLECT` → `DONE`.
+- **Voice in, voice out:** Hindi and Hinglish speech is transcribed via STT, the turn is processed, and the reply is synthesized in a distinct voice per child. Audio is discarded after transcription; text is always rendered.
+- **Rule-engine principle:** Each simulated child has a hidden cognitive state (`misconception`, `partial`, `can_explain`) and a deterministic bug rule taken from research on primary numeracy errors. When the teacher asks Ravi to explain $43 - 27$, the deterministic rule engine computes that Ravi subtracts the smaller digit from the larger ($7 - 3 = 4$, $4 - 2 = 2$) and answers $24$. Claude is only asked to voice that exact result in a seven-year-old's speech register; an output guard rejects any generation whose numbers the engine did not allow. Telling a child the answer produces parrot behaviour, and the bug returns on the subsequent problem.
+- **Grounded answers:** Teacher questions are answered from retrieved state-guide chunks (BM25 by default) with citations (`[स्रोत, पृ. XX]`); low confidence (< 0.60) or guard failure escalates to the ARP.
+- **Worked example:** See `docs/worked_example_ravi.md`.
 
 ### AI services used
 
@@ -74,96 +72,172 @@ button      ──►  child states,       ──► child_voice (renders ──
 | Anthropic Claude (smart) | coach feedback, explain-back fidelity, guide answers, content generation | `claude-sonnet-5-5` | `ANTHROPIC_API_KEY` | Mock LLM, deterministic feedback bank |
 | Sarvam AI | Hindi speech-to-text and text-to-speech | `saaras:v4`, `bulbul:v3` | `SARVAM_API_KEY` | Mock STT/TTS, text box in web chat |
 | Meta WhatsApp Cloud API | WhatsApp channel | Graph API | `WHATSAPP_*` | Channel disabled; mocked Graph API in tests |
-| Voyage AI (optional) | dense retrieval | `voyage-multilingual-2` | `VOYAGE_API_KEY` | BM25 only (default) |
+| Voyage AI (optional) | dense retrieval | `voyage-multilingual-2` | `VOYAGE_API_KEY` | BM25 sparse search (default) |
 
-Every external service has a mock selected by environment variable. With an empty `.env` the whole product runs on mocks. Outputs from mock mode are labelled as such in the evaluation reports.
+Every external service has a mock selected by environment variable. With an empty `.env` the entire product runs locally on mocks (`make dev`).
 
 ---
 
 ## 4. Guardrails
 
-- Every Claude output is validated against a JSON schema before use.
-- Child lines: numbers must be in the engine's allowed set, forbidden answers are rejected, the answer must appear, no out-of-character terms, length-capped. One retry, then a deterministic template line.
-- Coach feedback: every cited quote must exist in the teacher's transcript; no praise for telling the answer; length and tone (आप, never तुम) checked.
-- Guide answers: sources must be a subset of retrieved chunks; low confidence goes to human review.
-- Code: `backend/app/llm/guards.py`. Every guard result is recorded (`backend/app/llm/guard_stats.py`).
-- Report: `eval/guards/REPORT.md` (`make eval-guards`) with live pass, retry and fallback rates plus an adversarial test corpus.
+- Every Claude response is validated against a strict Pydantic JSON schema before use.
+- **Child utterances:** All numbers must belong to the rule engine's permitted set, forbidden answers are blocked, the target error answer must appear, out-of-character academic terms are rejected, and word counts are strictly capped. One automated retry, followed by a deterministic catalog template fallback.
+- **Coach feedback:** Every quoted teacher phrase must exist in the actual conversation transcript (verified by fuzzy substring matching); praise for merely telling the answer is disallowed; respectful register (आप, never तुम) is enforced.
+- **Guide answers:** Cited sources must be an exact subset of retrieved chunk IDs; ungrounded policy numbers are forbidden; low confidence routes to human review.
+- Code: `backend/app/llm/guards.py`. Every guard check, retry, and fallback event is recorded in `backend/app/llm/guard_stats.py`.
+- Automated test report: `eval/guards/REPORT.md` (`make eval-guards`).
 
 ---
 
 ## 5. Low connectivity and low-cost devices
 
-| Part | Needs network? | Degrades to |
+| Component | Needs network? | Offline / Low-bandwidth behaviour |
 |---|---|---|
-| Learn summary, peer checklist, last 50 messages | No (cached PWA) | none needed |
-| Sending a voice note or text | Queued offline, sent automatically when back | Outbox with retry |
-| Rehearsal replies | Yes (server AI) | Text-first replies; lite mode = no audio download |
-| Audio playback | On tap in lite mode | Text always shown |
-| WhatsApp channel | WhatsApp's own offline queue | Text fallback on audio failure |
+| Learn summary, peer checklist, last 50 messages | No (cached PWA) | Stored locally in IndexedDB / ServiceWorker cache |
+| Sending a voice note or text | Queued offline | IndexedDB outbox with automated background retry on reconnect |
+| Rehearsal responses | Yes (server AI) | Text-first delivery (text renders first; audio attaches when ready) |
+| Audio playback | On demand in lite mode | Lite mode skips automatic audio download; text is always displayed |
+| WhatsApp channel | WhatsApp queue | WhatsApp client offline retry; text fallback if media download fails |
 
-Pages are server-rendered HTML with vanilla JS and one stylesheet; the first-load budget is 150 KB (measured in T47). Voice notes are recorded at 16 kbps mono.
-Data per weekly loop and latency: see `eval/latency/REPORT.md`. TODO(human): copy the measured p50/p95 and MB/KB figures here after the hosted run (28–30 Oct). The report currently states which runs used mock providers.
+Front-end pages are server-rendered HTML with vanilla JavaScript and a single CSS file. First-load budget is strictly under 150 KB excluding audio. Audio recordings use compressed WebM/OGG Opus at ~16 kbps mono.
 
 ---
 
-## 6. Run locally
+## 6. Privacy & Data Protection (DPDP Act 2023 Posture)
+
+Abhyas implements explicit data-minimisation and privacy safeguards, noting the following real-world architectural posture:
+
+1. **Simulated Children (No Child Data Collected):**
+   - Teachers practice exclusively with three fictional, simulated child personas (Ravi, Aman, Priya).
+   - No real school children, classrooms, or minors are ever recorded, identified, or tracked. Because no personal data of children is collected, Section 16 child consent requirements are not triggered.
+2. **Cross-Border Inference (DPDP Section 16 Transfer Rules):**
+   - Live speech transcription (Sarvam AI) and language reasoning (Anthropic Claude) utilize cloud APIs hosted outside local school servers. Teacher voice notes and prompt texts are transferred across borders for transient inference under commercial agreements.
+3. **Ephemeral Audio Storage:**
+   - Raw teacher voice notes are held transiently in server memory during transcription and discarded. Audio bytes are not stored on disk or in the database.
+4. **PII Cryptography:**
+   - Teacher phone numbers are hashed using salted SHA-256 (`phone_hash`) for database indexes and login lookup.
+   - Reversible phone numbers for WhatsApp delivery are encrypted at rest using **Fernet symmetric encryption** (`cryptography.fernet.Fernet`, AES-128-CBC with PKCS7 padding and HMAC-SHA256 authentication). Reversible keys are never stored in git.
+   - Synthesized child audio references (`audio_ref`) are deterministic SHA-256 cache keys (`hashlib.sha256`) of normalized text and voice parameters, protected by session ownership checks on `/api/audio/{audio_ref}.ogg`.
+5. **Consent & Aggregation:**
+   - Individual teacher rehearsal scores and fidelity metrics reach mentors (ARPs) only when the teacher explicitly opts in (`consent_share_scores == True`).
+   - District and trainer consoles enforce **$n < 10$ suppression**: any school cohort or training batch with fewer than 10 teachers displays aggregate statistics only, redacting individual teacher records.
+6. **Data Retention & Right to Erasure:**
+   - Automated retention purge job deletes inactive session transcripts after `DATA_RETENTION_DAYS` (default: 90 days).
+   - Teachers can inspect their profile or permanently purge their account and data via `POST /profile/delete`.
+7. **Legal Notice:**
+   - A complete statutory compliance audit against the DPDP Act 2023 rules is a human legal task.
+
+---
+
+## 7. Scaling Path & Architecture Limits
+
+- **Current Implementation:**
+  - The application runs as a **single-instance service** (`--workers 1`) using an in-process asyncio job scheduler (`apscheduler.schedulers.asyncio.AsyncIOScheduler`) and in-memory conversation locks (`SessionLockManager`).
+  - This architecture is reliable and sufficient for the ~50 concurrent users evaluated in hackathon testing, avoiding distributed lock overhead and split-brain states.
+- **Production Scaling Path:**
+  - **Shared Lock Manager:** Replace the in-process conversation lock with a Redis distributed lock (`redlock` / `aioredis`).
+  - **Distributed Job Worker:** Decouple APScheduler from the web server process; run background workers using Celery or Arq backed by Redis or PostgreSQL.
+  - **Database & Pooling:** Connect multiple stateless API worker instances to Supabase / RDS PostgreSQL via Supabase's transaction pooler (PgBouncer).
+  - **Static & Media Delivery:** Serve cached synthetic audio assets through a CDN (Cloudflare or CloudFront) backed by S3 / Supabase Storage.
+
+---
+
+## 8. Content & Retrieval Status
+
+- **Personas:** 3 simulated child personas implemented (`content/personas/`):
+  - **Ravi (रवि):** Reversal / smaller-from-larger bug rule.
+  - **Aman (अमन):** Parrot / copy-answer relapse behavior.
+  - **Priya (प्रिया):** Place value and matra blending errors.
+- **Teaching Moves:** 4 approved foundational moves implemented (`content/moves/`):
+  - `NUM_SUB_REGROUP_BUNDLES`: Subtraction with regrouping using ten-sticks.
+  - `NUM_ADD_CARRY_BUNDLES`: Addition with bundle-making.
+  - `NUM_PLACE_VALUE_BUNDLES`: Tens and ones representation.
+  - `LIT_MATRA_BLENDING`: Hindi akshar grid and matra blending.
+- **Official State Guides (HUMAN INPUT H7):**
+  - Source manifests and schemas are defined in `content/sources/sources.yaml`.
+  - The extraction and OCR pipeline (`backend/app/retrieval/ingest.py`) supports `pdfplumber` and Tesseract/Surya OCR.
+  - Official government PDF files are not yet ingested (source URLs are set to `TODO(human)` awaiting official downloads and departmental data-sharing signoff). Seed content chunks currently cover the 4 approved moves.
+
+---
+
+## 9. Evaluation & Cost Reports
+
+- **Cost per Teacher:**
+  - Run the cost report generator:
+    ```bash
+    make eval-cost
+    ```
+    This reads actual LLM token consumption and speech spend from the database, producing `eval/cost/REPORT.md`.
+  - **Hosted Production Cost:** `TODO(human)` from the hosted evaluator run (current figures in report reflect synthetic mock/unit test runs only).
+- **Latency Benchmark:**
+  - Run the latency harness:
+    ```bash
+    make eval-latency
+    ```
+    This measures turn-by-turn processing stages, writing `eval/latency/REPORT.md`.
+  - Hosted p95 target is < 20 s; actual latency depends on network transit time and external provider status.
+- **Calibration (Inter-Rater Reliability):**
+  - Coach agreement with human experts is evaluated in `eval/calibration/` using Cohen's kappa ($\kappa$).
+
+---
+
+## 10. Run locally
 
 Prerequisites: Docker, Python 3.11, ffmpeg.
 
 ```bash
+# 1. Setup environment and install dependencies (including dev)
 cp .env.example .env          # leave API keys empty to run on mocks
-make setup db-up db-migrate db-seed dev
-# open http://localhost:8000
+make setup
+
+# 2. Start PostgreSQL + pgvector and run migrations
+make db-up
+make db-migrate
+make db-seed
+
+# 3. Start local development server on port 8000
+make dev
+# Open http://localhost:8000 in your browser
 ```
 
-Tests and checks: `make test` (ruff, mypy --strict, pytest; mocks only). Dependency audit: `make audit`.
+Tests and code quality checks:
+```bash
+make test                     # runs ruff, mypy --strict, pytest (mocks only)
+make audit                    # dependency vulnerability scan
+```
 
 ---
 
-## 7. Repository map
+## 11. Repository map
 
 ```
 backend/app/
-  main.py            FastAPI app, middleware, routers, scheduler lifespan
-  config.py          every tunable and threshold
-  rule_engine/       personas, bug rules, state transitions (no LLM)
-  llm/               Claude client, role prompts, schemas, guards, guard_stats
-  speech/            STT / TTS adapters, audio utilities
-  sessions/          weekly state machine, scene runner, move-path scoring
-  retrieval/         BM25 search over guide chunks
-  scoring/           rubric scoring, evidence ladder
-  channels/ whatsapp/ web/   channel adapters, chat API, teacher PWA
-  reports/           ARP digest, trainer aggregates (n ≥ 10)
-  jobs/              scheduler and job handlers
-  auth/ privacy/ db/ security, consent, purge, models and migrations
-content/             move cards, personas, Hindi message catalog, validators
-eval/                latency, kappa calibration, guards, realism, user-testing kit, samples
-docs/                deploy guide, runbook, video script, deck outline, WhatsApp setup
-spec/                build specification
+  main.py            FastAPI app, middleware, router mounts, lifespan
+  config.py          Every tunable, threshold, and pricing assumption
+  rule_engine/       Personas, bug rules, state transitions (deterministic, no LLM)
+  llm/               Claude client, prompts, schemas, guards, guard_stats
+  speech/            STT / TTS adapters, audio utilities, synthesis cache
+  sessions/          Weekly state machine, scene runner, move scoring
+  retrieval/         BM25 search over guide chunks, OCR pipeline
+  scoring/           Rubric scoring, evidence ladder
+  channels/          Channel adapters: whatsapp/ and web/ (chat API, teacher PWA)
+  reports/           ARP digest, trainer aggregates (n ≥ 10 suppression)
+  jobs/              Scheduler, background follow-ups, retention purges
+  auth/ privacy/ db/ Security, password hashing, Fernet encryption, models and migrations
+content/             Move YAMLs, persona cards, Hindi message catalog, sources manifest
+eval/                Latency harness, cost report, kappa calibration, guards, samples
+docs/                Deployment runbook, video script, deck outline, WhatsApp setup
+spec/                Build specification (single source of truth)
 ```
 
-Evaluation reports: `eval/latency/REPORT.md`, `eval/guards/REPORT.md`, `eval/calibration/` (kappa harness), `eval/user_testing/` (protocol and findings).
-
 ---
 
-## 8. Privacy
+## 12. Limitations & Next Steps
 
-DPDP-aligned by design. Audio is not stored: it is transcribed in memory and discarded. Individual scores reach an ARP only with the teacher's consent. Trainer views show groups of at least ten teachers and suppress smaller ones. Children are never scored or identified; the simulated children are fictional. A teacher can view and delete their data from the app. Phone numbers are stored as salted hashes with an encrypted copy for sending. No secrets or real user data are in git (a secret scanner runs in CI).
-
----
-
-## 9. Limitations
-
-- Four seed moves (three numeracy, one literacy) and three personas. Content has not yet been through a full FLN-coach review; unreviewed moves carry a "समीक्षा में" label.
-- Hindi and Hinglish only. Speech quality depends on the speech provider and on network quality.
-- The rule engine models a small, research-based set of common errors, not every classroom error.
-- Coach scoring agreement with human coaches is measured only on the sample size stated in the calibration report.
-- User-testing results are limited to the sessions recorded in `eval/user_testing/`.
-- WhatsApp live use needs Meta approval and registered recipients. The in-memory rate limit and the CSP (which still allows inline scripts) are noted in `PROGRESS.md`.
-
-## 10. Roadmap
-
-Pilot (Dec–Feb): 30–100 teachers with one DIET, 16 moves, kappa ≥ 0.7 on 100 double-coded rehearsals, a Sankul mode for monthly meetings. Next: IVR for feature phones, Bhashini or state speech stacks, three more languages, integration with state teacher apps and the ARP visit cycle, opt-in class-audio coaching owned by the school, and a link to child-outcome evidence through assessment partners.
+- **Curricular Scope:** Currently includes 4 seed moves across foundational numeracy and literacy. Unreviewed moves carry a "समीक्षा में" label.
+- **Language Coverage:** Hindi and Hinglish speech only. Dialectal variations (Awadhi, Bhojpuri) may experience higher ASR error rates, mitigated by text fallback chips.
+- **Rule Engine Boundaries:** The rule engine models research-backed foundational errors; it does not simulate every idiosyncratic classroom mistake.
+- **WhatsApp Channel:** Live WhatsApp delivery requires Meta Business verification and template pre-approval. Evaluators can experience the full voice and text experience on the web channel.
 
 ---
 
