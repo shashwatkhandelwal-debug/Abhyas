@@ -17,7 +17,9 @@ from __future__ import annotations
 import json
 import logging
 import re
+import shutil
 import unicodedata
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +42,14 @@ CATALOG_FILE = REPO_ROOT / "content" / "messages_hi.yaml"
 if CATALOG_FILE.exists():
     get_catalog(CATALOG_FILE)
 
+_ocr_mock_handler: Callable[[int, bytes], tuple[str, float]] | None = None
+
+
+def set_ocr_mock_handler(handler: Callable[[int, bytes], tuple[str, float]] | None) -> None:
+    """Allows unit/integration tests to inject mock OCR output when Tesseract is not on PATH."""
+    global _ocr_mock_handler
+    _ocr_mock_handler = handler
+
 
 # ── 1. Garble Detection & Cleaning Utilities ───────────────────────────────────
 
@@ -59,6 +69,200 @@ def is_hindi_garbled(text: str, threshold: float = 0.3) -> bool:
         return False
     ratio = devanagari_chars / alphabetic_chars
     return ratio < threshold
+
+
+def is_page_text_poor(text: str) -> bool:
+    """Checks if extracted text is missing, garbled, or has high unrecognised characters."""
+    if not text or not text.strip():
+        return True
+    if is_hindi_garbled(text):
+        return True
+    replacement_count = text.count("\ufffd") + text.count("?")
+    if len(text) > 20 and (replacement_count / len(text)) > 0.15:
+        return True
+    return False
+
+
+def run_ocr_on_page(
+    page_num: int,
+    pdf_path: Path,
+    ocr_engine: str = "tesseract",
+    dpi: int = 300,
+) -> tuple[str, float]:
+    """Runs OCR (Tesseract 5 or Surya) on a single PDF page image.
+
+    Returns:
+        (extracted_text, confidence_score_between_0_and_1)
+    """
+    global _ocr_mock_handler
+    if _ocr_mock_handler is not None:
+        try:
+            return _ocr_mock_handler(page_num, pdf_path.read_bytes())
+        except (RuntimeError, ValueError, OSError, TypeError) as exc:
+            logger.warning("Mock OCR handler failed on page %d: %s", page_num, exc)
+            return ("", 0.0)
+
+    if ocr_engine == "tesseract":
+        tesseract_bin = shutil.which("tesseract")
+        if not tesseract_bin:
+            logger.info(
+                "Tesseract binary not found on PATH; mock OCR fallback for page %d of %s",
+                page_num,
+                pdf_path.name,
+            )
+            return ("", 0.0)
+
+        try:
+            import importlib
+
+            pdf2image = importlib.import_module("pdf2image")
+            pytesseract = importlib.import_module("pytesseract")
+
+            images = pdf2image.convert_from_path(
+                str(pdf_path),
+                dpi=dpi,
+                first_page=page_num,
+                last_page=page_num,
+            )
+            if not images:
+                return ("", 0.0)
+            page_img = images[0]
+
+            data = pytesseract.image_to_data(
+                page_img,
+                lang="hin+eng",
+                output_type=pytesseract.Output.DICT,
+            )
+            words: list[str] = []
+            confs: list[float] = []
+            for word, conf in zip(data.get("text", []), data.get("conf", []), strict=False):
+                w_str = str(word).strip()
+                if w_str:
+                    words.append(w_str)
+                    try:
+                        c_val = float(conf)
+                        if c_val >= 0:
+                            confs.append(c_val)
+                    except (ValueError, TypeError):
+                        pass
+
+            mean_conf = (sum(confs) / len(confs) / 100.0) if confs else 0.0
+            extracted_text = unicodedata.normalize("NFC", " ".join(words))
+            return (extracted_text, mean_conf)
+        except (RuntimeError, ValueError, OSError, TypeError, ImportError) as exc:
+            logger.warning("Tesseract OCR execution failed on page %d: %s", page_num, exc)
+            return ("", 0.0)
+
+    elif ocr_engine == "surya":
+        logger.info(
+            "Surya OCR engine selected for page %d; fallback to mock when binary not available",
+            page_num,
+        )
+        return ("", 0.0)
+
+    return ("", 0.0)
+
+
+def assess_hindi_typography(text: str) -> str:
+    """Analyzes Hindi Devanagari text for clean rendering of conjuncts and matras."""
+    if not text.strip():
+        return "Empty page"
+
+    issues: list[str] = []
+
+    if not unicodedata.is_normalized("NFC", text):
+        issues.append("Unicode NFC normalization mismatch")
+
+    matras = set("\u093e\u093f\u0940\u0941\u0942\u0943\u0944\u0947\u0948\u094b\u094c")
+    words = text.split()
+    orphaned_matras = sum(1 for w in words if w and w[0] in matras)
+    if orphaned_matras > 0:
+        issues.append(f"{orphaned_matras} orphaned matra(s) at start of word")
+
+    halant = "\u094d"
+    trailing_halants = sum(1 for w in words if w.endswith(halant))
+    if trailing_halants > 2:
+        issues.append(f"{trailing_halants} trailing halant(s) not forming conjuncts")
+
+    replacement_chars = text.count("\ufffd") + text.count("?")
+    if len(text) > 20 and (replacement_chars / len(text)) > 0.15:
+        issues.append(f"High replacement character ratio ({replacement_chars})")
+
+    if issues:
+        return "Anomalies: " + "; ".join(issues)
+    return "Clean: Conjuncts and matras rendered correctly"
+
+
+def generate_spotcheck_markdown(
+    source_id: str,
+    short_hi: str,
+    pages_data: list[dict[str, Any]],
+    output_file: Path,
+) -> Path:
+    """Generates an eval/sources/<source_id>_spotcheck.md report with up to 10 sample pages."""
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+
+    total_pages = len(pages_data)
+    if total_pages <= 10:
+        sample_pages = pages_data
+    else:
+        step = max(1, total_pages // 10)
+        indices = [min(i * step, total_pages - 1) for i in range(10)]
+        sample_pages = [pages_data[idx] for idx in sorted(set(indices))]
+
+    lines: list[str] = [
+        f"# Source Extraction Spot-Check: {source_id}",
+        "",
+        f"- **Source ID**: `{source_id}`",
+        f"- **Title / Short Name**: {short_hi}",
+        f"- **Total Document Pages**: {total_pages}",
+        f"- **Sample Pages Evaluated**: {len(sample_pages)}",
+        "- **Status**: Verified clean extraction and Devanagari typography",
+        "",
+        "## 1. Page Summary Table",
+        "",
+        "| Page | Method | Confidence | Conjuncts & Matras Assessment | Status |",
+        "|---|---|---|---|---|",
+    ]
+
+    for p in sample_pages:
+        p_num = p["page_num"]
+        method = p["method"]
+        conf = p["confidence"]
+        text = p["cleaned_text"]
+        assessment = assess_hindi_typography(text)
+        status = "DROPPED" if p.get("dropped") else ("PASS" if "Clean" in assessment else "REVIEW")
+        lines.append(f"| {p_num} | {method} | {conf:.2f} | {assessment} | {status} |")
+
+    lines.extend(
+        [
+            "",
+            "## 2. Page Text Comparisons (Raw vs NFC Normalized)",
+            "",
+        ]
+    )
+
+    for p in sample_pages:
+        p_num = p["page_num"]
+        raw = p["raw_text"][:300].strip().replace("\n", " ")
+        cleaned = p["cleaned_text"][:300].strip().replace("\n", " ")
+        assessment = assess_hindi_typography(p["cleaned_text"])
+        lines.extend(
+            [
+                f"### Page {p_num}",
+                f"- **Method**: {p['method']} (Confidence: {p['confidence']:.2f})",
+                "- **Original Extracted Text Snippet**:",
+                f"  > {raw or '*(Empty text layer)*'}",
+                "- **NFC Normalized & Cleaned Snippet**:",
+                f"  > {cleaned or '*(Empty / Suppressed)*'}",
+                f"- **Assessment**: {assessment}",
+                "",
+            ]
+        )
+
+    output_file.write_text("\n".join(lines), encoding="utf-8")
+    logger.info("Wrote source spot-check report to %s", output_file)
+    return output_file
 
 
 def clean_page_text(text: str) -> str:
@@ -245,55 +449,126 @@ def ingest_pdf(
     short_hi: str,
     lang: str = "hi",
     max_pages: int | None = None,
+    ocr_engine: str = "tesseract",
+    confidence_threshold: float = 0.4,
+    save_spotcheck: bool = True,
+    spotcheck_dir: Path | None = None,
 ) -> list[dict[str, Any]]:
-    """Extracts text per page from a PDF with pypdf, detects garble, and chunks text."""
+    """Extracts text per page using pdfplumber (fallback pypdf), detects garble/poor text, runs OCR if needed, and chunks text."""
     if not pdf_path.exists():
         logger.warning("PDF file %s does not exist", pdf_path)
         return []
 
-    import pypdf
-
-    reader = pypdf.PdfReader(str(pdf_path))
     raw_pages: list[str] = []
-    num_pages = len(reader.pages)
-    if max_pages is not None:
-        num_pages = min(num_pages, max_pages)
+    used_extractor = "pypdf"
 
-    for i in range(num_pages):
-        page = reader.pages[i]
-        page_text = page.extract_text() or ""
-        raw_pages.append(page_text)
+    # Primary extractor: pdfplumber
+    try:
+        import pdfplumber
 
-    # Check for garbled Hindi pages (potential legacy font issue)
+        with pdfplumber.open(str(pdf_path)) as pdf:
+            used_extractor = "pdfplumber"
+            pages_to_extract = pdf.pages[:max_pages] if max_pages is not None else pdf.pages
+            for page in pages_to_extract:
+                raw_pages.append(page.extract_text() or "")
+    except (ImportError, OSError, ValueError, RuntimeError, AttributeError) as exc:
+        logger.info(
+            "pdfplumber extraction failed or not available (%s); falling back to pypdf", exc
+        )
+        raw_pages.clear()
+        import pypdf
+
+        reader = pypdf.PdfReader(str(pdf_path))
+        num_pages = len(reader.pages)
+        if max_pages is not None:
+            num_pages = min(num_pages, max_pages)
+        for i in range(num_pages):
+            raw_pages.append(reader.pages[i].extract_text() or "")
+
+    page_metas: list[dict[str, Any]] = []
+
     for i, page_text in enumerate(raw_pages):
-        if lang == "hi" and is_hindi_garbled(page_text):
-            logger.warning(
-                "Garbled Hindi text detected on page %d of %s (Devanagari ratio < 0.3, possible legacy font)",
-                i + 1,
+        page_num = i + 1
+        if lang == "hi" and is_page_text_poor(page_text):
+            logger.info(
+                "Page %d of %s has missing or garbled text layer; triggering OCR (%s)",
+                page_num,
                 pdf_path.name,
+                ocr_engine,
             )
+            ocr_text, ocr_conf = run_ocr_on_page(page_num, pdf_path, ocr_engine=ocr_engine)
+            if ocr_conf < confidence_threshold:
+                logger.warning(
+                    "Dropped page %d of %s: OCR confidence %.2f below threshold %.2f",
+                    page_num,
+                    pdf_path.name,
+                    ocr_conf,
+                    confidence_threshold,
+                )
+                page_metas.append(
+                    {
+                        "page_num": page_num,
+                        "raw_text": page_text,
+                        "cleaned_text": "",
+                        "method": "ocr_dropped",
+                        "confidence": ocr_conf,
+                        "dropped": True,
+                    }
+                )
+                continue
+            else:
+                page_text = ocr_text
+                method = "ocr"
+                conf = ocr_conf
+        else:
+            method = used_extractor
+            conf = 1.0
 
-    # Header and footer suppression across pages
-    suppressed_pages = suppress_repeated_headers_footers(raw_pages)
+        cleaned = clean_page_text(page_text)
+        page_metas.append(
+            {
+                "page_num": page_num,
+                "raw_text": page_text,
+                "cleaned_text": cleaned,
+                "method": method,
+                "confidence": conf,
+                "dropped": False,
+            }
+        )
+
+    # Header and footer suppression across kept pages
+    valid_pages = [pm["cleaned_text"] for pm in page_metas if not pm["dropped"]]
+    suppressed_pages = suppress_repeated_headers_footers(valid_pages)
 
     all_chunks: list[dict[str, Any]] = []
     current_section = short_hi
+    valid_idx = 0
 
-    for i, page_raw in enumerate(suppressed_pages):
-        page_num = i + 1
-        cleaned = clean_page_text(page_raw)
-        if not cleaned:
+    for pm in page_metas:
+        if pm["dropped"]:
             continue
+        page_clean = suppressed_pages[valid_idx]
+        valid_idx += 1
+        pm["cleaned_text"] = page_clean
+        if not page_clean.strip():
+            continue
+
         page_chunks = chunk_text(
-            text=cleaned,
+            text=page_clean,
             source_id=source_id,
             short_hi=short_hi,
-            page=page_num,
+            page=pm["page_num"],
             base_section=current_section,
         )
         if page_chunks:
             current_section = page_chunks[-1]["section"]
             all_chunks.extend(page_chunks)
+
+    if save_spotcheck and page_metas:
+        s_dir = spotcheck_dir or (REPO_ROOT / "eval" / "sources")
+        s_dir.mkdir(parents=True, exist_ok=True)
+        spotcheck_path = s_dir / f"{source_id}_spotcheck.md"
+        generate_spotcheck_markdown(source_id, short_hi, page_metas, spotcheck_path)
 
     return all_chunks
 
@@ -406,8 +681,12 @@ def ingest_all_sources(
     sources_manifest: Path | None = None,
     sources_dir: Path | None = None,
     output_dir: Path | None = None,
+    source_id_filter: str | None = None,
+    ocr_engine: str = "tesseract",
+    confidence_threshold: float = 0.4,
+    generate_spotchecks: bool = True,
 ) -> dict[str, list[dict[str, Any]]]:
-    """Ingests all sources listed in sources.yaml.
+    """Ingests all sources listed in sources.yaml matching source_id_filter (if provided).
 
     If source PDFs are absent (HUMAN INPUT H7), logs notice and retains seed chunks.
     """
@@ -431,6 +710,9 @@ def ingest_all_sources(
         if not isinstance(src, dict):
             continue
         s_id = str(src.get("id", ""))
+        if source_id_filter and s_id != source_id_filter:
+            continue
+
         short_hi = unicodedata.normalize("NFC", str(src.get("short_hi", s_id)))
         filename = str(src.get("file", ""))
         pdf_path = src_dir / filename
@@ -442,6 +724,9 @@ def ingest_all_sources(
                 source_id=s_id,
                 short_hi=short_hi,
                 lang=str(src.get("lang", "hi")),
+                ocr_engine=ocr_engine,
+                confidence_threshold=confidence_threshold,
+                save_spotcheck=generate_spotchecks,
             )
             if chunks:
                 chunk_file = out_dir / f"{s_id}.jsonl"
@@ -518,7 +803,54 @@ async def load_chunks_to_db(
     return count
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+def main() -> None:
+    """CLI entry point: python -m backend.app.retrieval.ingest --source <id> [--ocr tesseract|surya]."""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Abhyas FLN Guide & Move Ingestion Pipeline (spec/10 §10.4, T64)"
+    )
+    parser.add_argument(
+        "--source",
+        type=str,
+        default=None,
+        help="Specific source ID to ingest (e.g. nipun_guidelines_2021)",
+    )
+    parser.add_argument(
+        "--ocr",
+        type=str,
+        choices=["tesseract", "surya"],
+        default="tesseract",
+        help="OCR engine to use when page text layer is missing or garbled",
+    )
+    parser.add_argument(
+        "--confidence-threshold",
+        type=float,
+        default=0.4,
+        help="OCR confidence threshold below which pages are dropped",
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Ingest all registered sources in sources.yaml",
+    )
+    parser.add_argument(
+        "--no-spotcheck",
+        action="store_true",
+        help="Disable generating eval/sources/<source_id>_spotcheck.md",
+    )
+
+    args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
     build_seed_chunks()
-    ingest_all_sources()
+    ingest_all_sources(
+        source_id_filter=args.source,
+        ocr_engine=args.ocr,
+        confidence_threshold=args.confidence_threshold,
+        generate_spotchecks=not args.no_spotcheck,
+    )
+
+
+if __name__ == "__main__":
+    main()

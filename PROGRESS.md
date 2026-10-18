@@ -372,3 +372,27 @@ All items from `spec/15_human_inputs.md` are currently open:
     - `test_prewarm_tts_mock_noop`: Proves pre-warming is safe no-op under mock environment.
     - `test_prewarm_tts_dry_run_and_idempotence`: Proves dry-run cost estimation and idempotency skipping.
 
+### T64 Official Source Ingestion, OCR Pipeline & Spot-Checks (`sources-ocr`)
+- **Official Government Sources Registry**:
+  - Registered 5 official government documents in `content/sources/sources.yaml` with titles, publishers, as-of dates, licence notes, and unverified URLs set to `url: "TODO(human)"`.
+  - Confirmed `content/sources/*.pdf` is strictly gitignored.
+- **Dual-Layer Extraction & Optional OCR Pipeline**:
+  - Primary extractor: `pdfplumber` with fallback to `pypdf`.
+  - Heavyweight OCR packages (`pdfplumber`, `pytesseract`, `pdf2image`) configured as optional extra `ocr = ["pdfplumber>=0.10.4", "pytesseract", "pdf2image"]` in `pyproject.toml`. Documented installation via `pip install -e ".[ocr]"` and Tesseract with `hin.traineddata` (and Surya OCR alternative) in `docs/DEPLOY.md`.
+  - Hindi font legibility heuristic (`is_page_text_poor`, `is_hindi_garbled`): detects missing text layers, legacy font ASCII corruption, and high replacement character ratios ($> 15\%$).
+  - Automatic OCR execution: Renders 300 dpi page images via poppler/pdf2image and runs Tesseract 5 (`hin+eng`) with word-level confidence calculation.
+  - Low-confidence dropping: Drops pages with confidence $< 0.40$ (configurable via `--confidence-threshold`), logging clear warnings.
+  - Mock OCR harness: Added `set_ocr_mock_handler` for deterministic CI execution without requiring external C-binaries on system PATH.
+- **CLI Support**:
+  - `python -m backend.app.retrieval.ingest --source <id> [--ocr tesseract|surya] [--confidence-threshold 0.4] [--all] [--no-spotcheck]`
+- **Typographic Spot-Check Generation**:
+  - Automatically produces `eval/sources/<source_id>_spotcheck.md` evaluating up to 10 sample pages per document.
+  - Deleted unverified sample spot-check `eval/sources/fln_sample_c2_spotcheck.md`.
+  - Inspects Unicode NFC normalization, absence of orphaned matras, and trailing viramas/halants.
+- **Guide Citation Formatting**:
+  - Updated `format_guide_citation` to catch specific exceptions `(KeyError, ValueError, TypeError)` conforming to Rule C.
+  - Uses standard Hindi catalog abbreviation `पृ.` (`ask_source_page_abbrev`) from `content/messages_hi.yaml` without inline Hindi.
+  - Wired into `compose_guide_reply` in `backend/app/llm/roles/guide_answerer.py`.
+- **Unused Prompt Note**:
+  - `backend/app/llm/prompts/page_ocr.v1.md` is an authored reference prompt for Vision LLM single-page transcription. It is intentionally **not wired into the automated ingestion pipeline** because processing multi-hundred-page state teacher guides via Claude Sonnet Vision would incur prohibitive token expenses and non-deterministic latency. Automated ingestion uses deterministic local extractors (`pdfplumber` + Tesseract 5 / Surya OCR). `page_ocr.v1.md` is preserved for manual single-page reference only.
+

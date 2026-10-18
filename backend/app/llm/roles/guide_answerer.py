@@ -71,14 +71,12 @@ def compose_guide_reply(
             continue
         cited_sources_seen.add(src_key)
 
-        page_part = f", पृष्ठ {chunk.page}" if chunk.page is not None else ""
-        source_line = load_catalog_message(
-            "ask_source_line",
+        citation = format_guide_citation(
+            chunk.source_short_hi,
+            chunk.page,
             address_form=address_form,
-            source=chunk.source_short_hi,
-            page_part=page_part,
         )
-        lines.append(source_line)
+        lines.append(citation)
 
     # Actionable tip
     if answer.try_this_week_hi.strip():
@@ -303,7 +301,24 @@ async def answer_guide_question(
     )
 
 
+def format_guide_citation(
+    source_short_hi: str,
+    page: int | None = None,
+    address_form: str = "f",
+) -> str:
+    """Formats a standard guide citation matching catalog ask_source_citation."""
+    if page is not None:
+        return load_catalog_message(
+            "ask_source_citation",
+            address_form=address_form,
+            source=source_short_hi,
+            page=page,
+        )
+    return f"[{source_short_hi}]"
+
+
 __all__ = [
     "answer_guide_question",
     "compose_guide_reply",
+    "format_guide_citation",
 ]

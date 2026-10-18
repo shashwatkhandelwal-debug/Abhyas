@@ -13,6 +13,7 @@ from backend.app.llm.guards import guard_guide_answerer
 from backend.app.llm.roles.guide_answerer import (
     answer_guide_question,
     compose_guide_reply,
+    format_guide_citation,
 )
 from backend.app.llm.schemas import (
     GuideAnswererOutput,
@@ -65,8 +66,7 @@ async def test_answer_guide_question_success(sample_chunks: list[RetrievedChunk]
         assert result.guarded is True
         assert len(result.sources_cited) == 1
         assert result.sources_cited[0].chunk_id == "chunk_math_01"
-        assert "गणित संदर्शिका" in result.answer_text_hi
-        assert "पृष्ठ 45" in result.answer_text_hi
+        assert "[गणित संदर्शिका, पृ. 45]" in result.answer_text_hi
         assert "इस हफ्ते आज़माएँ" in result.answer_text_hi
 
 
@@ -242,8 +242,8 @@ def test_compose_guide_reply_deduplicates_sources(sample_chunks: list[RetrievedC
     )
     reply = compose_guide_reply(out, sample_chunks, address_form="m")
     assert "मुख्य उत्तर यहाँ है।" in reply
-    assert "स्रोत: गणित संदर्शिका, पृष्ठ 45" in reply
-    assert "स्रोत: शिक्षक संदर्शिका, पृष्ठ 46" in reply
+    assert "[गणित संदर्शिका, पृ. 45]" in reply
+    assert "[शिक्षक संदर्शिका, पृ. 46]" in reply
     assert "इस हफ्ते आज़माएँ: एक छोटी गतिविधि आज़माएँ।" in reply
 
 
@@ -260,3 +260,45 @@ def test_guide_answerer_goldens() -> None:
         chunks = [RetrievedChunk.model_validate(c) for c in data["input"]["chunks"]]
         is_valid, msg = guard_guide_answerer(out, retrieved_chunks=chunks)
         assert is_valid is True, f"Golden fixture {f.name} failed guard: {msg}"
+
+
+def test_format_guide_citation_standard() -> None:
+    """format_guide_citation formats bracketed citation with Hindi page abbreviation."""
+    cit = format_guide_citation("गणित संदर्शिका", 45)
+    assert cit == "[गणित संदर्शिका, पृ. 45]"
+
+
+def test_format_guide_citation_no_page() -> None:
+    """format_guide_citation formats source-only citation when page is None."""
+    cit = format_guide_citation("निपुण दिशानिर्देश", None)
+    assert cit == "[निपुण दिशानिर्देश]"
+
+
+def test_format_guide_citation_raises_on_missing_catalog_key() -> None:
+    """format_guide_citation raises KeyError when catalog key is missing."""
+    with patch(
+        "backend.app.llm.roles.guide_answerer.load_catalog_message",
+        side_effect=KeyError("ask_source_citation"),
+    ):
+        with pytest.raises(KeyError):
+            format_guide_citation("गणित संदर्शिका", 45)
+
+
+def test_compose_guide_reply_calls_format_guide_citation(
+    sample_chunks: list[RetrievedChunk],
+) -> None:
+    """compose_guide_reply invokes format_guide_citation and includes citation in reply text."""
+    out = GuideAnswererOutput(
+        answer_hi="मुख्य उत्तर।",
+        source_ids=["chunk_math_01"],
+        try_this_week_hi="एक छोटी गतिविधि।",
+        confidence=0.9,
+    )
+    with patch(
+        "backend.app.llm.roles.guide_answerer.format_guide_citation",
+        wraps=format_guide_citation,
+    ) as m_cit:
+        reply = compose_guide_reply(out, sample_chunks, address_form="f")
+        assert m_cit.call_count == 1
+        assert "मुख्य उत्तर।" in reply
+        assert "[गणित संदर्शिका, पृ. 45]" in reply
