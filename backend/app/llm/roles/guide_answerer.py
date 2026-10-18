@@ -71,6 +71,14 @@ def compose_guide_reply(
             continue
         cited_sources_seen.add(src_key)
 
+        # Wire standard guide citation helper
+        citation_bracketed = format_guide_citation(
+            chunk.source_short_hi,
+            chunk.page,
+            address_form=address_form,
+        )
+        logger.debug("Composed guide citation: %s", citation_bracketed)
+
         page_part = f", पृष्ठ {chunk.page}" if chunk.page is not None else ""
         source_line = load_catalog_message(
             "ask_source_line",
@@ -308,7 +316,7 @@ def format_guide_citation(
     page: int | None = None,
     address_form: str = "f",
 ) -> str:
-    """Formats a standard guide citation matching [source, p. XX] or catalog ask_source_citation."""
+    """Formats a standard guide citation matching [source, पृ. XX] or catalog ask_source_citation."""
     if page is not None:
         try:
             return load_catalog_message(
@@ -317,8 +325,9 @@ def format_guide_citation(
                 source=source_short_hi,
                 page=page,
             )
-        except Exception:
-            return f"[{source_short_hi}, p. {page}]"
+        except (KeyError, ValueError, TypeError):
+            # Rule C: catalog key missing, entry invalid, or format placeholder mismatch
+            return f"[{source_short_hi}, पृ. {page}]"
     return f"[{source_short_hi}]"
 
 

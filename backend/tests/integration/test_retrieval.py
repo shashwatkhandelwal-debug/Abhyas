@@ -228,6 +228,7 @@ def test_ingest_pdf_synthetic(tmp_path: Path) -> None:
         source_id="fln_sample_c2",
         short_hi="सैंपल संदर्शिका",
         lang="en",
+        spotcheck_dir=tmp_path,
     )
 
     assert len(chunks) >= 2
@@ -550,11 +551,11 @@ def test_guide_citations_format_and_real_chunk_pages() -> None:
         similarity_score=0.85,
     )
 
-    # 1. Bracketed citation format [source, p. XX]
+    # 1. Bracketed citation format [source, पृ. XX]
     cit1 = format_guide_citation(chunk1.source_short_hi, chunk1.page)
     cit2 = format_guide_citation(chunk2.source_short_hi, chunk2.page)
-    assert cit1 == "[गणित संदर्शिका, p. 45]"
-    assert cit2 == "[भाषा संदर्शिका, p. 12]"
+    assert cit1 == "[गणित संदर्शिका, पृ. 45]"
+    assert cit2 == "[भाषा संदर्शिका, पृ. 12]"
 
     # 2. Page None fallback
     cit_no_page = format_guide_citation("निपुण दिशानिर्देश", None)

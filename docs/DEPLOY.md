@@ -201,3 +201,30 @@ python scripts/smoke_test.py --base-url https://abhyas.onrender.com
   - Tap demo badge `शिक्षिका (नई): teacher.demo1`.
   - Tap **लॉगिन करें** -> redirects to `/teacher` PWA interface.
   - Send a sample voice or text message -> verify child voice response and Hindi transcript bubble.
+
+---
+
+## 6. Official Document Ingestion & OCR Setup
+
+The core runtime web application does not depend on heavy OCR or PDF libraries. For operators running document ingestion or OCR on legacy scanned state guides:
+
+1. **Install Python Optional Extras**:
+   ```bash
+   pip install -e ".[ocr]"
+   ```
+   This installs `pdfplumber`, `pytesseract`, and `pdf2image`.
+
+2. **System Dependencies for Tesseract (Ubuntu/Debian)**:
+   ```bash
+   apt-get update && apt-get install -y tesseract-ocr tesseract-ocr-hin poppler-utils
+   ```
+   Ensure Hindi language data (`hin.traineddata`) is available under `/usr/share/tesseract-ocr/4.00/tessdata/` or `/usr/share/tesseract-ocr/5/tessdata/`.
+
+3. **Alternative: Surya OCR**:
+   For environments where native Tesseract binaries cannot be installed or cause glibc compatibility issues, Surya OCR (`pip install surya-ocr`) serves as a pure-Python, deep-learning based OCR and layout analysis alternative for Hindi documents.
+
+4. **Running Ingestion**:
+   Once official PDFs are placed in `content/sources/`, run:
+   ```bash
+   python -m backend.app.retrieval.ingest
+   ```

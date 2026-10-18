@@ -55,6 +55,14 @@ class Settings(BaseSettings):
     CLAUDE_MODEL_FAST: str = "claude-haiku-5-5"
     CLAUDE_MODEL_SMART: str = "claude-sonnet-5-5"
     CLAUDE_MODEL_BUILD: str = "claude-sonnet-5-5"
+    # Pricing as-of 2026-10: https://platform.claude.com/docs/en/about-claude/pricing
+    HAIKU_INPUT_USD_PER_MTOK: float = 0.10
+    HAIKU_OUTPUT_USD_PER_MTOK: float = 0.50
+    HAIKU_CACHE_READ_USD_PER_MTOK: float = 0.01
+    SONNET_INPUT_USD_PER_MTOK: float = 2.0
+    SONNET_OUTPUT_USD_PER_MTOK: float = 10.0
+    SONNET_CACHE_READ_USD_PER_MTOK: float = 0.10
+    USD_TO_INR: float = 88.0  # assumption, update before submission
     LLM_DAILY_TOKEN_BUDGET: int = 3_000_000
     LLM_TIMEOUT_SECONDS: float = 8.0
     LLM_BUILD_TIMEOUT_SECONDS: float = 60.0
@@ -83,7 +91,10 @@ class Settings(BaseSettings):
     SPEECH_PROVIDER_LIVE: bool = False
     SPEECH_DAILY_BUDGET_INR: float = 50.0
     SPEECH_TOTAL_BUDGET_INR: float = 500.0
+    # Pricing as-of 2026-10: https://docs.sarvam.ai/api-reference-docs/pricing
+    STT_COST_PER_HOUR_INR: float = 30.0
     STT_COST_PER_MINUTE_INR: float = 0.50
+    TTS_COST_PER_10K_CHARS_INR: float = 30.0
     TTS_COST_PER_1000_CHARS_INR: float = 3.0
 
     # ── WhatsApp Cloud API (Meta) — H4/H5 ────────────────────────────────

@@ -323,13 +323,31 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **docs/DEPLOY.md**: Updated §1.3 and Table 2 for `ALEMBIC_DATABASE_URL` to specify Supabase Session Pooler URI on port 5432 (`postgresql://...`) instead of the direct connection host (`db.[PROJECT-REF].supabase.co`), documenting that Supabase direct host defaults to IPv6 which causes connection failures on platforms without IPv6 routing (such as Render or standard Docker).
 - **.env.example**: Updated local `DATABASE_URL` and `ALEMBIC_DATABASE_URL` default passwords from `postgres` to `postgrespassword` to match `infra/docker-compose.yml`.
 
+### Small Fixes (`small-fixes` — T60)
+- **web/arp.py**: Wrapped `wa_channel.send` in `async with db.begin_nested():` savepoint in `post_arp_answer`. If WhatsApp send fails mid-write, the nested transaction rolls back, preventing outer session transaction poisoning, and the web channel fallback `Message` row is stored and committed cleanly.
+- **backend/tests/unit/test_arp_digest.py**: Added `test_arp_post_answer_whatsapp_mid_write_failure_still_stores_web_fallback` verifying savepoint invocation and web message fallback persistence on mid-write dispatch failures (12/12 passing).
+- **backend/tests/unit/test_review_console.py**: Updated admin username from legacy `admin.demo` to `admin` across approval and authorization tests to align with `spec/13_submission.md` credentials table (10/10 passing).
+- **docs/DEPLOY.md & README.md**: Re-read end-to-end; verified admin credentials (`admin`), run commands (`make setup db-up db-migrate db-seed dev`, `python scripts/smoke_test.py`, `make eval-guards`, etc.) are consistent with Makefile and scripts.
+
+### Cost Evaluation Reporting (`cost-report` — T61)
+- **backend/app/config.py**: Added Claude and Sarvam pricing tunables with source URLs and as-of dates (2026-10):
+  - Haiku 5.5: $0.10 input / $0.50 output / $0.01 cache read per MTok (`HAIKU_INPUT_USD_PER_MTOK`, `HAIKU_OUTPUT_USD_PER_MTOK`, `HAIKU_CACHE_READ_USD_PER_MTOK`).
+  - Sonnet 5.5: $2.00 input / $10.00 output / $0.10 cache read per MTok (`SONNET_INPUT_USD_PER_MTOK`, `SONNET_OUTPUT_USD_PER_MTOK`, `SONNET_CACHE_READ_USD_PER_MTOK`).
+  - Sarvam STT: ₹30 per hour / ₹0.50 per min (`STT_COST_PER_HOUR_INR`, `STT_COST_PER_MINUTE_INR`).
+  - Sarvam TTS: ₹30 per 10K chars / ₹3.00 per 1K chars (`TTS_COST_PER_10K_CHARS_INR`, `TTS_COST_PER_1000_CHARS_INR`).
+  - `USD_TO_INR`: default 88.0, labelled "assumption, update before submission".
+- **eval/cost/cost_report.py**: Implemented CLI and calculation engine reading `llm_call` and `speech_spend` rows. Computes total spend, cost per teacher, cost per completed weekly loop (`SessionState.state == "DONE"`), daily spend, and model breakdown. Outputs `eval/cost/REPORT.md`. Excludes mock rows unless `--include-mock` is specified, labelling report as `local/mock`.
+- **Makefile**: Added `eval-cost` target to run `python eval/cost/cost_report.py`.
+- **backend/tests/unit/test_cost_report.py**: Added unit tests for Haiku/Sonnet token pricing calculations, end-to-end metrics computation on fixture data, mock mode filtering, and Markdown report formatting (4/4 passing).
+
 ### T64 Official Source Ingestion, OCR Pipeline & Spot-Checks (`sources-ocr`)
 - **Official Government Sources Registry**:
-  - Registered 5 official government documents in `content/sources/sources.yaml` from official portals (`education.gov.in`, `scertup.gov.in`, `ncert.nic.in`) with URL, SHA-256 (`TODO(human)` per H7), as-of date, and licence notes.
+  - Registered 5 official government documents in `content/sources/sources.yaml` with titles, publishers, as-of dates, licence notes, and unverified URLs set to `url: "TODO(human)"`.
   - Confirmed `content/sources/*.pdf` is strictly gitignored.
-- **Dual-Layer Extraction & OCR Pipeline**:
+- **Dual-Layer Extraction & Optional OCR Pipeline**:
   - Primary extractor: `pdfplumber` with fallback to `pypdf`.
-  - Added Hindi font legibility heuristic (`is_page_text_poor`, `is_hindi_garbled`): detects missing text layers, legacy font ASCII corruption, and high replacement character ratios ($> 15\%$).
+  - Heavyweight OCR packages (`pdfplumber`, `pytesseract`, `pdf2image`) configured as optional extra `ocr = ["pdfplumber>=0.10.4", "pytesseract", "pdf2image"]` in `pyproject.toml`. Documented installation via `pip install -e ".[ocr]"` and Tesseract with `hin.traineddata` (and Surya OCR alternative) in `docs/DEPLOY.md`.
+  - Hindi font legibility heuristic (`is_page_text_poor`, `is_hindi_garbled`): detects missing text layers, legacy font ASCII corruption, and high replacement character ratios ($> 15\%$).
   - Automatic OCR execution: Renders 300 dpi page images via poppler/pdf2image and runs Tesseract 5 (`hin+eng`) with word-level confidence calculation.
   - Low-confidence dropping: Drops pages with confidence $< 0.40$ (configurable via `--confidence-threshold`), logging clear warnings.
   - Mock OCR harness: Added `set_ocr_mock_handler` for deterministic CI execution without requiring external C-binaries on system PATH.
@@ -337,22 +355,12 @@ All items from `spec/15_human_inputs.md` are currently open:
   - `python -m backend.app.retrieval.ingest --source <id> [--ocr tesseract|surya] [--confidence-threshold 0.4] [--all] [--no-spotcheck]`
 - **Typographic Spot-Check Generation**:
   - Automatically produces `eval/sources/<source_id>_spotcheck.md` evaluating up to 10 sample pages per document.
+  - Deleted unverified sample spot-check `eval/sources/fln_sample_c2_spotcheck.md`.
   - Inspects Unicode NFC normalization, absence of orphaned matras, and trailing viramas/halants.
 - **Guide Citation Formatting**:
-  - Added `format_guide_citation` producing bracketed citations in standard `[source, p. XX]` format.
-  - Added `ask_source_citation: "[{source}, p. {page}]"` to `content/messages_hi.yaml`.
+  - Updated `format_guide_citation` to catch specific exceptions `(KeyError, ValueError, TypeError)` conforming to Rule C.
+  - Uses standard Hindi catalog abbreviation `पृ.` (`ask_source_page_abbrev`) from `content/messages_hi.yaml` without inline Hindi.
+  - Wired into `compose_guide_reply` in `backend/app/llm/roles/guide_answerer.py`.
 - **Unused Prompt Note**:
   - `backend/app/llm/prompts/page_ocr.v1.md` is an authored reference prompt for Vision LLM single-page transcription. It is intentionally **not wired into the automated ingestion pipeline** because processing multi-hundred-page state teacher guides via Claude Sonnet Vision would incur prohibitive token expenses and non-deterministic latency. Automated ingestion uses deterministic local extractors (`pdfplumber` + Tesseract 5 / Surya OCR). `page_ocr.v1.md` is preserved for manual single-page reference only.
-- **Unit & Integration Tests**:
-  - Head SHA: `7752c1b`
-  - GitHub Actions CI Run: `39066252291` (all 5 jobs passed: `audit`, `content`, `lint`, `secrets`, `test`).
-  - Added 3 new tests in `backend/tests/integration/test_retrieval.py` (25/25 tests passing):
-    - `test_ingest_synthetic_pdf_hindi_phrase_with_ocr_fallback`: Tests synthetic PDF ingestion with OCR fallback on empty text layer, verifying known Hindi phrase extraction and spot-check markdown generation.
-    - `test_ingest_pdf_drops_low_confidence_ocr_pages`: Verifies low-confidence OCR pages ($< 0.40$) are dropped and logged with warning via `patch`.
-    - `test_guide_citations_format_and_real_chunk_pages`: Verifies `[source, p. XX]` format and catalog `ask_source_line` formatting.
-  - Verified `backend/tests/unit/test_guide_answerer.py` (10/10 tests passing).
-  - Verified `backend/tests/unit/test_state_machine.py` (66/66 tests passing, including hygiene checks).
-- **Rule C / Dependency Management**:
-  - `backend/app/retrieval/ingest.py`: uses dynamic `importlib.import_module("pdf2image")` and `importlib.import_module("pytesseract")` to safely import optional OCR engines at runtime; gracefully catches `ImportError` and falls back to mock OCR when external libraries/binaries are not installed in headless/CI environments. All broad exceptions narrowed to specific tuples `(RuntimeError, ValueError, OSError, TypeError, ImportError)` and zero Devanagari string literals in app code.
-
 
