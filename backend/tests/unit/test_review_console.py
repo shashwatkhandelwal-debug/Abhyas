@@ -161,7 +161,7 @@ async def test_review_role_authorization() -> None:
         assert "कोच समीक्षा कंसोल" in res.text
 
     # 4. Admin CAN access review (200)
-    admin_user = _make_coach_user("admin.demo", role="admin")
+    admin_user = _make_coach_user("admin", role="admin")
     app.dependency_overrides[get_current_user] = lambda: admin_user
 
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
@@ -467,7 +467,7 @@ async def test_move_review_and_two_coach_approval() -> None:
     fake_session.items[Move].append(move)
 
     coach1 = _make_coach_user("coach.demo", role="coach")
-    coach2 = _make_coach_user("admin.demo", role="admin")
+    coach2 = _make_coach_user("admin", role="admin")
 
     app.dependency_overrides[get_db_session] = lambda: fake_session
     app.dependency_overrides[get_current_user] = lambda: coach1

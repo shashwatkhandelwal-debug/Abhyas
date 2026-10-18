@@ -323,6 +323,12 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **docs/DEPLOY.md**: Updated §1.3 and Table 2 for `ALEMBIC_DATABASE_URL` to specify Supabase Session Pooler URI on port 5432 (`postgresql://...`) instead of the direct connection host (`db.[PROJECT-REF].supabase.co`), documenting that Supabase direct host defaults to IPv6 which causes connection failures on platforms without IPv6 routing (such as Render or standard Docker).
 - **.env.example**: Updated local `DATABASE_URL` and `ALEMBIC_DATABASE_URL` default passwords from `postgres` to `postgrespassword` to match `infra/docker-compose.yml`.
 
+### Small Fixes (`small-fixes` — T60)
+- **web/arp.py**: Wrapped `wa_channel.send` in `async with db.begin_nested():` savepoint in `post_arp_answer`. If WhatsApp send fails mid-write, the nested transaction rolls back, preventing outer session transaction poisoning, and the web channel fallback `Message` row is stored and committed cleanly.
+- **backend/tests/unit/test_arp_digest.py**: Added `test_arp_post_answer_whatsapp_mid_write_failure_still_stores_web_fallback` verifying savepoint invocation and web message fallback persistence on mid-write dispatch failures (12/12 passing).
+- **backend/tests/unit/test_review_console.py**: Updated admin username from legacy `admin.demo` to `admin` across approval and authorization tests to align with `spec/13_submission.md` credentials table (10/10 passing).
+- **docs/DEPLOY.md & README.md**: Re-read end-to-end; verified admin credentials (`admin`), run commands (`make setup db-up db-migrate db-seed dev`, `python scripts/smoke_test.py`, `make eval-guards`, etc.) are consistent with Makefile and scripts.
+
 ### Cost Evaluation Reporting (`cost-report` — T61)
 - **backend/app/config.py**: Added Claude and Sarvam pricing tunables with source URLs and as-of dates (2026-10):
   - Haiku 5.5: $0.10 input / $0.50 output / $0.01 cache read per MTok (`HAIKU_INPUT_USD_PER_MTOK`, `HAIKU_OUTPUT_USD_PER_MTOK`, `HAIKU_CACHE_READ_USD_PER_MTOK`).
