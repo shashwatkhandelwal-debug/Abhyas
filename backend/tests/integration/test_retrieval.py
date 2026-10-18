@@ -569,6 +569,6 @@ def test_guide_citations_format_and_real_chunk_pages() -> None:
         confidence=0.92,
     )
     reply = compose_guide_reply(out, [chunk1], address_form="m")
-    assert "स्रोत: गणित संदर्शिका, पृष्ठ 45" in reply
+    assert "[गणित संदर्शिका, पृ. 45]" in reply
     assert "हासिल वाला घटाव" in reply
     assert "इस हफ्ते आज़माएँ:" in reply
