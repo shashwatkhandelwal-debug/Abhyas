@@ -224,7 +224,12 @@ async def measure_local_pipeline_turn(
         child_line_text = "पैंतालीस!"
     stages["voice"] = (time.perf_counter() - t_start) * 1000.0
 
-    # 7. Output Guard
+    # 7. Database Persistence (summed db_ms)
+    t_start = time.perf_counter()
+    await asyncio.sleep(0.002)  # simulate DB scene store update
+    stages["db"] = (time.perf_counter() - t_start) * 1000.0
+
+    # 8. Output Guard
     t_start = time.perf_counter()
     if child_resp:
         valid_guard, _ = guard_child_line(child_line_text, child_resp)
@@ -233,20 +238,21 @@ async def measure_local_pipeline_turn(
         guard_fallback = False
     stages["guard"] = (time.perf_counter() - t_start) * 1000.0
 
-    # 8. TTS Synthesis
+    # 9. TTS Synthesis
     t_start = time.perf_counter()
     tts = get_tts_provider()
     voice = get_voice("child_ravi")
     tts_res = await tts.synthesize(child_line_text, voice=voice)
     stages["tts"] = (time.perf_counter() - t_start) * 1000.0
 
-    # 9. Upload & Send
+    # 10. Upload & Send
     t_start = time.perf_counter()
     bytes_down = len(tts_res.audio) + len(child_line_text.encode("utf-8"))
     await asyncio.sleep(0.005)
     stages["send"] = (time.perf_counter() - t_start) * 1000.0
 
     total_ms = (time.perf_counter() - t0) * 1000.0
+    stages["total"] = total_ms
 
     return TurnMeasurement(
         sample_id=sample_id,
@@ -550,20 +556,28 @@ def generate_report(
         "tagger": "Teaching act tagging (Claude / Mock via tag_act)",
         "engine": "Deterministic rule engine transition",
         "voice": "Child dialogue line selection (Claude / Mock via voice_child_line)",
+        "db": "Database persistence & queries summed",
         "guard": "Output schema & safety guards validation",
         "tts": "Text-to-speech voice synthesis",
         "send": "Outbound message delivery & dispatch",
+        "total": "Total turn latency",
         "post_audio": "HTTP POST /api/chat/audio multipart upload",
         "polling_roundtrip": "HTTP GET /api/chat/messages polling until ready",
         "audio_download": "HTTP GET /api/audio/{ref}.wav response fetch",
     }
 
     stage_averages: dict[str, float] = {}
+    stage_p50: dict[str, float] = {}
+    stage_p95: dict[str, float] = {}
     for k in all_stage_keys:
         vals = [r.stage_ms.get(k, 0.0) for r in all_ok if k in r.stage_ms]
         stage_averages[k] = sum(vals) / len(vals) if vals else 0.0
+        stage_p50[k] = percentile(vals, 0.50) if vals else 0.0
+        stage_p95[k] = percentile(vals, 0.95) if vals else 0.0
 
-    total_stage_time = sum(stage_averages.values()) or 1.0
+    total_stage_time = (
+        sum(v for k, v in stage_averages.items() if k not in ("total", "total_ms")) or 1.0
+    )
 
     # Guard fallback rate
     total_turns = len(results)
@@ -651,7 +665,7 @@ def generate_report(
     )
 
     stage_rows = "\n".join(
-        f"| `{k}` | {stage_descriptions.get(k, k)} | {stage_averages[k]:.1f} ms | {stage_averages[k] / total_stage_time * 100:.1f}% |"
+        f"| `{k}` | {stage_descriptions.get(k, k)} | {stage_p50[k]:.1f} ms | {stage_p95[k]:.1f} ms | {stage_averages[k]:.1f} ms | {stage_averages[k] / total_stage_time * 100:.1f}% |"
         for k in all_stage_keys
     )
 
@@ -680,8 +694,8 @@ def generate_report(
 
 ## 2. Per-Stage Latency Breakdown (`turn.stage_ms`)
 
-| Stage | Description | Mean Latency (ms) | % of Total Time |
-|---|---|---|---|
+| Stage | Description | p50 (ms) | p95 (ms) | Mean (ms) | % of Total Time |
+|---|---|---|---|---|---|
 {stage_rows}
 
 ---
