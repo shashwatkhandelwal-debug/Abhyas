@@ -220,8 +220,10 @@ async function pollMessages() {
     }
 
     if (res.ok) {
-      state.lastAudioPollAt = new Date().toISOString();
       const data = await res.json();
+      if (data.server_time) {
+        state.lastAudioPollAt = data.server_time;
+      }
       state.isPending = data.pending;
       updatePendingIndicator(data.pending);
 

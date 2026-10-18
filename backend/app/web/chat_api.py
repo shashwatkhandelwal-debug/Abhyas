@@ -341,6 +341,7 @@ async def get_chat_messages(
     audio_since: str | None = None,
 ) -> dict[str, Any]:
     """Polls recent messages, returning pending state and new messages after cursor (§7.3)."""
+    server_time = datetime.now(UTC)
     teacher = await get_teacher_for_user(current_user, db, request=request)
 
     audio_since_dt: datetime | None = None
@@ -418,6 +419,7 @@ async def get_chat_messages(
     return {
         "messages": messages_data,
         "pending": pending,
+        "server_time": server_time.isoformat(),
     }
 
 
