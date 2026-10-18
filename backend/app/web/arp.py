@@ -283,9 +283,10 @@ async def post_arp_answer(
                 speaker="arp",
             )
             try:
-                await wa_channel.send(teacher, [outbound], session=db)
+                async with db.begin_nested():
+                    await wa_channel.send(teacher, [outbound], session=db)
                 wa_delivered = True
-            except Exception as exc:  # Rule C: WhatsApp dispatch can raise network, HTTP, or decryption errors; avoid failing ARP flow and fall back to web Message row
+            except Exception as exc:  # Rule C: WhatsApp dispatch can raise network, HTTP, or decryption errors; savepoint rollback prevents transaction poisoning so web fallback persists
                 logger.error(
                     "Failed to dispatch WhatsApp ARP answer to teacher %s: %s", teacher.id, exc
                 )
