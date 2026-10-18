@@ -340,6 +340,13 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **Makefile**: Added `eval-cost` target to run `python eval/cost/cost_report.py`.
 - **backend/tests/unit/test_cost_report.py**: Added unit tests for Haiku/Sonnet token pricing calculations, end-to-end metrics computation on fixture data, mock mode filtering, and Markdown report formatting (4/4 passing).
 
+### T62 STT Accuracy Evaluation (stt-accuracy)
+- **Harness & Metrics**: Implemented `eval/stt/stt_accuracy.py` reading authentic recorded teacher audio from `eval/samples/recorded/<id>.(wav|ogg|m4a)` matching `eval/samples/samples.yaml`. Computes Word Error Rate (WER) and Character Error Rate (CER) on NFC-normalised Hindi text with punctuation stripping and whitespace collapsing via Wagner-Fischer edit distance algorithm.
+- **Provenance & Truthfulness**: When no human recordings exist, outputs `eval/stt/REPORT.md` explicitly stating "No recordings yet" (n=0) and reporting the active provider name. In accordance with competition rules, synthetic TTS audio is strictly never used as a stand-in for human speech.
+- **Protocol Documentation**: Created `eval/samples/recorded/README.md` defining the recording protocol (mono 16k/48k audio in natural school acoustic environments), canonical `<id>` file naming, informed consent protocol (`consent_form_hi.md`), and strict prohibition of teacher personal names or identifiable info in filenames.
+- **Makefile Integration**: Added `eval-stt` target in `Makefile` and updated help text.
+- **Unit Tests**: Added 5 unit tests in `backend/tests/unit/test_stt_accuracy.py` testing text cleaning, Levenshtein distance, WER/CER calculations, n=0 report generation, and fake provider transcription with WAV/OGG files.
+
 ### Honest README & Production Scaling (`readme-honest` — T65)
 - **README.md**: Completely aligned with actual codebase state and evaluator requirements:
   - Cost per teacher: explicitly cited as `TODO(human) from the hosted run` (via `make eval-cost`); no synthetic numbers claimed as measured.
