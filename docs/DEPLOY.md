@@ -12,7 +12,7 @@ This document provides a click-by-click operational runbook for deploying **Abhy
 3. Configure project details:
    - **Name**: `abhyas-prod`
    - **Database Password**: Generate a secure, 32+ character password. Store this securely in a password manager.
-   - **Region**: **Mumbai (`ap-south-1`)** (critical: minimizes latency for Indian primary school users).
+   - **Region**: **Singapore (`ap-southeast-1`)** (co-located in the same region as the app).
    - **Pricing Plan**: Free or Pro tier.
 4. Click **Create new project** and wait 2–3 minutes for provisioning.
 
@@ -30,14 +30,14 @@ Under **Project Settings** -> **Database** -> **Connection string**:
    - Select **URI** tab, mode **Session** (port 5432).
    - Prefix protocol with `postgresql+asyncpg://`:
      ```text
-     postgresql+asyncpg://postgres.[PROJECT-REF]:[DB-PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:5432/postgres
+     postgresql+asyncpg://postgres.[PROJECT-REF]:[DB-PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
      ```
    - This connection string is used by FastAPI's asynchronous SQLAlchemy engine (`asyncpg`).
 2. **Session Pooler URL for Migrations (for `ALEMBIC_DATABASE_URL`)**:
    - Select **URI** tab, mode **Session** (port 5432).
    - Format (plain `postgresql://` protocol):
      ```text
-     postgresql://postgres.[PROJECT-REF]:[DB-PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:5432/postgres
+     postgresql://postgres.[PROJECT-REF]:[DB-PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
      ```
    - `ALEMBIC_DATABASE_URL` must use the Supabase SESSION POOLER URI (port 5432, plain `postgresql://`), not the direct connection. Supabase's direct host defaults to IPv6, which causes connection failures on environments without IPv6 routing (such as Render or Docker). The Session pooler supports full transactional DDL for Alembic migrations.
 
@@ -176,6 +176,11 @@ To seed demo teachers, school metadata, and approved pedagogical moves:
    ```text
    Seed completed: pedagogical content and demo cohort initialized.
    ```
+4. Pre-warm speech cache for fixed messages and narration (idempotent, budget-capped):
+   ```bash
+   python scripts/prewarm_tts.py --write
+   ```
+   This pre-synthesizes and caches all catalog messages with `audio: true` and the 3 shipped moves' `learn` narration into `TTSCache`, eliminating synthesis latency during live teacher rehearsals.
 
 ---
 
@@ -201,3 +206,30 @@ python scripts/smoke_test.py --base-url https://abhyas.onrender.com
   - Tap demo badge `शिक्षिका (नई): teacher.demo1`.
   - Tap **लॉगिन करें** -> redirects to `/teacher` PWA interface.
   - Send a sample voice or text message -> verify child voice response and Hindi transcript bubble.
+
+---
+
+## 6. Official Document Ingestion & OCR Setup
+
+The core runtime web application does not depend on heavy OCR or PDF libraries. For operators running document ingestion or OCR on legacy scanned state guides:
+
+1. **Install Python Optional Extras**:
+   ```bash
+   pip install -e ".[ocr]"
+   ```
+   This installs `pdfplumber`, `pytesseract`, and `pdf2image`.
+
+2. **System Dependencies for Tesseract (Ubuntu/Debian)**:
+   ```bash
+   apt-get update && apt-get install -y tesseract-ocr tesseract-ocr-hin poppler-utils
+   ```
+   Ensure Hindi language data (`hin.traineddata`) is available under `/usr/share/tesseract-ocr/4.00/tessdata/` or `/usr/share/tesseract-ocr/5/tessdata/`.
+
+3. **Alternative: Surya OCR**:
+   For environments where native Tesseract binaries cannot be installed or cause glibc compatibility issues, Surya OCR (`pip install surya-ocr`) serves as a pure-Python, deep-learning based OCR and layout analysis alternative for Hindi documents.
+
+4. **Running Ingestion**:
+   Once official PDFs are placed in `content/sources/`, run:
+   ```bash
+   python -m backend.app.retrieval.ingest
+   ```

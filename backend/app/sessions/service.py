@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import unicodedata
+import uuid
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -18,13 +20,14 @@ from backend.app.core.intents import (
 )
 from backend.app.core.messages import get_message
 from backend.app.core.types import Button, InboundMessage, OutboundMessage
+from backend.app.db.models import Message
 from backend.app.llm.client import LLMUnavailable
 from backend.app.llm.roles.coach import coach_feedback
 from backend.app.llm.roles.fidelity_checker import check_fidelity
 from backend.app.llm.roles.guide_answerer import answer_guide_question, compose_guide_reply
 from backend.app.llm.roles.question_classifier import classify_question
 from backend.app.llm.schemas import RetrievedChunk
-from backend.app.rehearsal.scene_runner import SceneRunner, load_move_card
+from backend.app.rehearsal.scene_runner import ChildLineRecord, SceneRunner, load_move_card
 from backend.app.rehearsal.scene_store import scene_store
 from backend.app.retrieval.search import GuideRetriever
 from backend.app.rule_engine.domain import (
@@ -923,11 +926,57 @@ class SessionService:
                     teacher_id=teacher_id, move_id=ctx.current_move_id
                 )
 
+            early_text_rows: list[Message] = []
+
+            async def _on_text_ready(
+                child_lines: list[ChildLineRecord], text_msgs: list[OutboundMessage]
+            ) -> None:
+                if inbound.channel == "web":
+                    for tm in text_msgs:
+                        row_id = uuid.uuid4()
+                        tm.message_id = row_id
+                        db_msg = Message(
+                            id=row_id,
+                            teacher_id=teacher_id,
+                            direction="out",
+                            channel="web",
+                            channel_msg_id=str(uuid.uuid4()),
+                            kind="text",
+                            text=unicodedata.normalize("NFC", tm.text_hi) if tm.text_hi else None,
+                            audio_ref=None,
+                            buttons=[b.model_dump() for b in tm.buttons] if tm.buttons else None,
+                            speaker=tm.speaker,
+                            template_name=tm.template_name,
+                            created_at=datetime.now(UTC),
+                        )
+                        self.repo.session.add(db_msg)
+                        early_text_rows.append(db_msg)
+                    await self.repo.session.commit()
+
             turn_res = await self.scene_runner.turn(
                 scene_id=scene.scene_id,
                 transcript=text_content,
                 address_form=address_form,
+                on_text_ready=_on_text_ready,
             )
+
+            if early_text_rows:
+                for outbound in turn_res.outbound:
+                    for early_row in early_text_rows:
+                        if (
+                            early_row.speaker == outbound.speaker
+                            and early_row.text == outbound.text_hi
+                        ):
+                            if outbound.audio_ref:
+                                early_row.audio_ref = outbound.audio_ref
+                                early_row.kind = "audio"
+                                now_utc = datetime.now(UTC)
+                                if now_utc <= early_row.created_at:
+                                    now_utc = early_row.created_at + timedelta(milliseconds=1)
+                                early_row.updated_at = now_utc
+                            outbound.already_persisted = True
+                await self.repo.session.commit()
+
             ended = turn_res.turn.ended or matched_intent == Intent.STOP_SCENE
 
             if ended:

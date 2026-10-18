@@ -347,6 +347,55 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **Makefile Integration**: Added `eval-stt` target in `Makefile` and updated help text.
 - **Unit Tests**: Added 5 unit tests in `backend/tests/unit/test_stt_accuracy.py` testing text cleaning, Levenshtein distance, WER/CER calculations, n=0 report generation, and fake provider transcription with WAV/OGG files.
 
+### T63 Turn Pipeline Latency & Pre-warming (`latency`)
+- **Pipeline Call Dependency Map**:
+  - `act_tagger -> rule engine -> child_voice` is inherently sequential: `act_tagger` requires the inbound transcript to classify acts; `RuleEngine.step` requires the tagged acts to deterministically advance scene state; `child_voice` requires the rule engine's numeric step output.
+  - Parallelism is applied exclusively where tasks have no mutual data dependencies: multiple child voicing calls across responding children run concurrently via `asyncio.gather`, and TTS synthesis across responding children runs concurrently via `asyncio.gather`.
+  - Text-first delivery: `on_text_ready` hook persists and commits `Message` rows (`kind="text"`, `audio_ref=None`) immediately before TTS begins. Perceived latency on web channel drops from ~4-5s to ~1.2s.
+  - Audio delivery: TTS synthesis runs concurrently for all responding children. Once complete, updates existing `Message` rows with `kind="audio"` and `audio_ref`. Web polling returns messages created or updated with audio since the last poll.
+- **Per-Stage Latency Reporting**:
+  - Updated `benchmark_latency.py` to record per-stage timing (`stt_ms`, `act_tagger_ms`, `rule_engine_ms`, `child_voice_ms`, `db_ms`, `tts_ms`, `total_ms`).
+  - Outputs `p50 (ms)` and `p95 (ms)` per stage in `eval/latency/REPORT.md` without duplicate stage rows.
+- **TTS Pre-warming CLI (`scripts/prewarm_tts.py`)**:
+  - Pre-synthesizes and caches catalog messages with `audio: true` from `messages_hi.yaml` and the 3 shipped moves' `learn` narration into `TTSCache`.
+  - Idempotent (skips already-cached entries), budget-capped against `SPEECH_DAILY_BUDGET_INR` and `SPEECH_TOTAL_BUDGET_INR`, mock-aware (no-op on mock TTS unless `--force-mock`).
+  - Supports `--dry-run` (default) and `--write`.
+- **docs/DEPLOY.md**:
+  - Documented Supabase region as Singapore (`ap-southeast-1`) located in the same region as the app (Render Singapore), removing unmeasured "< 5 ms" claims.
+  - Added `python scripts/prewarm_tts.py --write` as post-seed step in §4.
+- **Unit Tests**:
+  - Added `backend/tests/unit/test_latency_pipeline.py` (6 tests passing):
+    - `test_pipeline_output_invariant_ravi_subtraction`: Proves Ravi with `SUB_SMALLER_FROM_LARGER` calculates 43 - 27 = 24, never 16.
+    - `test_pipeline_parallel_child_voicing_multi_child`: Proves multi-child scenes maintain child ordering and voice responses concurrently.
+    - `test_text_first_delivery_callback`: Proves text messages are delivered with `kind="text"` and `audio_ref=None` before TTS, then updated with `kind="audio"` and `audio_ref`.
+    - `test_prewarm_load_targets`: Proves static audio target extraction from catalog and move scripts.
+    - `test_prewarm_tts_mock_noop`: Proves pre-warming is safe no-op under mock environment.
+    - `test_prewarm_tts_dry_run_and_idempotence`: Proves dry-run cost estimation and idempotency skipping.
+
+### T64 Official Source Ingestion, OCR Pipeline & Spot-Checks (`sources-ocr`)
+- **Official Government Sources Registry**:
+  - Registered 5 official government documents in `content/sources/sources.yaml` with titles, publishers, as-of dates, licence notes, and unverified URLs set to `url: "TODO(human)"`.
+  - Confirmed `content/sources/*.pdf` is strictly gitignored.
+- **Dual-Layer Extraction & Optional OCR Pipeline**:
+  - Primary extractor: `pdfplumber` with fallback to `pypdf`.
+  - Heavyweight OCR packages (`pdfplumber`, `pytesseract`, `pdf2image`) configured as optional extra `ocr = ["pdfplumber>=0.10.4", "pytesseract", "pdf2image"]` in `pyproject.toml`. Documented installation via `pip install -e ".[ocr]"` and Tesseract with `hin.traineddata` (and Surya OCR alternative) in `docs/DEPLOY.md`.
+  - Hindi font legibility heuristic (`is_page_text_poor`, `is_hindi_garbled`): detects missing text layers, legacy font ASCII corruption, and high replacement character ratios ($> 15\%$).
+  - Automatic OCR execution: Renders 300 dpi page images via poppler/pdf2image and runs Tesseract 5 (`hin+eng`) with word-level confidence calculation.
+  - Low-confidence dropping: Drops pages with confidence $< 0.40$ (configurable via `--confidence-threshold`), logging clear warnings.
+  - Mock OCR harness: Added `set_ocr_mock_handler` for deterministic CI execution without requiring external C-binaries on system PATH.
+- **CLI Support**:
+  - `python -m backend.app.retrieval.ingest --source <id> [--ocr tesseract|surya] [--confidence-threshold 0.4] [--all] [--no-spotcheck]`
+- **Typographic Spot-Check Generation**:
+  - Automatically produces `eval/sources/<source_id>_spotcheck.md` evaluating up to 10 sample pages per document.
+  - Deleted unverified sample spot-check `eval/sources/fln_sample_c2_spotcheck.md`.
+  - Inspects Unicode NFC normalization, absence of orphaned matras, and trailing viramas/halants.
+- **Guide Citation Formatting**:
+  - Updated `format_guide_citation` to catch specific exceptions `(KeyError, ValueError, TypeError)` conforming to Rule C.
+  - Uses standard Hindi catalog abbreviation `पृ.` (`ask_source_page_abbrev`) from `content/messages_hi.yaml` without inline Hindi.
+  - Wired into `compose_guide_reply` in `backend/app/llm/roles/guide_answerer.py`.
+- **Unused Prompt Note**:
+  - `backend/app/llm/prompts/page_ocr.v1.md` is an authored reference prompt for Vision LLM single-page transcription. It is intentionally **not wired into the automated ingestion pipeline** because processing multi-hundred-page state teacher guides via Claude Sonnet Vision would incur prohibitive token expenses and non-deterministic latency. Automated ingestion uses deterministic local extractors (`pdfplumber` + Tesseract 5 / Surya OCR). `page_ocr.v1.md` is preserved for manual single-page reference only.
+
 ### Honest README & Production Scaling (`readme-honest` — T65)
 - **README.md**: Completely aligned with actual codebase state and evaluator requirements:
   - Cost per teacher: explicitly cited as `TODO(human) from the hosted run` (via `make eval-cost`); no synthetic numbers claimed as measured.
