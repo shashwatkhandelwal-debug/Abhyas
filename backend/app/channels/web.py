@@ -149,8 +149,10 @@ class WebChannel:
 
         async def _persist(s: AsyncSession) -> None:
             for msg in msgs:
+                if msg.already_persisted or getattr(msg, "_already_persisted", False):
+                    continue
                 db_msg = Message(
-                    id=uuid.uuid4(),
+                    id=msg.message_id or uuid.uuid4(),
                     teacher_id=teacher.id,
                     direction="out",
                     channel="web",

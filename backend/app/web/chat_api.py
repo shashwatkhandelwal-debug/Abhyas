@@ -338,24 +338,38 @@ async def get_chat_messages(
     db: Annotated[AsyncSession, Depends(get_db_session)],
     request: Request,
     after: str | None = None,
+    audio_since: str | None = None,
 ) -> dict[str, Any]:
     """Polls recent messages, returning pending state and new messages after cursor (§7.3)."""
+    server_time = datetime.now(UTC)
     teacher = await get_teacher_for_user(current_user, db, request=request)
+
+    audio_since_dt: datetime | None = None
+    if audio_since:
+        try:
+            audio_since_dt = datetime.fromisoformat(audio_since)
+        except ValueError:
+            audio_since_dt = None
 
     if after:
         try:
             after_uuid = uuid.UUID(after)
             after_msg = await db.get(Message, after_uuid)
             if after_msg and after_msg.teacher_id == teacher.id:
+                new_msgs_cond = (Message.created_at > after_msg.created_at) | (
+                    (Message.created_at == after_msg.created_at) & (Message.id != after_msg.id)
+                )
+                cutoff_dt = audio_since_dt or after_msg.created_at
+                audio_updated_cond = (
+                    (Message.audio_ref.isnot(None))
+                    & (Message.updated_at > Message.created_at)
+                    & (Message.updated_at >= cutoff_dt)
+                )
                 stmt = (
                     select(Message)
                     .where(
                         Message.teacher_id == teacher.id,
-                        (Message.created_at > after_msg.created_at)
-                        | (
-                            (Message.created_at == after_msg.created_at)
-                            & (Message.id != after_msg.id)
-                        ),
+                        new_msgs_cond | audio_updated_cond,
                     )
                     .order_by(Message.created_at.asc(), Message.id.asc())
                 )
@@ -405,6 +419,7 @@ async def get_chat_messages(
     return {
         "messages": messages_data,
         "pending": pending,
+        "server_time": server_time.isoformat(),
     }
 
 

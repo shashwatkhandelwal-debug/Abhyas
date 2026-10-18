@@ -347,3 +347,28 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **Makefile Integration**: Added `eval-stt` target in `Makefile` and updated help text.
 - **Unit Tests**: Added 5 unit tests in `backend/tests/unit/test_stt_accuracy.py` testing text cleaning, Levenshtein distance, WER/CER calculations, n=0 report generation, and fake provider transcription with WAV/OGG files.
 
+### T63 Turn Pipeline Latency & Pre-warming (`latency`)
+- **Pipeline Call Dependency Map**:
+  - `act_tagger -> rule engine -> child_voice` is inherently sequential: `act_tagger` requires the inbound transcript to classify acts; `RuleEngine.step` requires the tagged acts to deterministically advance scene state; `child_voice` requires the rule engine's numeric step output.
+  - Parallelism is applied exclusively where tasks have no mutual data dependencies: multiple child voicing calls across responding children run concurrently via `asyncio.gather`, and TTS synthesis across responding children runs concurrently via `asyncio.gather`.
+  - Text-first delivery: `on_text_ready` hook persists and commits `Message` rows (`kind="text"`, `audio_ref=None`) immediately before TTS begins. Perceived latency on web channel drops from ~4-5s to ~1.2s.
+  - Audio delivery: TTS synthesis runs concurrently for all responding children. Once complete, updates existing `Message` rows with `kind="audio"` and `audio_ref`. Web polling returns messages created or updated with audio since the last poll.
+- **Per-Stage Latency Reporting**:
+  - Updated `benchmark_latency.py` to record per-stage timing (`stt_ms`, `act_tagger_ms`, `rule_engine_ms`, `child_voice_ms`, `db_ms`, `tts_ms`, `total_ms`).
+  - Outputs `p50 (ms)` and `p95 (ms)` per stage in `eval/latency/REPORT.md` without duplicate stage rows.
+- **TTS Pre-warming CLI (`scripts/prewarm_tts.py`)**:
+  - Pre-synthesizes and caches catalog messages with `audio: true` from `messages_hi.yaml` and the 3 shipped moves' `learn` narration into `TTSCache`.
+  - Idempotent (skips already-cached entries), budget-capped against `SPEECH_DAILY_BUDGET_INR` and `SPEECH_TOTAL_BUDGET_INR`, mock-aware (no-op on mock TTS unless `--force-mock`).
+  - Supports `--dry-run` (default) and `--write`.
+- **docs/DEPLOY.md**:
+  - Documented Supabase region as Singapore (`ap-southeast-1`) located in the same region as the app (Render Singapore), removing unmeasured "< 5 ms" claims.
+  - Added `python scripts/prewarm_tts.py --write` as post-seed step in §4.
+- **Unit Tests**:
+  - Added `backend/tests/unit/test_latency_pipeline.py` (6 tests passing):
+    - `test_pipeline_output_invariant_ravi_subtraction`: Proves Ravi with `SUB_SMALLER_FROM_LARGER` calculates 43 - 27 = 24, never 16.
+    - `test_pipeline_parallel_child_voicing_multi_child`: Proves multi-child scenes maintain child ordering and voice responses concurrently.
+    - `test_text_first_delivery_callback`: Proves text messages are delivered with `kind="text"` and `audio_ref=None` before TTS, then updated with `kind="audio"` and `audio_ref`.
+    - `test_prewarm_load_targets`: Proves static audio target extraction from catalog and move scripts.
+    - `test_prewarm_tts_mock_noop`: Proves pre-warming is safe no-op under mock environment.
+    - `test_prewarm_tts_dry_run_and_idempotence`: Proves dry-run cost estimation and idempotency skipping.
+

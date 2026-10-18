@@ -12,7 +12,7 @@ This document provides a click-by-click operational runbook for deploying **Abhy
 3. Configure project details:
    - **Name**: `abhyas-prod`
    - **Database Password**: Generate a secure, 32+ character password. Store this securely in a password manager.
-   - **Region**: **Mumbai (`ap-south-1`)** (critical: minimizes latency for Indian primary school users).
+   - **Region**: **Singapore (`ap-southeast-1`)** (co-located in the same region as the app).
    - **Pricing Plan**: Free or Pro tier.
 4. Click **Create new project** and wait 2–3 minutes for provisioning.
 
@@ -30,14 +30,14 @@ Under **Project Settings** -> **Database** -> **Connection string**:
    - Select **URI** tab, mode **Session** (port 5432).
    - Prefix protocol with `postgresql+asyncpg://`:
      ```text
-     postgresql+asyncpg://postgres.[PROJECT-REF]:[DB-PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:5432/postgres
+     postgresql+asyncpg://postgres.[PROJECT-REF]:[DB-PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
      ```
    - This connection string is used by FastAPI's asynchronous SQLAlchemy engine (`asyncpg`).
 2. **Session Pooler URL for Migrations (for `ALEMBIC_DATABASE_URL`)**:
    - Select **URI** tab, mode **Session** (port 5432).
    - Format (plain `postgresql://` protocol):
      ```text
-     postgresql://postgres.[PROJECT-REF]:[DB-PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:5432/postgres
+     postgresql://postgres.[PROJECT-REF]:[DB-PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
      ```
    - `ALEMBIC_DATABASE_URL` must use the Supabase SESSION POOLER URI (port 5432, plain `postgresql://`), not the direct connection. Supabase's direct host defaults to IPv6, which causes connection failures on environments without IPv6 routing (such as Render or Docker). The Session pooler supports full transactional DDL for Alembic migrations.
 
@@ -176,6 +176,11 @@ To seed demo teachers, school metadata, and approved pedagogical moves:
    ```text
    Seed completed: pedagogical content and demo cohort initialized.
    ```
+4. Pre-warm speech cache for fixed messages and narration (idempotent, budget-capped):
+   ```bash
+   python scripts/prewarm_tts.py --write
+   ```
+   This pre-synthesizes and caches all catalog messages with `audio: true` and the 3 shipped moves' `learn` narration into `TTSCache`, eliminating synthesis latency during live teacher rehearsals.
 
 ---
 

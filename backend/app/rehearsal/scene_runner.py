@@ -14,7 +14,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
 import yaml
@@ -34,6 +36,7 @@ from backend.app.rehearsal.scene_store import (
     scene_store,
 )
 from backend.app.rule_engine.domain import (
+    ChildResponse,
     ChildRuntime,
     ChildState,
     Domain,
@@ -187,9 +190,17 @@ class SceneRunner:
         transcript: str,
         address_form: str = "f",
         synthesize_audio: bool = True,
+        on_text_ready: (
+            Callable[[list[ChildLineRecord], list[OutboundMessage]], Any] | None
+        ) = None,
+        stt_ms: int = 0,
     ) -> TurnResult:
         """Executes one teacher turn through the 5-stage rehearsal pipeline (spec/02 §2.2)."""
+        db_ms = 0
+        t_db_start = time.perf_counter()
         scene = await self.store.get(scene_id)
+        db_ms += int((time.perf_counter() - t_db_start) * 1000)
+
         if not scene:
             raise ValueError(f"Scene with ID {scene_id} not found in store")
 
@@ -206,11 +217,26 @@ class SceneRunner:
                 acts=["stop"],
                 ended=True,
                 end_reason="teacher_stop",
-                stage_ms={"total_ms": 0},
+                stage_ms={
+                    "stt_ms": stt_ms,
+                    "act_tagger_ms": 0,
+                    "tagger_ms": 0,
+                    "rule_engine_ms": 0,
+                    "engine_ms": 0,
+                    "child_voice_ms": 0,
+                    "voice_ms": 0,
+                    "db_ms": db_ms,
+                    "tts_ms": 0,
+                    "total_ms": stt_ms + db_ms,
+                },
             )
             scene.turns.append(turn_record)
             scene.active = False
+            t_db_save = time.perf_counter()
             await self.store.save(scene)
+            db_ms += int((time.perf_counter() - t_db_save) * 1000)
+            turn_record.stage_ms["db_ms"] = db_ms
+            turn_record.stage_ms["total_ms"] = stt_ms + db_ms
             return TurnResult(
                 turn=turn_record,
                 outbound=[
@@ -251,9 +277,8 @@ class SceneRunner:
         step_result = RuleEngine.step(scene_state, tagged_turn)
         engine_ms = int((time.perf_counter() - t_stage2) * 1000)
 
-        # Stage 3: child_voice & guarding (keep last 4 child lines in context, CHANGES 254f622 Item 10)
+        # Stage 3: child_voice & guarding (voiced in parallel via asyncio.gather across responding children)
         t_stage3 = time.perf_counter()
-        child_lines: list[ChildLineRecord] = []
         all_past_lines = [
             line.line_hi
             for past_turn in scene.turns
@@ -262,11 +287,10 @@ class SceneRunner:
         ]
         last_4 = all_past_lines[-4:]
 
-        for resp in step_result.responses:
+        async def _voice_child(resp: ChildResponse) -> ChildLineRecord | None:
             persona = self.personas.get(resp.persona_id)
             if not persona:
-                continue
-
+                return None
             spoken_line = await voice_child_line(
                 response=resp,
                 persona=persona,
@@ -274,15 +298,33 @@ class SceneRunner:
                 turn_idx=scene_state.teacher_turns,
                 address_form=address_form,
             )
-
-            child_lines.append(
-                ChildLineRecord(
-                    persona_id=resp.persona_id,
-                    line_hi=spoken_line,
-                    voice_id=persona.voice_id,
-                )
+            return ChildLineRecord(
+                persona_id=resp.persona_id,
+                line_hi=spoken_line,
+                voice_id=persona.voice_id,
             )
+
+        voiced_records = await asyncio.gather(
+            *(_voice_child(resp) for resp in step_result.responses)
+        )
+        child_lines: list[ChildLineRecord] = [r for r in voiced_records if r is not None]
         voice_ms = int((time.perf_counter() - t_stage3) * 1000)
+
+        # Deliver text immediately before TTS (spec/06 §6.4: perceived latency optimisation)
+        if on_text_ready and child_lines:
+            text_msgs = [
+                OutboundMessage(
+                    kind="text",
+                    text_hi=line.line_hi,
+                    speaker=line.persona_id,
+                )
+                for line in child_lines
+                if line.line_hi.strip()
+            ]
+            if text_msgs:
+                cb_res = on_text_ready(child_lines, text_msgs)
+                if asyncio.iscoroutine(cb_res):
+                    await cb_res
 
         # Stage 4: TTS synthesis running concurrently (CHANGES 254f622 Item 4 & 10)
         t_stage4 = time.perf_counter()
@@ -322,7 +364,8 @@ class SceneRunner:
         tts_ms = int((time.perf_counter() - t_stage4) * 1000)
 
         # Stage 5: Turn persistence & updates
-        total_ms = tagger_ms + engine_ms + voice_ms + tts_ms
+        t_db_save = time.perf_counter()
+        total_ms = stt_ms + tagger_ms + engine_ms + voice_ms + db_ms + tts_ms
         turn_record = TurnRecord(
             turn_index=scene_state.teacher_turns,
             transcript=transcript,
@@ -331,9 +374,14 @@ class SceneRunner:
             child_responses=step_result.responses,
             child_lines=child_lines,
             stage_ms={
+                "stt_ms": stt_ms,
+                "act_tagger_ms": tagger_ms,
                 "tagger_ms": tagger_ms,
+                "rule_engine_ms": engine_ms,
                 "engine_ms": engine_ms,
+                "child_voice_ms": voice_ms,
                 "voice_ms": voice_ms,
+                "db_ms": db_ms,
                 "tts_ms": tts_ms,
                 "total_ms": total_ms,
             },
@@ -359,10 +407,16 @@ class SceneRunner:
             )
 
         await self.store.save(scene)
+        db_ms += int((time.perf_counter() - t_db_save) * 1000)
+        turn_record.stage_ms["db_ms"] = db_ms
+        turn_record.stage_ms["total_ms"] = (
+            stt_ms + tagger_ms + engine_ms + voice_ms + db_ms + tts_ms
+        )
         return TurnResult(turn=turn_record, outbound=outbound_messages)
 
 
 __all__ = [
+    "ChildLineRecord",
     "SceneRunner",
     "TurnResult",
     "load_personas",
