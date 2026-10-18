@@ -467,6 +467,97 @@ async def test_arp_post_answer_whatsapp_failure_does_not_persist_undelivered_mes
 
 
 @pytest.mark.asyncio
+async def test_arp_post_answer_whatsapp_mid_write_failure_still_stores_web_fallback(
+    arp_app: FastAPI,
+    arp_user: AppUser,
+) -> None:
+    """When wa_channel.send fails mid-write, savepoint isolates the failure and web fallback Message row is saved."""
+    from unittest.mock import patch
+
+    mock_db = AsyncMock(spec=AsyncSession)
+    arp_app.dependency_overrides[get_current_user] = lambda: arp_user
+    arp_app.dependency_overrides[get_db_session] = lambda: mock_db
+
+    t_id = uuid.uuid4()
+    q_id = uuid.uuid4()
+    teacher = Teacher(
+        id=t_id,
+        name="सुनीता देवी",
+        cluster_id=arp_user.cluster_id,
+        consent_share_scores=True,
+        preferred_channel="whatsapp",
+    )
+    escalated_q = Question(
+        id=q_id,
+        teacher_id=t_id,
+        text="बच्चों को जोड़ में हासिल का संप्रत्यय कैसे समझाएँ?",
+        status="escalated",
+    )
+
+    mock_db.get.side_effect = lambda model, obj_id: (
+        escalated_q if model is Question else (teacher if model is Teacher else None)
+    )
+
+    scalars_mock = MagicMock()
+    scalars_mock.first.return_value = None
+    mock_db.scalars.return_value = scalars_mock
+
+    # Simulate wa_channel.send performing partial writes to session before failing
+    async def failing_send(
+        teacher_obj: Teacher, msgs: list[object], session: AsyncSession | None = None
+    ) -> None:
+        if session is not None:
+            # Partial/dirty write attempted before network/DB failure
+            session.add(MagicMock())
+        raise RuntimeError("Mid-write WhatsApp network drop")
+
+    csrf_token = generate_csrf_token()
+    transport = ASGITransport(app=arp_app)
+
+    with (
+        patch(
+            "backend.app.channels.whatsapp.channel.WhatsAppChannel.can_send_freeform",
+            return_value=True,
+        ),
+        patch(
+            "backend.app.channels.whatsapp.channel.WhatsAppChannel.send",
+            side_effect=failing_send,
+        ),
+    ):
+        async with AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+            cookies={"abhyas_csrf": csrf_token},
+        ) as client:
+            res = await client.post(
+                "/arp/answer",
+                data={
+                    "csrf_token": csrf_token,
+                    "question_id": str(q_id),
+                    "answer_hi": "तीलियों और रबर बैंड से बंडल बनाकर समझाएँ।",
+                },
+                follow_redirects=False,
+            )
+            assert res.status_code == 303
+            assert "/arp?saved=1&msg=ans_wa_fail" in res.headers["location"]
+            # Question is marked answered
+            assert escalated_q.status == "arp_answered"
+            # begin_nested() was invoked to protect the transaction
+            mock_db.begin_nested.assert_called_once()
+            # Exactly one web fallback Message row is queued and committed
+            added_messages = [
+                call.args[0]
+                for call in mock_db.add.call_args_list
+                if isinstance(call.args[0], Message)
+            ]
+            assert len(added_messages) == 1
+            assert added_messages[0].channel == "web"
+            assert added_messages[0].direction == "out"
+            assert "तीलियों और रबर बैंड" in added_messages[0].text
+            mock_db.commit.assert_called()
+
+
+@pytest.mark.asyncio
 async def test_arp_post_answer_whatsapp_success_single_message_no_duplicate(
     arp_app: FastAPI,
     arp_user: AppUser,

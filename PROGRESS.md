@@ -323,6 +323,23 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **docs/DEPLOY.md**: Updated §1.3 and Table 2 for `ALEMBIC_DATABASE_URL` to specify Supabase Session Pooler URI on port 5432 (`postgresql://...`) instead of the direct connection host (`db.[PROJECT-REF].supabase.co`), documenting that Supabase direct host defaults to IPv6 which causes connection failures on platforms without IPv6 routing (such as Render or standard Docker).
 - **.env.example**: Updated local `DATABASE_URL` and `ALEMBIC_DATABASE_URL` default passwords from `postgres` to `postgrespassword` to match `infra/docker-compose.yml`.
 
+### Small Fixes (`small-fixes` — T60)
+- **web/arp.py**: Wrapped `wa_channel.send` in `async with db.begin_nested():` savepoint in `post_arp_answer`. If WhatsApp send fails mid-write, the nested transaction rolls back, preventing outer session transaction poisoning, and the web channel fallback `Message` row is stored and committed cleanly.
+- **backend/tests/unit/test_arp_digest.py**: Added `test_arp_post_answer_whatsapp_mid_write_failure_still_stores_web_fallback` verifying savepoint invocation and web message fallback persistence on mid-write dispatch failures (12/12 passing).
+- **backend/tests/unit/test_review_console.py**: Updated admin username from legacy `admin.demo` to `admin` across approval and authorization tests to align with `spec/13_submission.md` credentials table (10/10 passing).
+- **docs/DEPLOY.md & README.md**: Re-read end-to-end; verified admin credentials (`admin`), run commands (`make setup db-up db-migrate db-seed dev`, `python scripts/smoke_test.py`, `make eval-guards`, etc.) are consistent with Makefile and scripts.
+
+### Cost Evaluation Reporting (`cost-report` — T61)
+- **backend/app/config.py**: Added Claude and Sarvam pricing tunables with source URLs and as-of dates (2026-10):
+  - Haiku 5.5: $0.10 input / $0.50 output / $0.01 cache read per MTok (`HAIKU_INPUT_USD_PER_MTOK`, `HAIKU_OUTPUT_USD_PER_MTOK`, `HAIKU_CACHE_READ_USD_PER_MTOK`).
+  - Sonnet 5.5: $2.00 input / $10.00 output / $0.10 cache read per MTok (`SONNET_INPUT_USD_PER_MTOK`, `SONNET_OUTPUT_USD_PER_MTOK`, `SONNET_CACHE_READ_USD_PER_MTOK`).
+  - Sarvam STT: ₹30 per hour / ₹0.50 per min (`STT_COST_PER_HOUR_INR`, `STT_COST_PER_MINUTE_INR`).
+  - Sarvam TTS: ₹30 per 10K chars / ₹3.00 per 1K chars (`TTS_COST_PER_10K_CHARS_INR`, `TTS_COST_PER_1000_CHARS_INR`).
+  - `USD_TO_INR`: default 88.0, labelled "assumption, update before submission".
+- **eval/cost/cost_report.py**: Implemented CLI and calculation engine reading `llm_call` and `speech_spend` rows. Computes total spend, cost per teacher, cost per completed weekly loop (`SessionState.state == "DONE"`), daily spend, and model breakdown. Outputs `eval/cost/REPORT.md`. Excludes mock rows unless `--include-mock` is specified, labelling report as `local/mock`.
+- **Makefile**: Added `eval-cost` target to run `python eval/cost/cost_report.py`.
+- **backend/tests/unit/test_cost_report.py**: Added unit tests for Haiku/Sonnet token pricing calculations, end-to-end metrics computation on fixture data, mock mode filtering, and Markdown report formatting (4/4 passing).
+
 ### T62 STT Accuracy Evaluation (stt-accuracy)
 - **Harness & Metrics**: Implemented `eval/stt/stt_accuracy.py` reading authentic recorded teacher audio from `eval/samples/recorded/<id>.(wav|ogg|m4a)` matching `eval/samples/samples.yaml`. Computes Word Error Rate (WER) and Character Error Rate (CER) on NFC-normalised Hindi text with punctuation stripping and whitespace collapsing via Wagner-Fischer edit distance algorithm.
 - **Provenance & Truthfulness**: When no human recordings exist, outputs `eval/stt/REPORT.md` explicitly stating "No recordings yet" (n=0) and reporting the active provider name. In accordance with competition rules, synthetic TTS audio is strictly never used as a stand-in for human speech.

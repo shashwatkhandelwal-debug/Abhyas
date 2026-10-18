@@ -27,10 +27,9 @@ Acceptable file formats:
 ## 2. Recording Protocol
 
 1. **Speaker Profile**: Government primary teacher (Classes 1–3, FLN), fluent Hindi speaker.
-2. **Environment**: Natural indoor environment representative of school conditions (staffroom or quiet classroom; normal ambient acoustic background, not soundproof studio).
-3. **Delivery Cadence**: Natural, unhurried conversational cadence in Hindi as a teacher addressing students or an AI practice partner.
-4. **Pacing and Volume**: Conversational classroom teaching volume (approx. 60–65 dB SPL at microphone distance 15–20 cm).
-5. **No Synthetic Audio**: Never place text-to-speech (TTS) audio files in this directory. Evaluators inspect provenance to verify authentic human speech error rates.
+2. **Environment**: Natural school environment (staffroom or classroom, not a soundproof studio).
+3. **Delivery**: Natural conversational cadence in Hindi.
+4. **No Synthetic Audio**: Never place text-to-speech (TTS) audio files in this directory. Evaluators inspect provenance to verify authentic human speech error rates.
 
 ---
 

@@ -58,6 +58,12 @@ content/sources/*.pdf
 tmp_audio/
 tts_cache/
 
+# Recorded teacher audio (personal data: never commit audio, only aggregate REPORT.md)
+eval/samples/recorded/*.wav
+eval/samples/recorded/*.ogg
+eval/samples/recorded/*.m4a
+*.m4a
+
 # Unit test / coverage
 htmlcov/
 .tox/
