@@ -22,5 +22,5 @@ USER appuser
 
 EXPOSE 8000
 
-# Single-worker deploy per spec 12 §12.2; forwarded-allow-ips="*" for Render ingress proxy
-CMD alembic upgrade head && uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips="*" --workers 1
+# Migrate, optionally seed (SEED_ON_BOOT), then single-worker uvicorn; see scripts/start.sh
+CMD ["sh", "scripts/start.sh"]
