@@ -28,8 +28,9 @@ async def post_interaction(
     timeout_s: float,
     label: str,
     error_cls: type[Exception],
+    max_retries: int,
 ) -> dict[str, Any]:
-    """POSTs one Interactions request; retries once on timeout/network/5xx.
+    """POSTs one Interactions request; retries up to max_retries on timeout/network/5xx.
 
     Any other HTTP error (401/402/403/429 included) raises ``error_cls``
     immediately so a fallback provider can take over. The API key is only
@@ -38,7 +39,6 @@ async def post_interaction(
     url = f"{base_url.rstrip('/')}/interactions"
     headers = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
 
-    max_retries = 1
     last_error: str = "unknown error"
     for attempt in range(max_retries + 1):
         try:

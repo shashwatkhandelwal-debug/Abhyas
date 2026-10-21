@@ -415,7 +415,9 @@ All items from `spec/15_human_inputs.md` are currently open:
   - Gemini STT size cap (`GEMINI_STT_MAX_BYTES`, 18 MB) is applied to the base64 payload, since the documented 20 MB limit is on the whole request.
   - Gemini returns 4xx (401/402/403/429) as `*Unavailable` with no retry; timeout/network/5xx retry once. Sarvam retry behaviour is unchanged.
   - Production validator now also requires `SARVAM_API_KEY` when `sarvam` is a *fallback*, and rejects `mock` as a fallback provider.
-  - TTS cache key is unchanged (`compute_cache_key` on the `VoiceSpec`), so Gemini and Sarvam share cached clips for the same text/voice.
+  - TTS cache key now includes the provider name (`compute_cache_key(..., provider=...)`, `tts_cache_key(provider, text, voice)`), so Gemini/Sarvam/Mock/Bhashini clips never share an entry. All existing cached clips (including hosted `tts_audio` rows) miss under the new keys: re-run `scripts/prewarm_tts.py` after deploy.
+  - Pre-warm (`scripts/prewarm_tts.py`, `prewarm_fixed_audio`) looks up the active provider's key and stores each clip under the key of the provider that actually synthesized it (a fallback clip never lands under the primary's key). The script's mock check now uses the resolved provider instead of `SARVAM_API_KEY`, so a Gemini-only config is not treated as mock.
+  - New `SPEECH_MAX_RETRIES` (default 1). When a fallback provider is configured, the primary is built with `max_retries=0` and hands over after one failed attempt; with `none`, retries are unchanged.
 
 ### Seed on Boot (`feat/seed-on-boot`)
 - **Status**: Done, 2026-10-21. ruff, mypy --strict, pytest green locally; `docker build` not run (Docker daemon unavailable locally).

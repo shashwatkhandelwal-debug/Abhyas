@@ -2,7 +2,7 @@
 
 Stores cached audio in Postgres via `tts_audio` table (cache_key, ogg, mp3, created_at).
 Local directory cache is preserved as a development/test fallback when settings.ENVIRONMENT != 'production'.
-Deterministic key: sha256(voice_id + provider_speaker + model + pace + pitch + gender + NFC text).
+Deterministic key: sha256(provider + voice_id + provider_speaker + model + pace + pitch + gender + NFC text).
 """
 
 from __future__ import annotations
@@ -28,13 +28,17 @@ def compute_cache_key(
     text_hi: str,
     voice_id: str,
     voice: VoiceSpec,
+    *,
+    provider: str,
 ) -> str:
     """Computes deterministic cache key for TTS synthesis (spec/06 §6.3).
 
-    key = sha256(voice_id + provider_speaker + model + pace + pitch + gender + NFC text)
+    key = sha256(provider + voice_id + provider_speaker + model + pace + pitch + gender + NFC text)
+    The provider name keeps clips from different TTS providers in separate entries.
     """
     nfc_text = unicodedata.normalize("NFC", text_hi)
     raw = (
+        f"{provider}:"
         f"{voice_id}:"
         f"{voice.provider_speaker}:"
         f"{voice.model}:"

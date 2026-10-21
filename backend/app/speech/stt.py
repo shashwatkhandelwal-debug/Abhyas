@@ -116,11 +116,13 @@ class SarvamSTT:
         base_url: str | None = None,
         model: str | None = None,
         timeout_s: float | None = None,
+        max_retries: int | None = None,
     ) -> None:
         self.api_key = api_key or settings.SARVAM_API_KEY
         self.base_url = (base_url or settings.SARVAM_BASE_URL).rstrip("/")
         self.model = model or settings.SARVAM_STT_MODEL
         self.timeout_s = timeout_s or settings.STT_TIMEOUT_S
+        self.max_retries = settings.SPEECH_MAX_RETRIES if max_retries is None else max_retries
 
     async def _transcribe_single_clip(
         self,
@@ -129,7 +131,7 @@ class SarvamSTT:
         lang: str,
         keyterms: list[str] | None = None,
     ) -> tuple[str, float]:
-        """Transcribes a single audio clip <= 25s with 1 retry on timeout/5xx."""
+        """Transcribes a single audio clip <= 25s; retries up to self.max_retries on timeout/5xx."""
         url = f"{self.base_url}/speech-to-text"
         headers = {"api-subscription-key": self.api_key}
 
@@ -145,7 +147,7 @@ class SarvamSTT:
             "keyterms": keyterms_payload,
         }
 
-        max_retries = 1
+        max_retries = self.max_retries
         last_error: Exception | None = None
 
         for attempt in range(max_retries + 1):
@@ -424,11 +426,13 @@ class GeminiSTT:
         base_url: str | None = None,
         model: str | None = None,
         timeout_s: float | None = None,
+        max_retries: int | None = None,
     ) -> None:
         self.api_key = api_key or settings.GEMINI_API_KEY
         self.base_url = base_url or settings.GEMINI_BASE_URL
         self.model = model or settings.GEMINI_STT_MODEL
         self.timeout_s = timeout_s or settings.STT_TIMEOUT_S
+        self.max_retries = settings.SPEECH_MAX_RETRIES if max_retries is None else max_retries
 
     @staticmethod
     def _instruction(keyterms: list[str] | None) -> str:
@@ -476,6 +480,7 @@ class GeminiSTT:
             timeout_s=self.timeout_s,
             label="Gemini STT",
             error_cls=STTUnavailable,
+            max_retries=self.max_retries,
         )
         if not isinstance(body.get("steps"), list):
             raise STTUnavailable("Gemini STT response has no steps")
@@ -532,7 +537,7 @@ class FallbackSTT:
             ) from exc
 
 
-def _build_stt_provider(name: str) -> STTProvider:
+def _build_stt_provider(name: str, max_retries: int | None = None) -> STTProvider:
     """Builds one STT provider; keyless Sarvam/Gemini become MockSTT outside production."""
     if name == "mock":
         return MockSTT()
@@ -540,12 +545,12 @@ def _build_stt_provider(name: str) -> STTProvider:
     if name == "sarvam":
         if not settings.SARVAM_API_KEY and settings.ENVIRONMENT != "production":
             return MockSTT()
-        return SarvamSTT()
+        return SarvamSTT(max_retries=max_retries)
 
     if name == "gemini":
         if not settings.GEMINI_API_KEY and settings.ENVIRONMENT != "production":
             return MockSTT()
-        return GeminiSTT()
+        return GeminiSTT(max_retries=max_retries)
 
     if name == "bhashini":
         return BhashiniSTT()
@@ -560,16 +565,17 @@ def get_stt_provider() -> STTProvider:
     """Returns configured STT provider instance based on settings (spec/06 §6.2).
 
     Wraps the primary in FallbackSTT only when STT_FALLBACK_PROVIDER is set and
-    differs from STT_PROVIDER.
+    differs from STT_PROVIDER; the primary then gets no retry so a failing call
+    hands over to the fallback after a single attempt.
     """
-    primary = _build_stt_provider(settings.STT_PROVIDER)
     fallback_name = settings.STT_FALLBACK_PROVIDER
     if fallback_name == "none" or fallback_name == settings.STT_PROVIDER:
-        return primary
+        return _build_stt_provider(settings.STT_PROVIDER)
 
     try:
         fallback = _build_stt_provider(fallback_name)
     except ProviderNotConfigured:
         logger.warning("STT fallback provider %s not configured, using primary only", fallback_name)
-        return primary
+        return _build_stt_provider(settings.STT_PROVIDER)
+    primary = _build_stt_provider(settings.STT_PROVIDER, max_retries=0)
     return FallbackSTT(primary, fallback, settings.STT_PROVIDER, fallback_name)

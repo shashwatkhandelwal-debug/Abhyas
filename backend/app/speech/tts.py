@@ -111,9 +111,21 @@ def split_sentences_for_tts(text_hi: str, max_chars: int = 1500) -> list[str]:
 class TTSProvider(Protocol):
     """Protocol for TTS providers (spec/06 §6.3)."""
 
+    @property
+    def provider_name(self) -> str:
+        """Provider name used in the TTS cache key ("sarvam", "gemini", ...)."""
+        ...
+
     async def synthesize(self, text_hi: str, voice: VoiceSpec) -> SynthResult:
         """Synthesizes Hindi text to audio bytes and returns SynthResult."""
         ...
+
+
+def tts_cache_key(provider: TTSProvider, text_hi: str, voice: VoiceSpec) -> str:
+    """Cache key for text_hi/voice as synthesized by provider (provider-scoped, spec/06 §6.3)."""
+    return compute_cache_key(
+        text_hi, voice.provider_speaker, voice, provider=provider.provider_name
+    )
 
 
 class MockTTS:
@@ -123,9 +135,11 @@ class MockTTS:
     to text length (so latency calculations and audio players work).
     """
 
+    provider_name = "mock"
+
     async def synthesize(self, text_hi: str, voice: VoiceSpec) -> SynthResult:
         """Synthesizes mock audio and returns SynthResult."""
-        cache_key = compute_cache_key(text_hi, voice.provider_speaker, voice)
+        cache_key = tts_cache_key(self, text_hi, voice)
         if not text_hi or not text_hi.strip():
             return SynthResult(cache_key=cache_key, fmt="wav", audio=b"", cache_hit=False)
 
@@ -194,7 +208,7 @@ class _ChunkedTTS:
 
     async def synthesize(self, text_hi: str, voice: VoiceSpec) -> SynthResult:
         """Synthesizes Hindi text to audio and returns SynthResult (spec/06 §6.3)."""
-        cache_key = compute_cache_key(text_hi, voice.provider_speaker, voice)
+        cache_key = tts_cache_key(self, text_hi, voice)
         if not text_hi or not text_hi.strip():
             return SynthResult(cache_key=cache_key, fmt="wav", audio=b"", cache_hit=False)
 
@@ -286,10 +300,12 @@ class SarvamTTS(_ChunkedTTS):
         api_key: str | None = None,
         base_url: str | None = None,
         timeout_s: float | None = None,
+        max_retries: int | None = None,
     ) -> None:
         self.api_key = api_key or settings.SARVAM_API_KEY
         self.base_url = (base_url or settings.SARVAM_BASE_URL).rstrip("/")
         self.timeout_s = timeout_s or settings.LLM_TIMEOUT_SECONDS
+        self.max_retries = settings.SPEECH_MAX_RETRIES if max_retries is None else max_retries
 
     async def _synthesize_chunk(
         self,
@@ -297,7 +313,7 @@ class SarvamTTS(_ChunkedTTS):
         text_chunk: str,
         voice: VoiceSpec,
     ) -> bytes:
-        """Synthesizes a single text chunk with 1 retry on failure."""
+        """Synthesizes a single text chunk with up to self.max_retries retries on failure."""
         url = f"{self.base_url}/text-to-speech"
         headers = {
             "api-subscription-key": self.api_key,
@@ -312,7 +328,7 @@ class SarvamTTS(_ChunkedTTS):
             "speech_sample_rate": 22050,
         }
 
-        max_retries = 1
+        max_retries = self.max_retries
         last_error: Exception | None = None
 
         for attempt in range(max_retries + 1):
@@ -367,11 +383,13 @@ class GeminiTTS(_ChunkedTTS):
         base_url: str | None = None,
         model: str | None = None,
         timeout_s: float | None = None,
+        max_retries: int | None = None,
     ) -> None:
         self.api_key = api_key or settings.GEMINI_API_KEY
         self.base_url = base_url or settings.GEMINI_BASE_URL
         self.model = model or settings.GEMINI_TTS_MODEL
         self.timeout_s = timeout_s or settings.LLM_TIMEOUT_SECONDS
+        self.max_retries = settings.SPEECH_MAX_RETRIES if max_retries is None else max_retries
 
     def _tts_cost(self, text_hi: str) -> float:
         return calculate_gemini_tts_cost(text_hi)
@@ -382,7 +400,7 @@ class GeminiTTS(_ChunkedTTS):
         text_chunk: str,
         voice: VoiceSpec,
     ) -> bytes:
-        """Synthesizes a single text chunk with 1 retry on timeout/5xx."""
+        """Synthesizes a single text chunk; retries up to self.max_retries on timeout/5xx."""
         gemini_voice = (
             settings.GEMINI_TTS_VOICE_F if voice.gender == "f" else settings.GEMINI_TTS_VOICE_M
         )
@@ -400,6 +418,7 @@ class GeminiTTS(_ChunkedTTS):
             timeout_s=self.timeout_s,
             label=self.label,
             error_cls=TTSUnavailable,
+            max_retries=self.max_retries,
         )
         audio_items = model_output_items(body, "audio")
         if not audio_items:
@@ -428,6 +447,11 @@ class FallbackTTS:
         self.primary_name = primary_name
         self.fallback_name = fallback_name
 
+    @property
+    def provider_name(self) -> str:
+        """Name of the primary provider; pre-warm and cache lookups target the primary."""
+        return self.primary.provider_name
+
     async def synthesize(self, text_hi: str, voice: VoiceSpec) -> SynthResult:
         try:
             return await self.primary.synthesize(text_hi, voice)
@@ -451,6 +475,8 @@ class FallbackTTS:
 class BhashiniTTS:
     """Bhashini TTS provider via ULCA pipeline API (spec/06 §6.3)."""
 
+    provider_name = "bhashini"
+
     def __init__(
         self,
         api_key: str | None = None,
@@ -465,7 +491,7 @@ class BhashiniTTS:
 
     async def synthesize(self, text_hi: str, voice: VoiceSpec) -> SynthResult:
         """Synthesizes Hindi text to audio via Bhashini ULCA pipeline and returns SynthResult."""
-        cache_key = compute_cache_key(text_hi, voice.provider_speaker, voice)
+        cache_key = tts_cache_key(self, text_hi, voice)
         if not text_hi or not text_hi.strip():
             return SynthResult(cache_key=cache_key, fmt="wav", audio=b"", cache_hit=False)
 
@@ -573,7 +599,7 @@ async def _concat_wav_bytes(wav_chunks: list[bytes]) -> bytes:
     return out_io.getvalue()
 
 
-def _build_tts_provider(name: str) -> TTSProvider:
+def _build_tts_provider(name: str, max_retries: int | None = None) -> TTSProvider:
     """Builds one TTS provider; keyless Sarvam/Gemini become MockTTS outside production."""
     if name == "mock":
         return MockTTS()
@@ -581,12 +607,12 @@ def _build_tts_provider(name: str) -> TTSProvider:
     if name == "sarvam":
         if not settings.SARVAM_API_KEY and settings.ENVIRONMENT != "production":
             return MockTTS()
-        return SarvamTTS()
+        return SarvamTTS(max_retries=max_retries)
 
     if name == "gemini":
         if not settings.GEMINI_API_KEY and settings.ENVIRONMENT != "production":
             return MockTTS()
-        return GeminiTTS()
+        return GeminiTTS(max_retries=max_retries)
 
     if name == "bhashini":
         return BhashiniTTS()
@@ -598,13 +624,14 @@ def get_tts_provider() -> TTSProvider:
     """Returns configured TTS provider instance (spec/06 §6.3).
 
     Wraps the primary in FallbackTTS only when TTS_FALLBACK_PROVIDER is set and
-    differs from TTS_PROVIDER.
+    differs from TTS_PROVIDER; the primary then gets no retry so a failing call
+    hands over to the fallback after a single attempt.
     """
-    primary = _build_tts_provider(settings.TTS_PROVIDER)
     fallback_name = settings.TTS_FALLBACK_PROVIDER
     if fallback_name == "none" or fallback_name == settings.TTS_PROVIDER:
-        return primary
+        return _build_tts_provider(settings.TTS_PROVIDER)
     fallback = _build_tts_provider(fallback_name)
+    primary = _build_tts_provider(settings.TTS_PROVIDER, max_retries=0)
     return FallbackTTS(primary, fallback, settings.TTS_PROVIDER, fallback_name)
 
 
@@ -619,6 +646,7 @@ __all__ = [
     "FallbackTTS",
     "BhashiniTTS",
     "get_tts_provider",
+    "tts_cache_key",
     "convert_digits_for_tts",
     "split_sentences_for_tts",
     "TTSError",

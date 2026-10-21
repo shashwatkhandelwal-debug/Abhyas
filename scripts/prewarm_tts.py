@@ -23,9 +23,13 @@ sys.path.insert(0, str(REPO_ROOT))
 # Rule C justification: CLI script runs standalone; sys.path configured before app imports
 from backend.app.config import settings  # noqa: E402
 from backend.app.speech.audio import to_wav  # noqa: E402
-from backend.app.speech.cache import compute_cache_key, tts_cache  # noqa: E402
-from backend.app.speech.spend import calculate_tts_cost, speech_budget  # noqa: E402
-from backend.app.speech.tts import TTSProvider, get_tts_provider  # noqa: E402
+from backend.app.speech.cache import tts_cache  # noqa: E402
+from backend.app.speech.spend import (  # noqa: E402
+    calculate_gemini_tts_cost,
+    calculate_tts_cost,
+    speech_budget,
+)
+from backend.app.speech.tts import TTSProvider, get_tts_provider, tts_cache_key  # noqa: E402
 from backend.app.speech.voices import get_voice  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -87,10 +91,11 @@ async def prewarm_tts(
     dry_run: bool = False,
 ) -> dict[str, int | float]:
     """Executes TTS pre-warming for fixed audio prompts."""
-    # Check if mock mode is active
-    is_mock = settings.TTS_PROVIDER == "mock" or (
-        not settings.SARVAM_API_KEY and settings.ENVIRONMENT != "production"
-    )
+    active_tts = tts_provider or get_tts_provider()
+    provider_name = active_tts.provider_name
+
+    # Mock mode: the resolved provider is MockTTS (TTS_PROVIDER=mock or key absent outside prod)
+    is_mock = provider_name == "mock"
 
     if is_mock and not force_mock:
         logger.info("TTS provider is mock. Prewarming is a no-op on mock TTS.")
@@ -102,7 +107,6 @@ async def prewarm_tts(
             "cost_inr": 0.0,
         }
 
-    active_tts = tts_provider or get_tts_provider()
     targets = load_prewarm_targets(messages_path, moves_dir)
 
     synthesized_count = 0
@@ -114,7 +118,7 @@ async def prewarm_tts(
 
     for label, text_hi, voice_id in targets:
         voice = get_voice(voice_id)
-        cache_key = compute_cache_key(text_hi, voice.provider_speaker, voice)
+        cache_key = tts_cache_key(active_tts, text_hi, voice)
 
         # Check idempotency via cache
         existing_audio = await tts_cache.get(cache_key, "ogg")
@@ -122,7 +126,11 @@ async def prewarm_tts(
             cached_count += 1
             continue
 
-        cost_est = calculate_tts_cost(text_hi)
+        cost_est = (
+            calculate_gemini_tts_cost(text_hi)
+            if provider_name == "gemini"
+            else calculate_tts_cost(text_hi)
+        )
 
         if dry_run:
             logger.info(
@@ -157,12 +165,18 @@ async def prewarm_tts(
                     if synth_res.fmt == "wav"
                     else await to_wav(synth_res.audio, fmt=synth_res.fmt)
                 )
-                await tts_cache.put_wav(cache_key, wav_bytes)
+                # Store under the key of the provider that actually synthesized
+                # (a fallback provider's clip must not land under the primary's key)
+                await tts_cache.put_wav(synth_res.cache_key, wav_bytes)
                 if not is_mock:
-                    await speech_budget.check_and_record_tts(text_hi)
+                    await speech_budget.check_and_record_tts(text_hi, provider=provider_name)
                 synthesized_count += 1
                 total_cost_inr += cost_est
-                logger.info("Synthesized and cached '%s' (cache_key=%s...)", label, cache_key[:12])
+                logger.info(
+                    "Synthesized and cached '%s' (cache_key=%s...)",
+                    label,
+                    synth_res.cache_key[:12],
+                )
         except Exception as exc:
             logger.error("Failed synthesizing '%s': %s", label, exc)
 

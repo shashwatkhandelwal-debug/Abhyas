@@ -17,7 +17,7 @@ from pydantic import ValidationError
 
 from backend.app.config import Settings, settings
 from backend.app.speech import audio as audio_mod
-from backend.app.speech.cache import tts_cache
+from backend.app.speech.cache import compute_cache_key, tts_cache
 from backend.app.speech.stt import (
     FallbackSTT,
     GeminiSTT,
@@ -32,8 +32,10 @@ from backend.app.speech.tts import (
     SarvamTTS,
     TTSUnavailable,
     get_tts_provider,
+    tts_cache_key,
 )
 from backend.app.speech.voices import get_voice
+from scripts.prewarm_tts import prewarm_tts
 
 FIXTURES_DIR = Path(__file__).parents[1] / "fixtures" / "audio"
 GEMINI_KEY = "test-gemini-key"
@@ -389,6 +391,215 @@ async def test_logs_never_contain_api_key(
     assert GEMINI_KEY not in caplog.text
     for record in caplog.records:
         assert GEMINI_KEY not in str(record.args)
+
+
+# ── Cache key per provider ─────────────────────────────────────────────────
+
+
+def test_cache_key_includes_provider() -> None:
+    voice = get_voice("child_ravi")
+    text = "रवि ने 45 कहा।"
+    sarvam_key = compute_cache_key(text, voice.provider_speaker, voice, provider="sarvam")
+    gemini_key = compute_cache_key(text, voice.provider_speaker, voice, provider="gemini")
+    assert sarvam_key != gemini_key
+    assert tts_cache_key(SarvamTTS(api_key="test-key"), text, voice) == sarvam_key
+    assert tts_cache_key(GeminiTTS(api_key=GEMINI_KEY), text, voice) == gemini_key
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_sarvam_cached_clip_not_served_to_gemini() -> None:
+    sarvam_wav = _wav_24k(0.4)
+    gemini_wav = _wav_24k(0.7)
+    respx.post(SARVAM_TTS_URL).mock(
+        return_value=httpx.Response(
+            200, json={"audios": [base64.b64encode(sarvam_wav).decode("ascii")]}
+        )
+    )
+    gemini = respx.post(GEMINI_URL).mock(
+        return_value=httpx.Response(200, json=_audio_response(gemini_wav))
+    )
+    voice = get_voice("abhyas")
+    text = "साझा कैश नहीं"
+
+    sarvam_res = await SarvamTTS(api_key="test-key").synthesize(text, voice)
+    gemini_res = await GeminiTTS(api_key=GEMINI_KEY).synthesize(text, voice)
+
+    assert sarvam_res.cache_key != gemini_res.cache_key
+    assert gemini_res.cache_hit is False
+    assert gemini_res.audio == gemini_wav
+    assert gemini.call_count == 1
+
+
+# ── Retries with / without fallback ────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_stt_primary_gets_no_retry_when_fallback_configured(wav_5s: bytes) -> None:
+    gemini = respx.post(GEMINI_URL).mock(return_value=httpx.Response(503))
+    respx.post(SARVAM_STT_URL).mock(return_value=httpx.Response(200, json={"transcript": "ठीक"}))
+    with (
+        patch.object(settings, "STT_PROVIDER", "gemini"),
+        patch.object(settings, "STT_FALLBACK_PROVIDER", "sarvam"),
+        patch.object(settings, "GEMINI_API_KEY", GEMINI_KEY),
+        patch.object(settings, "SARVAM_API_KEY", "test-key"),
+    ):
+        provider = get_stt_provider()
+        assert isinstance(provider, FallbackSTT)
+        assert isinstance(provider.primary, GeminiSTT) and provider.primary.max_retries == 0
+        assert isinstance(provider.fallback, SarvamSTT) and provider.fallback.max_retries == 1
+        result = await provider.transcribe(wav_5s)
+
+    assert gemini.call_count == 1
+    assert result.provider == "sarvam"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_tts_primary_gets_no_retry_when_fallback_configured() -> None:
+    gemini = respx.post(GEMINI_URL).mock(return_value=httpx.Response(503))
+    respx.post(SARVAM_TTS_URL).mock(
+        return_value=httpx.Response(
+            200, json={"audios": [base64.b64encode(_wav_24k(0.3)).decode("ascii")]}
+        )
+    )
+    with (
+        patch.object(settings, "TTS_PROVIDER", "gemini"),
+        patch.object(settings, "TTS_FALLBACK_PROVIDER", "sarvam"),
+        patch.object(settings, "GEMINI_API_KEY", GEMINI_KEY),
+        patch.object(settings, "SARVAM_API_KEY", "test-key"),
+    ):
+        provider = get_tts_provider()
+        assert isinstance(provider, FallbackTTS)
+        assert isinstance(provider.primary, GeminiTTS) and provider.primary.max_retries == 0
+        assert isinstance(provider.fallback, SarvamTTS) and provider.fallback.max_retries == 1
+        result = await provider.synthesize("एक ही प्रयास", get_voice("abhyas"))
+
+    assert gemini.call_count == 1
+    assert result.audio.startswith(b"RIFF")
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_sarvam_primary_gets_no_retry_when_gemini_fallback(wav_5s: bytes) -> None:
+    sarvam = respx.post(SARVAM_STT_URL).mock(return_value=httpx.Response(503))
+    respx.post(GEMINI_URL).mock(return_value=httpx.Response(200, json=_text_response("जेमिनी")))
+    with (
+        patch.object(settings, "STT_PROVIDER", "sarvam"),
+        patch.object(settings, "STT_FALLBACK_PROVIDER", "gemini"),
+        patch.object(settings, "GEMINI_API_KEY", GEMINI_KEY),
+        patch.object(settings, "SARVAM_API_KEY", "test-key"),
+    ):
+        result = await get_stt_provider().transcribe(wav_5s)
+
+    assert sarvam.call_count == 1
+    assert result.provider == "gemini"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_no_fallback_keeps_one_retry(wav_5s: bytes) -> None:
+    gemini = respx.post(GEMINI_URL)
+    gemini.side_effect = [
+        httpx.Response(503),
+        httpx.Response(200, json=_text_response("दूसरा प्रयास")),
+        httpx.Response(503),
+        httpx.Response(200, json=_audio_response(_wav_24k(0.3))),
+    ]
+    with (
+        patch.object(settings, "STT_PROVIDER", "gemini"),
+        patch.object(settings, "TTS_PROVIDER", "gemini"),
+        patch.object(settings, "STT_FALLBACK_PROVIDER", "none"),
+        patch.object(settings, "TTS_FALLBACK_PROVIDER", "none"),
+        patch.object(settings, "GEMINI_API_KEY", GEMINI_KEY),
+    ):
+        stt = get_stt_provider()
+        tts = get_tts_provider()
+        assert isinstance(stt, GeminiSTT) and stt.max_retries == 1
+        assert isinstance(tts, GeminiTTS) and tts.max_retries == 1
+        transcript = await stt.transcribe(wav_5s)
+        synth = await tts.synthesize("दोबारा", get_voice("abhyas"))
+
+    assert transcript.text == "दूसरा प्रयास"
+    assert synth.audio.startswith(b"RIFF")
+    assert gemini.call_count == 4
+
+    with (
+        patch.object(settings, "STT_PROVIDER", "sarvam"),
+        patch.object(settings, "TTS_PROVIDER", "sarvam"),
+        patch.object(settings, "STT_FALLBACK_PROVIDER", "none"),
+        patch.object(settings, "TTS_FALLBACK_PROVIDER", "none"),
+        patch.object(settings, "SARVAM_API_KEY", "test-key"),
+    ):
+        sarvam_stt = get_stt_provider()
+        sarvam_tts = get_tts_provider()
+        assert isinstance(sarvam_stt, SarvamSTT) and sarvam_stt.max_retries == 1
+        assert isinstance(sarvam_tts, SarvamTTS) and sarvam_tts.max_retries == 1
+
+
+# ── Pre-warm script with provider-scoped keys ──────────────────────────────
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_prewarm_script_stores_clips_under_synthesizing_provider(tmp_path: Path) -> None:
+    text = "अभ्यास में स्वागत है।"
+    msg_file = tmp_path / "messages_hi.yaml"
+    msg_file.write_text(f'msg_1:\n  audio: true\n  text: "{text}"\n', encoding="utf-8")
+    moves_dir = tmp_path / "moves"
+    moves_dir.mkdir()
+    voice = get_voice("abhyas")
+    gemini_key = compute_cache_key(text, voice.provider_speaker, voice, provider="gemini")
+    sarvam_key = compute_cache_key(text, voice.provider_speaker, voice, provider="sarvam")
+
+    gemini = respx.post(GEMINI_URL)
+    gemini.side_effect = [
+        httpx.Response(429),  # run 1: primary fails, Sarvam synthesizes
+        httpx.Response(200, json=_audio_response(_wav_24k(0.3))),  # run 2: Gemini succeeds
+    ]
+    respx.post(SARVAM_TTS_URL).mock(
+        return_value=httpx.Response(
+            200, json={"audios": [base64.b64encode(_wav_24k(0.2)).decode("ascii")]}
+        )
+    )
+    chain = FallbackTTS(
+        GeminiTTS(api_key=GEMINI_KEY, max_retries=0),
+        SarvamTTS(api_key="test-key"),
+        "gemini",
+        "sarvam",
+    )
+
+    first = await prewarm_tts(messages_path=msg_file, moves_dir=moves_dir, tts_provider=chain)
+    assert first["synthesized"] == 1
+    assert await tts_cache.has(sarvam_key, "wav") is True
+    assert await tts_cache.has(gemini_key, "wav") is False
+
+    second = await prewarm_tts(messages_path=msg_file, moves_dir=moves_dir, tts_provider=chain)
+    assert second["synthesized"] == 1
+    assert await tts_cache.has(gemini_key, "wav") is True
+
+    third = await prewarm_tts(messages_path=msg_file, moves_dir=moves_dir, tts_provider=chain)
+    assert third["already_cached"] == 1
+    assert third["synthesized"] == 0
+
+
+@pytest.mark.asyncio
+async def test_prewarm_script_not_mock_with_only_gemini_key(tmp_path: Path) -> None:
+    msg_file = tmp_path / "messages_hi.yaml"
+    msg_file.write_text('msg_1:\n  audio: true\n  text: "नमस्ते"\n', encoding="utf-8")
+    moves_dir = tmp_path / "moves"
+    moves_dir.mkdir()
+    with (
+        patch.object(settings, "TTS_PROVIDER", "gemini"),
+        patch.object(settings, "TTS_FALLBACK_PROVIDER", "none"),
+        patch.object(settings, "GEMINI_API_KEY", GEMINI_KEY),
+        patch.object(settings, "SARVAM_API_KEY", ""),
+        patch.object(settings, "ENVIRONMENT", "development"),
+    ):
+        res = await prewarm_tts(messages_path=msg_file, moves_dir=moves_dir, dry_run=True)
+    assert res["total_targets"] == 1
+    assert res["synthesized"] == 1
 
 
 # ── Spend ─────────────────────────────────────────────────────────────────
