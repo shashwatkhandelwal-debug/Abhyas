@@ -232,7 +232,7 @@ async def test_cache_hit_results_in_zero_spend(wav_5s: bytes) -> None:
         test_cache = TTSCache(cache_dir=tmpdir, use_db=False)
         voice = get_voice("abhyas")
         text = "नमस्ते"
-        key = compute_cache_key(text, voice.provider_speaker, voice)
+        key = compute_cache_key(text, voice.provider_speaker, voice, provider="sarvam")
 
         # Put in cache beforehand
         await test_cache.put_wav(key, wav_5s)

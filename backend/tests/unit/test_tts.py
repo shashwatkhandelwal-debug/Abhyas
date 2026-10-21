@@ -186,7 +186,7 @@ async def test_tts_cache_operations() -> None:
         voice = get_voice("child_ravi")
         text = "रवि ने 45 कहा।"
 
-        key = compute_cache_key(text, "child_ravi", voice)
+        key = compute_cache_key(text, "child_ravi", voice, provider="mock")
         assert len(key) == 64  # sha256 hex string
 
         # Initially empty

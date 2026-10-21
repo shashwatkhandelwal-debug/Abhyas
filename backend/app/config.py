@@ -99,6 +99,8 @@ class Settings(BaseSettings):
     GOOGLE_APPLICATION_CREDENTIALS: str = ""
     MOCK_STT_TEXT: str = "रवि, 52 में से 17 कैसे घटाया? बताओ।"
     STT_TIMEOUT_S: float = 8.0
+    # Retries per speech provider call; a primary with a fallback configured gets 0
+    SPEECH_MAX_RETRIES: int = 1
     STT_MIN_CONFIDENCE: float = 0.50
     MAX_INBOUND_AUDIO_S: int = 90
     EXPLAIN_BACK_MAX_SECONDS: int = 60
