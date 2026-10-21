@@ -19,6 +19,7 @@ from typing import Any, Literal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.conversation import ConversationService
+from backend.app.core.messages import get_message
 from backend.app.core.types import InboundMessage, OutboundMessage
 from backend.app.db.models import Message, Teacher
 from backend.app.db.session import async_session_factory
@@ -260,5 +261,26 @@ async def process_inbound_web(
         logger.exception(
             "Error in process_inbound_web for teacher %s msg %s", teacher_id, message_id
         )
+        await _send_failure_reply(teacher_id)
     finally:
         unmark_teacher_pending(teacher_id)
+
+
+async def _send_failure_reply(teacher_id: uuid.UUID) -> None:
+    """Tells the teacher something went wrong instead of leaving the chat silent.
+
+    Uses a fresh session: the pipeline's session may be in a failed transaction.
+    """
+    try:
+        factory = get_channel_session_factory()
+        async with factory() as session:
+            teacher = await session.get(Teacher, teacher_id)
+            if teacher is None:
+                return
+            reply = OutboundMessage(
+                kind="text",
+                text_hi=get_message("system_error_retry", teacher.address_form or "f"),
+            )
+            await WebChannel().send(teacher, [reply], session=session)
+    except Exception:
+        logger.exception("Could not send failure reply to teacher %s", teacher_id)

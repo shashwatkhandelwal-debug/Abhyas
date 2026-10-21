@@ -1170,3 +1170,38 @@ async def test_polled_inbound_message_carries_client_msg_id(web_test_app: FastAP
     assert inbound[0]["direction"] == "in"
     assert inbound[0]["client_msg_id"] == client_msg_id
     assert all(m["client_msg_id"] is None for m in polled if m["direction"] == "out")
+
+
+@pytest.mark.asyncio
+async def test_pipeline_failure_sends_catalog_error_reply(
+    mock_teacher_id: uuid.UUID, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Live bug: when processing failed the teacher got no reply at all."""
+    from backend.app.core.messages import get_message
+    from backend.app.db.models import Message
+
+    mock_session = AsyncMock(spec=AsyncSession)
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=None)
+    mock_session.get.return_value = Teacher(id=mock_teacher_id, name="शिक्षिका", address_form="f")
+    set_channel_session_factory(lambda: mock_session)
+
+    class FailingSessionService:
+        async def handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
+            raise FileNotFoundError("Move card file not found: missing.yaml")
+
+    set_session_service_factory(lambda s: FailingSessionService())
+    try:
+        mark_teacher_pending(mock_teacher_id)
+        await process_inbound_web(
+            teacher_id=mock_teacher_id, message_id=uuid.uuid4(), kind="text", text="नमस्ते"
+        )
+    finally:
+        set_session_service_factory(None)
+
+    assert "Error in process_inbound_web" in caplog.text  # still logged, not hidden
+    added = [c.args[0] for c in mock_session.add.call_args_list]
+    replies = [m for m in added if isinstance(m, Message) and m.direction == "out"]
+    assert len(replies) == 1
+    assert replies[0].text == get_message("system_error_retry", "f")
+    assert is_teacher_pending(mock_teacher_id) is False
