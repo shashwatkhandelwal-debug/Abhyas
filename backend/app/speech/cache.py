@@ -77,18 +77,18 @@ class TTSCache:
     async def get(self, key: str, fmt: str = "ogg") -> bytes | None:
         """Retrieves cached audio bytes from Postgres tts_audio table or dev disk cache."""
         # 1. Try querying Postgres tts_audio table
-        if self.use_db:
+        if self.use_db and fmt in ("ogg", "mp3"):
             try:
                 async with async_session_factory() as session:
-                    stmt = select(TTSAudio).where(TTSAudio.cache_key == key)
-                    result = await session.execute(stmt)
-                    audio_row = result.scalar_one_or_none()
+                    # Select the bytes column itself: the rollback below expires ORM
+                    # instances, and reading an expired attribute afterwards lazy-loads
+                    # outside the async greenlet (MissingGreenlet -> /api/audio 404).
+                    column = TTSAudio.ogg if fmt == "ogg" else TTSAudio.mp3
+                    stmt = select(column).where(TTSAudio.cache_key == key)
+                    audio_bytes = (await session.execute(stmt)).scalar_one_or_none()
                     await session.rollback()
-                    if audio_row:
-                        if fmt == "ogg" and audio_row.ogg:
-                            return bytes(audio_row.ogg)
-                        if fmt == "mp3" and audio_row.mp3:
-                            return bytes(audio_row.mp3)
+                    if audio_bytes:
+                        return bytes(audio_bytes)
             except Exception as exc:
                 logger.warning("Database TTS cache get query error: %s", exc)
                 if settings.ENVIRONMENT != "production":
