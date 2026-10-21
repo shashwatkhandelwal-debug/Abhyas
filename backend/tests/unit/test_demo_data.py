@@ -322,7 +322,7 @@ async def test_populate_demo_cohort_rehearsals_link_to_scenes_with_turns() -> No
         assert rs.scene_id in scene_map, f"RehearsalScore {rs.id} must link to a valid Scene"
         scene = scene_map[rs.scene_id]
         assert scene.teacher_turns >= 3, "Scene must have at least 3 teacher turns"
-        assert scene.status == "completed"
+        assert scene.status == "ended"  # check_scene_status allows only 'active' / 'ended'
         stored_turns = turns_by_scene.get(rs.scene_id, [])
         assert len(stored_turns) >= 3, "Scene must have stored Turn records"
 
