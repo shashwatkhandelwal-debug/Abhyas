@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Optimize layer caching: install python dependencies before copying application source
 COPY pyproject.toml README.md ./
-RUN mkdir -p backend content && touch backend/__init__.py content/__init__.py && pip install --no-cache-dir .
+RUN mkdir -p backend content eval && touch backend/__init__.py content/__init__.py eval/__init__.py && pip install --no-cache-dir .
 
 # Copy application source
 COPY . .
