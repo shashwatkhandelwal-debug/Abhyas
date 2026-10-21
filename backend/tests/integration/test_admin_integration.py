@@ -101,7 +101,7 @@ async def test_admin_dashboard_postgres_end_to_end(
             district="Kanpur Nagar",
             cluster_id="KNP-C01",
             is_demo=True,
-            onboarding_state="COMPLETE",
+            onboarding_state="READY",
         )
         cohort_teacher = Teacher(
             id=uuid.uuid4(),
@@ -110,7 +110,7 @@ async def test_admin_dashboard_postgres_end_to_end(
             district="Kanpur Nagar",
             cluster_id="KNP-C01",
             is_demo=True,
-            onboarding_state="COMPLETE",
+            onboarding_state="READY",
         )
         session.add_all([admin_user, demo_teacher, cohort_teacher])
         await session.flush()

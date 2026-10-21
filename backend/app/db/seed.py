@@ -22,7 +22,7 @@ from sqlalchemy import select
 
 from backend.app.auth.passwords import hash_password
 from backend.app.config import settings
-from backend.app.db.demo_data import populate_demo_cohort
+from backend.app.db.demo_data import populate_demo_cohort, repair_onboarding_state
 from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
@@ -35,6 +35,7 @@ from backend.app.db.models import (
 )
 from backend.app.db.session import async_session_factory
 from backend.app.retrieval.ingest import load_chunks_to_db
+from backend.app.sessions.state_machine import OnboardingStateEnum
 
 logger = logging.getLogger("abhyas.db.seed")
 
@@ -124,9 +125,11 @@ async def seed_database() -> None:
                 consent_service=True,
                 consent_share_scores=True,
                 is_demo=True,
-                onboarding_state="NEW",
+                onboarding_state=OnboardingStateEnum.NEW,
             )
             session.add(t1)
+        else:
+            repair_onboarding_state(t1, OnboardingStateEnum.NEW)
 
         # Demo 2: Mid-week in REHEARSE
         t2 = await session.get(Teacher, TEACHER_DEMO2_ID)
@@ -143,10 +146,12 @@ async def seed_database() -> None:
                 consent_service=True,
                 consent_share_scores=True,
                 is_demo=True,
-                onboarding_state="COMPLETE",
+                onboarding_state=OnboardingStateEnum.READY,
                 last_inbound_at=datetime.now(UTC),
             )
             session.add(t2)
+        else:
+            repair_onboarding_state(t2, OnboardingStateEnum.READY)
 
         # Demo 3: Completed 3 moves
         t3 = await session.get(Teacher, TEACHER_DEMO3_ID)
@@ -163,10 +168,12 @@ async def seed_database() -> None:
                 consent_service=True,
                 consent_share_scores=False,  # Demonstrates non-consenting behavior
                 is_demo=True,
-                onboarding_state="COMPLETE",
+                onboarding_state=OnboardingStateEnum.READY,
                 last_inbound_at=datetime.now(UTC),
             )
             session.add(t3)
+        else:
+            repair_onboarding_state(t3, OnboardingStateEnum.READY)
 
         await session.flush()
 

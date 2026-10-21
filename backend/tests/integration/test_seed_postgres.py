@@ -3,20 +3,27 @@
 Creates a throwaway database on the TEST_DATABASE_URL server, runs
 `alembic upgrade head`, then `python -m backend.app.db.seed` twice (the same
 commands scripts/start.sh runs on Render), and checks that the seed succeeds,
-is idempotent and leaves no rows pointing at missing scenes.
+is idempotent, leaves no rows pointing at missing scenes, repairs legacy
+onboarding states, and that every seeded teacher's SessionContext loads.
 Skipped locally if TEST_DATABASE_URL is not set.
 """
 
+import asyncio
 import os
 import subprocess
 import sys
 from collections.abc import Iterator
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
+
+from backend.app.sessions.service import SessionService
+from backend.app.sessions.state_machine import OnboardingStateEnum
 
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -151,3 +158,64 @@ def test_seed_runs_on_fresh_postgres_and_is_idempotent(scratch_db: str) -> None:
 
     _run(["-m", "backend.app.db.seed"], scratch_db)
     assert _counts(scratch_db) == first
+
+    # Live DBs seeded by the old code hold onboarding_state='COMPLETE'; one re-run repairs them
+    _execute(
+        scratch_db,
+        "UPDATE teacher SET onboarding_state = 'COMPLETE' WHERE onboarding_state = 'READY'",
+    )
+    assert _invalid_onboarding_count(scratch_db) > 0
+    _run(["-m", "backend.app.db.seed"], scratch_db)
+    assert _invalid_onboarding_count(scratch_db) == 0
+    assert _counts(scratch_db) == first
+
+    # The first chat message calls get_or_create_context; it must load for every seeded teacher
+    failures = asyncio.run(_context_failures(scratch_db))
+    assert failures == {}, (
+        f"get_or_create_context raised for {len(failures)} teacher(s): {failures}"
+    )
+
+
+def _execute(db_name: str, sql: str) -> None:
+    engine = create_engine(_sync_url(db_name))
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(sql))
+    finally:
+        engine.dispose()
+
+
+def _invalid_onboarding_count(db_name: str) -> int:
+    valid = [state.value for state in OnboardingStateEnum]
+    engine = create_engine(_sync_url(db_name))
+    try:
+        with engine.connect() as conn:
+            return int(
+                conn.execute(
+                    text("SELECT count(*) FROM teacher WHERE NOT (onboarding_state = ANY(:valid))"),
+                    {"valid": valid},
+                ).scalar_one()
+            )
+    finally:
+        engine.dispose()
+
+
+async def _context_failures(db_name: str) -> dict[str, str]:
+    async_url = make_url(_sync_url(db_name)).set(drivername="postgresql+asyncpg")
+    engine = create_async_engine(async_url, poolclass=NullPool)
+    factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    failures: dict[str, str] = {}
+    try:
+        async with factory() as session:
+            rows = await session.execute(text("SELECT id FROM teacher ORDER BY id"))
+            teacher_ids: list[UUID] = [row[0] for row in rows]
+        assert len(teacher_ids) == 51
+        for teacher_id in teacher_ids:
+            async with factory() as session:
+                try:
+                    await SessionService(db_session=session).get_or_create_context(teacher_id)
+                except Exception as exc:  # collect all failures for one readable assertion
+                    failures[str(teacher_id)] = f"{type(exc).__name__}: {exc}"
+    finally:
+        await engine.dispose()
+    return failures
