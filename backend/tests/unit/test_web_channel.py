@@ -1145,3 +1145,28 @@ async def test_audio_update_committed_after_query_delivered_on_next_poll(
         assert matching2[0]["id"] == str(child_msg_id)
         assert matching2[0]["kind"] == "audio"
         assert matching2[0]["audio_ref"] == cached_ref
+
+
+@pytest.mark.asyncio
+async def test_polled_inbound_message_carries_client_msg_id(web_test_app: FastAPI) -> None:
+    """The PWA matches its optimistic bubble to the polled copy via client_msg_id.
+
+    Without it, one send rendered two identical user bubbles (optimistic + polled).
+    """
+    client_msg_id = str(uuid.uuid4())
+    async with AsyncClient(
+        transport=ASGITransport(app=web_test_app), base_url="http://test"
+    ) as client:
+        res = await client.post(
+            "/api/chat/text", json={"client_msg_id": client_msg_id, "text": "नमस्ते"}
+        )
+        assert res.status_code == 202
+        server_id = res.json()["message_id"]
+
+        polled = (await client.get("/api/chat/messages")).json()["messages"]
+
+    inbound = [m for m in polled if m["id"] == server_id]
+    assert len(inbound) == 1
+    assert inbound[0]["direction"] == "in"
+    assert inbound[0]["client_msg_id"] == client_msg_id
+    assert all(m["client_msg_id"] is None for m in polled if m["direction"] == "out")

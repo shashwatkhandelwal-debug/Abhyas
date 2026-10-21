@@ -401,6 +401,10 @@ async def get_chat_messages(
     messages_data = [
         {
             "id": str(m.id),
+            # Lets the PWA match its optimistic bubble (keyed by client_msg_id) to this row
+            "client_msg_id": (
+                m.channel_msg_id if m.channel == "web" and m.direction == "in" else None
+            ),
             "direction": m.direction,
             "channel": m.channel,
             "kind": m.kind,
