@@ -42,6 +42,7 @@ GEMINI_KEY = "test-gemini-key"
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/interactions"
 SARVAM_STT_URL = "https://api.sarvam.ai/speech-to-text"
 SARVAM_TTS_URL = "https://api.sarvam.ai/text-to-speech"
+SPEECH_LOGGERS = ("abhyas.speech.gemini", "abhyas.speech.stt", "abhyas.speech.tts")
 
 
 @pytest.fixture(autouse=True)
@@ -359,8 +360,14 @@ def test_gemini_without_key_uses_mock_in_dev() -> None:
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_logs_never_contain_api_key(wav_5s: bytes, caplog: pytest.LogCaptureFixture) -> None:
-    caplog.set_level(logging.DEBUG)
+async def test_logs_never_contain_api_key(
+    wav_5s: bytes, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Loggers may have been disabled by an earlier logging.config call in the same process
+    for name in SPEECH_LOGGERS:
+        monkeypatch.setattr(logging.getLogger(name), "disabled", False)
+    caplog.set_level(logging.DEBUG)  # root: capture third-party (httpx) records for the key check
+    caplog.set_level(logging.WARNING, logger="abhyas.speech")
     respx.post(GEMINI_URL).mock(side_effect=[httpx.Response(500), httpx.Response(429)] * 2)
     respx.post(SARVAM_STT_URL).mock(return_value=httpx.Response(200, json={"transcript": "ठीक"}))
     respx.post(SARVAM_TTS_URL).mock(
@@ -379,7 +386,8 @@ async def test_logs_never_contain_api_key(wav_5s: bytes, caplog: pytest.LogCaptu
         await get_stt_provider().transcribe(wav_5s)
         await get_tts_provider().synthesize("लॉग जाँच", get_voice("abhyas"))
 
-    assert caplog.records, "expected retry/fallback log records"
+    speech_records = [r for r in caplog.records if r.name.startswith("abhyas.speech")]
+    assert speech_records, "expected retry/fallback log records"
     assert GEMINI_KEY not in caplog.text
     for record in caplog.records:
         assert GEMINI_KEY not in str(record.args)

@@ -418,3 +418,9 @@ All items from `spec/15_human_inputs.md` are currently open:
   - TTS cache key now includes the provider name (`compute_cache_key(..., provider=...)`, `tts_cache_key(provider, text, voice)`), so Gemini/Sarvam/Mock/Bhashini clips never share an entry. All existing cached clips (including hosted `tts_audio` rows) miss under the new keys: re-run `scripts/prewarm_tts.py` after deploy.
   - Pre-warm (`scripts/prewarm_tts.py`, `prewarm_fixed_audio`) looks up the active provider's key and stores each clip under the key of the provider that actually synthesized it (a fallback clip never lands under the primary's key). The script's mock check now uses the resolved provider instead of `SARVAM_API_KEY`, so a Gemini-only config is not treated as mock.
   - New `SPEECH_MAX_RETRIES` (default 1). When a fallback provider is configured, the primary is built with `max_retries=0` and hands over after one failed attempt; with `none`, retries are unchanged.
+
+### Seed on Boot (`feat/seed-on-boot`)
+- **Status**: Done, 2026-10-21. ruff, mypy --strict, pytest green locally; `docker build` not run (Docker daemon unavailable locally).
+- **Built**: `scripts/start.sh` (Docker `CMD ["sh", "scripts/start.sh"]`): `alembic upgrade head`, then `python -m backend.app.db.seed` only when `SEED_ON_BOOT=true` (failure logged, startup continues), then `exec uvicorn` (single worker). `.gitattributes` keeps `*.sh` LF on Windows checkouts.
+- **Decisions**: `SEED_ON_BOOT` is read by the shell script only (not a `Settings` field); exact value `true` enables it. A failed migration still aborts startup, as before.
+- **Open issue**: on re-seed, the 51 synthetic cohort logins in `demo_data.py` keep their first-run password hash (only the 6 demo accounts and `admin` are re-hashed). `seed.py` / `demo_data.py` intentionally unchanged.
