@@ -416,3 +416,9 @@ All items from `spec/15_human_inputs.md` are currently open:
   - Gemini returns 4xx (401/402/403/429) as `*Unavailable` with no retry; timeout/network/5xx retry once. Sarvam retry behaviour is unchanged.
   - Production validator now also requires `SARVAM_API_KEY` when `sarvam` is a *fallback*, and rejects `mock` as a fallback provider.
   - TTS cache key is unchanged (`compute_cache_key` on the `VoiceSpec`), so Gemini and Sarvam share cached clips for the same text/voice.
+
+### Seed on Boot (`feat/seed-on-boot`)
+- **Status**: Done, 2026-10-21. ruff, mypy --strict, pytest green locally; `docker build` not run (Docker daemon unavailable locally).
+- **Built**: `scripts/start.sh` (Docker `CMD ["sh", "scripts/start.sh"]`): `alembic upgrade head`, then `python -m backend.app.db.seed` only when `SEED_ON_BOOT=true` (failure logged, startup continues), then `exec uvicorn` (single worker). `.gitattributes` keeps `*.sh` LF on Windows checkouts.
+- **Decisions**: `SEED_ON_BOOT` is read by the shell script only (not a `Settings` field); exact value `true` enables it. A failed migration still aborts startup, as before.
+- **Open issue**: on re-seed, the 51 synthetic cohort logins in `demo_data.py` keep their first-run password hash (only the 6 demo accounts and `admin` are re-hashed). `seed.py` / `demo_data.py` intentionally unchanged.

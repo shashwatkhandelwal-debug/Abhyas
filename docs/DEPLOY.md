@@ -170,16 +170,22 @@ Never commit real production credentials to Git.
 | `SERVE_IN_REVIEW_TO_DEMO` | Allow demo accounts to view cards under review | Product configuration | Optional (default: `true`) |
 | `DEMO_MODE` | Enable demo chips and demo login switcher UI | Evaluation configuration | Optional (default: `true`) |
 | `SENTRY_DSN` | Sentry DSN for production exception telemetry | Sentry.io | Optional |
+| `SEED_ON_BOOT` | Run `python -m backend.app.db.seed` in `scripts/start.sh` before uvicorn starts. Set true for one deploy on Render free (no Shell), then set false. | Render configuration | Optional (default: `false`) |
 
 ---
 
 ## 4. Database Initialization & Seeding
 
-When the container boots on Render, the Docker `CMD` automatically executes:
+When the container boots on Render, the Docker `CMD` runs `sh scripts/start.sh`, which executes:
 ```bash
-alembic upgrade head && uvicorn backend.app.main:app ...
+alembic upgrade head
+# only if SEED_ON_BOOT=true (a failed seed is logged; startup continues)
+python -m backend.app.db.seed
+exec uvicorn backend.app.main:app ...
 ```
-To seed demo teachers, school metadata, and approved pedagogical moves:
+**Render free plan (no Shell):** set `SEED_ON_BOOT=true` for one deploy, confirm the log line `start.sh: seeding demo data` and a working demo login, then set `SEED_ON_BOOT=false`. The seed is idempotent and re-applies `DEMO_PASSWORD` / `ADMIN_PASSWORD` to the demo and admin accounts on every run.
+
+To seed demo teachers, school metadata, and approved pedagogical moves from a Shell instead:
 1. Open the Render Dashboard -> Select **abhyas** -> Click **Shell**.
 2. Run the database seed CLI:
    ```bash
