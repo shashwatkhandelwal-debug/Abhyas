@@ -422,12 +422,16 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
                         "status": "completed",
                         "current_item_answer": 16,
                     },
-                    status="completed",
+                    status="ended",  # check_scene_status allows only 'active' / 'ended'
                     teacher_turns=len(chosen_rec.turns),
                     started_at=now - timedelta(days=2),
                     ended_at=now - timedelta(days=2, minutes=-10),
                 )
                 session.add(sc)
+                # Models define no relationship(), so the unit of work cannot order the
+                # Turn / RehearsalScore inserts (FK scene_id -> scene.id) after this one.
+                # Flush the scene row first.
+                await session.flush()
 
             # 2. DB Turn rows linking to Scene
             for t_idx, t_rec in enumerate(chosen_rec.turns):
