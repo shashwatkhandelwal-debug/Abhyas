@@ -441,3 +441,12 @@ All items from `spec/15_human_inputs.md` are currently open:
   - NEW teachers sending free text fell through to the weekly loop (`unclear`); now get welcome + consent buttons (spec/08 §8.1).
 - **Smoke** (local Postgres, production mode, mock providers, `sh scripts/start.sh` with `SEED_ON_BOOT=true` over an old-seed DB): all 7 demo logins load their home page; teacher.demo1 gets welcome+consent, demo2 gets Ravi's rule-engine reply, demo3 (weekly state LEARN) gets `unclear` to free text by design; no server exceptions.
 - **Open**: login rate limit is 5/min/IP, so switching across all 7 evaluator roles within a minute from one IP will be throttled. demo3 ("completed 3 moves") restarts LEARN on its first path move each week.
+
+### LLM / TTS / Chat Fixes (`fix/llm-tts-chat`)
+- **Status**: Done, 2026-10-21. Five commits plus a test-fake follow-up.
+- **LLM**: anthropic 1.13.0 and 2.0.0 `messages.create()` have no `temperature`; `build_create_kwargs()` sends it only if the installed signature accepts it. Pinned `anthropic>=1.13.0,<1.14` (full suite on 1.13.0; 2.0.0 also passes the suite but authenticates with `Authorization: Bearer`, not verified live). One real call (claude-haiku-5-5, SDK 1.13.0) succeeded.
+- **TTS audio 404**: `TTSCache.get` read ORM attributes after `rollback()` (MissingGreenlet); now selects the bytes column. Postgres round-trip test added.
+- **Duplicate user bubble**: `/api/chat/messages` now returns `client_msg_id` for inbound web messages; `chat.js` re-keys the optimistic bubble (POST response or poll). Node vm test with DOM stub.
+- **Silent failures**: `process_inbound_web` replies with catalog key `system_error_retry` after logging.
+- **Reply order**: multi-message replies got identical `created_at` on coarse clocks; `WebChannel.send` now stamps increasing times.
+- **Smoke** (production mode, mock speech, local Postgres): 7/7 logins OK, chat replies OK, reply audio `GET /api/audio/<ref>.ogg` 200 audio/ogg, one inbound copy per send, no server exceptions.
