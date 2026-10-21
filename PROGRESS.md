@@ -431,3 +431,13 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **Fix** (`backend/app/db/demo_data.py`): flush each new `Scene` before its `Turn` / `RehearsalScore` rows; scene `status="ended"`. Unit test `test_demo_data.py` updated from `completed` to `ended`.
 - **Test**: `backend/tests/integration/test_seed_postgres.py` creates a throwaway DB on the `TEST_DATABASE_URL` server, runs `alembic upgrade head` and the seed twice via subprocess (same commands as `scripts/start.sh`), asserts identical row counts and no orphan `rehearsal_score` / `turn` rows, then drops the DB. Runs in the CI `test` job (already sets `TEST_DATABASE_URL`); skipped locally otherwise.
 - **Note**: each seed run adds `llm_call` log rows when `LLM_CALL_LOG_ENABLED=true` (call logging, not seeded data).
+
+### Onboarding READY + End-to-end Smoke Fixes (`fix/onboarding-ready`)
+- **Status**: Done, 2026-10-21. Live bug: `ValueError: 'COMPLETE' is not a valid OnboardingStateEnum` in `get_or_create_context` (reproduced on local Postgres with the old seed: 50 of 51 teachers had `COMPLETE`).
+- **Fixes** (separate commits):
+  - Seed, cohort and admin demo reset write `OnboardingStateEnum.NEW/READY`; `repair_onboarding_state()` replaces invalid stored values on re-seed (valid progress kept). One `SEED_ON_BOOT=true` deploy repairs the live rows.
+  - Seed used move ids with no move card (`m_sub_regroup_intro`, `m_count_forward_10`, `m_place_value_bundling`) so demo2/demo3 got no chat reply (`FileNotFoundError` in `handle_inbound`). Now real ids; legacy ids on demo rows are mapped on re-seed. demo3 evidence lookup keyed by (teacher, move, level) to avoid `MultipleResultsFound`.
+  - `/arp` 500: `arp.html` used Python `is not None` in Jinja (`No test named 'None'`).
+  - NEW teachers sending free text fell through to the weekly loop (`unclear`); now get welcome + consent buttons (spec/08 §8.1).
+- **Smoke** (local Postgres, production mode, mock providers, `sh scripts/start.sh` with `SEED_ON_BOOT=true` over an old-seed DB): all 7 demo logins load their home page; teacher.demo1 gets welcome+consent, demo2 gets Ravi's rule-engine reply, demo3 (weekly state LEARN) gets `unclear` to free text by design; no server exceptions.
+- **Open**: login rate limit is 5/min/IP, so switching across all 7 evaluator roles within a minute from one IP will be throttled. demo3 ("completed 3 moves") restarts LEARN on its first path move each week.
