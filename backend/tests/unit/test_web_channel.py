@@ -1205,3 +1205,31 @@ async def test_pipeline_failure_sends_catalog_error_reply(
     assert len(replies) == 1
     assert replies[0].text == get_message("system_error_retry", "f")
     assert is_teacher_pending(mock_teacher_id) is False
+
+
+@pytest.mark.asyncio
+async def test_send_keeps_multi_message_reply_order_with_coarse_clock(
+    mock_teacher_id: uuid.UUID, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Smoke bug: welcome + consent got the same created_at, so the poll could swap them."""
+    from backend.app.channels import web as web_mod
+    from backend.app.db.models import Message
+
+    frozen = datetime(2026, 10, 21, 12, 0, 0, tzinfo=UTC)
+
+    class FrozenDatetime(datetime):
+        @classmethod
+        def now(cls, tz: Any = None) -> "FrozenDatetime":  # every call returns the same tick
+            return cls.fromtimestamp(frozen.timestamp(), tz=UTC)
+
+    monkeypatch.setattr(web_mod, "datetime", FrozenDatetime)
+    teacher = Teacher(id=mock_teacher_id, name="शिक्षिका")
+    msgs = [OutboundMessage(kind="text", text_hi=f"संदेश {n}") for n in ("एक", "दो", "तीन")]
+    mock_session = AsyncMock(spec=AsyncSession)
+
+    await WebChannel().send(teacher, msgs, session=mock_session)
+
+    added = [c.args[0] for c in mock_session.add.call_args_list if isinstance(c.args[0], Message)]
+    assert [m.text for m in added] == ["संदेश एक", "संदेश दो", "संदेश तीन"]
+    stamps = [m.created_at for m in added]
+    assert stamps == sorted(stamps) and len(set(stamps)) == 3

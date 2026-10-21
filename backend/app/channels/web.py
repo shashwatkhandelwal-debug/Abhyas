@@ -13,7 +13,7 @@ import unicodedata
 import uuid
 from collections import defaultdict
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -149,7 +149,10 @@ class WebChannel:
             return
 
         async def _persist(s: AsyncSession) -> None:
-            for msg in msgs:
+            # Strictly increasing timestamps keep a multi-message reply in order: the
+            # poll orders by (created_at, id) and coarse clocks gave equal created_at.
+            base = datetime.now(UTC)
+            for position, msg in enumerate(msgs):
                 if msg.already_persisted or getattr(msg, "_already_persisted", False):
                     continue
                 db_msg = Message(
@@ -164,7 +167,7 @@ class WebChannel:
                     buttons=[b.model_dump() for b in msg.buttons] if msg.buttons else None,
                     speaker=msg.speaker,
                     template_name=msg.template_name,
-                    created_at=datetime.now(UTC),
+                    created_at=base + timedelta(microseconds=position),
                 )
                 s.add(db_msg)
             await s.commit()
