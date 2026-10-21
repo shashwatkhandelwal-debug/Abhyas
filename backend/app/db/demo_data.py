@@ -59,9 +59,27 @@ from backend.app.llm.schemas import SceneTurn
 from backend.app.rehearsal.scene_runner import SceneRunner
 from backend.app.rehearsal.scene_store import SceneStore
 from backend.app.rule_engine.domain import ChildState, TeachingAct
+from backend.app.sessions.state_machine import OnboardingStateEnum
 from backend.app.speech.tts import MockTTS
 
 logger = logging.getLogger("abhyas.db.demo_data")
+
+VALID_ONBOARDING_STATES = frozenset(state.value for state in OnboardingStateEnum)
+
+
+def repair_onboarding_state(teacher: Teacher, target: OnboardingStateEnum) -> None:
+    """Sets target only when the stored onboarding_state is not a valid OnboardingStateEnum value.
+
+    Repairs rows written by older seeds (e.g. "COMPLETE") without resetting valid progress.
+    """
+    if teacher.onboarding_state not in VALID_ONBOARDING_STATES:
+        logger.info(
+            "Repairing invalid onboarding_state %r -> %s for teacher %s",
+            teacher.onboarding_state,
+            target.value,
+            teacher.id,
+        )
+        teacher.onboarding_state = target
 
 
 @contextmanager
@@ -249,6 +267,7 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
             batch_id = "KNP-B3"
             consent_share = idx % 2 == 0
 
+        onboarding_target = OnboardingStateEnum.READY if idx > 1 else OnboardingStateEnum.NEW
         t = await session.get(Teacher, teacher_id)
         if not t:
             t = Teacher(
@@ -264,7 +283,7 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
                 consent_share_scores=consent_share,
                 consent_research=True,
                 is_demo=True,
-                onboarding_state="COMPLETE" if idx > 1 else "NEW",
+                onboarding_state=onboarding_target,
                 last_inbound_at=now - timedelta(hours=idx * 2),
             )
             session.add(t)
@@ -274,6 +293,7 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
             t.batch_id = batch_id
             t.consent_share_scores = consent_share
             t.name = display_name
+            repair_onboarding_state(t, onboarding_target)
 
         teachers.append(t)
 

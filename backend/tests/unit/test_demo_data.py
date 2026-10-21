@@ -17,9 +17,11 @@ Verifies:
 
 from __future__ import annotations
 
+import ast
 import re
 import uuid
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
@@ -30,20 +32,23 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
-from backend.app.db.demo_data import populate_demo_cohort
+from backend.app.db.demo_data import SEED_TEACHER_IDS, populate_demo_cohort, repair_onboarding_state
 from backend.app.db.models import (
     AdoptionEvidence,
     AggModuleBatch,
     AppUser,
     ARPObservation,
     ExplainScore,
+    MovePath,
     RehearsalScore,
     Scene,
+    SessionState,
     Teacher,
     Turn,
 )
 from backend.app.db.seed import seed_database
 from backend.app.jobs.aggregates import compute_aggregates_for_batch
+from backend.app.sessions.state_machine import OnboardingStateEnum
 from backend.app.web.teacher import STATIC_DIR
 from backend.app.web.teacher import router as teacher_router
 
@@ -565,3 +570,130 @@ async def test_seeding_with_anthropic_api_key_never_calls_real_client(
     await populate_demo_cohort(cast(AsyncSession, session))
 
     assert settings.LLM_PROVIDER == "anthropic"
+
+
+# ── Onboarding state validity (live bug: "COMPLETE" is not an OnboardingStateEnum) ──
+
+_ONBOARDING_SOURCES = (
+    Path(__file__).parents[2] / "app" / "db" / "seed.py",
+    Path(__file__).parents[2] / "app" / "db" / "demo_data.py",
+    Path(__file__).parents[2] / "app" / "web" / "admin.py",
+)
+
+
+def _onboarding_value_nodes(tree: ast.AST) -> list[ast.expr]:
+    """Returns every expression assigned to onboarding_state (kwarg or attribute)."""
+    nodes: list[ast.expr] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.keyword) and node.arg == "onboarding_state":
+            nodes.append(node.value)
+        elif isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Attribute) and target.attr == "onboarding_state":
+                    nodes.append(node.value)
+    return nodes
+
+
+def test_seed_and_admin_onboarding_values_are_valid_enum_members() -> None:
+    valid = {state.value for state in OnboardingStateEnum}
+    checked = 0
+    for path in _ONBOARDING_SOURCES:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for value in _onboarding_value_nodes(tree):
+            where = f"{path.name}:{value.lineno}"
+            if isinstance(value, ast.Constant):
+                assert value.value in valid, f"{where}: invalid onboarding_state {value.value!r}"
+            elif isinstance(value, ast.Attribute):
+                assert isinstance(value.value, ast.Name)
+                assert value.value.id == "OnboardingStateEnum", where
+                assert value.attr in OnboardingStateEnum.__members__, where
+            else:
+                # Computed values (e.g. onboarding_target) are covered by the behavioural tests below
+                assert isinstance(value, ast.Name), (
+                    f"{where}: unexpected onboarding_state expression"
+                )
+            checked += 1
+    assert checked >= 6
+
+
+def test_repair_onboarding_state_fixes_invalid_and_keeps_valid() -> None:
+    legacy = Teacher(id=uuid.uuid4(), onboarding_state="COMPLETE")
+    repair_onboarding_state(legacy, OnboardingStateEnum.READY)
+    assert legacy.onboarding_state == "READY"
+
+    progressed = Teacher(id=uuid.uuid4(), onboarding_state="PLACEMENT")
+    repair_onboarding_state(progressed, OnboardingStateEnum.READY)
+    assert progressed.onboarding_state == "PLACEMENT"
+
+
+async def _run_seed_with(session: FakeDemoSession, monkeypatch: pytest.MonkeyPatch) -> None:
+    @asynccontextmanager
+    async def mock_session_factory():  # type: ignore[no-untyped-def]
+        yield session
+
+    monkeypatch.setattr("backend.app.db.seed.async_session_factory", mock_session_factory)
+    await seed_database()
+
+
+@pytest.mark.asyncio
+async def test_seed_writes_only_valid_onboarding_states(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = FakeDemoSession()
+    await _run_seed_with(session, monkeypatch)
+
+    teachers = {t.id: t for t in session.added if isinstance(t, Teacher)}
+    assert len(teachers) == 51
+    for teacher in teachers.values():
+        OnboardingStateEnum(teacher.onboarding_state)  # raises ValueError if invalid
+    assert teachers[SEED_TEACHER_IDS[0]].onboarding_state == "NEW"
+    assert teachers[SEED_TEACHER_IDS[1]].onboarding_state == "READY"
+    assert teachers[SEED_TEACHER_IDS[2]].onboarding_state == "READY"
+
+
+@pytest.mark.asyncio
+async def test_reseed_repairs_legacy_complete_onboarding_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Rows written by the old seed ("COMPLETE") are repaired by one re-run."""
+    session = FakeDemoSession()
+    legacy_ids = [
+        SEED_TEACHER_IDS[1],
+        SEED_TEACHER_IDS[2],
+        uuid.UUID(f"00000000-0000-0000-0002-{7:012x}"),
+    ]
+    for teacher_id in legacy_ids:
+        session.add(Teacher(id=teacher_id, is_demo=True, onboarding_state="COMPLETE"))
+    progressed = Teacher(id=SEED_TEACHER_IDS[0], is_demo=True, onboarding_state="PLACEMENT")
+    session.add(progressed)
+
+    await _run_seed_with(session, monkeypatch)
+
+    for teacher_id in legacy_ids:
+        teacher = await session.get(Teacher, teacher_id)
+        assert teacher is not None
+        assert teacher.onboarding_state == "READY"
+    assert progressed.onboarding_state == "PLACEMENT"  # valid progress is left alone
+
+
+MOVES_DIR = Path(__file__).parents[3] / "content" / "moves"
+
+
+@pytest.mark.asyncio
+async def test_seed_writes_only_move_ids_with_move_cards(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Live bug: seeded rows referenced m_sub_regroup_intro, which has no move card."""
+    session = FakeDemoSession()
+    await _run_seed_with(session, monkeypatch)
+
+    move_ids = {
+        obj.move_id
+        for obj in session.added
+        if isinstance(obj, (SessionState, MovePath, AdoptionEvidence, Scene, RehearsalScore))
+        and obj.move_id
+    }
+    move_ids |= {
+        str(obj.context["current_move_id"])
+        for obj in session.added
+        if isinstance(obj, SessionState) and obj.context and obj.context.get("current_move_id")
+    }
+    assert move_ids, "seed wrote no move ids"
+    missing = sorted(m for m in move_ids if not (MOVES_DIR / f"{m}.yaml").is_file())
+    assert missing == [], f"seeded move ids without a move card: {missing}"

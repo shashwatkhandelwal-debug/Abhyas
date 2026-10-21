@@ -19,10 +19,11 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.passwords import hash_password
 from backend.app.config import settings
-from backend.app.db.demo_data import populate_demo_cohort
+from backend.app.db.demo_data import populate_demo_cohort, repair_onboarding_state
 from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
@@ -35,6 +36,7 @@ from backend.app.db.models import (
 )
 from backend.app.db.session import async_session_factory
 from backend.app.retrieval.ingest import load_chunks_to_db
+from backend.app.sessions.state_machine import OnboardingStateEnum
 
 logger = logging.getLogger("abhyas.db.seed")
 
@@ -50,6 +52,71 @@ USER_ARP_ID = uuid.UUID("00000000-0000-0000-0001-000000000004")
 USER_TRAINER_ID = uuid.UUID("00000000-0000-0000-0001-000000000005")
 USER_COACH_ID = uuid.UUID("00000000-0000-0001-0000-000000000006")
 USER_ADMIN_ID = uuid.UUID("00000000-0000-0001-0000-000000000007")
+
+
+# Move ids written by older seeds that have no card in content/moves -> the real card
+LEGACY_SEED_MOVE_IDS: dict[str, str] = {
+    "m_sub_regroup_intro": "NUM_SUB_REGROUP_BUNDLES",
+    "m_count_forward_10": "NUM_ADD_CARRY_BUNDLES",
+    "m_place_value_bundling": "NUM_PLACE_VALUE_BUNDLES",
+}
+
+
+async def _repair_legacy_move_ids(session: AsyncSession) -> None:
+    """Rewrites legacy seed move ids on the demo teachers' session/path/evidence rows."""
+    demo_ids = [TEACHER_DEMO1_ID, TEACHER_DEMO2_ID, TEACHER_DEMO3_ID]
+    legacy_ids = list(LEGACY_SEED_MOVE_IDS)
+    repaired = 0
+
+    for path_row in (
+        (
+            await session.execute(
+                select(MovePath).where(
+                    MovePath.teacher_id.in_(demo_ids), MovePath.move_id.in_(legacy_ids)
+                )
+            )
+        )
+        .scalars()
+        .all()
+    ):
+        assert path_row.move_id is not None
+        path_row.move_id = LEGACY_SEED_MOVE_IDS[path_row.move_id]
+        repaired += 1
+
+    for evidence in (
+        (
+            await session.execute(
+                select(AdoptionEvidence).where(
+                    AdoptionEvidence.teacher_id.in_(demo_ids),
+                    AdoptionEvidence.move_id.in_(legacy_ids),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    ):
+        evidence.move_id = LEGACY_SEED_MOVE_IDS[evidence.move_id]
+        repaired += 1
+
+    for state in (
+        (await session.execute(select(SessionState).where(SessionState.teacher_id.in_(demo_ids))))
+        .scalars()
+        .all()
+    ):
+        changed = False
+        if state.move_id in LEGACY_SEED_MOVE_IDS:
+            state.move_id = LEGACY_SEED_MOVE_IDS[state.move_id]
+            changed = True
+        context = dict(state.context or {})
+        if context.get("current_move_id") in LEGACY_SEED_MOVE_IDS:
+            context["current_move_id"] = LEGACY_SEED_MOVE_IDS[context["current_move_id"]]
+            state.context = context
+            changed = True
+        repaired += int(changed)
+
+    if repaired:
+        logger.info("Repaired %d demo rows with legacy move ids", repaired)
+        await session.flush()
 
 
 async def seed_database() -> None:
@@ -124,9 +191,11 @@ async def seed_database() -> None:
                 consent_service=True,
                 consent_share_scores=True,
                 is_demo=True,
-                onboarding_state="NEW",
+                onboarding_state=OnboardingStateEnum.NEW,
             )
             session.add(t1)
+        else:
+            repair_onboarding_state(t1, OnboardingStateEnum.NEW)
 
         # Demo 2: Mid-week in REHEARSE
         t2 = await session.get(Teacher, TEACHER_DEMO2_ID)
@@ -143,10 +212,12 @@ async def seed_database() -> None:
                 consent_service=True,
                 consent_share_scores=True,
                 is_demo=True,
-                onboarding_state="COMPLETE",
+                onboarding_state=OnboardingStateEnum.READY,
                 last_inbound_at=datetime.now(UTC),
             )
             session.add(t2)
+        else:
+            repair_onboarding_state(t2, OnboardingStateEnum.READY)
 
         # Demo 3: Completed 3 moves
         t3 = await session.get(Teacher, TEACHER_DEMO3_ID)
@@ -163,12 +234,17 @@ async def seed_database() -> None:
                 consent_service=True,
                 consent_share_scores=False,  # Demonstrates non-consenting behavior
                 is_demo=True,
-                onboarding_state="COMPLETE",
+                onboarding_state=OnboardingStateEnum.READY,
                 last_inbound_at=datetime.now(UTC),
             )
             session.add(t3)
+        else:
+            repair_onboarding_state(t3, OnboardingStateEnum.READY)
 
         await session.flush()
+
+        # Rows written by older seeds reference move ids with no move card; map them first
+        await _repair_legacy_move_ids(session)
 
         # 5. Session State for demo2 (in REHEARSE)
         today = date.today()
@@ -179,25 +255,28 @@ async def seed_database() -> None:
             s2 = SessionState(
                 teacher_id=TEACHER_DEMO2_ID,
                 week_start=week_start,
-                move_id="m_sub_regroup_intro",
+                move_id="NUM_SUB_REGROUP_BUNDLES",
                 state="REHEARSE",
                 prior_state="MODEL",
                 rehearse_attempts=1,
-                context={"current_move_id": "m_sub_regroup_intro", "current_state": "REHEARSE"},
+                context={"current_move_id": "NUM_SUB_REGROUP_BUNDLES", "current_state": "REHEARSE"},
             )
             session.add(s2)
 
         # 6. Completed moves and Adoption Evidence for demo3
         for idx, (m_id, lvl, src) in enumerate(
             [
-                ("m_sub_regroup_intro", 5, "child_check"),
-                ("m_count_forward_10", 4, "arp_observation"),
-                ("m_place_value_bundling", 3, "peer_checklist"),
+                ("NUM_SUB_REGROUP_BUNDLES", 5, "child_check"),
+                ("NUM_ADD_CARRY_BUNDLES", 4, "arp_observation"),
+                ("NUM_PLACE_VALUE_BUNDLES", 3, "peer_checklist"),
             ]
         ):
+            # Same key as demo_data's cohort evidence: the cohort also writes demo3 rows
+            # for these real moves (other levels), so (teacher, move) alone is not unique
             stmt_ev = select(AdoptionEvidence).where(
                 AdoptionEvidence.teacher_id == TEACHER_DEMO3_ID,
                 AdoptionEvidence.move_id == m_id,
+                AdoptionEvidence.level == lvl,
             )
             ev = (await session.execute(stmt_ev)).scalar_one_or_none()
             if not ev:

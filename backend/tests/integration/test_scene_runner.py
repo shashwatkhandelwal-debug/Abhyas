@@ -211,7 +211,7 @@ async def test_postgres_scene_store_roundtrip() -> None:
                     name="परीक्षण शिक्षक",
                     address_form="m",
                     preferred_channel="whatsapp",
-                    onboarding_state="DONE",
+                    onboarding_state="READY",
                     is_demo=True,
                 )
                 session.add(teacher)

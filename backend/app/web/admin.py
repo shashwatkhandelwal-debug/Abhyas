@@ -61,6 +61,7 @@ from backend.app.db.models import (
 )
 from backend.app.db.session import get_db_session
 from backend.app.jobs.tick import fast_forward_teacher
+from backend.app.sessions.state_machine import OnboardingStateEnum
 
 logger = logging.getLogger("abhyas.web.admin")
 
@@ -389,12 +390,12 @@ async def reset_demo_data(session: AsyncSession) -> dict[str, int]:
     # 5. Reset demo 1, 2, 3 to baseline seed states
     t1 = await session.get(Teacher, SEED_TEACHER_IDS[0])
     if t1:
-        t1.onboarding_state = "NEW"
+        t1.onboarding_state = OnboardingStateEnum.NEW
         t1.last_inbound_at = None
 
     t2 = await session.get(Teacher, SEED_TEACHER_IDS[1])
     if t2:
-        t2.onboarding_state = "COMPLETE"
+        t2.onboarding_state = OnboardingStateEnum.READY
         t2.last_inbound_at = datetime.now(UTC)
         today = date.today()
         week_start = today - timedelta(days=today.weekday())
@@ -414,7 +415,7 @@ async def reset_demo_data(session: AsyncSession) -> dict[str, int]:
 
     t3 = await session.get(Teacher, SEED_TEACHER_IDS[2])
     if t3:
-        t3.onboarding_state = "COMPLETE"
+        t3.onboarding_state = OnboardingStateEnum.READY
         t3.last_inbound_at = datetime.now(UTC)
 
     await session.commit()

@@ -318,9 +318,9 @@ async def test_reset_demo_data_targets_only_seed_teachers() -> None:
     mock_exec.scalars.return_value.all.return_value = []
     mock_db.execute = AsyncMock(return_value=mock_exec)
 
-    t1 = Teacher(id=SEED_TEACHER_IDS[0], is_demo=True, onboarding_state="DONE")
-    t2 = Teacher(id=SEED_TEACHER_IDS[1], is_demo=True, onboarding_state="DONE")
-    t3 = Teacher(id=SEED_TEACHER_IDS[2], is_demo=True, onboarding_state="DONE")
+    t1 = Teacher(id=SEED_TEACHER_IDS[0], is_demo=True, onboarding_state="PLACEMENT")
+    t2 = Teacher(id=SEED_TEACHER_IDS[1], is_demo=True, onboarding_state="PLACEMENT")
+    t3 = Teacher(id=SEED_TEACHER_IDS[2], is_demo=True, onboarding_state="PLACEMENT")
 
     async def fake_get(model: Any, pk: Any) -> Any:
         if pk == SEED_TEACHER_IDS[0]:
@@ -336,6 +336,6 @@ async def test_reset_demo_data_targets_only_seed_teachers() -> None:
     result = await reset_demo_data(mock_db)
     assert result == {"reset_teachers": 3}
     assert t1.onboarding_state == "NEW"
-    assert t2.onboarding_state == "COMPLETE"
-    assert t3.onboarding_state == "COMPLETE"
+    assert t2.onboarding_state == "READY"
+    assert t3.onboarding_state == "READY"
     assert mock_db.commit.awaited
