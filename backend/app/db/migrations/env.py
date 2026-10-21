@@ -28,7 +28,8 @@ elif target_url.startswith("postgresql://"):
 config.set_main_option("sqlalchemy.url", target_url)
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Keep application loggers (abhyas.*) enabled when migrations run in-process (tests, startup)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 
