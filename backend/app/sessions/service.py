@@ -533,6 +533,23 @@ class SessionService:
                             text_hi=get_message("consent_declined", address_form),
                         )
                     ]
+                # Any other input before consent: welcome + consent prompt (spec/08 §8.1 NEW row).
+                # Without this, a NEW teacher fell through to the weekly loop and got 'unclear'.
+                return [
+                    OutboundMessage(kind="text", text_hi=get_message("welcome", address_form)),
+                    OutboundMessage(
+                        kind="buttons",
+                        text_hi=get_message("consent_service", address_form),
+                        buttons=[
+                            Button(id="btn_agree", title_hi=get_message("btn_agree", address_form)),
+                            Button(id="btn_more", title_hi=get_message("btn_more", address_form)),
+                            Button(
+                                id="btn_decline",
+                                title_hi=get_message("btn_decline", address_form),
+                            ),
+                        ],
+                    ),
+                ]
 
             elif current_onboarding == OnboardingStateEnum.JOIN_CODE:
                 if (

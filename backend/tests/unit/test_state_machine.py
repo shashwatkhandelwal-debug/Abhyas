@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.core.messages import get_message
 from backend.app.core.types import InboundMessage
 from backend.app.db.models import (
     AdoptionEvidence,
@@ -993,3 +994,27 @@ async def test_second_session_service_instance_continues_mid_scene_from_db() -> 
     ctx2_updated = await service2.get_or_create_context(t_id)
     assert ctx2_updated.current_state == SessionStateEnum.REHEARSE
     assert ctx2_updated.rehearsal_turns_count == 2
+
+
+@pytest.mark.asyncio
+async def test_new_teacher_free_text_gets_welcome_and_consent_buttons() -> None:
+    """Smoke bug: a NEW teacher's first free-text message got 'unclear' from the weekly loop.
+
+    Spec/08 §8.1: NEW answers with welcome + consent_service + [agree, more, decline].
+    """
+    service = SessionService(repository=FakeSessionRepository())
+    t_id = uuid4()
+
+    out = await service.handle_inbound(
+        make_inbound(teacher_id=t_id, text="रवि, तुमने 43 में से 27 कैसे घटाया? मुझे एक-एक कदम बताओ।")
+    )
+
+    texts = [m.text_hi or "" for m in out]
+    assert texts[0] == get_message("welcome", "f")
+    assert out[-1].kind == "buttons"
+    assert out[-1].text_hi == get_message("consent_service", "f")
+    assert [b.id for b in out[-1].buttons or []] == ["btn_agree", "btn_more", "btn_decline"]
+    assert get_message("unclear", "f") not in texts
+    teacher = await service.repo.get_or_create_teacher(t_id)
+    assert teacher.onboarding_state == "NEW"
+    assert teacher.consent_service is False
