@@ -406,3 +406,13 @@ All items from `spec/15_human_inputs.md` are currently open:
   - Personas: lists exactly the 3 implemented child personas with temperaments from YAML (Ravi confident, Aman distracted, Priya shy); notes bug rules belong to moves.
   - Scaling path: documents current single-worker constraint with in-process scheduler and memory locks (`TeacherLockManager` in `backend/app/core/locks.py`), `GET/POST /teacher/delete` in `backend/app/web/teacher.py`, and Supabase session pooler (port 5432).
 
+
+### Gemini Speech Providers & Fallback Chain (`feat/gemini-speech`)
+- **Status**: Done, 2026-10-21. `make test` equivalents green locally (ruff, ruff format --check, mypy --strict, pytest).
+- **Built**: `GeminiSTT` / `GeminiTTS` over the Gemini Interactions API (`POST {GEMINI_BASE_URL}/interactions`, `x-goog-api-key`), shared helpers in `backend/app/speech/gemini.py`; `FallbackSTT` / `FallbackTTS` wired by `STT_FALLBACK_PROVIDER` / `TTS_FALLBACK_PROVIDER` (default `none` = unchanged behaviour); Gemini spend recorded via `speech_budget` at `GEMINI_*_COST_*` (default 0.0 INR). Tests: `backend/tests/unit/test_gemini_speech.py`.
+- **Decisions / deviations**:
+  - `SarvamTTS.synthesize` moved verbatim into a shared `_ChunkedTTS` base (cache, budget, digits, chunking, pitch shift); `SarvamTTS` and `GeminiTTS` only implement `_synthesize_chunk`. Sarvam log lines keep the "Sarvam TTS" prefix.
+  - Gemini STT size cap (`GEMINI_STT_MAX_BYTES`, 18 MB) is applied to the base64 payload, since the documented 20 MB limit is on the whole request.
+  - Gemini returns 4xx (401/402/403/429) as `*Unavailable` with no retry; timeout/network/5xx retry once. Sarvam retry behaviour is unchanged.
+  - Production validator now also requires `SARVAM_API_KEY` when `sarvam` is a *fallback*, and rejects `mock` as a fallback provider.
+  - TTS cache key is unchanged (`compute_cache_key` on the `VoiceSpec`), so Gemini and Sarvam share cached clips for the same text/voice.
