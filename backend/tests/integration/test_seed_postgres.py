@@ -10,6 +10,7 @@ Skipped locally if TEST_DATABASE_URL is not set.
 
 import asyncio
 import os
+import re
 import subprocess
 import sys
 from collections.abc import Iterator
@@ -28,6 +29,8 @@ from backend.app.sessions.state_machine import OnboardingStateEnum
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SEED_TIMEOUT_S = 600
+# "pkg.ExcName: message" and "DETAIL:  ..." lines (not "INFO:logger:..." log lines)
+EXCEPTION_LINE = re.compile(r"^[A-Za-z_][\w.]*: ")
 
 pytestmark = pytest.mark.skipif(
     not TEST_DATABASE_URL,
@@ -103,9 +106,7 @@ def _run(args: list[str], db_name: str) -> None:
     if proc.returncode != 0:
         # SQLAlchemy errors end with huge parameter dumps; surface the exception lines first
         error_lines = [
-            line[:300]
-            for line in proc.stderr.splitlines()
-            if "Error:" in line or line.startswith("DETAIL:")
+            line[:300] for line in proc.stderr.splitlines() if EXCEPTION_LINE.match(line)
         ]
         pytest.fail(
             f"{' '.join(args)} exited {proc.returncode}\n"
@@ -159,14 +160,24 @@ def test_seed_runs_on_fresh_postgres_and_is_idempotent(scratch_db: str) -> None:
     _run(["-m", "backend.app.db.seed"], scratch_db)
     assert _counts(scratch_db) == first
 
-    # Live DBs seeded by the old code hold onboarding_state='COMPLETE'; one re-run repairs them
+    # Live DBs seeded by the old code hold onboarding_state='COMPLETE' and move ids with no
+    # move card (m_sub_regroup_intro, ...); one re-run must repair both
     _execute(
         scratch_db,
         "UPDATE teacher SET onboarding_state = 'COMPLETE' WHERE onboarding_state = 'READY'",
     )
+    for new_id, legacy_id in LEGACY_MOVE_IDS.items():
+        for table in ("session_state", "move_path", "adoption_evidence"):
+            _execute(
+                scratch_db,
+                f"UPDATE {table} SET move_id = '{legacy_id}' "
+                f"WHERE move_id = '{new_id}' AND teacher_id IN ({DEMO_TEACHER_IDS_SQL})",
+            )
     assert _invalid_onboarding_count(scratch_db) > 0
+    assert _move_ids_without_card(scratch_db)
     _run(["-m", "backend.app.db.seed"], scratch_db)
     assert _invalid_onboarding_count(scratch_db) == 0
+    assert _move_ids_without_card(scratch_db) == []
     assert _counts(scratch_db) == first
 
     # The first chat message calls get_or_create_context; it must load for every seeded teacher
@@ -174,6 +185,30 @@ def test_seed_runs_on_fresh_postgres_and_is_idempotent(scratch_db: str) -> None:
     assert failures == {}, (
         f"get_or_create_context raised for {len(failures)} teacher(s): {failures}"
     )
+
+
+MOVES_DIR = REPO_ROOT / "content" / "moves"
+LEGACY_MOVE_IDS = {  # real card id -> id written by older seeds
+    "NUM_SUB_REGROUP_BUNDLES": "m_sub_regroup_intro",
+    "NUM_ADD_CARRY_BUNDLES": "m_count_forward_10",
+    "NUM_PLACE_VALUE_BUNDLES": "m_place_value_bundling",
+}
+DEMO_TEACHER_IDS_SQL = ", ".join(f"'00000000-0000-0000-0000-00000000000{n}'" for n in (1, 2, 3))
+
+
+def _move_ids_without_card(db_name: str) -> list[str]:
+    engine = create_engine(_sync_url(db_name))
+    query = (
+        "SELECT move_id FROM session_state UNION SELECT move_id FROM move_path "
+        "UNION SELECT move_id FROM adoption_evidence UNION SELECT move_id FROM scene "
+        "UNION SELECT context->>'current_move_id' FROM session_state"
+    )
+    try:
+        with engine.connect() as conn:
+            move_ids = {row[0] for row in conn.execute(text(query)) if row[0]}
+    finally:
+        engine.dispose()
+    return sorted(m for m in move_ids if not (MOVES_DIR / f"{m}.yaml").is_file())
 
 
 def _execute(db_name: str, sql: str) -> None:

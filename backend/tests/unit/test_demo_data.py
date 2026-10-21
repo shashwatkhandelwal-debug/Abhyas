@@ -39,8 +39,10 @@ from backend.app.db.models import (
     AppUser,
     ARPObservation,
     ExplainScore,
+    MovePath,
     RehearsalScore,
     Scene,
+    SessionState,
     Teacher,
     Turn,
 )
@@ -670,3 +672,28 @@ async def test_reseed_repairs_legacy_complete_onboarding_state(
         assert teacher is not None
         assert teacher.onboarding_state == "READY"
     assert progressed.onboarding_state == "PLACEMENT"  # valid progress is left alone
+
+
+MOVES_DIR = Path(__file__).parents[3] / "content" / "moves"
+
+
+@pytest.mark.asyncio
+async def test_seed_writes_only_move_ids_with_move_cards(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Live bug: seeded rows referenced m_sub_regroup_intro, which has no move card."""
+    session = FakeDemoSession()
+    await _run_seed_with(session, monkeypatch)
+
+    move_ids = {
+        obj.move_id
+        for obj in session.added
+        if isinstance(obj, (SessionState, MovePath, AdoptionEvidence, Scene, RehearsalScore))
+        and obj.move_id
+    }
+    move_ids |= {
+        str(obj.context["current_move_id"])
+        for obj in session.added
+        if isinstance(obj, SessionState) and obj.context and obj.context.get("current_move_id")
+    }
+    assert move_ids, "seed wrote no move ids"
+    missing = sorted(m for m in move_ids if not (MOVES_DIR / f"{m}.yaml").is_file())
+    assert missing == [], f"seeded move ids without a move card: {missing}"
