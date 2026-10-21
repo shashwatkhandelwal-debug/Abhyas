@@ -776,3 +776,63 @@ async def test_arp_get_dashboard_renders_wa_undelivered_flash_message(
         assert res.status_code == 200
         expected_msg = get_message("ui_arp_answer_saved_wa_undelivered")
         assert expected_msg in res.text
+
+
+@pytest.mark.asyncio
+async def test_arp_dashboard_renders_suggested_visits(
+    arp_app: FastAPI,
+    arp_user: AppUser,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Live bug: a suggested-visit card used Python `is not None` in Jinja -> /arp 500."""
+    from datetime import date
+
+    from backend.app.reports.arp_digest import ARPDigestData, SuggestedVisit
+
+    week = date(2026, 10, 19)
+    visits = [
+        SuggestedVisit(
+            teacher_id=str(uuid.uuid4()),
+            name="विज़िट शिक्षिका अ",
+            school="SCH-KNP-01",
+            move_id="NUM_SUB_REGROUP_BUNDLES",
+            move_title="हासिल वाला घटाव",
+            avg_score=None,
+            peer_checklist=["तीलियों का उपयोग"],
+        ),
+        SuggestedVisit(
+            teacher_id=str(uuid.uuid4()),
+            name="विज़िट शिक्षिका ब",
+            school="SCH-KNP-02",
+            move_id="NUM_SUB_REGROUP_BUNDLES",
+            move_title="हासिल वाला घटाव",
+            avg_score=1.25,
+            peer_checklist=[],
+        ),
+    ]
+    digest = ARPDigestData(
+        cluster_id="KNP-C01",
+        cluster_name="कानपुर नगर संकुल 01",
+        selected_week_start=week,
+        available_weeks=[week],
+        total_teachers=2,
+        active_teachers_count=2,
+        completed_loops_count=0,
+        moves_practised_count=1,
+        consenting_teachers=[],
+        non_consenting_count=0,
+        suggested_visits=visits,
+        escalated_questions=[],
+    )
+    monkeypatch.setattr("backend.app.web.arp.build_arp_digest", AsyncMock(return_value=digest))
+    arp_app.dependency_overrides[get_current_user] = lambda: arp_user
+    arp_app.dependency_overrides[get_db_session] = lambda: AsyncMock(spec=AsyncSession)
+
+    transport = ASGITransport(app=arp_app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        res = await client.get("/arp")
+
+    assert res.status_code == 200, res.text[:500]
+    assert "विज़िट शिक्षिका अ" in res.text and "विज़िट शिक्षिका ब" in res.text
+    assert "— / 2.0" in res.text  # avg_score None
+    assert "1.25 / 2.0" in res.text

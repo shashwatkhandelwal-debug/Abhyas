@@ -400,7 +400,7 @@
           <div>
             <div class="visit-card-title">{{ v.name }} — {{ v.school }}</div>
             <div style="font-size: 0.85rem; color: var(--muted); margin-top: 0.2rem;">
-              तरीका: <strong>{{ v.move_title }}</strong> · औसत अंक: <strong>{{ v.avg_score if v.avg_score is not None else '—' }} / 2.0</strong>
+              तरीका: <strong>{{ v.move_title }}</strong> · औसत अंक: <strong>{{ v.avg_score if v.avg_score is not none else '—' }} / 2.0</strong>
             </div>
           </div>
           <span class="badge-help">{{ get_message('ui_arp_visit_reason') }}</span>
