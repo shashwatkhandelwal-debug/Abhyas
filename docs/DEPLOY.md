@@ -106,6 +106,9 @@ In `ENVIRONMENT=production`, FastAPI's rate limiter directly inspects the first 
   5. Change `SPEECH_PROVIDER_LIVE` to `true`.
   6. Save changes; Render will redeploy with full Hindi STT and child-voice TTS enabled.
 
+#### Speech provider order for hosted testing
+For the hosted evaluation build, use Gemini first and Sarvam as the fallback: set `STT_PROVIDER=gemini`, `STT_FALLBACK_PROVIDER=sarvam`, `TTS_PROVIDER=gemini` and `TTS_FALLBACK_PROVIDER=sarvam`, and provide both `GEMINI_API_KEY` and `SARVAM_API_KEY`. If a Gemini call times out or returns 5xx twice, or returns any 4xx (401/402/403/429 included), that request is retried on Sarvam; only provider names are logged. If both fail, the normal speech-error path runs (no mock audio is substituted). With `*_FALLBACK_PROVIDER=none` (the default) only the primary provider is used.
+
 ### 3.2 Environment Variables Checklist Table
 Configure environment variables in **Render Dashboard** -> **Environment**.
 Never commit real production credentials to Git.
@@ -136,7 +139,17 @@ Never commit real production credentials to Git.
 | `SPEECH_PROVIDER_LIVE` | Live speech switch (`false` initial, `true` when live) | Architecture configuration | Optional (default: `false`) |
 | `SPEECH_DAILY_BUDGET_INR`| Daily speech budget cap in INR | Budget control | Optional (default: `50.0`) |
 | `SPEECH_TOTAL_BUDGET_INR`| Total evaluation speech budget in INR | Budget control | Optional (default: `500.0`) |
-| `SARVAM_API_KEY` | Sarvam AI API subscription key | Sarvam AI Dashboard | Required if live speech |
+| `STT_FALLBACK_PROVIDER` | STT provider tried when the primary is unavailable (`none`, `sarvam`, `bhashini`, `google`, `gemini`, `mock`; `mock` rejected in prod) | Architecture configuration | Optional (default: `none`) |
+| `TTS_FALLBACK_PROVIDER` | TTS provider tried when the primary is unavailable (`none`, `sarvam`, `gemini`, `mock`; `mock` rejected in prod) | Architecture configuration | Optional (default: `none`) |
+| `GEMINI_API_KEY` | Gemini API key (sent as `x-goog-api-key`) | Google AI Studio | Required if `gemini` is a primary or fallback speech provider |
+| `GEMINI_BASE_URL` | Gemini API base URL | Google | Optional (default: `https://generativelanguage.googleapis.com/v1beta`) |
+| `GEMINI_STT_MODEL` | Gemini audio-understanding model used for transcription | Google | Optional (default: `gemini-3.8-flash`) |
+| `GEMINI_TTS_MODEL` | Gemini speech-generation model | Google | Optional (default: `gemini-3.8-flash-tts`) |
+| `GEMINI_TTS_VOICE_F` | Gemini prebuilt voice for female `VoiceSpec`s | Google | Optional (default: `Kore`) |
+| `GEMINI_TTS_VOICE_M` | Gemini prebuilt voice for male `VoiceSpec`s | Google | Optional (default: `Puck`) |
+| `GEMINI_STT_COST_INR_PER_MIN` | Gemini STT cost recorded in `speech_spend` | Budget control | Optional (default: `0.0`) |
+| `GEMINI_TTS_COST_INR_PER_1K_CHARS` | Gemini TTS cost recorded in `speech_spend` | Budget control | Optional (default: `0.0`) |
+| `SARVAM_API_KEY` | Sarvam AI API subscription key | Sarvam AI Dashboard | Required if live speech or `sarvam` is a primary/fallback provider |
 | `SARVAM_BASE_URL` | Sarvam API base URL | Sarvam AI | Optional (default: `https://api.sarvam.ai`) |
 | `SARVAM_STT_MODEL` | Sarvam speech-to-text model | Sarvam AI | Optional (default: `saaras:v4`) |
 | `SARVAM_TTS_MODEL` | Sarvam text-to-speech model | Sarvam AI | Optional (default: `bulbul:v3`) |

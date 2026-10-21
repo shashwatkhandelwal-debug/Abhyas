@@ -72,8 +72,24 @@ class Settings(BaseSettings):
     GUARD_EVENT_LOG_PATH: str = ""
 
     # ── Speech (STT / TTS / Audio) — H2 ──────────────────────────────────
-    STT_PROVIDER: Literal["sarvam", "bhashini", "google", "mock"] = "sarvam"
-    TTS_PROVIDER: Literal["sarvam", "mock"] = "sarvam"
+    STT_PROVIDER: Literal["sarvam", "bhashini", "google", "gemini", "mock"] = "sarvam"
+    TTS_PROVIDER: Literal["sarvam", "gemini", "mock"] = "sarvam"
+    # Tried when the primary raises STTUnavailable / TTSUnavailable; "none" disables the chain
+    STT_FALLBACK_PROVIDER: Literal["sarvam", "bhashini", "google", "gemini", "mock", "none"] = (
+        "none"
+    )
+    TTS_FALLBACK_PROVIDER: Literal["sarvam", "gemini", "mock", "none"] = "none"
+    GEMINI_API_KEY: str = ""
+    GEMINI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta"
+    GEMINI_STT_MODEL: str = "gemini-3.8-flash"
+    GEMINI_TTS_MODEL: str = "gemini-3.8-flash-tts"
+    GEMINI_TTS_VOICE_F: str = "Kore"
+    GEMINI_TTS_VOICE_M: str = "Puck"
+    # Inline request limit is 20 MB total; cap the base64 audio payload below it
+    GEMINI_STT_MAX_BYTES: int = 18_000_000
+    GEMINI_STT_MAX_KEYTERMS: int = 50
+    GEMINI_STT_COST_INR_PER_MIN: float = 0.0
+    GEMINI_TTS_COST_INR_PER_1K_CHARS: float = 0.0
     SARVAM_API_KEY: str = ""
     SARVAM_BASE_URL: str = "https://api.sarvam.ai"
     SARVAM_STT_MODEL: str = "saaras:v4"
@@ -162,10 +178,20 @@ class Settings(BaseSettings):
             missing: list[str] = []
             if not self.ANTHROPIC_API_KEY and self.LLM_PROVIDER == "anthropic":
                 missing.append("ANTHROPIC_API_KEY")
-            if not self.SARVAM_API_KEY and (
-                self.STT_PROVIDER == "sarvam" or self.TTS_PROVIDER == "sarvam"
-            ):
+            speech_providers = {
+                self.STT_PROVIDER,
+                self.TTS_PROVIDER,
+                self.STT_FALLBACK_PROVIDER,
+                self.TTS_FALLBACK_PROVIDER,
+            }
+            if not self.SARVAM_API_KEY and "sarvam" in speech_providers:
                 missing.append("SARVAM_API_KEY")
+            if not self.GEMINI_API_KEY and "gemini" in speech_providers:
+                missing.append("GEMINI_API_KEY")
+            if self.STT_FALLBACK_PROVIDER == "mock":
+                missing.append("STT_FALLBACK_PROVIDER (mock not allowed in production)")
+            if self.TTS_FALLBACK_PROVIDER == "mock":
+                missing.append("TTS_FALLBACK_PROVIDER (mock not allowed in production)")
             if self.WHATSAPP_ENABLED:
                 if not self.WHATSAPP_ACCESS_TOKEN:
                     missing.append("WHATSAPP_ACCESS_TOKEN")
@@ -201,6 +227,10 @@ class Settings(BaseSettings):
                 logger.info("MOCK MODE active: ANTHROPIC_API_KEY empty -> LLM using MockLLM")
             if not self.SARVAM_API_KEY:
                 logger.info("MOCK MODE active: SARVAM_API_KEY empty -> STT/TTS using mock audio")
+            if not self.GEMINI_API_KEY:
+                logger.info(
+                    "MOCK MODE active: GEMINI_API_KEY empty -> Gemini STT/TTS using mock audio"
+                )
             if not self.VOYAGE_API_KEY:
                 logger.info("BM25 ONLY active: VOYAGE_API_KEY empty -> Dense retrieval skipped")
 

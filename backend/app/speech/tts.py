@@ -22,7 +22,12 @@ from backend.app.llm.hindi_numbers import to_words
 from backend.app.speech.audio import AudioProcessingError, pitch_shift, to_wav
 from backend.app.speech.cache import compute_cache_key, tts_cache
 from backend.app.speech.client import get_speech_http_client
-from backend.app.speech.spend import calculate_tts_cost, speech_budget
+from backend.app.speech.gemini import model_output_items, post_interaction
+from backend.app.speech.spend import (
+    calculate_gemini_tts_cost,
+    calculate_tts_cost,
+    speech_budget,
+)
 from backend.app.speech.voices import VoiceSpec, get_voice
 
 logger = logging.getLogger("abhyas.speech.tts")
@@ -166,12 +171,115 @@ class MockTTS:
         )
 
 
-class SarvamTTS:
+class _ChunkedTTS:
+    """Shared HTTP TTS flow: cache, budget, digit conversion, chunking, pitch shift (spec/06 §6.3).
+
+    Subclasses provide ``_synthesize_chunk`` (one provider call returning WAV bytes)
+    and may override ``_tts_cost`` for provider-specific pricing.
+    """
+
+    provider_name = ""
+    label = ""
+
+    async def _synthesize_chunk(
+        self,
+        client: httpx.AsyncClient,
+        text_chunk: str,
+        voice: VoiceSpec,
+    ) -> bytes:
+        raise NotImplementedError
+
+    def _tts_cost(self, text_hi: str) -> float:
+        return calculate_tts_cost(text_hi)
+
+    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> SynthResult:
+        """Synthesizes Hindi text to audio and returns SynthResult (spec/06 §6.3)."""
+        cache_key = compute_cache_key(text_hi, voice.provider_speaker, voice)
+        if not text_hi or not text_hi.strip():
+            return SynthResult(cache_key=cache_key, fmt="wav", audio=b"", cache_hit=False)
+
+        # Check cache for delivered format (ogg/mp3/wav) before budget check or provider calls
+        format_candidates: tuple[Literal["ogg", "mp3", "wav"], ...] = ("ogg", "mp3", "wav")
+        for hit_fmt in format_candidates:
+            cached_audio = await tts_cache.get(cache_key, hit_fmt)
+            if cached_audio is not None:
+                return SynthResult(
+                    cache_key=cache_key,
+                    fmt=hit_fmt,
+                    audio=cached_audio,
+                    cache_hit=True,
+                )
+
+        # Budget guard: if cap exceeded, fallback to Bhashini (if configured) -> lite mode (CHANGES 254f622 Item 2)
+        if settings.SPEECH_PROVIDER_LIVE:
+            cost = self._tts_cost(text_hi)
+            if not await speech_budget.can_spend(cost):
+                logger.warning(
+                    "%s budget exceeded (cost %.4f INR). Checking Bhashini fallback...",
+                    self.label,
+                    cost,
+                )
+                if settings.BHASHINI_API_KEY:
+                    try:
+                        bhashini = BhashiniTTS()
+                        return await bhashini.synthesize(text_hi, voice)
+                    except Exception as exc:
+                        logger.warning(
+                            "Bhashini fallback failed: %s. Falling back to lite mode.", exc
+                        )
+                return SynthResult(cache_key=cache_key, fmt="wav", audio=b"", cache_hit=False)
+            await speech_budget.record_spend(self.provider_name, "tts", len(text_hi), cost)
+
+        # 1. Convert numerals in child lines / text to Hindi words (spec/06 §6.3)
+        prepared_text = convert_digits_for_tts(text_hi)
+
+        # 2. Chunk text if > 1500 chars (learn scripts)
+        chunks = split_sentences_for_tts(prepared_text, max_chars=1500)
+
+        client = get_speech_http_client()
+        wav_parts: list[bytes] = []
+        for chunk in chunks:
+            part = await self._synthesize_chunk(client, chunk, voice)
+            wav_parts.append(part)
+
+        # Combine WAV parts if chunked
+        if len(wav_parts) == 1:
+            raw_wav = wav_parts[0]
+        else:
+            try:
+                raw_wav = await _concat_wav_bytes(wav_parts)
+            except AudioProcessingError as exc:
+                logger.warning("%s audio concatenation failed: %s", self.label, exc)
+                return SynthResult(cache_key=cache_key, fmt="wav", audio=b"", cache_hit=False)
+
+        # 3. Apply pitch shift if child voice (voice.pitch_factor != 1.0)
+        if abs(voice.pitch_factor - 1.0) > 0.001:
+            try:
+                raw_wav = await pitch_shift(raw_wav, voice.pitch_factor)
+            except AudioProcessingError as exc:
+                logger.warning("%s pitch shift failed: %s", self.label, exc)
+                return SynthResult(cache_key=cache_key, fmt="wav", audio=b"", cache_hit=False)
+
+        # Store synthesized audio in cache
+        await tts_cache.put_wav(cache_key, raw_wav)
+
+        return SynthResult(
+            cache_key=cache_key,
+            fmt="wav",
+            audio=raw_wav,
+            cache_hit=False,
+        )
+
+
+class SarvamTTS(_ChunkedTTS):
     """Sarvam AI Text-to-Speech provider (spec/06 §6.3).
 
     Calls POST https://api.sarvam.ai/text-to-speech with bulbul:v3 model.
     Applies pitch shifting for child personas when voice.pitch_factor != 1.0.
     """
+
+    provider_name = "sarvam"
+    label = "Sarvam TTS"
 
     def __init__(
         self,
@@ -242,82 +350,102 @@ class SarvamTTS:
 
         raise TTSUnavailable(f"Sarvam TTS failed after retries: {last_error}") from last_error
 
-    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> SynthResult:
-        """Synthesizes Hindi text to audio via Sarvam AI and returns SynthResult (spec/06 §6.3)."""
-        cache_key = compute_cache_key(text_hi, voice.provider_speaker, voice)
-        if not text_hi or not text_hi.strip():
-            return SynthResult(cache_key=cache_key, fmt="wav", audio=b"", cache_hit=False)
 
-        # Check cache for delivered format (ogg/mp3/wav) before budget check or provider calls
-        format_candidates: tuple[Literal["ogg", "mp3", "wav"], ...] = ("ogg", "mp3", "wav")
-        for hit_fmt in format_candidates:
-            cached_audio = await tts_cache.get(cache_key, hit_fmt)
-            if cached_audio is not None:
-                return SynthResult(
-                    cache_key=cache_key,
-                    fmt=hit_fmt,
-                    audio=cached_audio,
-                    cache_hit=True,
-                )
+class GeminiTTS(_ChunkedTTS):
+    """Gemini speech generation via the Interactions API (spec/06 §6.3).
 
-        # Budget guard: if cap exceeded, fallback to Bhashini (if configured) -> lite mode (CHANGES 254f622 Item 2)
-        if settings.SPEECH_PROVIDER_LIVE:
-            cost = calculate_tts_cost(text_hi)
-            if not await speech_budget.can_spend(cost):
-                logger.warning(
-                    "Sarvam TTS budget exceeded (cost %.4f INR). Checking Bhashini fallback...",
-                    cost,
-                )
-                if settings.BHASHINI_API_KEY:
-                    try:
-                        bhashini = BhashiniTTS()
-                        return await bhashini.synthesize(text_hi, voice)
-                    except Exception as exc:
-                        logger.warning(
-                            "Bhashini fallback failed: %s. Falling back to lite mode.", exc
-                        )
-                return SynthResult(cache_key=cache_key, fmt="wav", audio=b"", cache_hit=False)
-            await speech_budget.record_spend("sarvam", "tts", len(text_hi), cost)
+    Unary requests return WAV (24 kHz mono 16-bit). The prebuilt voice is picked
+    from voice.gender; child personas are pitch shifted like every other provider.
+    """
 
-        # 1. Convert numerals in child lines / text to Hindi words (spec/06 §6.3)
-        prepared_text = convert_digits_for_tts(text_hi)
+    provider_name = "gemini"
+    label = "Gemini TTS"
 
-        # 2. Chunk text if > 1500 chars (learn scripts)
-        chunks = split_sentences_for_tts(prepared_text, max_chars=1500)
+    def __init__(
+        self,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        model: str | None = None,
+        timeout_s: float | None = None,
+    ) -> None:
+        self.api_key = api_key or settings.GEMINI_API_KEY
+        self.base_url = base_url or settings.GEMINI_BASE_URL
+        self.model = model or settings.GEMINI_TTS_MODEL
+        self.timeout_s = timeout_s or settings.LLM_TIMEOUT_SECONDS
 
-        client = get_speech_http_client()
-        wav_parts: list[bytes] = []
-        for chunk in chunks:
-            part = await self._synthesize_chunk(client, chunk, voice)
-            wav_parts.append(part)
+    def _tts_cost(self, text_hi: str) -> float:
+        return calculate_gemini_tts_cost(text_hi)
 
-        # Combine WAV parts if chunked
-        if len(wav_parts) == 1:
-            raw_wav = wav_parts[0]
-        else:
-            try:
-                raw_wav = await _concat_wav_bytes(wav_parts)
-            except AudioProcessingError as exc:
-                logger.warning("Sarvam TTS audio concatenation failed: %s", exc)
-                return SynthResult(cache_key=cache_key, fmt="wav", audio=b"", cache_hit=False)
-
-        # 3. Apply pitch shift if child voice (voice.pitch_factor != 1.0)
-        if abs(voice.pitch_factor - 1.0) > 0.001:
-            try:
-                raw_wav = await pitch_shift(raw_wav, voice.pitch_factor)
-            except AudioProcessingError as exc:
-                logger.warning("Sarvam TTS pitch shift failed: %s", exc)
-                return SynthResult(cache_key=cache_key, fmt="wav", audio=b"", cache_hit=False)
-
-        # Store synthesized audio in cache
-        await tts_cache.put_wav(cache_key, raw_wav)
-
-        return SynthResult(
-            cache_key=cache_key,
-            fmt="wav",
-            audio=raw_wav,
-            cache_hit=False,
+    async def _synthesize_chunk(
+        self,
+        client: httpx.AsyncClient,
+        text_chunk: str,
+        voice: VoiceSpec,
+    ) -> bytes:
+        """Synthesizes a single text chunk with 1 retry on timeout/5xx."""
+        gemini_voice = (
+            settings.GEMINI_TTS_VOICE_F if voice.gender == "f" else settings.GEMINI_TTS_VOICE_M
         )
+        payload = {
+            "model": self.model,
+            "input": [{"type": "user_input", "content": [{"type": "text", "text": text_chunk}]}],
+            "response_format": {"type": "audio"},
+            "generation_config": {"speech_config": [{"voice": gemini_voice}]},
+        }
+        body = await post_interaction(
+            client,
+            base_url=self.base_url,
+            api_key=self.api_key,
+            payload=payload,
+            timeout_s=self.timeout_s,
+            label=self.label,
+            error_cls=TTSUnavailable,
+        )
+        audio_items = model_output_items(body, "audio")
+        if not audio_items:
+            raise TTSUnavailable("Gemini TTS returned no audio")
+        try:
+            wav = base64.b64decode(str(audio_items[-1].get("data", "")), validate=True)
+        except ValueError as exc:
+            raise TTSUnavailable("Gemini TTS returned undecodable audio") from exc
+        if not wav.startswith(b"RIFF"):
+            raise TTSUnavailable("Gemini TTS returned non-WAV audio")
+        return wav
+
+
+class FallbackTTS:
+    """Tries the primary TTS provider, then the fallback on TTSUnavailable (spec/06 §6.3)."""
+
+    def __init__(
+        self,
+        primary: TTSProvider,
+        fallback: TTSProvider,
+        primary_name: str,
+        fallback_name: str,
+    ) -> None:
+        self.primary = primary
+        self.fallback = fallback
+        self.primary_name = primary_name
+        self.fallback_name = fallback_name
+
+    async def synthesize(self, text_hi: str, voice: VoiceSpec) -> SynthResult:
+        try:
+            return await self.primary.synthesize(text_hi, voice)
+        except TTSUnavailable:
+            logger.warning(
+                "TTS provider %s unavailable, falling back to %s",
+                self.primary_name,
+                self.fallback_name,
+            )
+        try:
+            return await self.fallback.synthesize(text_hi, voice)
+        except TTSUnavailable as exc:
+            logger.error(
+                "TTS providers %s and %s both unavailable", self.primary_name, self.fallback_name
+            )
+            raise TTSUnavailable(
+                f"TTS providers {self.primary_name} and {self.fallback_name} both unavailable"
+            ) from exc
 
 
 class BhashiniTTS:
@@ -445,22 +573,39 @@ async def _concat_wav_bytes(wav_chunks: list[bytes]) -> bytes:
     return out_io.getvalue()
 
 
-def get_tts_provider() -> TTSProvider:
-    """Returns configured TTS provider instance (spec/06 §6.3)."""
-    if settings.TTS_PROVIDER == "mock" or (
-        settings.TTS_PROVIDER == "sarvam"
-        and not settings.SARVAM_API_KEY
-        and settings.ENVIRONMENT != "production"
-    ):
+def _build_tts_provider(name: str) -> TTSProvider:
+    """Builds one TTS provider; keyless Sarvam/Gemini become MockTTS outside production."""
+    if name == "mock":
         return MockTTS()
 
-    if settings.TTS_PROVIDER == "sarvam":
+    if name == "sarvam":
+        if not settings.SARVAM_API_KEY and settings.ENVIRONMENT != "production":
+            return MockTTS()
         return SarvamTTS()
 
-    if settings.TTS_PROVIDER == "bhashini":
+    if name == "gemini":
+        if not settings.GEMINI_API_KEY and settings.ENVIRONMENT != "production":
+            return MockTTS()
+        return GeminiTTS()
+
+    if name == "bhashini":
         return BhashiniTTS()
 
     return MockTTS()
+
+
+def get_tts_provider() -> TTSProvider:
+    """Returns configured TTS provider instance (spec/06 §6.3).
+
+    Wraps the primary in FallbackTTS only when TTS_FALLBACK_PROVIDER is set and
+    differs from TTS_PROVIDER.
+    """
+    primary = _build_tts_provider(settings.TTS_PROVIDER)
+    fallback_name = settings.TTS_FALLBACK_PROVIDER
+    if fallback_name == "none" or fallback_name == settings.TTS_PROVIDER:
+        return primary
+    fallback = _build_tts_provider(fallback_name)
+    return FallbackTTS(primary, fallback, settings.TTS_PROVIDER, fallback_name)
 
 
 __all__ = [
@@ -470,6 +615,8 @@ __all__ = [
     "TTSProvider",
     "MockTTS",
     "SarvamTTS",
+    "GeminiTTS",
+    "FallbackTTS",
     "BhashiniTTS",
     "get_tts_provider",
     "convert_digits_for_tts",

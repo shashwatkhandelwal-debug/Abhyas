@@ -23,6 +23,7 @@ from pydantic import BaseModel
 from backend.app.config import settings
 from backend.app.speech.audio import duration_s, split_for_stt, trim_silence
 from backend.app.speech.client import get_speech_http_client
+from backend.app.speech.gemini import model_output_items, post_interaction
 from backend.app.speech.spend import SpeechBudgetExceededError, speech_budget
 
 logger = logging.getLogger("abhyas.speech.stt")
@@ -410,22 +411,165 @@ class GoogleSTT:
         raise ProviderNotConfigured("Google STT integration pending credentials")
 
 
-def get_stt_provider() -> STTProvider:
-    """Returns configured STT provider instance based on settings (spec/06 §6.2)."""
-    if settings.STT_PROVIDER == "mock" or (
-        settings.STT_PROVIDER == "sarvam"
-        and not settings.SARVAM_API_KEY
-        and settings.ENVIRONMENT != "production"
-    ):
+class GeminiSTT:
+    """Gemini audio-understanding STT via the Interactions API (spec/06 §6.2).
+
+    Sends the whole 16 kHz WAV inline (base64) with a verbatim-transcription
+    instruction; keyterms are passed as spelling hints in the instruction.
+    """
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        model: str | None = None,
+        timeout_s: float | None = None,
+    ) -> None:
+        self.api_key = api_key or settings.GEMINI_API_KEY
+        self.base_url = base_url or settings.GEMINI_BASE_URL
+        self.model = model or settings.GEMINI_STT_MODEL
+        self.timeout_s = timeout_s or settings.STT_TIMEOUT_S
+
+    @staticmethod
+    def _instruction(keyterms: list[str] | None) -> str:
+        instruction = (
+            "Transcribe this Hindi audio verbatim in Devanagari script. "
+            "Write numbers exactly as spoken. Return only the transcript, "
+            "with no translation, labels, quotes or commentary."
+        )
+        if keyterms:
+            hints = ", ".join(keyterms[: settings.GEMINI_STT_MAX_KEYTERMS])
+            instruction += f" Spelling hints for words that may occur: {hints}"
+        return instruction
+
+    async def transcribe(
+        self,
+        wav16k: bytes,
+        lang: str = "hi-IN",
+        keyterms: list[str] | None = None,
+    ) -> Transcript:
+        """Transcribes 16kHz mono WAV audio to Hindi text via Gemini (spec/06 §6.2)."""
+        if not wav16k:
+            return Transcript(text="", confidence=0.0, language=lang, provider="gemini", ms=0)
+
+        t0 = time.perf_counter()
+        wav16k = await trim_silence(wav16k)
+        b64_audio = base64.b64encode(wav16k).decode("ascii")
+        if len(b64_audio) > settings.GEMINI_STT_MAX_BYTES:
+            raise STTUnavailable("Gemini STT clip exceeds inline request size limit")
+
+        dur = await duration_s(wav16k)
+        await speech_budget.check_and_record_stt(dur, provider="gemini")
+
+        payload = {
+            "model": self.model,
+            "input": [
+                {"type": "text", "text": self._instruction(keyterms)},
+                {"type": "audio", "data": b64_audio, "mime_type": "audio/wav"},
+            ],
+        }
+        body = await post_interaction(
+            get_speech_http_client(),
+            base_url=self.base_url,
+            api_key=self.api_key,
+            payload=payload,
+            timeout_s=self.timeout_s,
+            label="Gemini STT",
+            error_cls=STTUnavailable,
+        )
+        if not isinstance(body.get("steps"), list):
+            raise STTUnavailable("Gemini STT response has no steps")
+        raw_text = "".join(str(item.get("text", "")) for item in model_output_items(body, "text"))
+
+        latency_ms = int((time.perf_counter() - t0) * 1000)
+        norm_text = normalize_transcript_text(raw_text)
+        return Transcript(
+            text=norm_text,
+            confidence=calculate_confidence(norm_text, None),
+            language=lang,
+            provider="gemini",
+            ms=latency_ms,
+        )
+
+
+class FallbackSTT:
+    """Tries the primary STT provider, then the fallback on STTUnavailable (spec/06 §6.2)."""
+
+    def __init__(
+        self,
+        primary: STTProvider,
+        fallback: STTProvider,
+        primary_name: str,
+        fallback_name: str,
+    ) -> None:
+        self.primary = primary
+        self.fallback = fallback
+        self.primary_name = primary_name
+        self.fallback_name = fallback_name
+
+    async def transcribe(
+        self,
+        wav16k: bytes,
+        lang: str = "hi-IN",
+        keyterms: list[str] | None = None,
+    ) -> Transcript:
+        try:
+            return await self.primary.transcribe(wav16k, lang=lang, keyterms=keyterms)
+        except STTUnavailable:
+            logger.warning(
+                "STT provider %s unavailable, falling back to %s",
+                self.primary_name,
+                self.fallback_name,
+            )
+        try:
+            return await self.fallback.transcribe(wav16k, lang=lang, keyterms=keyterms)
+        except STTUnavailable as exc:
+            logger.error(
+                "STT providers %s and %s both unavailable", self.primary_name, self.fallback_name
+            )
+            raise STTUnavailable(
+                f"STT providers {self.primary_name} and {self.fallback_name} both unavailable"
+            ) from exc
+
+
+def _build_stt_provider(name: str) -> STTProvider:
+    """Builds one STT provider; keyless Sarvam/Gemini become MockSTT outside production."""
+    if name == "mock":
         return MockSTT()
 
-    if settings.STT_PROVIDER == "sarvam":
+    if name == "sarvam":
+        if not settings.SARVAM_API_KEY and settings.ENVIRONMENT != "production":
+            return MockSTT()
         return SarvamSTT()
 
-    if settings.STT_PROVIDER == "bhashini":
+    if name == "gemini":
+        if not settings.GEMINI_API_KEY and settings.ENVIRONMENT != "production":
+            return MockSTT()
+        return GeminiSTT()
+
+    if name == "bhashini":
         return BhashiniSTT()
 
-    if settings.STT_PROVIDER == "google":
+    if name == "google":
         return GoogleSTT()
 
     return MockSTT()
+
+
+def get_stt_provider() -> STTProvider:
+    """Returns configured STT provider instance based on settings (spec/06 §6.2).
+
+    Wraps the primary in FallbackSTT only when STT_FALLBACK_PROVIDER is set and
+    differs from STT_PROVIDER.
+    """
+    primary = _build_stt_provider(settings.STT_PROVIDER)
+    fallback_name = settings.STT_FALLBACK_PROVIDER
+    if fallback_name == "none" or fallback_name == settings.STT_PROVIDER:
+        return primary
+
+    try:
+        fallback = _build_stt_provider(fallback_name)
+    except ProviderNotConfigured:
+        logger.warning("STT fallback provider %s not configured, using primary only", fallback_name)
+        return primary
+    return FallbackSTT(primary, fallback, settings.STT_PROVIDER, fallback_name)

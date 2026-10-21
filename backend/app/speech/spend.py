@@ -63,6 +63,20 @@ def calculate_tts_cost(text: str) -> float:
     return round((len(text) / 1000.0) * settings.TTS_COST_PER_1000_CHARS_INR, 4)
 
 
+def calculate_gemini_stt_cost(duration_s: float) -> float:
+    """Calculates Gemini STT cost in INR (per-minute rate, default 0.0)."""
+    if duration_s <= 0.0:
+        return 0.0
+    return round((duration_s / 60.0) * settings.GEMINI_STT_COST_INR_PER_MIN, 4)
+
+
+def calculate_gemini_tts_cost(text: str) -> float:
+    """Calculates Gemini TTS cost in INR (per-1k-chars rate, default 0.0)."""
+    if not text:
+        return 0.0
+    return round((len(text) / 1000.0) * settings.GEMINI_TTS_COST_INR_PER_1K_CHARS, 4)
+
+
 @dataclass
 class SpeechBudgetTracker:
     """Tracks daily (IST) and total speech spend against configured INR budgets."""
@@ -204,7 +218,10 @@ class SpeechBudgetTracker:
             await self.record_spend("bhashini", "stt", int(duration_s), 0.0)
             return 0.0
 
-        cost = calculate_stt_cost(duration_s)
+        if provider.lower() == "gemini":
+            cost = calculate_gemini_stt_cost(duration_s)
+        else:
+            cost = calculate_stt_cost(duration_s)
         if not await self.can_spend(cost):
             raise SpeechBudgetExceededError(
                 f"STT spend {cost:.4f} INR exceeds budget (daily: {self.daily_spend:.2f}/{settings.SPEECH_DAILY_BUDGET_INR}, total: {self.total_spend:.2f}/{settings.SPEECH_TOTAL_BUDGET_INR})"
@@ -220,7 +237,10 @@ class SpeechBudgetTracker:
             await self.record_spend("bhashini", "tts", len(text), 0.0)
             return 0.0
 
-        cost = calculate_tts_cost(text)
+        if provider.lower() == "gemini":
+            cost = calculate_gemini_tts_cost(text)
+        else:
+            cost = calculate_tts_cost(text)
         if not await self.can_spend(cost):
             raise SpeechBudgetExceededError(
                 f"TTS spend {cost:.4f} INR exceeds budget (daily: {self.daily_spend:.2f}/{settings.SPEECH_DAILY_BUDGET_INR}, total: {self.total_spend:.2f}/{settings.SPEECH_TOTAL_BUDGET_INR})"
@@ -319,6 +339,8 @@ __all__ = [
     "SpeechBudgetExceededError",
     "calculate_stt_cost",
     "calculate_tts_cost",
+    "calculate_gemini_stt_cost",
+    "calculate_gemini_tts_cost",
     "SpeechBudgetTracker",
     "speech_budget",
     "prewarm_fixed_audio",
