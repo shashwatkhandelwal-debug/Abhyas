@@ -74,6 +74,29 @@ def check_chat_rate_limit(user_key: str) -> None:
     _chat_attempts[user_key] = attempts
 
 
+_translate_attempts: dict[str, list[float]] = defaultdict(list)
+
+
+def check_translate_rate_limit(user_key: str) -> None:
+    """Per-user sliding window on translations that need an LLM call (cache hits are free)."""
+    now = time.monotonic()
+    cutoff = now - float(settings.TRANSLATE_RATE_LIMIT_WINDOW_SECONDS)
+    attempts = [t for t in _translate_attempts[user_key] if t > cutoff]
+    if len(attempts) >= settings.TRANSLATE_MAX_REQUESTS_PER_MINUTE:
+        _translate_attempts[user_key] = attempts
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many translation requests. Please wait a minute.",
+        )
+    attempts.append(now)
+    _translate_attempts[user_key] = attempts
+
+
+def reset_translate_rate_limits() -> None:
+    """Resets translate rate limit state (used in tests)."""
+    _translate_attempts.clear()
+
+
 def reset_chat_rate_limits() -> None:
     """Resets chat rate limit state (used in tests)."""
     _chat_attempts.clear()

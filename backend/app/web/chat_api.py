@@ -32,18 +32,30 @@ from fastapi import (
 )
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.csrf import verify_csrf_token
 from backend.app.auth.guards import get_current_user
-from backend.app.auth.rate_limit import check_chat_rate_limit
+from backend.app.auth.rate_limit import check_chat_rate_limit, check_translate_rate_limit
 from backend.app.channels.web import is_teacher_pending, mark_teacher_pending, process_inbound_web
-from backend.app.db.models import AppUser, Message, RealismRating, Scene, Teacher
+from backend.app.config import settings
+from backend.app.db.models import (
+    AppUser,
+    Message,
+    MessageTranslation,
+    RealismRating,
+    Scene,
+    Teacher,
+)
 from backend.app.db.session import get_db_session
+from backend.app.llm.roles.translator import TranslationUnavailable, translate_to_english
 from backend.app.retrieval.search import get_guide_retriever
 from backend.app.speech.cache import tts_cache
 
 logger = logging.getLogger("abhyas.web.chat")
+
+TRANSLATION_LANG = "en"
 
 router = APIRouter(prefix="/api", tags=["Web Chat"])
 
@@ -432,6 +444,54 @@ async def get_chat_messages(
         "pending": pending,
         "server_time": server_time.isoformat(),
     }
+
+
+# Bubbles whose text is generated Hindi (children, coach, model teacher, guide answers). Other bot
+# messages are system text already shown in the user's UI language.
+TRANSLATABLE_SPEAKERS = frozenset({"ravi", "priya", "aman", "coach", "guide", "model_teacher"})
+
+
+class TranslateRequest(BaseModel):
+    message_id: uuid.UUID
+
+
+@router.post("/chat/translate", dependencies=[Depends(verify_csrf_token)])
+async def translate_message(
+    body: TranslateRequest,
+    current_user: Annotated[AppUser, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    request: Request,
+) -> dict[str, Any]:
+    """English translation of one of the caller's own child/coach/guide bubbles.
+
+    The Hindi text is never changed. Translations are cached per (message, 'en'); a repeat call
+    makes no LLM call and does not count against the rate limit.
+    """
+    teacher = await get_teacher_for_user(current_user, db, request=request)
+    msg = await db.get(Message, body.message_id)
+    if msg is None or msg.teacher_id != teacher.id:
+        raise HTTPException(status_code=404, detail="message_not_found")
+    if msg.direction != "out" or not msg.text or msg.speaker not in TRANSLATABLE_SPEAKERS:
+        raise HTTPException(status_code=400, detail="not_translatable")
+    if len(msg.text) > settings.TRANSLATE_MAX_SOURCE_CHARS:
+        raise HTTPException(status_code=400, detail="too_long")
+
+    cached = await db.get(MessageTranslation, (msg.id, TRANSLATION_LANG))
+    if cached is not None:
+        return {"text": cached.text, "cached": True}
+
+    check_translate_rate_limit(str(current_user.id))
+    try:
+        text_en = await translate_to_english(msg.text)
+    except TranslationUnavailable:
+        raise HTTPException(status_code=502, detail="translation_failed") from None
+
+    db.add(MessageTranslation(message_id=msg.id, lang=TRANSLATION_LANG, text=text_en))
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()  # a concurrent request stored it first; both texts are equivalent
+    return {"text": text_en, "cached": False}
 
 
 @router.get("/source/{chunk_id:path}")

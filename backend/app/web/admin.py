@@ -62,12 +62,14 @@ from backend.app.db.models import (
 from backend.app.db.session import get_db_session
 from backend.app.jobs.tick import fast_forward_teacher
 from backend.app.sessions.state_machine import OnboardingStateEnum
+from backend.app.web.ui_lang import register_ui_globals
 
 logger = logging.getLogger("abhyas.web.admin")
 
 WEB_DIR = Path(__file__).resolve().parent
 TEMPLATES_DIR = WEB_DIR / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+register_ui_globals(templates.env)
 
 router = APIRouter(prefix="/admin", tags=["Admin Web"])
 
@@ -326,7 +328,7 @@ async def get_demo_teachers(db: AsyncSession) -> list[dict[str, Any]]:
     return [
         {
             "id": str(t.id),
-            "name": t.name or "डेमो शिक्षक",
+            "name": t.name or get_message("ui_admin_default_demo_teacher"),
             "school_id": t.school_id or "-",
             "onboarding_state": t.onboarding_state,
         }

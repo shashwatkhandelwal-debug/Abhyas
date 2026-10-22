@@ -52,6 +52,7 @@ from backend.app.db.models import (
 )
 from backend.app.db.session import get_db_session
 from backend.app.sessions.path import load_all_move_cards
+from backend.app.web.ui_lang import register_ui_globals
 
 logger = logging.getLogger("abhyas.web.review")
 
@@ -59,7 +60,7 @@ WEB_DIR = Path(__file__).resolve().parent
 TEMPLATES_DIR = WEB_DIR / "templates"
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-templates.env.globals["get_message"] = get_message
+register_ui_globals(templates.env)
 
 router = APIRouter(prefix="/review", tags=["Coach Review Console"])
 
@@ -161,7 +162,7 @@ async def review_dashboard(
                     "id": str(ri.id),
                     "kind": ri.kind,
                     "ref_id": ri.ref_id,
-                    "reason": ri.reason or "कम भरोसा / समीक्षा आवश्यक",
+                    "reason": ri.reason or get_message("ui_review_reason_low_confidence"),
                     "status": ri.status,
                     "created_at": ri.created_at.strftime("%d %b %H:%M") if ri.created_at else "",
                     "resolution": ri.resolution,
@@ -180,7 +181,7 @@ async def review_dashboard(
                     "id": str(ri.id),
                     "kind": ri.kind,
                     "ref_id": ri.ref_id,
-                    "reason": ri.reason or "ARP को भेजा गया प्रश्न",
+                    "reason": ri.reason or get_message("ui_review_reason_question_escalated"),
                     "status": ri.status,
                     "created_at": ri.created_at.strftime("%d %b %H:%M") if ri.created_at else "",
                     "resolution": ri.resolution,
@@ -199,7 +200,7 @@ async def review_dashboard(
                     "id": str(ri.id),
                     "kind": ri.kind,
                     "ref_id": ri.ref_id,
-                    "reason": ri.reason or "गार्ड विफलता",
+                    "reason": ri.reason or get_message("ui_review_reason_guard_failure"),
                     "status": ri.status,
                     "created_at": ri.created_at.strftime("%d %b %H:%M") if ri.created_at else "",
                     "resolution": ri.resolution,
@@ -272,7 +273,7 @@ async def review_item_detail(
     explain_view: dict[str, Any] | None = None
     question_view: dict[str, Any] | None = None
     guard_view: dict[str, Any] | None = None
-    move_title = "अभ्यास समीक्षा"
+    move_title = get_message("ui_review_default_move_title")
 
     if item.kind == "rehearsal_score" and _is_valid_uuid(item.ref_id):
         scene_uuid = uuid.UUID(item.ref_id)
@@ -288,7 +289,7 @@ async def review_item_detail(
                     "text": t.transcript or t.line_hi or "",
                     "acts": t.acts or [],
                     "speaker": (
-                        "शिक्षक"
+                        get_message("ui_review_default_teacher")
                         if t.role == "teacher"
                         else (t.addressed_child or t.role.capitalize())
                     ),
@@ -519,7 +520,7 @@ async def blind_calibrate_view(
                     "role": t.role,
                     "text": t.transcript or t.line_hi or "",
                     "speaker": (
-                        "शिक्षक"
+                        get_message("ui_review_default_teacher")
                         if t.role == "teacher"
                         else (t.addressed_child or t.role.capitalize())
                     ),

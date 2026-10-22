@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="{{ ui_lang() }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#1F6F5C">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <title>{{ get_message('ui_arp_title') }} — अभ्यास</title>
+  <title>{{ get_message('ui_arp_title') }} — {{ get_message('ui_app_name') }}</title>
   <link rel="stylesheet" href="/static/app.css">
   <style>
     .arp-container {
@@ -260,27 +260,28 @@
       <div class="arp-title-group">
         <h1>{{ get_message('ui_arp_title') }}</h1>
         <div class="arp-cluster-badge">
-          क्लस्टर: <strong>{{ digest.cluster_name }}</strong>
+          {{ get_message('ui_arp_cluster') }} <strong>{{ digest.cluster_name }}</strong>
         </div>
       </div>
       <div class="arp-controls">
         <form method="GET" action="/arp" id="weekForm">
-          <label for="weekSelect" style="font-size: 0.85rem; color: var(--muted); margin-right: 0.4rem;">सप्ताह चुनें:</label>
+          <label for="weekSelect" style="font-size: 0.85rem; color: var(--muted); margin-right: 0.4rem;">{{ get_message('ui_arp_pick_week') }}</label>
           <select name="week" id="weekSelect" class="week-select" onchange="document.getElementById('weekForm').submit()">
             {% for w in digest.available_weeks %}
             <option value="{{ w.isoformat() }}" {% if w == digest.selected_week_start %}selected{% endif %}>
-              सप्ताह: {{ w.strftime('%d %b %Y') }}
+              {{ get_message('ui_arp_week') }} {{ w.strftime('%d %b %Y') }}
             </option>
             {% endfor %}
           </select>
         </form>
-        <a href="/logout" class="btn-cancel-link" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; min-height: unset; width: auto;" title="लॉग आउट">लॉग आउट</a>
+        {{ lang_switch() }}
+        <a href="/logout" class="btn-cancel-link" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; min-height: unset; width: auto;" title="{{ get_message('ui_logout') }}">{{ get_message('ui_logout') }}</a>
       </div>
     </header>
 
     <!-- Demo Banner -->
     {% if demo_mode %}
-    <div class="demo-banner" role="status" aria-label="डेमो सूचना">
+    <div class="demo-banner" role="status" aria-label="{{ get_message('ui_demo_notice_label') }}">
       {{ demo_banner_text or get_message('ui_demo_banner') }}
     </div>
     {% endif %}
@@ -337,12 +338,12 @@
               <td>{{ t.school }}</td>
               <td>{{ t.move_title }}</td>
               <td><code>{{ t.step_reached }}</code></td>
-              <td>स्तर {{ t.max_evidence_level }}</td>
+              <td>{{ get_message('ui_arp_level') }} {{ t.max_evidence_level }}</td>
               <td>
                 {% if t.rubric_dots %}
-                <div class="rubric-dots" title="अंक: {% for d in t.rubric_dots %}{{ d.score }} {% endfor %}">
+                <div class="rubric-dots" title="{{ get_message('ui_arp_score_colon') }} {% for d in t.rubric_dots %}{{ d.score }} {% endfor %}">
                   {% for d in t.rubric_dots %}
-                  <span class="{{ d.dot_class }}" aria-label="अंक {{ d.score }}"></span>
+                  <span class="{{ d.dot_class }}" aria-label="{{ get_message('ui_arp_score') }} {{ d.score }}"></span>
                   {% endfor %}
                 </div>
                 {% else %}
@@ -361,7 +362,7 @@
             {% if digest.non_consenting_count == 0 %}
             <tr>
               <td colspan="7" style="text-align: center; color: var(--muted); padding: 1.5rem;">
-                इस क्लस्टर में कोई शिक्षक डेटा उपलब्ध नहीं है।
+                {{ get_message('ui_arp_no_teacher_data') }}
               </td>
             </tr>
             {% endif %}
@@ -384,13 +385,13 @@
     <section class="arp-section section-visits" aria-label="{{ get_message('ui_arp_section_visits') }}">
       <div class="arp-section-title">
         <span>{{ get_message('ui_arp_section_visits') }}</span>
-        <button class="btn-print" onclick="window.print()" title="भ्रमण सूची प्रिंट करें">
+        <button class="btn-print" onclick="window.print()" title="{{ get_message('ui_arp_print_visit_list') }}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="6 9 6 2 18 2 18 9"></polyline>
             <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
             <rect x="6" y="14" width="12" height="8"></rect>
           </svg>
-          प्रिंट करें
+          {{ get_message('ui_arp_print') }}
         </button>
       </div>
 
@@ -400,7 +401,7 @@
           <div>
             <div class="visit-card-title">{{ v.name }} — {{ v.school }}</div>
             <div style="font-size: 0.85rem; color: var(--muted); margin-top: 0.2rem;">
-              तरीका: <strong>{{ v.move_title }}</strong> · औसत अंक: <strong>{{ v.avg_score if v.avg_score is not none else '—' }} / 2.0</strong>
+              {{ get_message('ui_arp_move_colon') }} <strong>{{ v.move_title }}</strong> · {{ get_message('ui_arp_avg_score') }} <strong>{{ v.avg_score if v.avg_score is not none else '—' }} / 2.0</strong>
             </div>
           </div>
           <span class="badge-help">{{ get_message('ui_arp_visit_reason') }}</span>
@@ -408,7 +409,7 @@
 
         {% if v.peer_checklist %}
         <div style="margin: 0.5rem 0; font-size: 0.85rem;">
-          <div style="font-weight: 600; margin-bottom: 0.3rem;">5-मिनट अवलोकन जांच-सूची:</div>
+          <div style="font-weight: 600; margin-bottom: 0.3rem;">{{ get_message('ui_arp_obs_checklist') }}</div>
           <ul style="margin: 0; padding-left: 1.2rem; color: var(--ink);">
             {% for item in v.peer_checklist %}
             <li>{{ item }}</li>
@@ -430,14 +431,14 @@
 
               <div style="display: flex; gap: 1rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
                 <div>
-                  <label style="font-size: 0.8rem; font-weight: 600; display: block;">भ्रमण तिथि:</label>
+                  <label style="font-size: 0.8rem; font-weight: 600; display: block;">{{ get_message('ui_arp_visit_date') }}</label>
                   <input type="date" name="observed_on" value="{{ digest.selected_week_start.isoformat() }}" style="padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.85rem;">
                 </div>
               </div>
 
               {% if v.peer_checklist %}
               <div style="margin-bottom: 0.5rem;">
-                <div style="font-size: 0.8rem; font-weight: 600; margin-bottom: 0.25rem;">अवलोकन बिंदु (लागू होने पर टिक करें):</div>
+                <div style="font-size: 0.8rem; font-weight: 600; margin-bottom: 0.25rem;">{{ get_message('ui_arp_obs_points') }}</div>
                 {% for item in v.peer_checklist %}
                 <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; margin-bottom: 0.2rem; cursor: pointer;">
                   <input type="checkbox" name="check_{{ loop.index }}" value="true" class="checkbox-toggle" style="width: 18px; height: 18px; min-width: 18px;">
@@ -448,8 +449,8 @@
               {% endif %}
 
               <div style="margin-bottom: 0.5rem;">
-                <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 0.2rem;">मार्गदर्शन नोट्स:</label>
-                <textarea name="notes" placeholder="कक्षा में शिक्षिका की शक्ति व सुधार का बिंदु..." style="width: 100%; min-height: 60px; padding: 0.5rem; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: inherit; font-size: 0.85rem; box-sizing: border-box;"></textarea>
+                <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 0.2rem;">{{ get_message('ui_arp_guidance_notes') }}</label>
+                <textarea name="notes" placeholder="{{ get_message('ui_arp_notes_placeholder') }}" style="width: 100%; min-height: 60px; padding: 0.5rem; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: inherit; font-size: 0.85rem; box-sizing: border-box;"></textarea>
               </div>
 
               <button type="submit" class="btn-submit-sm">{{ get_message('ui_arp_btn_record_observation') }}</button>
@@ -459,7 +460,7 @@
       </article>
       {% else %}
       <div style="color: var(--muted); font-size: 0.9rem; text-align: center; padding: 1.5rem;">
-        इस सप्ताह किसी सहमति-प्राप्त शिक्षक को तत्काल भ्रमण की आवश्यकता नहीं है।
+        {{ get_message('ui_arp_no_visits_needed') }}
       </div>
       {% endfor %}
     </section>
@@ -473,7 +474,7 @@
       {% for q in digest.escalated_questions %}
       <article class="question-card" id="q-card-{{ q.question_id }}">
         <div class="question-meta">
-          <strong>{{ q.teacher_display_name }}</strong> · श्रेणी: {{ q.category or 'सामान्य' }} · {{ q.created_at.strftime('%d %b %H:%M') }}
+          <strong>{{ q.teacher_display_name }}</strong> · {{ get_message('ui_arp_category') }} {{ q.category or get_message('ui_arp_category_general') }} · {{ q.created_at.strftime('%d %b %H:%M') }}
         </div>
         <div class="question-text">
           "{{ q.text }}"
@@ -487,7 +488,7 @@
       </article>
       {% else %}
       <div style="color: var(--muted); font-size: 0.9rem; text-align: center; padding: 1.5rem;">
-        वर्तमान में कोई अनुत्तरित प्रश्न नहीं है।
+        {{ get_message('ui_arp_no_open_questions') }}
       </div>
       {% endfor %}
     </section>

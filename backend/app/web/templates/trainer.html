@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="{{ ui_lang() }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ get_message("ui_trainer_title") }} — अभ्यास</title>
+  <title>{{ get_message("ui_trainer_title") }} — {{ get_message('ui_app_name') }}</title>
   <link rel="stylesheet" href="/static/app.css">
   <style>
     .trainer-dashboard {
@@ -215,7 +215,7 @@
   <div class="trainer-dashboard">
     {% if demo_mode %}
     <div class="demo-banner">
-      <strong>डेमो मोड:</strong> {{ demo_banner_text }}
+      <strong>{{ get_message('ui_trainer_demo_mode') }}</strong> {{ demo_banner_text }}
     </div>
     {% endif %}
 
@@ -230,6 +230,7 @@
       <div class="trainer-meta-chip">
         {{ get_message("ui_trainer_district") }}: {{ report.district }}
       </div>
+      {{ lang_switch() }}
     </header>
 
     <!-- Filter Form -->
@@ -314,7 +315,7 @@
             <td><strong>{{ r.n_teachers }}</strong></td>
             {% if r.suppressed %}
             <td colspan="4" class="suppressed-cell">
-              <span class="suppressed-badge">{{ r.pct_completed | safe }}</span>
+              <span class="suppressed-badge">{{ get_message('ui_trainer_suppression_notice') }}</span>
             </td>
             {% else %}
             <td><strong>{{ r.pct_completed }}</strong></td>
@@ -322,7 +323,7 @@
             <td>
               {{ r.rubric_svg | safe }}
               {% if r.rubric_avg is not none %}
-              <div style="font-size:0.8rem; color:var(--muted); margin-top:2px;">औसत: {{ r.rubric_avg }} / 2</div>
+              <div style="font-size:0.8rem; color:var(--muted); margin-top:2px;">{{ get_message('ui_trainer_avg') }} {{ r.rubric_avg }} / 2</div>
               {% endif %}
             </td>
             <td>
@@ -342,7 +343,7 @@
     </section>
 
     <footer class="privacy-footer">
-      <strong>गोपनीयता नीति:</strong> प्रशिक्षण डैशबोर्ड में शिक्षकों का व्यक्तिगत विवरण, नाम अथवा फ़ोन नंबर कभी भी प्रदर्शित नहीं होता है। किसी भी समूह में शिक्षक संख्या 10 से कम होने (n &lt; 10) पर गोपनीयता संरक्षण हेतु सभी प्रगति संकेतक स्वतः छिपाए जाते हैं।
+      <strong>{{ get_message('ui_trainer_privacy_label') }}</strong> {{ get_message('ui_trainer_privacy_text') }}
     </footer>
   </div>
 </body>

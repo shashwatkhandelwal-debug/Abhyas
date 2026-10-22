@@ -406,6 +406,17 @@ body {
   padding-left: 0.2rem;
 }
 
+.lang-switch { font-size: 0.85rem; white-space: nowrap; }
+.lang-switch .lang-link { color: var(--brand); text-decoration: none; padding: 0.35rem 0.4rem; display: inline-block; }
+.lang-switch .lang-link.active { font-weight: 700; text-decoration: underline; }
+.translate-wrap { margin-top: 6px; }
+.translate-btn {
+  font: inherit; font-size: 0.8rem; padding: 0.25rem 0.7rem; cursor: pointer; min-height: 36px;
+  border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--surface);
+  color: var(--muted);
+}
+.bubble-translation { margin: 6px 0 0; padding-top: 6px; border-top: 1px dashed var(--border); font-size: 0.92rem; }
+.translate-error { margin: 6px 0 0; font-size: 0.82rem; color: var(--danger); }
 .bubble-sources { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .source-chip {
   font: inherit; font-size: 0.82rem; padding: 0.3rem 0.75rem; cursor: pointer; text-align: left;

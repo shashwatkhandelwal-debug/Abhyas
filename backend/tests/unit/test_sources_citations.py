@@ -10,7 +10,7 @@ import subprocess
 import uuid
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import yaml
@@ -20,6 +20,7 @@ from httpx import ASGITransport, AsyncClient
 from backend.app.auth.guards import get_current_user
 from backend.app.channels.web import WebChannel
 from backend.app.config import settings
+from backend.app.core.messages import get_message
 from backend.app.core.types import Citation, OutboundMessage
 from backend.app.db.models import AppUser, Message, Teacher
 from backend.app.llm.roles.guide_answerer import answer_guide_question
@@ -180,3 +181,92 @@ async def test_source_endpoint_requires_auth() -> None:
     async with AsyncClient(transport=ASGITransport(app=_app(None)), base_url="http://t") as c:
         resp = await c.get(f"/api/source/{cid}")
     assert resp.status_code in (401, 403)
+
+
+# ── ASK flow through SessionService with the real retriever ───────────────────
+
+
+async def _ready_teacher(
+    service: SessionService, repo: FakeSessionRepository, t_id: uuid.UUID
+) -> None:
+    from backend.app.sessions.state_machine import OnboardingStateEnum, SessionStateEnum
+
+    teacher = await repo.get_or_create_teacher(t_id)
+    teacher.onboarding_state = OnboardingStateEnum.READY.value
+    teacher.address_form = "f"
+    await repo.save_teacher(teacher)
+    ctx = await service.get_or_create_context(t_id)
+    ctx.onboarding_state = OnboardingStateEnum.READY
+    ctx.current_state = SessionStateEnum.LEARN
+    ctx.current_move_id = "NUM_SUB_REGROUP_BUNDLES"
+    await service._sync_context_to_db(ctx, t_id)
+
+
+def _classified(search_query_hi: str) -> Any:
+    from backend.app.llm.schemas import QuestionClassificationResult, QuestionClassifierOutput
+
+    return QuestionClassificationResult(
+        output=QuestionClassifierOutput(
+            category="pedagogy",
+            needs_clarification=False,
+            clarifying_question_hi="",
+            search_query_hi=search_query_hi,
+            confidence=0.95,
+        ),
+        used_fallback=False,
+    )
+
+
+async def test_ask_off_topic_says_it_does_not_know_and_escalates() -> None:
+    from backend.tests.unit.test_ask_retrieval import make_inbound
+
+    repo = FakeSessionRepository()
+    service = SessionService(repository=repo)
+    t_id = uuid.uuid4()
+    await _ready_teacher(service, repo, t_id)
+    # Only the classifier is faked; the real retriever and real guide answerer decide "not found"
+    # (no excerpt clears RETRIEVAL_MIN_SCORE, so no LLM call is made for the answer).
+    with patch("backend.app.sessions.service.classify_question", new_callable=AsyncMock) as cls:
+        cls.return_value = _classified("अंतरिक्ष रॉकेट प्रक्षेपण उपग्रह")
+        out = await service.handle_inbound(make_inbound(t_id, text="सवाल: चंद्रयान कब लॉन्च हुआ?"))
+    assert out[0].text_hi == get_message("ask_not_in_sources", "f")
+    assert out[0].speaker is None and out[0].citations == []
+    questions = [q for q in repo._questions if q.teacher_id == t_id]
+    assert questions and questions[0].status == "escalated"
+
+
+async def test_ask_answer_carries_guide_speaker_and_tappable_citation() -> None:
+    from backend.app.llm.schemas import GuideAnswererOutput, GuideAnswerResult
+    from backend.tests.unit.test_ask_retrieval import make_inbound
+
+    repo = FakeSessionRepository()
+    service = SessionService(repository=repo)
+    t_id = uuid.uuid4()
+    await _ready_teacher(service, repo, t_id)
+    hit = (await get_guide_retriever().retrieve("बच्चों में पैटर्न की समझ कैसे विकसित करें", top_k=1))[0]
+    cited = RetrievedChunk(
+        chunk_id=hit.chunk_id,
+        source_short_hi=hit.source_short_hi,
+        page=hit.page,
+        text=hit.text,
+        score=0.9,
+    )
+    result = GuideAnswerResult(
+        output=GuideAnswererOutput(
+            answer_hi="रोज़मर्रा की चीज़ों में दोहराव दिखाएँ।", source_ids=[hit.chunk_id], confidence=0.9
+        ),
+        answer_text_hi="x",
+        sources_cited=[cited],
+    )
+    with (
+        patch("backend.app.sessions.service.classify_question", new_callable=AsyncMock) as cls,
+        patch("backend.app.sessions.service.answer_guide_question", AsyncMock(return_value=result)),
+    ):
+        cls.return_value = _classified("पैटर्न की समझ")
+        out = await service.handle_inbound(make_inbound(t_id, text="सवाल: पैटर्न कैसे सिखाएँ?"))
+    assert out[0].speaker == "guide"
+    assert len(out[0].citations) == 1
+    cite = out[0].citations[0]
+    assert cite.chunk_id == hit.chunk_id and cite.page == hit.page
+    assert cite.line_hi == f"स्रोत: {hit.source_short_hi}, पृष्ठ {hit.page}"
+    assert cite.line_hi in out[0].text_hi  # WhatsApp has no tap, so the line stays in the text

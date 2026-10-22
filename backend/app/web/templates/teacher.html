@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="{{ ui_lang() }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#1F6F5C">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <title>अभ्यास — {{ teacher_name or "शिक्षिका" }}</title>
+  <title>{{ get_message('ui_app_name') }} — {{ teacher_name or get_message('ui_default_teacher_name') }}</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="/static/app.css">
 </head>
@@ -14,19 +14,19 @@
     <!-- Header (spec/09 §9.2) -->
     <header class="chat-header">
       <div class="header-left">
-        <a href="/teacher" class="brand-badge" aria-label="अभ्यास होम">
+        <a href="/teacher" class="brand-badge" aria-label="{{ get_message('ui_chat_home') }}">
           <svg class="brand-logo-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M4 19 C8 17, 16 17, 20 19 M7 7 L17 7 M5 12 L19 12"/>
           </svg>
-          <span>अभ्यास</span>
+          <span>{{ get_message('ui_app_name') }}</span>
         </a>
         <div class="header-titles">
-          <span class="header-move-title">{{ move_title or "दो अंकों की हासिल वाली घटाव" }}</span>
-          <span class="header-step-chip">{{ step_chip or "चरण 4/7 · अभ्यास" }}</span>
+          <span class="header-move-title">{{ move_title or get_message('ui_default_move_title') }}</span>
+          <span class="header-step-chip">{{ step_chip or get_message('ui_default_step_chip') }}</span>
         </div>
       </div>
       <div class="header-right">
-        <button type="button" class="btn-icon" id="menu-toggle-btn" aria-label="मेनू खोलें" onclick="toggleMenu()">
+        <button type="button" class="btn-icon" id="menu-toggle-btn" aria-label="{{ get_message('ui_chat_open_menu') }}" onclick="toggleMenu()">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
           </svg>
@@ -34,19 +34,20 @@
       </div>
 
       <!-- Header Menu Dropdown -->
-      <nav class="menu-dropdown" id="menu-dropdown" aria-label="मुख्य मेनू">
-        <a href="/teacher/progress" class="menu-item">प्रगति (Progress)</a>
+      <nav class="menu-dropdown" id="menu-dropdown" aria-label="{{ get_message('ui_chat_main_menu') }}">
+        <a href="/teacher/progress" class="menu-item">{{ get_message('ui_chat_menu_progress') }}</a>
         <button type="button" class="menu-item" id="lite-mode-menu-btn" onclick="toggleLiteMode()">
-          {{ "लाइट मोड: चालू ✓" if lite_mode else "लाइट मोड: बंद" }}
+          {{ get_message('ui_chat_lite_on') if lite_mode else get_message('ui_chat_lite_off') }}
         </button>
-        <button type="button" class="menu-item" onclick="openHelpModal()">मदद व निर्देश</button>
-        <a href="/logout" class="menu-item danger">लॉग आउट</a>
+        <button type="button" class="menu-item" onclick="openHelpModal()">{{ get_message('ui_chat_menu_help') }}</button>
+        <div class="menu-item lang-item">{{ lang_switch() }}</div>
+        <a href="/logout" class="menu-item danger">{{ get_message('ui_logout') }}</a>
       </nav>
     </header>
 
     <!-- Demo Banner (spec/03 §3.5) -->
     {% if demo_mode %}
-    <div class="demo-banner" role="status" aria-label="डेमो सूचना">{{ demo_banner_text or get_message('ui_demo_banner') }}</div>
+    <div class="demo-banner" role="status" aria-label="{{ get_message('ui_demo_notice_label') }}">{{ demo_banner_text or get_message('ui_demo_banner') }}</div>
     {% endif %}
 
     <!-- Network Alert Banner -->
@@ -58,9 +59,9 @@
     <div class="rehearse-strip" id="rehearse-strip">
       <span class="board-problem" id="board-problem">{{ board_problem }}</span>
       <div class="children-pills">
-        <span class="child-pill ravi active" title="रवि (कक्षा 2)">रवि</span>
-        <span class="child-pill priya" title="प्रिया (कक्षा 2)">प्रिया</span>
-        <span class="child-pill aman" title="अमन (कक्षा 2)">अमन</span>
+        <span class="child-pill ravi active" title="{{ get_message('ui_chat_child_ravi_title') }}">{{ get_message('speaker_ravi') }}</span>
+        <span class="child-pill priya" title="{{ get_message('ui_chat_child_priya_title') }}">{{ get_message('speaker_priya') }}</span>
+        <span class="child-pill aman" title="{{ get_message('ui_chat_child_aman_title') }}">{{ get_message('speaker_aman') }}</span>
       </div>
     </div>
 
@@ -74,13 +75,7 @@
         <div class="bubble">
           {% if msg.direction == 'out' and msg.speaker %}
           <div class="speaker-tag {{ msg.speaker|lower }}">
-            {% if msg.speaker == 'abhyas' %}अभ्यास
-            {% elif msg.speaker == 'coach' %}कोच
-            {% elif msg.speaker == 'model_teacher' %}आदर्श शिक्षिका
-            {% elif msg.speaker == 'ravi' %}रवि
-            {% elif msg.speaker == 'priya' %}प्रिया
-            {% elif msg.speaker == 'aman' %}अमन
-            {% else %}{{ msg.speaker }}{% endif %}
+            {{ speaker_label(msg.speaker) }}
           </div>
           {% endif %}
 
@@ -90,8 +85,8 @@
 
           {% if msg.audio_ref %}
           <div class="bubble-audio">
-            <button type="button" class="btn-play" aria-label="आवाज़ सुनें" data-audio-ref="{{ msg.audio_ref }}">▶</button>
-            <span class="audio-duration">ऑडियो संदेश</span>
+            <button type="button" class="btn-play" aria-label="{{ get_message('ui_chat_audio_play') }}" data-audio-ref="{{ msg.audio_ref }}">▶</button>
+            <span class="audio-duration">{{ get_message('ui_chat_audio_ready') }}</span>
           </div>
           {% endif %}
 
@@ -101,8 +96,12 @@
           </div>
           {% endif %}
 
+          {% if msg.direction == 'out' and msg.text and msg.speaker in ['ravi', 'priya', 'aman', 'coach', 'guide', 'model_teacher'] %}
+          <div class="translate-wrap"><button type="button" class="translate-btn" data-message-id="{{ msg.id }}">{{ get_message('ui_chat_translate') }}</button></div>
+          {% endif %}
+
           <div class="bubble-meta">
-            <span>{{ msg.time_str or "अभी" }}</span>
+            <span>{{ msg.time_str or get_message('ui_time_just_now') }}</span>
             {% if msg.direction == "in" %}<span class="status-icon sent" data-state="sent" role="img" aria-label="{{ (ui_strings or {}).get('ui_chat_msg_sent', '') }}">✓</span>{% else %}<span class="status-icon"></span>{% endif %}
           </div>
         </div>
@@ -120,7 +119,7 @@
       {% endfor %}
 
       <!-- Typing / Pending Indicator -->
-      <div id="pending-bubble" class="pending-bubble" role="status" aria-label="बच्चे सोच रहे हैं">
+      <div id="pending-bubble" class="pending-bubble" role="status" aria-label="{{ get_message('ui_chat_children_thinking') }}">
         <div class="dot-flashing" aria-hidden="true"><span></span><span></span><span></span></div>
         <span id="pending-text">{{ (ui_strings or {}).get('ui_chat_typing_generic', '') }}</span>
       </div>
@@ -128,8 +127,8 @@
 
     <!-- Demo Sample Chips (Shown in demo mode if demo_chips loaded) (§9.2) -->
     {% if demo_mode and demo_chips %}
-    <section class="demo-helper-section" aria-label="नमूना उत्तर चिप्स">
-      <div class="demo-hint">बोलने की जगह लिखें (नमूना प्रश्न):</div>
+    <section class="demo-helper-section" aria-label="{{ get_message('ui_chat_sample_chips') }}">
+      <div class="demo-hint">{{ get_message('ui_chat_type_instead_hint') }}</div>
       <div class="demo-chips">
         {% for chip in demo_chips %}
         <button
@@ -138,7 +137,7 @@
           data-id="{{ chip.id }}"
           data-text="{{ chip.text_hi or chip.text }}"
           data-audio-available="{{ 'true' if chip.audio_available else 'false' }}"
-        >{{ chip.chip_label or chip.text_hi or chip.text }}</button>
+        >{{ (chip.chip_label_en if ui_lang() == 'en' and chip.chip_label_en else chip.chip_label) or chip.text_hi or chip.text }}</button>
         {% endfor %}
       </div>
     </section>
@@ -151,8 +150,8 @@
           type="text"
           class="composer-input"
           id="chat-input"
-          placeholder="यहाँ लिखें या माइक दबाकर बोलें…"
-          aria-label="संदेश लिखें"
+          placeholder="{{ get_message('ui_chat_input_placeholder') }}"
+          aria-label="{{ get_message('ui_chat_write_message') }}"
         >
 
         <!-- Large Mic Button -->
@@ -160,8 +159,8 @@
           type="button"
           class="btn-mic"
           id="btn-mic"
-          aria-label="बोलकर रिकॉर्ड करें (दबाकर रखें)"
-          title="बोलकर रिकॉर्ड करें"
+          aria-label="{{ get_message('ui_chat_record_hold') }}"
+          title="{{ get_message('ui_chat_record') }}"
         >
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
@@ -172,7 +171,7 @@
         </button>
 
         <!-- Send Button -->
-        <button type="submit" class="btn-send" id="btn-send" aria-label="संदेश भेजें">
+        <button type="submit" class="btn-send" id="btn-send" aria-label="{{ get_message('ui_chat_send') }}">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <line x1="22" y1="2" x2="11" y2="13"/>
             <polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -185,8 +184,8 @@
             <span class="rec-blip"></span>
             <span id="recording-timer">0:00</span>
           </div>
-          <span class="slide-cancel-text" id="rec-status">{{ (ui_strings or {}).get('ui_chat_rec_recording', 'छोड़ने पर भेजा जाएगा') }}</span>
-          <button type="button" class="btn-cancel-rec" id="btn-cancel-rec">रद्द करें ✕</button>
+          <span class="slide-cancel-text" id="rec-status">{{ (ui_strings or {}).get('ui_chat_rec_recording', '') }}</span>
+          <button type="button" class="btn-cancel-rec" id="btn-cancel-rec">{{ get_message('ui_chat_cancel_rec') }}</button>
         </div>
       </form>
     </footer>
@@ -209,7 +208,7 @@
     });
 
     function openHelpModal() {
-      alert('अभ्यास साथी: हर सप्ताह 15 मिनट अभ्यास करें। आप बोलकर या लिखकर बात कर सकती हैं। सहायता के लिए अपने ARP से संपर्क करें।');
+      alert({{ get_message('ui_chat_help_text')|tojson }});
     }
   </script>
 </body>

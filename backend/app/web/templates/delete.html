@@ -1,24 +1,24 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="{{ ui_lang() }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#B3261E">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <title>मेरा डेटा हटाएँ — पुष्टि</title>
+  <title>{{ get_message('ui_delete_title') }}</title>
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
   <div class="app-container">
     <header class="chat-header">
       <div class="header-left">
-        <a href="/teacher/progress" class="btn-icon" aria-label="प्रगति पर वापस जाएँ">
+        <a href="/teacher/progress" class="btn-icon" aria-label="{{ get_message('ui_delete_back_progress') }}">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
         </a>
         <div class="header-titles">
-          <span class="header-move-title danger">मेरा डेटा हटाएँ</span>
+          <span class="header-move-title danger">{{ get_message('ui_delete_data') }}</span>
           <span class="header-step-chip">{{ teacher_name }}</span>
         </div>
       </div>
@@ -34,21 +34,21 @@
           </svg>
         </div>
 
-        <h1 id="delete-title" class="delete-dialog-title">क्या आप वाकई अपना सारा डेटा हटाना चाहती हैं?</h1>
+        <h1 id="delete-title" class="delete-dialog-title">{{ get_message('ui_delete_question') }}</h1>
 
         <p id="delete-warning" class="delete-dialog-body">
-          यह प्रक्रिया <strong>स्थायी और अपरिवर्तनीय</strong> है।
-          पुष्टि करने पर आपका खाता, सभी अभ्यास अंक, प्रमाण सीढ़ी की प्रगति, चैट संदेश और ऑडियो रिकॉर्ड डेटाबेस से हमेशा के लिए मिटा दिए जाएँगे।
+          {{ get_message('ui_delete_irreversible_html')|safe }}
+          {{ get_message('ui_delete_effects') }}
         </p>
 
         <form method="POST" action="/teacher/delete" class="delete-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
           <button type="submit" class="btn-danger-confirm" id="btn-confirm-delete">
-            हाँ, मिटाएँ
+            {{ get_message('ui_delete_confirm_yes') }}
           </button>
 
-          <a href="/teacher/progress" class="btn-cancel-link">नहीं, वापस जाएँ</a>
+          <a href="/teacher/progress" class="btn-cancel-link">{{ get_message('ui_delete_confirm_no') }}</a>
         </form>
       </div>
     </main>

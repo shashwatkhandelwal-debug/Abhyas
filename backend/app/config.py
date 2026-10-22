@@ -146,6 +146,15 @@ class Settings(BaseSettings):
     CHUNK_MAX_WORDS: int = 400
     CHUNK_OVERLAP_WORDS: int = 40
 
+    # ── On-demand English translation of bubbles ─────────────────────────
+    TRANSLATE_MAX_REQUESTS_PER_MINUTE: int = 10
+    TRANSLATE_RATE_LIMIT_WINDOW_SECONDS: int = 60
+    TRANSLATE_MAX_DEVANAGARI_RATIO: float = 0.05
+    TRANSLATE_MIN_WORD_RATIO: float = 0.3
+    TRANSLATE_MAX_WORD_RATIO: float = 3.0
+    TRANSLATE_MAX_SOURCE_CHARS: int = 2000
+    TRANSLATE_MAX_OUTPUT_TOKENS: int = 1500  # Devanagari-heavy sources cost many tokens
+
     # ── Pedagogical & Rule Engine Thresholds ──────────────────────────────
     MAX_TURNS_PER_REHEARSAL: int = 8
     SHY_SILENT_TURNS: int = 1

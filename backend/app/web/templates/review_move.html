@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="{{ ui_lang() }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>मूव समीक्षा: {{ move.title_hi }} — {{ get_message("ui_review_title") }}</title>
+  <title>{{ get_message('ui_review_move_title') }} {{ move.title_hi }} — {{ get_message("ui_review_title") }}</title>
   <link rel="stylesheet" href="/static/app.css">
   <style>
     .move-container {
@@ -137,11 +137,11 @@
   <div class="move-container">
     <header class="move-header">
       <div>
-        <a href="/review?tab=moves" style="color:var(--muted); text-decoration:none; font-size:0.9rem;">← सामग्री सूची पर वापस जाएँ</a>
+        <a href="/review?tab=moves" style="color:var(--muted); text-decoration:none; font-size:0.9rem;">← {{ get_message('ui_review_back_moves') }}</a>
         <h1 style="margin:0.25rem 0 0 0; font-size:1.4rem; color:var(--brand);">
           {{ move.title_hi }} (<code>{{ move.id }}</code>)
         </h1>
-        <small style="color:var(--muted);">विषय: {{ move.domain }} · संकुल माह: {{ move.sankul_month or '—' }}</small>
+        <small style="color:var(--muted);">{{ get_message('ui_review_domain_colon') }} {{ move.domain }} · {{ get_message('ui_review_sankul_colon') }} {{ move.sankul_month or '—' }}</small>
       </div>
       <div>
         <span class="status-badge {% if move.status == 'approved' %}status-approved{% else %}status-pending{% endif %}" style="font-size:0.95rem; padding:0.35rem 0.8rem;">
@@ -152,7 +152,7 @@
 
     {% if approved %}
     <div class="alert-success">
-      आपकी मंज़ूरी सफलतापूर्वक दर्ज की गई!
+      {{ get_message('ui_review_approval_saved') }}
     </div>
     {% endif %}
 
@@ -160,17 +160,17 @@
     <div class="approval-banner">
       <div class="approval-stats">
         <div style="font-size:1.1rem; font-weight:700;">
-          मंज़ूरी प्रगति: {{ approvals_count }} / {{ approvals_required }} कोच
+          {{ get_message('ui_review_approval_progress') }} {{ approvals_count }} / {{ approvals_required }} {{ get_message('ui_review_coaches') }}
         </div>
         <div style="font-size:0.85rem; color:var(--muted);">
-          मूव को प्रकाशित करने के लिए कम से कम 2 अलग-अलग कोचों की मंज़ूरी अनिवार्य है।
+          {{ get_message('ui_review_approval_rule') }}
         </div>
         <div class="approval-approvers">
           {% for a in approvals %}
           <span class="approver-tag">✓ {{ a.username or a.user_id }}</span>
           {% endfor %}
           {% if not approvals %}
-          <span style="font-size:0.85rem; color:var(--muted);">अभी तक किसी कोच ने मंज़ूरी नहीं दी है।</span>
+          <span style="font-size:0.85rem; color:var(--muted);">{{ get_message('ui_review_no_approvals') }}</span>
           {% endif %}
         </div>
       </div>
@@ -180,7 +180,7 @@
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button type="submit" class="btn-approve" {% if user_already_approved %}disabled{% endif %}>
             {% if user_already_approved %}
-            ✓ आपकी मंज़ूरी दर्ज है
+            ✓ {{ get_message('ui_review_your_approval') }}
             {% else %}
             {{ get_message("ui_review_approve_move") }}
             {% endif %}
@@ -192,7 +192,7 @@
     <!-- Form View: Key Points, Rubric, Scenarios -->
     {% if card %}
     <div class="section-card">
-      <h2>1. मुख्य शिक्षण बिंदु (Key Points)</h2>
+      <h2>{{ get_message('ui_review_h_key_points') }}</h2>
       <ul>
         {% for kp in card.key_points %}
         <li style="margin-bottom:0.4rem;">
@@ -201,7 +201,7 @@
         {% endfor %}
       </ul>
 
-      <h2>2. मूल्यांकन रूब्रिक (Rubric Criteria)</h2>
+      <h2>{{ get_message('ui_review_h_rubric') }}</h2>
       <div style="display:flex; flex-direction:column; gap:0.75rem;">
         {% for crit in card.rubric.criteria %}
         <div style="border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.75rem; background:var(--bg);">
@@ -215,22 +215,22 @@
         {% endfor %}
       </div>
 
-      <h2>3. अभ्यास परिदृश्य व मॉडल अभ्यास (Scenario & Model Rehearsal)</h2>
-      <p><strong>कक्षा संदर्भ:</strong> {{ card.scenario.intro_hi if card.scenario else '—' }}</p>
+      <h2>{{ get_message('ui_review_h_scenario') }}</h2>
+      <p><strong>{{ get_message('ui_review_class_context') }}</strong> {{ card.scenario.intro_hi if card.scenario else '—' }}</p>
       {% if card.model_rehearsal %}
-      <p><strong>आदर्श अभ्यास (पहला संवाद):</strong> {{ card.model_rehearsal[0].text_hi }} (वक्ता: {{ card.model_rehearsal[0].speaker }})</p>
+      <p><strong>{{ get_message('ui_review_model_first_line') }}</strong> {{ card.model_rehearsal[0].text_hi }} ({{ get_message('ui_review_speaker_colon') }} {{ card.model_rehearsal[0].speaker }})</p>
       {% endif %}
     </div>
     {% endif %}
 
     <!-- Raw YAML Tab with Server-side Schema Validation -->
     <div class="section-card">
-      <h2>कच्चा YAML कोड (Raw YAML & Validation)</h2>
+      <h2>{{ get_message('ui_review_h_yaml') }}</h2>
       <textarea id="yamlInput" class="yaml-textarea">{{ raw_yaml }}</textarea>
 
       <div class="validate-box">
         <button type="button" class="btn-validate" onclick="validateYaml()">
-          YAML जाँचें (Validate Schema)
+          {{ get_message('ui_review_validate_yaml') }}
         </button>
         <span id="validateResult" style="font-size:0.9rem; font-weight:600;"></span>
       </div>
@@ -242,7 +242,7 @@
     async function validateYaml() {
       const resultSpan = document.getElementById("validateResult");
       resultSpan.style.color = "var(--muted)";
-      resultSpan.textContent = "जाँच हो रही है...";
+      resultSpan.textContent = {{ get_message('ui_review_validating')|tojson }};
 
       const yamlContent = document.getElementById("yamlInput").value;
       try {
@@ -257,14 +257,14 @@
         const data = await resp.json();
         if (data.valid) {
           resultSpan.style.color = "var(--brand)";
-          resultSpan.textContent = "✓ मान्य MoveCard स्कीमा (" + data.criteria_count + " रूब्रिक मानदंड)";
+          resultSpan.textContent = {{ get_message('ui_review_yaml_valid', n='__N__')|tojson }}.replace('__N__', data.criteria_count);
         } else {
           resultSpan.style.color = "var(--danger)";
-          resultSpan.textContent = "✗ त्रुटि: " + data.error;
+          resultSpan.textContent = {{ get_message('ui_review_yaml_error', error='__E__')|tojson }}.replace('__E__', data.error);
         }
       } catch (err) {
         resultSpan.style.color = "var(--danger)";
-        resultSpan.textContent = "✗ नेटवर्क त्रुटि";
+        resultSpan.textContent = {{ get_message('ui_review_network_error')|tojson }};
       }
     }
   </script>

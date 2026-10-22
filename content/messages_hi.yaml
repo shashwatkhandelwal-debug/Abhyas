@@ -496,3 +496,255 @@ ui_admin_success_ff:
   text: "निर्धारित कार्य सफलतापूर्वक आगे बढ़ाए गए।"
   audio: false
 
+
+# ── Added when UI strings moved out of templates (messages_en.yaml mirrors these) ──
+ui_review_validating: {text: "जाँच हो रही है...", audio: false}
+ui_review_yaml_valid: {text: "✓ मान्य MoveCard स्कीमा ({n} रूब्रिक मानदंड)", audio: false}
+ui_review_yaml_error: {text: "✗ त्रुटि: {error}", audio: false}
+ui_review_network_error: {text: "✗ नेटवर्क त्रुटि", audio: false}
+ui_admin_unknown_reason: {text: "अज्ञात कारण", audio: false}
+ui_arp_category_general: {text: "सामान्य", audio: false}
+ui_chat_lite_on: {text: "लाइट मोड: चालू ✓", audio: false}
+ui_chat_lite_off: {text: "लाइट मोड: बंद", audio: false}
+ui_admin_reset_desc: {text: "सभी डेमो शिक्षकों (teacher.demo1..3) के वर्तमान सत्र, टर्न, अंक व समीक्षा रिकॉर्ड रीसेट किए जाएँगे।", audio: false}
+ui_admin_ff_desc: {text: "किसी डेमो शिक्षक के लंबित निर्धारित कार्य (प्रॉम्प्ट्स, रिफ्लेक्शन, आदि) तुरंत निष्पादित करें।", audio: false}
+ui_admin_recent_guard_failures: {text: "हालिया गार्ड विफलताएँ (Review Items):", audio: false}
+ui_admin_no_templates: {text: "इस सप्ताह कोई टेम्पलेट नहीं भेजा गया।", audio: false}
+ui_admin_no_jobs: {text: "कोई निर्धारित कार्य कतार में नहीं है।", audio: false}
+ui_admin_error_invalid: {text: "त्रुटि: अमान्य अनुरोध या पहचानकर्ता।", audio: false}
+ui_admin_no_llm_calls: {text: "कोई हालिया एलएलएम कॉल दर्ज नहीं है।", audio: false}
+ui_admin_content_release: {text: "सामग्री रिलीज़ (Content Release):", audio: false}
+ui_admin_no_tokens: {text: "कोई टोकन उपयोग दर्ज नहीं है।", audio: false}
+ui_admin_guard_pass_rate: {text: "गार्ड पास दर (Pass Rate)", audio: false}
+ui_admin_turn_split: {text: "टर्न विभाजन (भूमिकावार):", audio: false}
+ui_admin_last_24h: {text: "पिछले 24 घंटे (Overall)", audio: false}
+ui_admin_templates_sent: {text: "कुल प्रेषित टेम्पलेट्स", audio: false}
+ui_admin_col_run_at: {text: "निर्धारित समय (Run At)", audio: false}
+ui_admin_last_7d: {text: "पिछले 7 दिन (Overall)", audio: false}
+ui_admin_turns_24h: {text: "24 घंटे में कुल टर्न", audio: false}
+ui_admin_est_cost_inr: {text: "अनुमानित लागत (INR)", audio: false}
+ui_admin_total_moves: {text: "कुल तरीके (Moves):", audio: false}
+ui_admin_col_attempts: {text: "प्रयास (Attempts)", audio: false}
+ui_admin_jobs_executed: {text: "कार्य निष्पादित", audio: false}
+ui_admin_status_active: {text: "सक्रिय (Active)", audio: false}
+ui_admin_col_status: {text: "स्थिति (Status)", audio: false}
+ui_admin_milliseconds: {text: "मिलीसेकंड (ms)", audio: false}
+ui_admin_role_stage: {text: "भूमिका / Stage", audio: false}
+ui_admin_col_error: {text: "त्रुटि (Error)", audio: false}
+ui_admin_release_date: {text: "प्रकाशन तिथि:", audio: false}
+ui_admin_col_role: {text: "भूमिका (Role)", audio: false}
+ui_admin_col_kind: {text: "प्रकार (Kind)", audio: false}
+ui_admin_col_template: {text: "टेम्पलेट नाम", audio: false}
+ui_admin_this_week: {text: "इस सप्ताह", audio: false}
+ui_admin_retry: {text: "रीट्राई:", audio: false}
+ui_admin_fallback: {text: "फ़ॉलबैक:", audio: false}
+ui_admin_col_total_tokens: {text: "कुल टोकन", audio: false}
+ui_admin_col_cost: {text: "लागत (₹)", audio: false}
+ui_admin_badge_admin: {text: "एडमिन:", audio: false}
+ui_admin_days_7: {text: "7 दिन:", audio: false}
+ui_admin_col_output: {text: "आउटपुट", audio: false}
+ui_admin_col_category: {text: "श्रेणी", audio: false}
+ui_admin_col_count: {text: "संख्या", audio: false}
+ui_admin_pending_colon: {text: "लंबित:", audio: false}
+ui_admin_done_colon: {text: "पूर्ण:", audio: false}
+ui_admin_calls: {text: "कॉल्स", audio: false}
+ui_admin_col_input: {text: "इनपुट", audio: false}
+ui_admin_failed_colon: {text: "विफल:", audio: false}
+ui_admin_status_pending: {text: "लंबित", audio: false}
+ui_admin_status_done: {text: "पूर्ण", audio: false}
+ui_admin_total_colon: {text: "कुल:", audio: false}
+ui_admin_status_failed: {text: "विफल", audio: false}
+ui_arp_no_visits_needed: {text: "इस सप्ताह किसी सहमति-प्राप्त शिक्षक को तत्काल भ्रमण की आवश्यकता नहीं है।", audio: false}
+ui_arp_notes_placeholder: {text: "कक्षा में शिक्षिका की शक्ति व सुधार का बिंदु...", audio: false}
+ui_arp_no_teacher_data: {text: "इस क्लस्टर में कोई शिक्षक डेटा उपलब्ध नहीं है।", audio: false}
+ui_arp_no_open_questions: {text: "वर्तमान में कोई अनुत्तरित प्रश्न नहीं है।", audio: false}
+ui_arp_obs_points: {text: "अवलोकन बिंदु (लागू होने पर टिक करें):", audio: false}
+ui_arp_obs_checklist: {text: "5-मिनट अवलोकन जांच-सूची:", audio: false}
+ui_arp_print_visit_list: {text: "भ्रमण सूची प्रिंट करें", audio: false}
+ui_arp_guidance_notes: {text: "मार्गदर्शन नोट्स:", audio: false}
+ui_arp_pick_week: {text: "सप्ताह चुनें:", audio: false}
+ui_arp_print: {text: "प्रिंट करें", audio: false}
+ui_arp_visit_date: {text: "भ्रमण तिथि:", audio: false}
+ui_demo_notice_label: {text: "डेमो सूचना", audio: false}
+ui_arp_cluster: {text: "क्लस्टर:", audio: false}
+ui_arp_avg_score: {text: "औसत अंक:", audio: false}
+ui_arp_week: {text: "सप्ताह:", audio: false}
+ui_arp_category: {text: "श्रेणी:", audio: false}
+ui_arp_move_colon: {text: "तरीका:", audio: false}
+ui_arp_level: {text: "स्तर", audio: false}
+ui_arp_score_colon: {text: "अंक:", audio: false}
+ui_arp_score: {text: "अंक", audio: false}
+ui_chat_type_instead_hint: {text: "बोलने की जगह लिखें (नमूना प्रश्न):", audio: false}
+ui_chat_input_placeholder: {text: "यहाँ लिखें या माइक दबाकर बोलें…", audio: false}
+ui_chat_record_hold: {text: "बोलकर रिकॉर्ड करें (दबाकर रखें)", audio: false}
+ui_chat_record: {text: "बोलकर रिकॉर्ड करें", audio: false}
+ui_chat_menu_progress: {text: "प्रगति (Progress)", audio: false}
+ui_chat_children_thinking: {text: "बच्चे सोच रहे हैं", audio: false}
+ui_chat_sample_chips: {text: "नमूना उत्तर चिप्स", audio: false}
+ui_chat_child_priya_title: {text: "प्रिया (कक्षा 2)", audio: false}
+ui_chat_menu_help: {text: "मदद व निर्देश", audio: false}
+ui_chat_child_ravi_title: {text: "रवि (कक्षा 2)", audio: false}
+ui_chat_child_aman_title: {text: "अमन (कक्षा 2)", audio: false}
+ui_chat_write_message: {text: "संदेश लिखें", audio: false}
+ui_chat_send: {text: "संदेश भेजें", audio: false}
+ui_chat_cancel_rec: {text: "रद्द करें ✕", audio: false}
+ui_chat_home: {text: "अभ्यास होम", audio: false}
+ui_chat_open_menu: {text: "मेनू खोलें", audio: false}
+ui_chat_main_menu: {text: "मुख्य मेनू", audio: false}
+ui_delete_effects: {text: "पुष्टि करने पर आपका खाता, सभी अभ्यास अंक, प्रमाण सीढ़ी की प्रगति, चैट संदेश और ऑडियो रिकॉर्ड डेटाबेस से हमेशा के लिए मिटा दिए जाएँगे।", audio: false}
+ui_delete_irreversible_html: {text: "यह प्रक्रिया <strong>स्थायी और अपरिवर्तनीय</strong> है।", audio: false}
+ui_delete_question: {text: "क्या आप वाकई अपना सारा डेटा हटाना चाहती हैं?", audio: false}
+ui_delete_title: {text: "मेरा डेटा हटाएँ — पुष्टि", audio: false}
+ui_delete_back_progress: {text: "प्रगति पर वापस जाएँ", audio: false}
+ui_delete_confirm_no: {text: "नहीं, वापस जाएँ", audio: false}
+ui_delete_confirm_yes: {text: "हाँ, मिटाएँ", audio: false}
+ui_progress_research_desc: {text: "अभ्यास प्रणाली व शिक्षण सामग्री को बेहतर बनाने हेतु अनाम डेटा उपयोग।", audio: false}
+ui_progress_data_desc: {text: "आप किसी भी समय अपना सारा डेटा और खाता हमेशा के लिए मिटा सकती हैं।", audio: false}
+ui_progress_share_scores_desc: {text: "आपके संकुल ARP को आपकी अभ्यास प्रगति और अंक देखने की अनुमति।", audio: false}
+ui_progress_consent_saved: {text: "आपकी सहमति प्राथमिकताएँ सुरक्षित कर ली गई हैं।", text_m: "आपकी सहमति प्राथमिकताएँ सुरक्षित कर ली गई हैं।", audio: false}
+ui_progress_explain_back: {text: "अपने शब्दों में समझाना (Key Points Covered)", audio: false}
+ui_progress_no_scores: {text: "अभी तक कोई अभ्यास अंक दर्ज नहीं हुआ है।", audio: false}
+ui_progress_explain_pending: {text: "अभी तक अपने शब्दों में समझाना बाकी है।", audio: false}
+ui_progress_score_history: {text: "अभ्यास अंक इतिहास (Rubric Scores)", audio: false}
+ui_progress_ladder: {text: "प्रमाण सीढ़ी (Evidence Ladder)", audio: false}
+ui_progress_moves_heading: {text: "शिक्षण तरीके व प्रमाण सीढ़ी", audio: false}
+ui_progress_consent_label: {text: "सहमति और गोपनीयता सेटिंग्स", audio: false}
+ui_progress_share_scores: {text: "ARP के साथ स्कोर साझा करें", audio: false}
+ui_progress_consent_heading: {text: "गोपनीयता व सहमति सेटिंग्स", audio: false}
+ui_progress_research: {text: "शोध व सुधार में भागीदारी", audio: false}
+ui_progress_moves_label: {text: "शिक्षण तरीके और प्रगति", audio: false}
+ui_progress_page_title: {text: "मेरी प्रगति — अभ्यास", audio: false}
+ui_progress_ladder_levels: {text: "प्रमाण सीढ़ी के स्तर", audio: false}
+ui_progress_data_heading: {text: "खाता व डेटा प्रबंधन", audio: false}
+ui_progress_back_chat: {text: "चैट पर वापस जाएँ", audio: false}
+ui_progress_save_settings: {text: "सेटिंग्स सहेजें", audio: false}
+ui_progress_data_label: {text: "डेटा प्रबंधन", audio: false}
+ui_progress_title: {text: "मेरी प्रगति", audio: false}
+ui_progress_attempt: {text: "प्रयास", audio: false}
+ui_review_review_approve: {text: "समीक्षा व मंज़ूरी →", audio: false}
+ui_review_do_review: {text: "समीक्षा करें →", audio: false}
+ui_review_col_approval: {text: "मंज़ूरी प्रगति", audio: false}
+ui_review_col_sankul_month: {text: "संकुल माह", audio: false}
+ui_review_reviewer: {text: "समीक्षक:", audio: false}
+ui_review_col_action: {text: "कार्रवाई", audio: false}
+ui_review_col_move_code: {text: "मूव कोड", audio: false}
+ui_review_col_kind: {text: "प्रकार", audio: false}
+ui_review_col_status: {text: "स्थिति", audio: false}
+ui_review_col_title: {text: "शीर्षक", audio: false}
+ui_review_role: {text: "रोल:", audio: false}
+ui_review_items: {text: "आइटम", audio: false}
+ui_review_col_reason: {text: "कारण", audio: false}
+ui_review_col_domain: {text: "विषय", audio: false}
+ui_review_total: {text: "कुल", audio: false}
+ui_review_col_time: {text: "समय", audio: false}
+ui_review_calibrate_saved: {text: "ब्लाइंड कैलिब्रेशन स्कोर सफलतापूर्वक दर्ज हुआ! अगला यादृच्छिक अभ्यास नीचे प्रदर्शित है।", audio: false}
+ui_review_blind_instruction: {text: "ट्रांसक्रिप्ट पढ़कर प्रत्येक मानदंड पर निष्पक्ष रूप से 0, 1 या 2 अंक दें।", audio: false}
+ui_review_blind_scoring: {text: "स्वतंत्र कोच मूल्यांकन (Blind Scoring)", audio: false}
+ui_review_note_placeholder_blind: {text: "कोच की मूल्यांकन टिप्पणी (वैकल्पिक)...", audio: false}
+ui_review_no_conversation: {text: "कोई अभ्यास बातचीत उपलब्ध नहीं है।", audio: false}
+ui_review_save_blind: {text: "ब्लाइंड स्कोर सुरक्षित करें", audio: false}
+ui_review_back_console: {text: "समीक्षा कंसोल पर वापस जाएँ", audio: false}
+ui_review_score_2: {text: "2 (पूरी / सही)", audio: false}
+ui_review_score_0: {text: "0 (अधूरी)", audio: false}
+ui_review_score_1: {text: "1 (आंशिक)", audio: false}
+ui_review_move_colon: {text: "मूव:", audio: false}
+ui_review_note_placeholder: {text: "कोच की सुधारात्मक टिप्पणी दर्ज करें...", audio: false}
+ui_review_no_transcript: {text: "कोई ट्रांसक्रिप्ट उपलब्ध नहीं है।", audio: false}
+ui_review_teacher_explanation: {text: "शिक्षक द्वारा समझाया गया विवरण:", audio: false}
+ui_review_points_covered: {text: "मुख्य बिंदु (Points Covered):", audio: false}
+ui_review_guard_reason: {text: "गार्ड विफलता कारण:", audio: false}
+ui_review_change: {text: "सुधार क्षेत्र:", audio: false}
+ui_review_strength: {text: "सशक्त बिंदु:", audio: false}
+ui_review_ai_confidence: {text: "AI भरोसा:", audio: false}
+ui_review_detail_title: {text: "समीक्षा:", audio: false}
+ui_review_item_id: {text: "आइटम ID:", audio: false}
+ui_review_kind_colon: {text: "प्रकार:", audio: false}
+ui_review_question: {text: "प्रश्न:", audio: false}
+ui_review_category_colon: {text: "श्रेणी:", audio: false}
+ui_review_status_colon: {text: "स्थिति:", audio: false}
+ui_review_evidence: {text: "प्रमाण:", audio: false}
+ui_review_answer: {text: "उत्तर:", audio: false}
+ui_review_approval_rule: {text: "मूव को प्रकाशित करने के लिए कम से कम 2 अलग-अलग कोचों की मंज़ूरी अनिवार्य है।", audio: false}
+ui_review_h_scenario: {text: "3. अभ्यास परिदृश्य व मॉडल अभ्यास (Scenario & Model Rehearsal)", audio: false}
+ui_review_no_approvals: {text: "अभी तक किसी कोच ने मंज़ूरी नहीं दी है।", audio: false}
+ui_review_h_rubric: {text: "2. मूल्यांकन रूब्रिक (Rubric Criteria)", audio: false}
+ui_review_h_yaml: {text: "कच्चा YAML कोड (Raw YAML & Validation)", audio: false}
+ui_review_approval_saved: {text: "आपकी मंज़ूरी सफलतापूर्वक दर्ज की गई!", text_m: "आपकी मंज़ूरी सफलतापूर्वक दर्ज की गई!", audio: false}
+ui_review_h_key_points: {text: "1. मुख्य शिक्षण बिंदु (Key Points)", audio: false}
+ui_review_validate_yaml: {text: "YAML जाँचें (Validate Schema)", audio: false}
+ui_review_model_first_line: {text: "आदर्श अभ्यास (पहला संवाद):", audio: false}
+ui_review_back_moves: {text: "सामग्री सूची पर वापस जाएँ", audio: false}
+ui_review_your_approval: {text: "आपकी मंज़ूरी दर्ज है", audio: false}
+ui_review_approval_progress: {text: "मंज़ूरी प्रगति:", audio: false}
+ui_review_class_context: {text: "कक्षा संदर्भ:", audio: false}
+ui_review_sankul_colon: {text: "संकुल माह:", audio: false}
+ui_review_speaker_colon: {text: "वक्ता:", audio: false}
+ui_review_domain_colon: {text: "विषय:", audio: false}
+ui_review_coaches: {text: "कोच", audio: false}
+ui_trainer_privacy_text: {text: "प्रशिक्षण डैशबोर्ड में शिक्षकों का व्यक्तिगत विवरण, नाम अथवा फ़ोन नंबर कभी भी प्रदर्शित नहीं होता है। किसी भी समूह में शिक्षक संख्या 10 से कम होने (n < 10) पर गोपनीयता संरक्षण हेतु सभी प्रगति संकेतक स्वतः छिपाए जाते हैं।", audio: false}
+ui_trainer_privacy_label: {text: "गोपनीयता नीति:", audio: false}
+ui_trainer_demo_mode: {text: "डेमो मोड:", audio: false}
+ui_trainer_avg: {text: "औसत:", audio: false}
+speaker_ravi: {text: "रवि", audio: false}
+speaker_priya: {text: "प्रिया", audio: false}
+speaker_aman: {text: "अमन", audio: false}
+ui_review_move_title: {text: "मूव समीक्षा:", audio: false}
+ui_lang_label: {text: "भाषा", audio: false}
+ui_lang_name_hi: {text: "हिन्दी", audio: false}
+ui_lang_name_en: {text: "English", audio: false}
+ui_login_page_title: {text: "लॉगिन — अभ्यास (Abhyas)", audio: false}
+ui_login_subtitle: {text: "प्राथमिक शिक्षकों का अभ्यास साथी", audio: false}
+ui_login_username: {text: "यूज़रनेम (Username)", audio: false}
+ui_login_password: {text: "पासवर्ड (Password)", audio: false}
+ui_login_submit: {text: "लॉगिन करें", audio: false}
+ui_login_demo_title: {text: "डेमो खाते (पासवर्ड: {password})", audio: false}
+ui_login_demo_teacher_new: {text: "शिक्षिका (नई): teacher.demo1", audio: false}
+ui_login_demo_teacher_practiced: {text: "शिक्षिका (अभ्यास): teacher.demo2", audio: false}
+ui_login_demo_arp: {text: "ARP: arp.demo", audio: false}
+ui_login_demo_trainer: {text: "ट्रेनर: trainer.demo", audio: false}
+ui_login_demo_coach: {text: "कोच: coach.demo", audio: false}
+ui_login_error_missing: {text: "कृपया यूज़रनेम और पासवर्ड दर्ज करें", audio: false}
+ui_login_error_invalid: {text: "गलत यूज़रनेम या पासवर्ड। कृपया पुनः प्रयास करें।", audio: false}
+ui_login_api_bad_json: {text: "अमान्य JSON अनुरोध", audio: false}
+ui_login_api_missing: {text: "यूज़रनेम और पासवर्ड दोनों आवश्यक हैं", audio: false}
+ui_login_api_invalid: {text: "गलत यूज़रनेम या पासवर्ड (Invalid credentials)", audio: false}
+speaker_guide: {text: "मार्गदर्शिका", audio: false}
+ui_chat_translate: {text: "अंग्रेज़ी में देखें", audio: false}
+ui_chat_translate_loading: {text: "अनुवाद हो रहा है…", audio: false}
+ui_chat_translate_hide: {text: "अनुवाद छिपाएँ", audio: false}
+ui_chat_translate_error: {text: "अनुवाद नहीं हो सका", audio: false}
+ui_chat_translate_limit: {text: "अनुरोध बहुत जल्दी-जल्दी आ रहे हैं — थोड़ी देर बाद फिर कोशिश करें", audio: false}
+ui_chat_translate_retry: {text: "दोबारा कोशिश करें", audio: false}
+ui_chat_translation_label: {text: "अंग्रेज़ी अनुवाद", audio: false}
+ui_chat_rec_unsupported: {text: "आपके ब्राउज़र में आवाज़ रिकॉर्ड करने की सुविधा उपलब्ध नहीं है।", audio: false}
+ui_chat_rec_permission: {text: "माइक्रोफ़ोन की अनुमति चाहिए। कृपया ब्राउज़र सेटिंग्स में जाकर माइक्रोफ़ोन की अनुमति दें।", audio: false}
+ui_chat_rec_start_failed: {text: "माइक्रोफ़ोन शुरू करने में समस्या आई: {error}", audio: false}
+ui_chat_rec_unknown_error: {text: "अज्ञात त्रुटि", audio: false}
+ui_offline_title: {text: "ऑफ़लाइन — अभ्यास (Abhyas)", audio: false}
+ui_offline_retry: {text: "पुनः प्रयास करें", audio: false}
+ui_offline_notice: {text: "आप ऑफ़लाइन हैं — पुराना इतिहास और कक्षा चेकलिस्ट उपलब्ध हैं।", audio: false}
+ui_offline_checklist_badge: {text: "कक्षा-अभ्यास चेकलिस्ट (ऑफ़लाइन उपलब्ध)", audio: false}
+ui_offline_checklist_title: {text: "दो अंकों की हासिल वाली घटाव (52 − 17)", audio: false}
+ui_offline_checklist_intro: {text: "कक्षा में पढ़ाते समय इन 4 चरणों का ध्यान रखें। आपके टिक यहाँ सुरक्षित रहेंगे।", audio: false}
+ui_offline_chk1_label: {text: "1. ठोस सामग्री:", audio: false}
+ui_offline_chk1_text: {text: "बच्चों को तीलियाँ और 10 के बंडल देकर खुद करने का अवसर दिया।", audio: false}
+ui_offline_chk2_label: {text: "2. बंडल खोलना:", audio: false}
+ui_offline_chk2_text: {text: "52 में से 2 में 7 नहीं घटता, इसलिए 1 बंडल खोलकर 12 इकाइयाँ बनाईं।", audio: false}
+ui_offline_chk3_label: {text: "3. बच्चे से पूछना:", audio: false}
+ui_offline_chk3_text: {text: "बच्चे से पूछा कि अब कितनी इकाइयाँ और दहाई बचीं, उत्तर सीधे नहीं बताया।", audio: false}
+ui_offline_chk4_label: {text: "4. साथी अवलोकन:", audio: false}
+ui_offline_chk4_text: {text: "साथी शिक्षिका या ARP ने कक्षा शिक्षण का अवलोकन किया।", audio: false}
+ui_offline_history_title: {text: "हाल का अभ्यास इतिहास (अंतिम 50 संदेश)", audio: false}
+ui_offline_history_loading: {text: "इतिहास लोड हो रहा है…", audio: false}
+ui_offline_history_empty: {text: "कोई सहेजा हुआ संदेश नहीं है।", audio: false}
+ui_offline_history_failed: {text: "इतिहास लोड नहीं हो सका।", audio: false}
+ui_review_reason_low_confidence: {text: "कम भरोसा / समीक्षा आवश्यक", audio: false}
+ui_review_reason_question_escalated: {text: "ARP को भेजा गया प्रश्न", audio: false}
+ui_review_reason_guard_failure: {text: "गार्ड विफलता", audio: false}
+ui_review_default_move_title: {text: "अभ्यास समीक्षा", audio: false}
+ui_review_default_teacher: {text: "शिक्षक", audio: false}
+ui_admin_default_demo_teacher: {text: "डेमो शिक्षक", audio: false}
+ui_trainer_rubric_svg_none: {text: "रुब्रिक वितरण", audio: false}
+ui_trainer_rubric_svg_title: {text: "0 अंक: {n0} ({p0}%) | 1 अंक: {n1} ({p1}%) | 2 अंक: {n2} ({p2}%)", audio: false}
+ui_arp_anonymous_teacher: {text: "शिक्षक #{code}", audio: false}
+ui_chat_help_text: {text: "अभ्यास साथी: हर सप्ताह 15 मिनट अभ्यास करें। आप बोलकर या लिखकर बात कर सकती हैं। सहायता के लिए अपने ARP से संपर्क करें।", audio: false}

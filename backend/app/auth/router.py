@@ -1,5 +1,6 @@
 """Authentication routes: login, logout, and user profile (spec/07 §7.4, spec/09 §9.7)."""
 
+import html
 import logging
 from typing import Annotated, Any
 
@@ -24,8 +25,10 @@ from backend.app.auth.session import (
     set_session_cookie,
 )
 from backend.app.config import settings
+from backend.app.core.messages import get_message, get_ui_lang, normalize_lang
 from backend.app.db.models import AppUser
 from backend.app.db.session import get_db_session
+from backend.app.web.ui_lang import lang_switch_html, set_lang_cookie
 
 logger = logging.getLogger("abhyas.auth")
 
@@ -46,32 +49,45 @@ ROLE_HOME_PATHS: dict[str, str] = {
 }
 
 
-def _render_login_page(csrf_token: str, error_message: str | None = None) -> str:
-    """Renders accessible, responsive Hindi login page with CSRF and demo badges."""
+def _render_login_page(
+    csrf_token: str, error_message: str | None = None, lang: str | None = None
+) -> str:
+    """Renders the accessible, responsive login page (Hindi default, English on request)."""
+    code = normalize_lang(lang) if lang else get_ui_lang()
+
+    def m(key: str, **kwargs: Any) -> str:
+        return get_message(key, lang=code, **kwargs)
+
     error_html = (
-        f'<div class="error-banner" role="alert">{error_message}</div>' if error_message else ""
+        f'<div class="error-banner" role="alert">{html.escape(error_message)}</div>'
+        if error_message
+        else ""
     )
     demo_creds_html = ""
     if settings.DEMO_MODE:
+        demo_title = html.escape(m("ui_login_demo_title", password="@@PW@@")).replace(
+            "@@PW@@", f"<code>{html.escape(settings.DEMO_PASSWORD)}</code>"
+        )
         demo_creds_html = f"""
         <div class="demo-card">
-            <h3>डेमो खाते (पासवर्ड: <code>{settings.DEMO_PASSWORD}</code>)</h3>
+            <h3>{demo_title}</h3>
             <div class="demo-chips">
-                <button type="button" onclick="fillCreds('teacher.demo1')">शिक्षिका (नई): teacher.demo1</button>
-                <button type="button" onclick="fillCreds('teacher.demo2')">शिक्षिका (अभ्यास): teacher.demo2</button>
-                <button type="button" onclick="fillCreds('arp.demo')">ARP: arp.demo</button>
-                <button type="button" onclick="fillCreds('trainer.demo')">ट्रेनर: trainer.demo</button>
-                <button type="button" onclick="fillCreds('coach.demo')">कोच: coach.demo</button>
+                <button type="button" onclick="fillCreds('teacher.demo1')">{html.escape(m("ui_login_demo_teacher_new"))}</button>
+                <button type="button" onclick="fillCreds('teacher.demo2')">{html.escape(m("ui_login_demo_teacher_practiced"))}</button>
+                <button type="button" onclick="fillCreds('arp.demo')">{html.escape(m("ui_login_demo_arp"))}</button>
+                <button type="button" onclick="fillCreds('trainer.demo')">{html.escape(m("ui_login_demo_trainer"))}</button>
+                <button type="button" onclick="fillCreds('coach.demo')">{html.escape(m("ui_login_demo_coach"))}</button>
             </div>
         </div>
         """
+    switch_html = lang_switch_html("/login", code)
 
     return f"""<!DOCTYPE html>
-<html lang="hi">
+<html lang="{code}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>लॉगिन — अभ्यास (Abhyas)</title>
+    <title>{html.escape(m("ui_login_page_title"))}</title>
     <style>
         :root {{
             --bg: #FAF7F2;
@@ -167,6 +183,9 @@ def _render_login_page(csrf_token: str, error_message: str | None = None) -> str
             margin-bottom: 1.25rem;
             font-size: 0.95rem;
         }}
+        .lang-row {{ margin: 0.5rem 0 0; font-size: 0.9rem; }}
+        .lang-link {{ color: var(--brand); text-decoration: none; padding: 0.4rem 0.5rem; display: inline-block; }}
+        .lang-link.active {{ font-weight: 700; text-decoration: underline; }}
         .demo-card {{
             margin-top: 1.75rem;
             padding-top: 1.25rem;
@@ -199,26 +218,28 @@ def _render_login_page(csrf_token: str, error_message: str | None = None) -> str
 <body>
     <main class="login-box">
         <header class="brand-header">
-            <h1 class="brand-title">अभ्यास</h1>
-            <p class="brand-subtitle">प्राथमिक शिक्षकों का अभ्यास साथी</p>
+            <h1 class="brand-title">{html.escape(m("ui_app_name"))}</h1>
+            <p class="brand-subtitle">{html.escape(m("ui_login_subtitle"))}</p>
+        <p class="lang-row">{switch_html}</p>
         </header>
 
         {error_html}
 
         <form method="POST" action="/login">
             <input type="hidden" name="csrf_token" value="{csrf_token}">
+            <input type="hidden" name="ui_lang" value="{code}">
 
             <div class="form-group">
-                <label for="username">यूज़रनेम (Username)</label>
+                <label for="username">{html.escape(m("ui_login_username"))}</label>
                 <input type="text" id="username" name="username" required autocomplete="username" autofocus>
             </div>
 
             <div class="form-group">
-                <label for="password">पासवर्ड (Password)</label>
+                <label for="password">{html.escape(m("ui_login_password"))}</label>
                 <input type="password" id="password" name="password" required autocomplete="current-password">
             </div>
 
-            <button type="submit" class="btn-submit">लॉगिन करें</button>
+            <button type="submit" class="btn-submit">{html.escape(m("ui_login_submit"))}</button>
         </form>
 
         {demo_creds_html}
@@ -257,6 +278,7 @@ async def login(
     username: Annotated[str | None, Form()] = None,
     password: Annotated[str | None, Form()] = None,
     csrf_token: Annotated[str | None, Form()] = None,
+    ui_lang: Annotated[str | None, Form()] = None,
 ) -> Response:
     """Authenticates user with rate limiting (5/min/IP), CSRF verification, and signed session cookie."""
     # 1. Rate limiting: 5/min/IP (§7.4)
@@ -277,7 +299,7 @@ async def login(
         except Exception:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="अमान्य JSON अनुरोध",
+                detail=get_message("ui_login_api_bad_json"),
             ) from None
     else:
         # Verify CSRF on form submissions
@@ -287,11 +309,11 @@ async def login(
         if is_json:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="यूज़रनेम और पासवर्ड दोनों आवश्यक हैं",
+                detail=get_message("ui_login_api_missing"),
             )
         token = request.cookies.get(CSRF_COOKIE_NAME) or generate_csrf_token()
         resp = HTMLResponse(
-            _render_login_page(token, "कृपया यूज़रनेम और पासवर्ड दर्ज करें"),
+            _render_login_page(token, get_message("ui_login_error_missing")),
             status_code=400,
         )
         set_csrf_cookie(resp, token)
@@ -306,11 +328,11 @@ async def login(
         if is_json:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="गलत यूज़रनेम या पासवर्ड (Invalid credentials)",
+                detail=get_message("ui_login_api_invalid"),
             )
         token = request.cookies.get(CSRF_COOKIE_NAME) or generate_csrf_token()
         resp = HTMLResponse(
-            _render_login_page(token, "गलत यूज़रनेम या पासवर्ड। कृपया पुनः प्रयास करें।"),
+            _render_login_page(token, get_message("ui_login_error_invalid")),
             status_code=401,
         )
         set_csrf_cookie(resp, token)
@@ -328,6 +350,13 @@ async def login(
     session_token = create_session_token(session_payload)
     redirect_path = ROLE_HOME_PATHS.get(user.role, "/teacher")
 
+    # UI language: the choice made on the login page wins; otherwise the user's saved preference,
+    # then whatever this browser already had. Saved back so it follows the user across devices.
+    chosen_lang = normalize_lang(ui_lang or user.ui_lang or get_ui_lang())
+    if user.ui_lang != chosen_lang:
+        user.ui_lang = chosen_lang
+        await db.commit()
+
     if is_json:
         json_resp = JSONResponse(
             content={
@@ -343,11 +372,13 @@ async def login(
             }
         )
         set_session_cookie(json_resp, session_token)
+        set_lang_cookie(json_resp, chosen_lang)
         return json_resp
 
     # Redirect to role home (§9.7)
     redir_resp = RedirectResponse(url=redirect_path, status_code=status.HTTP_303_SEE_OTHER)
     set_session_cookie(redir_resp, session_token)
+    set_lang_cookie(redir_resp, chosen_lang)
     return redir_resp
 
 

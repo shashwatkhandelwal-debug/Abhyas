@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="{{ ui_lang() }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ get_message("ui_admin_title") }} — अभ्यास</title>
+  <title>{{ get_message("ui_admin_title") }} — {{ get_message('ui_app_name') }}</title>
   <link rel="stylesheet" href="/static/app.css">
   <style>
     .admin-container {
@@ -195,7 +195,8 @@
         <p class="admin-subtitle">{{ get_message("ui_admin_subtitle") }}</p>
       </div>
       <div class="admin-user-nav">
-        <span class="badge badge-brand">एडमिन: {{ admin_user.display_name or admin_user.username }}</span>
+        <span class="badge badge-brand">{{ get_message('ui_admin_badge_admin') }} {{ admin_user.display_name or admin_user.username }}</span>
+        {{ lang_switch() }}
         <a href="/logout" style="color: var(--danger); text-decoration: none; font-weight: 600;">{{ get_message("ui_logout") }}</a>
       </div>
     </header>
@@ -209,12 +210,12 @@
     {% elif msg == 'ff_ok' %}
       <div class="banner-alert banner-success">
         <span>✓</span>
-        <span>{{ get_message("ui_admin_success_ff") }} {% if advanced is not none %}({{ advanced }} कार्य निष्पादित){% endif %}</span>
+        <span>{{ get_message("ui_admin_success_ff") }} {% if advanced is not none %}({{ advanced }} {{ get_message('ui_admin_jobs_executed') }}){% endif %}</span>
       </div>
     {% elif msg == 'error' %}
       <div class="banner-alert banner-danger">
         <span>⚠</span>
-        <span>त्रुटि: अमान्य अनुरोध या पहचानकर्ता।</span>
+        <span>{{ get_message('ui_admin_error_invalid') }}</span>
       </div>
     {% endif %}
 
@@ -222,7 +223,7 @@
     <section class="card">
       <div class="card-header">
         <h2 class="card-title">{{ get_message("ui_admin_env") }}</h2>
-        <span class="badge badge-brand">सक्रिय (Active)</span>
+        <span class="badge badge-brand">{{ get_message('ui_admin_status_active') }}</span>
       </div>
       <div class="grid-4">
         <div>
@@ -243,9 +244,9 @@
         </div>
       </div>
       <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px dashed var(--border); font-size: 0.9rem; color: var(--muted);">
-        <strong>सामग्री रिलीज़ (Content Release):</strong> {{ system_info.release_id }}
-        &bull; <strong>कुल तरीके (Moves):</strong> {{ system_info.moves_count }}
-        &bull; <strong>प्रकाशन तिथि:</strong> {{ system_info.release_date }}
+        <strong>{{ get_message('ui_admin_content_release') }}</strong> {{ system_info.release_id }}
+        &bull; <strong>{{ get_message('ui_admin_total_moves') }}</strong> {{ system_info.moves_count }}
+        &bull; <strong>{{ get_message('ui_admin_release_date') }}</strong> {{ system_info.release_date }}
       </div>
     </section>
 
@@ -256,18 +257,18 @@
       <section class="card">
         <div class="card-header">
           <h2 class="card-title">{{ get_message("ui_admin_latency") }}</h2>
-          <span class="badge badge-accent">मिलीसेकंड (ms)</span>
+          <span class="badge badge-accent">{{ get_message('ui_admin_milliseconds') }}</span>
         </div>
         <div class="grid-2" style="margin-bottom: 0.75rem;">
           <div>
-            <div class="stat-label">पिछले 24 घंटे (Overall)</div>
+            <div class="stat-label">{{ get_message('ui_admin_last_24h') }}</div>
             <div class="stat-number">p50: {{ latency_stats.overall_p50_24h }} <span style="font-size: 1rem; color: var(--muted);">/ p95: {{ latency_stats.overall_p95_24h }} ms</span></div>
-            <div class="stat-label">{{ latency_stats.overall_calls_24h }} कॉल्स</div>
+            <div class="stat-label">{{ latency_stats.overall_calls_24h }} {{ get_message('ui_admin_calls') }}</div>
           </div>
           <div>
-            <div class="stat-label">पिछले 7 दिन (Overall)</div>
+            <div class="stat-label">{{ get_message('ui_admin_last_7d') }}</div>
             <div class="stat-number">p50: {{ latency_stats.overall_p50_7d }} <span style="font-size: 1rem; color: var(--muted);">/ p95: {{ latency_stats.overall_p95_7d }} ms</span></div>
-            <div class="stat-label">{{ latency_stats.overall_calls_7d }} कॉल्स</div>
+            <div class="stat-label">{{ latency_stats.overall_calls_7d }} {{ get_message('ui_admin_calls') }}</div>
           </div>
         </div>
 
@@ -276,7 +277,7 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th>भूमिका / Stage</th>
+                <th>{{ get_message('ui_admin_role_stage') }}</th>
                 <th>24h (p50 / p95)</th>
                 <th>7d (p50 / p95)</th>
               </tr>
@@ -293,7 +294,7 @@
           </table>
         </div>
         {% else %}
-        <p style="font-size: 0.85rem; color: var(--muted); margin: 0.5rem 0 0 0;">कोई हालिया एलएलएम कॉल दर्ज नहीं है।</p>
+        <p style="font-size: 0.85rem; color: var(--muted); margin: 0.5rem 0 0 0;">{{ get_message('ui_admin_no_llm_calls') }}</p>
         {% endif %}
       </section>
 
@@ -304,20 +305,20 @@
         </div>
         <div class="grid-2" style="margin-bottom: 0.75rem;">
           <div>
-            <div class="stat-label">24 घंटे में कुल टर्न</div>
+            <div class="stat-label">{{ get_message('ui_admin_turns_24h') }}</div>
             <div class="stat-number">{{ turns_stats.turns_24h }}</div>
-            <div class="stat-label">7 दिन: {{ turns_stats.turns_7d }} &bull; कुल: {{ turns_stats.total }}</div>
+            <div class="stat-label">{{ get_message('ui_admin_days_7') }} {{ turns_stats.turns_7d }} &bull; {{ get_message('ui_admin_total_colon') }} {{ turns_stats.total }}</div>
           </div>
           <div>
-            <div class="stat-label">गार्ड पास दर (Pass Rate)</div>
+            <div class="stat-label">{{ get_message('ui_admin_guard_pass_rate') }}</div>
             <div class="stat-number">{{ guard_stats.pass_pct }}%</div>
-            <div class="stat-label">रीट्राई: {{ guard_stats.retry_pct }}% &bull; फ़ॉलबैक: {{ guard_stats.fallback_pct }}%</div>
+            <div class="stat-label">{{ get_message('ui_admin_retry') }} {{ guard_stats.retry_pct }}% &bull; {{ get_message('ui_admin_fallback') }} {{ guard_stats.fallback_pct }}%</div>
           </div>
         </div>
 
         {% if turns_stats.by_role %}
         <div style="font-size: 0.88rem; margin-top: 0.75rem;">
-          <strong>टर्न विभाजन (भूमिकावार):</strong>
+          <strong>{{ get_message('ui_admin_turn_split') }}</strong>
           <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem;">
             {% for role, count in turns_stats.by_role.items() %}
               <span class="badge badge-muted">{{ role }}: {{ count }}</span>
@@ -328,10 +329,10 @@
 
         {% if guard_stats.recent_failures %}
         <div style="margin-top: 0.75rem; border-top: 1px dashed var(--border); padding-top: 0.5rem;">
-          <div class="stat-label">हालिया गार्ड विफलताएँ (Review Items): {{ guard_stats.review_items_count }}</div>
+          <div class="stat-label">{{ get_message('ui_admin_recent_guard_failures') }} {{ guard_stats.review_items_count }}</div>
           <ul style="margin: 0.25rem 0 0 0; padding-left: 1.25rem; font-size: 0.85rem; color: var(--danger);">
             {% for f in guard_stats.recent_failures %}
-              <li>{{ f.reason or 'अज्ञात कारण' }} ({{ f.created_at.strftime('%d %b %H:%M') }})</li>
+              <li>{{ f.reason or get_message('ui_admin_unknown_reason') }} ({{ f.created_at.strftime('%d %b %H:%M') }})</li>
             {% endfor %}
           </ul>
         </div>
@@ -353,11 +354,11 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th>भूमिका (Role)</th>
-                <th>कॉल्स</th>
-                <th>इनपुट</th>
-                <th>आउटपुट</th>
-                <th>कुल टोकन</th>
+                <th>{{ get_message('ui_admin_col_role') }}</th>
+                <th>{{ get_message('ui_admin_calls') }}</th>
+                <th>{{ get_message('ui_admin_col_input') }}</th>
+                <th>{{ get_message('ui_admin_col_output') }}</th>
+                <th>{{ get_message('ui_admin_col_total_tokens') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -374,7 +375,7 @@
           </table>
         </div>
         {% else %}
-        <p style="font-size: 0.85rem; color: var(--muted); margin: 0.5rem 0 0 0;">कोई टोकन उपयोग दर्ज नहीं है।</p>
+        <p style="font-size: 0.85rem; color: var(--muted); margin: 0.5rem 0 0 0;">{{ get_message('ui_admin_no_tokens') }}</p>
         {% endif %}
       </section>
 
@@ -382,15 +383,15 @@
       <section class="card">
         <div class="card-header">
           <h2 class="card-title">{{ get_message("ui_admin_templates") }}</h2>
-          <span class="badge badge-brand">इस सप्ताह</span>
+          <span class="badge badge-brand">{{ get_message('ui_admin_this_week') }}</span>
         </div>
         <div class="grid-2" style="margin-bottom: 0.75rem;">
           <div>
-            <div class="stat-label">कुल प्रेषित टेम्पलेट्स</div>
+            <div class="stat-label">{{ get_message('ui_admin_templates_sent') }}</div>
             <div class="stat-number">{{ template_stats.total_sends }}</div>
           </div>
           <div>
-            <div class="stat-label">अनुमानित लागत (INR)</div>
+            <div class="stat-label">{{ get_message('ui_admin_est_cost_inr') }}</div>
             <div class="stat-number">₹{{ template_stats.total_cost_inr }}</div>
           </div>
         </div>
@@ -400,10 +401,10 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th>टेम्पलेट नाम</th>
-                <th>श्रेणी</th>
-                <th>संख्या</th>
-                <th>लागत (₹)</th>
+                <th>{{ get_message('ui_admin_col_template') }}</th>
+                <th>{{ get_message('ui_admin_col_category') }}</th>
+                <th>{{ get_message('ui_admin_col_count') }}</th>
+                <th>{{ get_message('ui_admin_col_cost') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -419,7 +420,7 @@
           </table>
         </div>
         {% else %}
-        <p style="font-size: 0.85rem; color: var(--muted); margin: 0.5rem 0 0 0;">इस सप्ताह कोई टेम्पलेट नहीं भेजा गया।</p>
+        <p style="font-size: 0.85rem; color: var(--muted); margin: 0.5rem 0 0 0;">{{ get_message('ui_admin_no_templates') }}</p>
         {% endif %}
       </section>
 
@@ -430,9 +431,9 @@
       <div class="card-header">
         <h2 class="card-title">{{ get_message("ui_admin_jobs") }}</h2>
         <div style="display: flex; gap: 0.4rem;">
-          <span class="badge badge-accent">लंबित: {{ job_stats.pending }}</span>
-          <span class="badge badge-success">पूर्ण: {{ job_stats.done }}</span>
-          <span class="badge badge-danger">विफल: {{ job_stats.failed }}</span>
+          <span class="badge badge-accent">{{ get_message('ui_admin_pending_colon') }} {{ job_stats.pending }}</span>
+          <span class="badge badge-success">{{ get_message('ui_admin_done_colon') }} {{ job_stats.done }}</span>
+          <span class="badge badge-danger">{{ get_message('ui_admin_failed_colon') }} {{ job_stats.failed }}</span>
         </div>
       </div>
 
@@ -441,11 +442,11 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th>प्रकार (Kind)</th>
-              <th>निर्धारित समय (Run At)</th>
-              <th>स्थिति (Status)</th>
-              <th>प्रयास (Attempts)</th>
-              <th>त्रुटि (Error)</th>
+              <th>{{ get_message('ui_admin_col_kind') }}</th>
+              <th>{{ get_message('ui_admin_col_run_at') }}</th>
+              <th>{{ get_message('ui_admin_col_status') }}</th>
+              <th>{{ get_message('ui_admin_col_attempts') }}</th>
+              <th>{{ get_message('ui_admin_col_error') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -455,11 +456,11 @@
               <td>{{ j.run_at.strftime('%Y-%m-%d %H:%M') }}</td>
               <td>
                 {% if j.status == 'pending' %}
-                  <span class="badge badge-accent">लंबित</span>
+                  <span class="badge badge-accent">{{ get_message('ui_admin_status_pending') }}</span>
                 {% elif j.status == 'done' %}
-                  <span class="badge badge-success">पूर्ण</span>
+                  <span class="badge badge-success">{{ get_message('ui_admin_status_done') }}</span>
                 {% elif j.status == 'failed' %}
-                  <span class="badge badge-danger">विफल</span>
+                  <span class="badge badge-danger">{{ get_message('ui_admin_status_failed') }}</span>
                 {% else %}
                   <span class="badge badge-muted">{{ j.status }}</span>
                 {% endif %}
@@ -472,7 +473,7 @@
         </table>
       </div>
       {% else %}
-      <p style="font-size: 0.85rem; color: var(--muted); margin: 0.5rem 0 0 0;">कोई निर्धारित कार्य कतार में नहीं है।</p>
+      <p style="font-size: 0.85rem; color: var(--muted); margin: 0.5rem 0 0 0;">{{ get_message('ui_admin_no_jobs') }}</p>
       {% endif %}
     </section>
 
@@ -488,7 +489,7 @@
         <div style="background-color: var(--bg); padding: 1rem; border-radius: var(--radius-sm);">
           <h3 style="margin: 0 0 0.4rem 0; font-size: 1rem; color: var(--ink);">{{ get_message("ui_admin_reset_demo") }}</h3>
           <p style="margin: 0 0 0.75rem 0; font-size: 0.85rem; color: var(--muted);">
-            सभी डेमो शिक्षकों (teacher.demo1..3) के वर्तमान सत्र, टर्न, अंक व समीक्षा रिकॉर्ड रीसेट किए जाएँगे।
+            {{ get_message('ui_admin_reset_desc') }}
           </p>
           <form method="POST" action="/admin/reset-demo" onsubmit="return confirm('{{ get_message("ui_admin_reset_confirm") }}');">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -502,7 +503,7 @@
         <div style="background-color: var(--bg); padding: 1rem; border-radius: var(--radius-sm);">
           <h3 style="margin: 0 0 0.4rem 0; font-size: 1rem; color: var(--ink);">{{ get_message("ui_admin_fast_forward") }}</h3>
           <p style="margin: 0 0 0.75rem 0; font-size: 0.85rem; color: var(--muted);">
-            किसी डेमो शिक्षक के लंबित निर्धारित कार्य (प्रॉम्प्ट्स, रिफ्लेक्शन, आदि) तुरंत निष्पादित करें।
+            {{ get_message('ui_admin_ff_desc') }}
           </p>
           <form method="POST" action="/admin/fast-forward" class="control-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

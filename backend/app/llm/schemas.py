@@ -150,6 +150,16 @@ class GuideAnswerResult(BaseModel):
     no_sources: bool = False  # escalated because the excerpts did not support an answer
 
 
+class TranslationOutput(BaseModel):
+    """Output schema for the translator role (Hindi bubble -> English, on demand)."""
+
+    text_en: str
+
+
+# Returned by the mock LLM so demo mode (no API key) shows something honest instead of a guess.
+MOCK_TRANSLATION_TEXT = "[Demo mode: translation needs the Claude API key.]"
+
+
 # ── 5.9 Build-Time Roles ─────────────────────────────────────────────────────
 class MoveReviewIssue(BaseModel):
     """Single issue found during move review (spec/05 §5.9)."""

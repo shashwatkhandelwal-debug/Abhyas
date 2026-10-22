@@ -535,6 +535,9 @@ class SessionService:
                 OutboundMessage(
                     kind="text",
                     text_hi=reply_text,
+                    # A generated guide answer gets the "guide" speaker (the web UI offers a
+                    # translation for it); escalation / canned replies are plain system text.
+                    speaker=None if answer_res.escalated else "guide",
                     citations=[]
                     if answer_res.escalated
                     else citations_for_chunks(answer_res.sources_cited, address_form),

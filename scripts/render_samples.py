@@ -41,6 +41,15 @@ CHIP_LABELS: dict[str, str] = {
     "s5_question_multigrade": "बहु-कक्षा सवाल (Ask)",
 }
 
+# English chip labels for the English UI (the sample utterances themselves stay Hindi)
+CHIP_LABELS_EN: dict[str, str] = {
+    "s1_ask_ravi": "Ask Ravi how he did it",
+    "s2_bundles_all": "Explain with bundles and sticks",
+    "s3_tell_answer_hinglish": "Tell the answer (Hinglish)",
+    "s4_explain_back": "Explain the move (explain-back)",
+    "s5_question_multigrade": "Multi-grade question (Ask)",
+}
+
 
 async def render_samples(allow_mock: bool = False) -> None:
     """Renders all sample audio files and writes demo_chips.json."""
@@ -83,6 +92,7 @@ async def render_samples(allow_mock: bool = False) -> None:
         step: str = s.get("step", "REHEARSE")
         expect: str = s.get("expect", "")
         chip_label: str = CHIP_LABELS.get(sample_id, text_hi[:20])
+        chip_label_en: str = CHIP_LABELS_EN.get(sample_id, chip_label)
 
         out_wav_path = OUTPUT_AUDIO_DIR / f"{sample_id}.wav"
 
@@ -116,6 +126,7 @@ async def render_samples(allow_mock: bool = False) -> None:
                 "text_hi": text_hi,
                 "expect": expect,
                 "chip_label": chip_label,
+                "chip_label_en": chip_label_en,
                 "audio_available": audio_avail,
                 "audio_url": f"/api/demo-sample/{sample_id}.wav" if audio_avail else None,
             }

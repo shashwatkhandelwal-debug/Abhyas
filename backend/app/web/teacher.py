@@ -39,7 +39,7 @@ from backend.app.auth.guards import get_current_user, require_role
 from backend.app.auth.session import clear_session_cookie
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
-from backend.app.core.messages import get_catalog, get_message
+from backend.app.core.messages import get_message, texts_for_lang
 from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
@@ -55,6 +55,7 @@ from backend.app.db.models import (
 from backend.app.db.session import get_db_session
 from backend.app.privacy.purge import purge_teacher_data
 from backend.app.web.chat_api import get_teacher_for_user
+from backend.app.web.ui_lang import register_ui_globals
 
 logger = logging.getLogger("abhyas.web.teacher")
 
@@ -63,7 +64,7 @@ TEMPLATES_DIR = WEB_DIR / "templates"
 STATIC_DIR = WEB_DIR / "static"
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-templates.env.globals["get_message"] = get_message
+register_ui_globals(templates.env)
 
 router = APIRouter(tags=["Teacher Web PWA"])
 
@@ -236,7 +237,7 @@ async def teacher_chat_page(
             "demo_banner_text": demo_banner_text,
             "demo_chips": demo_chips,
             "initial_messages": initial_messages,
-            "ui_strings": get_catalog().texts_with_prefix(CHAT_UI_PREFIX),
+            "ui_strings": chat_ui_strings(),
         },
     )
     if token_to_set:
@@ -637,8 +638,18 @@ async def get_manifest() -> FileResponse:
     return FileResponse(manifest_file, media_type="application/manifest+json")
 
 
-# Catalog keys chat.js needs (served as JSON in the page; the JS holds no Hindi of its own).
+# Catalog keys chat.js needs (served as JSON in the page; the JS holds no UI text of its own).
 CHAT_UI_PREFIX = "ui_chat_"
+CHAT_UI_PREFIXES = (CHAT_UI_PREFIX, "speaker_", "ui_time_")
+
+
+def chat_ui_strings() -> dict[str, str]:
+    """Strings for chat.js in the language of the current request (Hindi unless switched)."""
+    strings: dict[str, str] = {}
+    for prefix in CHAT_UI_PREFIXES:
+        strings.update(texts_for_lang(prefix))
+    return strings
+
 
 _SW_VERSIONED_ASSETS = ("sw.js", "chat.js", "recorder.js", "app.css", "manifest.json")
 
@@ -674,7 +685,6 @@ async def get_service_worker() -> Response:
 
 
 @router.get("/offline.html", response_class=HTMLResponse)
-async def get_offline_page() -> FileResponse:
-    """Serves offline fallback page (§9.2)."""
-    offline_file = STATIC_DIR / "offline.html"
-    return FileResponse(offline_file, media_type="text/html")
+async def get_offline_page(request: Request) -> Response:
+    """Serves the offline fallback page (§9.2); it carries both languages (the SW caches one copy)."""
+    return templates.TemplateResponse(request=request, name="offline.html", context={})

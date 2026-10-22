@@ -399,3 +399,75 @@ test('network exception while online is treated as the server being unreachable'
   await assert.rejects(c.netFetch('/x'));
   assert.equal(c.state.net, 'cold');
 });
+
+// ── on-demand translation under child / coach / guide bubbles ───────────────
+const outMsg = (over = {}) => ({
+  id: 'm-1',
+  direction: 'out',
+  kind: 'text',
+  speaker: 'coach',
+  text: 'आपने बच्चे से पूछा, बहुत अच्छा।',
+  created_at: iso(0),
+  ...over,
+});
+
+test('translate control appears under child, coach and guide bubbles only', () => {
+  const c = load();
+  for (const [i, sp] of ['ravi', 'priya', 'aman', 'coach', 'guide', 'model_teacher', 'abhyas'].entries()) {
+    c.renderMessage(outMsg({ id: `m-${i}`, speaker: sp }));
+  }
+  const withBtn = c.container.querySelectorAll('.translate-btn').length;
+  assert.equal(withBtn, 6); // everything except the system speaker "abhyas"
+  assert.equal(c.container.querySelectorAll('.translate-btn')[0].textContent, strings.ui_chat_translate);
+  c.renderMessage(outMsg({ id: 'in-1', direction: 'in', speaker: undefined }), true);
+  assert.equal(c.container.querySelectorAll('.translate-btn').length, 6); // never under the teacher's own message
+});
+
+test('translate: posts the message id, shows English under the Hindi, second tap hides it', async () => {
+  const c = load();
+  c.net.handler = async () => ({ status: 200, ok: true, json: async () => ({ text: 'You asked the child. Very good.', cached: false }) });
+  c.renderMessage(outMsg());
+  const btn = c.container.querySelector('.translate-btn');
+  await c.toggleTranslation(btn);
+  const call = c.fetchCalls.find((f) => f.url === '/api/chat/translate');
+  assert.ok(call, 'translate endpoint called');
+  assert.equal(JSON.parse(call.opts.body).message_id, 'm-1');
+  const shown = c.container.querySelector('.bubble-translation');
+  assert.equal(shown.textContent, 'You asked the child. Very good.');
+  assert.equal(shown.lang, 'en');
+  assert.equal(btn.textContent, strings.ui_chat_translate_hide);
+  assert.equal(c.container.querySelector('.bubble-text').textContent, 'आपने बच्चे से पूछा, बहुत अच्छा।'); // Hindi untouched
+  await c.toggleTranslation(btn); // hide: no second request
+  assert.equal(c.container.querySelector('.bubble-translation'), null);
+  assert.equal(c.fetchCalls.filter((f) => f.url === '/api/chat/translate').length, 1);
+});
+
+test('translate: failure shows an inline error with a retry label, then succeeds on retry', async () => {
+  const c = load();
+  let calls = 0;
+  c.net.handler = async () => {
+    calls += 1;
+    return calls === 1
+      ? { status: 502, ok: false, json: async () => ({}) }
+      : { status: 200, ok: true, json: async () => ({ text: 'Well done.' }) };
+  };
+  c.renderMessage(outMsg());
+  const btn = c.container.querySelector('.translate-btn');
+  await c.toggleTranslation(btn);
+  const err = c.container.querySelector('.translate-error');
+  assert.equal(err.textContent, strings.ui_chat_translate_error);
+  assert.equal(err.getAttribute('role'), 'alert');
+  assert.equal(btn.textContent, strings.ui_chat_translate_retry);
+  assert.equal(btn.disabled, false);
+  await c.toggleTranslation(btn);
+  assert.equal(c.container.querySelector('.translate-error'), null);
+  assert.equal(c.container.querySelector('.bubble-translation').textContent, 'Well done.');
+});
+
+test('translate: a rate-limit response gets its own message', async () => {
+  const c = load();
+  c.net.handler = async () => ({ status: 429, ok: false, json: async () => ({}) });
+  c.renderMessage(outMsg());
+  await c.toggleTranslation(c.container.querySelector('.translate-btn'));
+  assert.equal(c.container.querySelector('.translate-error').textContent, strings.ui_chat_translate_limit);
+});

@@ -65,7 +65,7 @@ def generate_rubric_svg(rubric_dist: dict[str, Any] | None) -> str:
     Scores: 0 (red #B3261E), 1 (marigold #E0A100), 2 (deep green #1F6F5C).
     """
     if not rubric_dist:
-        return """<svg width="100" height="14" viewBox="0 0 100 14" role="img" aria-label="रुब्रिक वितरण"><rect width="100" height="14" rx="3" fill="#E5E0D8"/></svg>"""
+        return f"""<svg width="100" height="14" viewBox="0 0 100 14" role="img" aria-label="{get_message("ui_trainer_rubric_svg_none")}"><rect width="100" height="14" rx="3" fill="#E5E0D8"/></svg>"""
 
     total_0 = 0
     total_1 = 0
@@ -78,7 +78,7 @@ def generate_rubric_svg(rubric_dist: dict[str, Any] | None) -> str:
 
     total = total_0 + total_1 + total_2
     if total == 0:
-        return """<svg width="100" height="14" viewBox="0 0 100 14" role="img" aria-label="रुब्रिक वितरण"><rect width="100" height="14" rx="3" fill="#E5E0D8"/></svg>"""
+        return f"""<svg width="100" height="14" viewBox="0 0 100 14" role="img" aria-label="{get_message("ui_trainer_rubric_svg_none")}"><rect width="100" height="14" rx="3" fill="#E5E0D8"/></svg>"""
 
     w0 = round((total_0 / total) * 100.0, 1)
     w1 = round((total_1 / total) * 100.0, 1)
@@ -87,10 +87,14 @@ def generate_rubric_svg(rubric_dist: dict[str, Any] | None) -> str:
     x1 = w0
     x2 = round(w0 + w1, 1)
 
-    title = (
-        f"0 अंक: {total_0} ({round(total_0 / total * 100)}%) | "
-        f"1 अंक: {total_1} ({round(total_1 / total * 100)}%) | "
-        f"2 अंक: {total_2} ({round(total_2 / total * 100)}%)"
+    title = get_message(
+        "ui_trainer_rubric_svg_title",
+        n0=total_0,
+        p0=round(total_0 / total * 100),
+        n1=total_1,
+        p1=round(total_1 / total * 100),
+        n2=total_2,
+        p2=round(total_2 / total * 100),
     )
 
     return (

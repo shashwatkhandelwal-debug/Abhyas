@@ -30,6 +30,7 @@ export class El {
     this.children = [];
     this.parentNode = null;
     this.attrs = {};
+    this.dataset = {};
     this.style = {};
     this.textContent = '';
     this.innerHTML = '';
@@ -70,6 +71,9 @@ export class El {
     if (i === -1) this.children.push(c);
     else this.children.splice(i, 0, c);
     return c;
+  }
+  remove() {
+    if (this.parentNode) this.parentNode.removeChild(this);
   }
   removeChild(c) {
     const i = this.children.indexOf(c);
@@ -316,7 +320,8 @@ export function loadChat({ strings = {}, online = true } = {}) {
         typingEvent, renderTyping, netFetch, netEvent, buildAudioWrap, attachAudioRef, lockChips,
         drainOutbox, handleSendText, handleSendAudio, setMicPhase, onAudioButton, expectsAudio,
         TYPING_TIMEOUT_MS, COLD_START_HINT_MS, AUDIO_WAIT_MS, MAX_AUTO_RETRIES, BACKOFF_STEPS,
-        pollMessages, updateOnlineStatus, upgradeServerAudio })`,
+        pollMessages, updateOnlineStatus, upgradeServerAudio,
+        toggleTranslation, buildTranslateControl, TRANSLATABLE_SPEAKERS, getSpeakerLabel })`,
     sandbox
   );
   api.setUiStrings(strings);
@@ -341,7 +346,7 @@ export function loadChat({ strings = {}, online = true } = {}) {
 export function catalogStrings() {
   const out = {};
   for (const line of fs.readFileSync(CATALOG, 'utf8').split(/\r?\n/)) {
-    const m = line.match(/^(ui_[a-z0-9_]+): \{text: "(.*?)"(?:, text_m: ".*?")?, audio: false\}/);
+    const m = line.match(/^((?:ui|speaker)_[a-z0-9_]+): \{text: "(.*?)"(?:, text_m: ".*?")?, audio: false\}/);
     if (m) out[m[1]] = m[2];
   }
   return out;

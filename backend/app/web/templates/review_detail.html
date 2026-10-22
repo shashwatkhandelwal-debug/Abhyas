@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="{{ ui_lang() }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>समीक्षा: {{ move_title }} — {{ get_message("ui_review_title") }}</title>
+  <title>{{ get_message('ui_review_detail_title') }} {{ move_title }} — {{ get_message("ui_review_title") }}</title>
   <link rel="stylesheet" href="/static/app.css">
   <style>
     .detail-container {
@@ -188,11 +188,11 @@
   <div class="detail-container">
     <header class="detail-header">
       <div>
-        <a href="/review" style="color:var(--muted); text-decoration:none; font-size:0.9rem;">← समीक्षा कंसोल पर वापस जाएँ</a>
+        <a href="/review" style="color:var(--muted); text-decoration:none; font-size:0.9rem;">← {{ get_message('ui_review_back_console') }}</a>
         <h1 style="margin:0.25rem 0 0 0; font-size:1.4rem; color:var(--brand);">
           {{ move_title }}
         </h1>
-        <small style="color:var(--muted);">आइटम ID: <code>{{ item.id }}</code> · प्रकार: {{ item.kind }}</small>
+        <small style="color:var(--muted);">{{ get_message('ui_review_item_id') }} <code>{{ item.id }}</code> · {{ get_message('ui_review_kind_colon') }} {{ item.kind }}</small>
       </div>
       <div>
         <span class="status-badge {% if item.status == 'open' %}status-open{% else %}status-resolved{% endif %}">
@@ -225,27 +225,27 @@
         </div>
         {% elif explain %}
         <div>
-          <p><strong>शिक्षक द्वारा समझाया गया विवरण:</strong></p>
+          <p><strong>{{ get_message('ui_review_teacher_explanation') }}</strong></p>
           <div class="turn-bubble turn-teacher">{{ explain.transcript }}</div>
-          <p><strong>मुख्य बिंदु (Points Covered):</strong></p>
+          <p><strong>{{ get_message('ui_review_points_covered') }}</strong></p>
           <pre style="background:#F4EFEA; padding:0.5rem; border-radius:4px;">{{ explain.points | tojson(indent=2) }}</pre>
         </div>
         {% elif question %}
         <div>
-          <p><strong>प्रश्न:</strong> {{ question.text }}</p>
-          <p><strong>श्रेणी:</strong> {{ question.category }}</p>
-          <p><strong>स्थिति:</strong> {{ question.status }}</p>
+          <p><strong>{{ get_message('ui_review_question') }}</strong> {{ question.text }}</p>
+          <p><strong>{{ get_message('ui_review_category_colon') }}</strong> {{ question.category }}</p>
+          <p><strong>{{ get_message('ui_review_status_colon') }}</strong> {{ question.status }}</p>
           {% if question.answer_hi %}
-          <p><strong>उत्तर:</strong> {{ question.answer_hi }}</p>
+          <p><strong>{{ get_message('ui_review_answer') }}</strong> {{ question.answer_hi }}</p>
           {% endif %}
         </div>
         {% elif guard %}
         <div>
-          <p><strong>गार्ड विफलता कारण:</strong> {{ guard.reason }}</p>
+          <p><strong>{{ get_message('ui_review_guard_reason') }}</strong> {{ guard.reason }}</p>
           <pre style="background:#F4EFEA; padding:0.5rem; border-radius:4px;">{{ guard.resolution | tojson(indent=2) }}</pre>
         </div>
         {% else %}
-        <p style="color:var(--muted);">कोई ट्रांसक्रिप्ट उपलब्ध नहीं है।</p>
+        <p style="color:var(--muted);">{{ get_message('ui_review_no_transcript') }}</p>
         {% endif %}
       </div>
 
@@ -255,12 +255,12 @@
 
         {% if ai_score %}
         <div style="margin-bottom:1rem; font-size:0.9rem; color:var(--muted);">
-          AI भरोसा: <strong>{{ "%.2f" | format(ai_score.confidence or 0.0) }}</strong>
+          {{ get_message('ui_review_ai_confidence') }} <strong>{{ "%.2f" | format(ai_score.confidence or 0.0) }}</strong>
           {% if ai_score.strength_hi %}
-          <div style="margin-top:0.3rem;"><strong>सशक्त बिंदु:</strong> {{ ai_score.strength_hi }}</div>
+          <div style="margin-top:0.3rem;"><strong>{{ get_message('ui_review_strength') }}</strong> {{ ai_score.strength_hi }}</div>
           {% endif %}
           {% if ai_score.change_hi %}
-          <div style="margin-top:0.3rem;"><strong>सुधार क्षेत्र:</strong> {{ ai_score.change_hi }}</div>
+          <div style="margin-top:0.3rem;"><strong>{{ get_message('ui_review_change') }}</strong> {{ ai_score.change_hi }}</div>
           {% endif %}
         </div>
         {% endif %}
@@ -277,7 +277,7 @@
             <div class="ai-score-box">
               <div>{{ get_message("ui_review_ai_score") }}: <strong>{{ crit.ai_score }} / 2</strong></div>
               {% if crit.evidence %}
-              <div class="evidence-quote">प्रमाण: "{{ crit.evidence }}"</div>
+              <div class="evidence-quote">{{ get_message('ui_review_evidence') }} "{{ crit.evidence }}"</div>
               {% endif %}
             </div>
             {% endif %}
@@ -285,15 +285,15 @@
             <div class="score-selector">
               <label class="score-option">
                 <input type="radio" name="score_{{ crit.id }}" value="0" {% if crit.ai_score == 0 %}checked{% endif %}>
-                <span>0 (अधूरी)</span>
+                <span>{{ get_message('ui_review_score_0') }}</span>
               </label>
               <label class="score-option">
                 <input type="radio" name="score_{{ crit.id }}" value="1" {% if crit.ai_score == 1 %}checked{% endif %}>
-                <span>1 (आंशिक)</span>
+                <span>{{ get_message('ui_review_score_1') }}</span>
               </label>
               <label class="score-option">
                 <input type="radio" name="score_{{ crit.id }}" value="2" {% if crit.ai_score == 2 or crit.ai_score is none %}checked{% endif %}>
-                <span>2 (पूरी / सही)</span>
+                <span>{{ get_message('ui_review_score_2') }}</span>
               </label>
             </div>
           </div>
@@ -303,7 +303,7 @@
             <label for="note" style="font-weight:600; font-size:0.95rem; display:block; margin-bottom:0.4rem;">
               {{ get_message("ui_review_notes_label") }}
             </label>
-            <textarea id="note" name="note" placeholder="कोच की सुधारात्मक टिप्पणी दर्ज करें...">{{ (item.resolution or {}).get("note", "") }}</textarea>
+            <textarea id="note" name="note" placeholder="{{ get_message('ui_review_note_placeholder') }}">{{ (item.resolution or {}).get("note", "") }}</textarea>
           </div>
 
           <button type="submit" class="btn-submit">

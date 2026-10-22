@@ -234,7 +234,7 @@ def test_nfc_normalization_for_pwa_assets() -> None:
     text_files = [
         STATIC_DIR.parent / "templates" / "teacher.html",
         STATIC_DIR.parent / "templates" / "chat.html",
-        STATIC_DIR / "offline.html",
+        STATIC_DIR.parent / "templates" / "offline.html",
         STATIC_DIR / "chat.js",
         STATIC_DIR / "recorder.js",
         STATIC_DIR / "manifest.json",
@@ -469,9 +469,11 @@ def test_offline_banner_text_and_catalog() -> None:
     assert "data-offline-text=\"{{ get_message('ui_offline_banner') }}\"" in chat_template
 
     # Offline fallback page check
-    offline_page = (STATIC_DIR / "offline.html").read_text(encoding="utf-8")
-    assert "आप ऑफ़लाइन हैं" in offline_page
-    assert "messages_cache" in offline_page
+    offline_template = (STATIC_DIR.parent / "templates" / "offline.html").read_text(
+        encoding="utf-8"
+    )
+    assert "ui_offline_notice" in offline_template  # text comes from the catalog, both languages
+    assert "messages_cache" in offline_template
 
 
 def test_client_chat_js_contract() -> None:
@@ -565,7 +567,10 @@ async def test_chat_page_serves_ui_strings_json_and_status_slots(teacher_pwa_app
     match = re.search(r'<script type="application/json" id="ui-strings">(.*?)</script>', html, re.S)
     assert match, "ui-strings JSON block missing"
     strings = json.loads(match.group(1))
-    assert strings == get_catalog().texts_with_prefix(CHAT_UI_PREFIX)
+    assert {k: v for k, v in strings.items() if k.startswith(CHAT_UI_PREFIX)} == (
+        get_catalog().texts_with_prefix(CHAT_UI_PREFIX)
+    )
+    assert strings["speaker_coach"] == "कोच" and strings["ui_time_just_now"] == "अभी"
     assert strings["ui_chat_cold_start"] == "सर्वर जाग रहा है, थोड़ा रुकिए…"
     for slot in ('id="status-bar"', 'id="sr-live"', 'id="pending-bubble"', 'id="rec-status"'):
         assert slot in html

@@ -1,0 +1,513 @@
+# English mirror of messages_hi.yaml — UI text and system messages for users who switch the
+# UI to English (Hindi stays the default). Every key of messages_hi.yaml must exist here with the
+# same {placeholders}; backend/tests/unit/test_messages_en.py enforces it. No gender variants
+# (text_m) are needed in English. Words the teacher says to children and chunk titles written at
+# ingest time stay Hindi on purpose (see KEEP_HINDI in that test).
+welcome: {text: "Hello! I am Abhyas — your practice partner. Each week, in about 15 minutes, we will learn one classroom move and practise it by voice with three children."}
+consent_service: {text: "Before we start: your voice is turned into text and the audio is deleted straight away. Your scores are visible only to you unless you yourself allow sharing with your ARP. You can erase everything at any time by writing 'delete my data'. Do you agree?"}
+consent_details: {text: "What we keep: your name, class, experience, the text of what you say and your practice scores. What we do not keep: recordings of your voice, any information about children. Trainers (DIET/SCERT) only see totals for groups of 10 or more teachers, never anyone's name."}
+consent_declined: {text: "No problem. Whenever you want to start, send 'hello'."}
+ask_join_code: {text: "Send the code your ARP gave you. If you do not have a code, write 'no'."}
+join_code_invalid: {text: "That code was not found. Please send it again, or write 'no'."}
+ask_name: {text: "What is your name?"}
+ask_address_form: {text: "How should I address you?"}
+btn_female: {text: "Teacher (she)"}
+btn_male: {text: "Teacher (he)"}
+ask_experience: {text: "{name}, how many years have you been teaching?"}
+ask_classes: {text: "Which class do you teach this year?"}
+consent_share_scores: {text: "Would you like your ARP to see your practice scores, so they can support you during classroom visits? You can change this at any time."}
+placement_intro: {text: "Let's do a short practice. This is not a test. The board says: 52 − 17. Ravi from Class 2 says: '45!' Talk to Ravi the way you would in class — by voice or by typing."}
+placement_done: {text: "Very good! Now I know where to start for you."}
+ready_first_move: {text: "Your first move is: {move_title}. Let's begin!"}
+learn_intro: {text: "This week's move: {move_title}. First listen to this 2-minute voice note. The key points are written below:"}
+explain_back_prompt: {text: "Now, in 1 minute, tell me in your own words: what is the most important thing in this move? Send it by voice or by typing."}
+explain_back_reply: {text: "Thank you! You mentioned {covered} of {total} key points."}
+explain_back_missing: {text: "One more thing to remember: {point}"}
+explain_back_misconception: {text: "Please note: {note}"}
+fidelity_reply_summary: {text: "Thank you! You mentioned {n_covered} of {n_total} key points."}
+fidelity_reply_missing: {text: "One more thing to remember: {text}"}
+fidelity_reply_misconception: {text: "Please note: {text}"}
+model_offer: {text: "Would you like to hear how another teacher does this move with these same three children? (about 1 minute)"}
+model_header: {text: "Model practice:"}
+rehearse_intro: {text: "{scene_intro} When you are ready, start talking to the children. Address a child by name. Say 'stop' to finish."}
+child_silent: {text: "({name} is quiet and looking down.)"}
+thinking: {text: "The children are thinking…"}
+scene_turn_limit: {text: "The practice time is over."}
+scene_all_correct: {text: "Wow! All three children understood."}
+scene_ended_neutral: {text: "Let's look at the feedback now."}
+feedback_header: {text: "Suggestions on your practice:"}
+feedback_body: {text: "👍 {strength}\n🔁 {change}\n🗣️ Next time, try saying: \"{exact_words}\""}
+feedback_trajectory: {text: "Change in the children: {trajectory}"}
+coach_low_conf_prefix: {text: "(An expert will also look at this suggestion.)"}
+realism_prompt: {text: "Did these children feel like real classroom children? Choose from 1 (not at all) to 5 (exactly like them)."}
+retry_limit: {text: "You have completed this week's 3 practices. Now it's time to try it in class!"}
+try_in_class: {text: "Now try this move in your class. Ask a fellow teacher to watch for 5 minutes and fill in this list:"}
+try_in_class_reflect: {text: "Or answer these 2 questions yourself:"}
+peer_item: {text: "Peer checklist ({i}/{n}): {item}"}
+reflect_q: {text: "Question {i}: {question}"}
+week_done: {text: "Well done, {name}! This week you reached '{level_name}'. Next move: {next_move_title}."}
+evidence_level_1: {text: "Practised"}
+evidence_level_2: {text: "Explained it myself"}
+evidence_level_3: {text: "Peer observed"}
+evidence_level_4: {text: "ARP observed"}
+evidence_level_5: {text: "Children improved"}
+resume_prompt: {text: "You were at '{state_name}'. Shall we continue?"}
+weekly_move: {text: "Hello {name}! This week's new move is ready: {move_title}. Shall we start?"}
+reminder: {text: "{name}, your practice for this week is still pending. Can you spare 10 minutes?"}
+ask_prompt: {text: "Send your question by voice or by typing."}
+ask_clarify_prefix: {text: "Please tell me one thing:"}
+ask_clarify_generic: {text: "Please ask your question in a little more detail."}
+ask_source_line: {text: "Source: {source}{page_part}"}
+ask_source_citation: {text: "Source: {source}, page {page}"}
+ask_source_page_abbrev: {text: "p."}
+ask_try_this_week: {text: "Try this week: {tip}"}
+ask_escalated: {text: "Good question. I will ask your ARP and get you a reliable answer."}
+learn_reference: {text: "What the official document says on this topic (summary): {summary}\n{citation}"}
+ask_not_in_sources: {text: "I could not find the answer to this question in my official documents, so I won't guess. I will ask your ARP and get back to you."}
+ask_out_of_scope: {text: "Sorry, I can only help with Class 1–3 teaching and classroom questions."}
+ask_admin: {text: "This information will come from your BEO or ARP office. I have passed your question on to your ARP."}
+ask_resume: {text: "Let's carry on from where we were."}
+followup_question: {text: "{name}, you had asked about '{topic}'. Did the suggestion help?"}
+followup_try_in_class: {text: "{name}, did you try '{move_title}' in class? Choose an option to share your experience:"}
+arp_answer_delivered: {text: "Your ARP has sent the answer to your question: {answer}"}
+help_menu: {text: "What would you like to do?"}
+stt_failed: {text: "I could not hear the audio clearly. Please speak again or type your message."}
+stt_confirm: {text: "I heard: \"{text}\" — is that right?"}
+stt_budget_type_please: {text: "Voice is switched off for now. Please type your message."}
+audio_too_long: {text: "This message is too long. Please send one shorter than 1 minute."}
+unsupported_type: {text: "For now I can only understand voice and text messages."}
+unclear: {text: "Sorry, I did not understand. Write 'help' to see the options."}
+system_error_retry: {text: "Sorry, there is a technical problem right now. Please send your message again."}
+lite_on: {text: "Lite mode on: you will now get text messages only, no audio. This saves data."}
+lite_off: {text: "Lite mode off: you will get voice messages again too."}
+progress_summary: {text: "Your progress: {n_done} moves completed. {lines}"}
+consent_menu: {text: "Sharing scores with your ARP: {share_state}. Would you like to change it?"}
+delete_confirm: {text: "Do you really want to erase all your data? It cannot be brought back."}
+data_deleted: {text: "All your data has been erased. Thank you. Send 'hello' to start again."}
+rate_limited: {text: "Too many messages have come in. Please try again after a little while."}
+btn_agree: {text: "I agree"}
+btn_more: {text: "Learn more"}
+btn_decline: {text: "No"}
+btn_yes: {text: "Yes"}
+btn_no: {text: "No"}
+btn_understood: {text: "Got it, next"}
+btn_replay: {text: "Listen again"}
+btn_skip: {text: "Skip"}
+btn_listen: {text: "Listen"}
+btn_retry: {text: "Practise again"}
+btn_retry_speak: {text: "I'll speak again"}
+btn_continue: {text: "Continue"}
+btn_peer: {text: "Peer observed"}
+btn_self: {text: "I'll tell it myself"}
+btn_later: {text: "Later"}
+btn_next_move: {text: "Next move"}
+btn_progress: {text: "My progress"}
+btn_ask: {text: "Ask a question"}
+btn_confirm_ok: {text: "Yes, correct"}
+btn_confirm_redo: {text: "I'll speak again"}
+btn_restart: {text: "From the start"}
+btn_not_now: {text: "Not now"}
+btn_lite: {text: "Lite mode"}
+ui_app_name: {text: "Abhyas"}
+ui_hold_to_talk: {text: "Hold to talk"}
+ui_type_here: {text: "Type here…"}
+ui_type_instead: {text: "Type instead of speaking"}
+ui_offline_banner: {text: "You are offline — there is no internet; your messages are being kept to send later"}
+ui_offline_short: {text: "You are offline"}
+ui_slow_banner: {text: "The network is slow — turn on lite mode?"}
+ui_mic_denied: {text: "Microphone permission was not granted. Turn on the microphone in your browser settings, or type your message."}
+ui_demo_banner: {text: "Demo data — not real teachers"}
+ui_in_review: {text: "In review"}
+ui_suppressed: {text: "Group is small (n<10) — hidden to protect privacy"}
+ui_samples_title: {text: "Sample voices (for evaluation)"}
+ui_logout: {text: "Log out"}
+ui_delete_data: {text: "Delete my data"}
+ui_ladder_level_1: {text: "Practised"}
+ui_ladder_level_2: {text: "Explained it myself"}
+ui_ladder_level_3: {text: "Peer observed"}
+ui_ladder_level_4: {text: "ARP observed"}
+ui_ladder_level_5: {text: "Children improved"}
+ui_board_prefix: {text: "Board: "}
+ui_time_just_now: {text: "just now"}
+ui_default_teacher_name: {text: "Teacher"}
+ui_default_move_title: {text: "Two-digit subtraction with regrouping"}
+ui_default_step_chip: {text: "Step 4/7 · Practice"}
+ui_chat_msg_sending: {text: "Sending…"}
+ui_chat_msg_sent: {text: "Sent"}
+ui_chat_msg_failed: {text: "Could not send — tap to send again"}
+ui_chat_typing_generic: {text: "A reply is coming…"}
+ui_chat_typing_ravi: {text: "Ravi is thinking…"}
+ui_chat_typing_priya: {text: "Priya is thinking…"}
+ui_chat_typing_aman: {text: "Aman is thinking…"}
+ui_chat_typing_timeout: {text: "The reply is taking a while. Please try again in a little while."}
+ui_chat_audio_loading: {text: "Audio is coming…"}
+ui_chat_audio_ready: {text: "Audio message"}
+ui_chat_audio_playing: {text: "Playing…"}
+ui_chat_audio_error: {text: "Audio did not play — tap to try again"}
+ui_chat_audio_play: {text: "Play audio"}
+ui_chat_audio_pause: {text: "Pause"}
+ui_chat_audio_retry: {text: "Try again"}
+ui_chat_rec_recording: {text: "Recording… release to send"}
+ui_chat_rec_uploading: {text: "Sending your voice…"}
+ui_chat_rec_transcribing: {text: "Writing out what you said…"}
+ui_chat_voice_note: {text: "🎤 Voice note ({sec} seconds)"}
+ui_chat_chip_done: {text: "Sent ✓"}
+ui_chat_cold_start: {text: "The server is waking up, please wait a moment…"}
+ui_chat_source_page: {text: "page {page}"}
+ui_chat_source_printed: {text: "printed page {page}"}
+ui_chat_source_summary: {text: "Hindi summary"}
+ui_chat_source_original_en: {text: "This passage is in English, from the original document."}
+ui_chat_source_error: {text: "Could not open the source — tap to try again"}
+ui_chat_reconnecting: {text: "The internet is back — reconnecting…"}
+speaker_abhyas: {text: "Abhyas"}
+speaker_coach: {text: "Coach"}
+speaker_model_teacher: {text: "Model teacher"}
+speaker_teacher: {text: "You"}
+state_LEARN: {text: "Learning"}
+state_EXPLAIN_BACK: {text: "Explaining in your own words"}
+state_MODEL: {text: "Listening to model practice"}
+state_REHEARSE_INTRO: {text: "Practice with the children"}
+state_REHEARSE: {text: "Practice with the children"}
+state_FEEDBACK: {text: "Suggestions"}
+state_TRY_IN_CLASS: {text: "Trying it in class"}
+state_REFLECT_PEER: {text: "Peer checklist"}
+state_REFLECT_SELF: {text: "Sharing your experience"}
+coach_exact_words_contrast_math: {text: "दोनों के उत्तर देखो, तीलियाँ गिनकर बताओ कि कौन-सा सही है और क्यों?"}
+coach_exact_words_contrast_lit: {text: "दोनों के पढ़े शब्द सुनो, अक्षर मिलाकर बताओ कि कौन-सा सही है?"}
+ingest_summary_title: {text: "अभ्यास मूव सारांश"}
+ingest_method_title: {text: "सीखने का तरीका"}
+ingest_key_points_title: {text: "मुख्य बिंदु"}
+ui_review_title: {text: "Coach review console"}
+ui_review_tab_scores: {text: "Low-confidence scores"}
+ui_review_tab_questions: {text: "Questions sent to ARP"}
+ui_review_tab_guards: {text: "Guard failures"}
+ui_review_tab_moves: {text: "Content (moves)"}
+ui_review_tab_calibrate: {text: "Blind calibration"}
+ui_review_filter_open: {text: "Pending"}
+ui_review_filter_resolved: {text: "Resolved"}
+ui_review_filter_all: {text: "All"}
+ui_review_export_calibration: {text: "Download calibration data (.jsonl)"}
+ui_review_resolve_button: {text: "Finish review and record scores"}
+ui_review_approve_move: {text: "Approve"}
+ui_review_approved_badge: {text: "Approved"}
+ui_review_pending_badge: {text: "Under review"}
+ui_review_no_items: {text: "No review items found."}
+ui_review_transcript_title: {text: "Practice conversation (transcript)"}
+ui_review_ai_score: {text: "Score given by the AI"}
+ui_review_coach_score: {text: "Score revised by the coach"}
+ui_review_notes_label: {text: "Coach's note"}
+ui_review_blind_banner: {text: "Blind calibration mode — the AI scores are hidden here."}
+ui_review_success_notice: {text: "Review recorded successfully."}
+ui_review_calibrate_empty: {text: "All available rehearsals have been checked"}
+ui_trainer_title: {text: "Trainer dashboard (DIET / SCERT)"}
+ui_trainer_district: {text: "District"}
+ui_trainer_filter_batch: {text: "Choose batch"}
+ui_trainer_filter_move: {text: "Choose move"}
+ui_trainer_all_batches: {text: "All batches"}
+ui_trainer_all_moves: {text: "All moves"}
+ui_trainer_filter_btn: {text: "Filter"}
+ui_trainer_insight_heading: {text: "Training suggestions (data analysis)"}
+ui_trainer_col_batch: {text: "Batch"}
+ui_trainer_col_move: {text: "Teaching move"}
+ui_trainer_col_n: {text: "Teachers"}
+ui_trainer_col_completed_pct: {text: "Completed cycles"}
+ui_trainer_col_missed_point: {text: "Most-missed point"}
+ui_trainer_col_rubric: {text: "Rubric distribution (0/1/2)"}
+ui_trainer_col_ladder: {text: "Evidence ladder (levels 1-5)"}
+ui_trainer_export_csv: {text: "Download CSV"}
+ui_trainer_no_data: {text: "No data available"}
+ui_trainer_suppression_notice: {text: "Group is small (n<10) — hidden to protect privacy"}
+ui_trainer_insight_all_good: {text: "Teachers in all batches understand the key points well."}
+ui_trainer_insight_recommendation: {text: "In batch {batch}, {pct}% of teachers are missing the point '{key_point}' — give it 10 minutes in the next training."}
+ui_arp_title: {text: "ARP weekly digest"}
+ui_arp_section_overview: {text: "This week at a glance"}
+ui_arp_active_teachers: {text: "Active teachers"}
+ui_arp_completed_loops: {text: "Completed cycles"}
+ui_arp_moves_practised: {text: "Teaching moves practised"}
+ui_arp_section_teachers: {text: "Who is practising"}
+ui_arp_col_teacher: {text: "Teacher"}
+ui_arp_col_school: {text: "School"}
+ui_arp_col_move: {text: "Move"}
+ui_arp_col_step: {text: "Current step"}
+ui_arp_col_evidence: {text: "Evidence level"}
+ui_arp_col_rubric: {text: "Rubric score"}
+ui_arp_col_help: {text: "Status"}
+ui_arp_needs_help: {text: "Needs help"}
+ui_arp_status_ok: {text: "On track"}
+ui_arp_non_consenting_row: {text: "{count} other teachers (scores not shared)"}
+ui_arp_section_visits: {text: "Suggestion: classroom visit list"}
+ui_arp_visit_reason: {text: "Low score / needs help"}
+ui_arp_btn_record_observation: {text: "Record observation"}
+ui_arp_section_questions: {text: "Unanswered questions"}
+ui_arp_btn_answer: {text: "Send answer"}
+ui_arp_answer_placeholder: {text: "Write a clear, practical answer for the teacher..."}
+ui_arp_observation_success: {text: "The classroom observation was recorded and evidence level 4 was added."}
+ui_arp_answer_success: {text: "The answer was sent to the teacher and the question is resolved."}
+ui_arp_checklist_peer_link: {text: "Classroom observation checklist (printable)"}
+ui_arp_answer_header: {text: "Answer to your question (from your ARP):"}
+ui_arp_answer_saved_wa_undelivered: {text: "The answer is saved, but it could not be sent on WhatsApp. The teacher can see it in the app."}
+ui_admin_title: {text: "Abhyas admin dashboard"}
+ui_admin_subtitle: {text: "System metrics, latency, token usage and demo controls"}
+ui_admin_env: {text: "Environment & providers"}
+ui_admin_latency: {text: "Latency (p50 / p95)"}
+ui_admin_turns: {text: "Turn activity"}
+ui_admin_guards: {text: "Guard performance"}
+ui_admin_tokens: {text: "LLM tokens & usage"}
+ui_admin_templates: {text: "Template sends & estimated cost"}
+ui_admin_jobs: {text: "Scheduled jobs"}
+ui_admin_demo_controls: {text: "Demo controls"}
+ui_admin_reset_demo: {text: "Reset demo teacher data"}
+ui_admin_reset_confirm: {text: "Do you want to reset the practice data of all demo teachers?"}
+ui_admin_fast_forward: {text: "Run jobs now (fast forward)"}
+ui_admin_success_reset: {text: "Demo teacher data was reset successfully."}
+ui_admin_success_ff: {text: "Scheduled jobs were advanced successfully."}
+ui_review_validating: {text: "Validating..."}
+ui_review_yaml_valid: {text: "✓ Valid MoveCard schema ({n} rubric criteria)"}
+ui_review_yaml_error: {text: "✗ Error: {error}"}
+ui_review_network_error: {text: "✗ Network error"}
+ui_admin_unknown_reason: {text: "Unknown reason"}
+ui_arp_category_general: {text: "General"}
+ui_chat_lite_on: {text: "Lite mode: on ✓"}
+ui_chat_lite_off: {text: "Lite mode: off"}
+ui_admin_reset_desc: {text: "Resets the current sessions, turns, scores and review records of all demo teachers (teacher.demo1..3)."}
+ui_admin_ff_desc: {text: "Run any demo teacher's pending scheduled jobs (prompts, reflections, etc.) immediately."}
+ui_admin_recent_guard_failures: {text: "Recent guard failures (review items):"}
+ui_admin_no_templates: {text: "No template was sent this week."}
+ui_admin_no_jobs: {text: "No scheduled jobs in the queue."}
+ui_admin_error_invalid: {text: "Error: invalid request or identifier."}
+ui_admin_no_llm_calls: {text: "No recent LLM calls recorded."}
+ui_admin_content_release: {text: "Content release:"}
+ui_admin_no_tokens: {text: "No token usage recorded."}
+ui_admin_guard_pass_rate: {text: "Guard pass rate"}
+ui_admin_turn_split: {text: "Turn split (by role):"}
+ui_admin_last_24h: {text: "Last 24 hours (overall)"}
+ui_admin_templates_sent: {text: "Total templates sent"}
+ui_admin_col_run_at: {text: "Scheduled time (run at)"}
+ui_admin_last_7d: {text: "Last 7 days (overall)"}
+ui_admin_turns_24h: {text: "Total turns in 24 hours"}
+ui_admin_est_cost_inr: {text: "Estimated cost (INR)"}
+ui_admin_total_moves: {text: "Total moves:"}
+ui_admin_col_attempts: {text: "Attempts"}
+ui_admin_jobs_executed: {text: "jobs executed"}
+ui_admin_status_active: {text: "Active"}
+ui_admin_col_status: {text: "Status"}
+ui_admin_milliseconds: {text: "Milliseconds (ms)"}
+ui_admin_role_stage: {text: "Role / Stage"}
+ui_admin_col_error: {text: "Error"}
+ui_admin_release_date: {text: "Release date:"}
+ui_admin_col_role: {text: "Role"}
+ui_admin_col_kind: {text: "Kind"}
+ui_admin_col_template: {text: "Template name"}
+ui_admin_this_week: {text: "This week"}
+ui_admin_retry: {text: "Retry:"}
+ui_admin_fallback: {text: "Fallback:"}
+ui_admin_col_total_tokens: {text: "Total tokens"}
+ui_admin_col_cost: {text: "Cost (₹)"}
+ui_admin_badge_admin: {text: "Admin:"}
+ui_admin_days_7: {text: "7 days:"}
+ui_admin_col_output: {text: "Output"}
+ui_admin_col_category: {text: "Category"}
+ui_admin_col_count: {text: "Count"}
+ui_admin_pending_colon: {text: "Pending:"}
+ui_admin_done_colon: {text: "Done:"}
+ui_admin_calls: {text: "calls"}
+ui_admin_col_input: {text: "Input"}
+ui_admin_failed_colon: {text: "Failed:"}
+ui_admin_status_pending: {text: "Pending"}
+ui_admin_status_done: {text: "Done"}
+ui_admin_total_colon: {text: "Total:"}
+ui_admin_status_failed: {text: "Failed"}
+ui_arp_no_visits_needed: {text: "No consenting teacher needs an urgent visit this week."}
+ui_arp_notes_placeholder: {text: "The teacher's strength and one area to improve in class..."}
+ui_arp_no_teacher_data: {text: "No teacher data is available in this cluster."}
+ui_arp_no_open_questions: {text: "There are no unanswered questions right now."}
+ui_arp_obs_points: {text: "Observation points (tick where applicable):"}
+ui_arp_obs_checklist: {text: "5-minute observation checklist:"}
+ui_arp_print_visit_list: {text: "Print visit list"}
+ui_arp_guidance_notes: {text: "Guidance notes:"}
+ui_arp_pick_week: {text: "Choose week:"}
+ui_arp_print: {text: "Print"}
+ui_arp_visit_date: {text: "Visit date:"}
+ui_demo_notice_label: {text: "Demo notice"}
+ui_arp_cluster: {text: "Cluster:"}
+ui_arp_avg_score: {text: "Average score:"}
+ui_arp_week: {text: "Week:"}
+ui_arp_category: {text: "Category:"}
+ui_arp_move_colon: {text: "Move:"}
+ui_arp_level: {text: "Level"}
+ui_arp_score_colon: {text: "Score:"}
+ui_arp_score: {text: "Score"}
+ui_chat_type_instead_hint: {text: "Type instead of speaking (sample questions):"}
+ui_chat_input_placeholder: {text: "Type here or hold the mic and speak…"}
+ui_chat_record_hold: {text: "Record by voice (hold)"}
+ui_chat_record: {text: "Record by voice"}
+ui_chat_menu_progress: {text: "Progress"}
+ui_chat_children_thinking: {text: "The children are thinking"}
+ui_chat_sample_chips: {text: "Sample answer chips"}
+ui_chat_child_priya_title: {text: "Priya (Class 2)"}
+ui_chat_menu_help: {text: "Help & instructions"}
+ui_chat_child_ravi_title: {text: "Ravi (Class 2)"}
+ui_chat_child_aman_title: {text: "Aman (Class 2)"}
+ui_chat_write_message: {text: "Write a message"}
+ui_chat_send: {text: "Send message"}
+ui_chat_cancel_rec: {text: "Cancel ✕"}
+ui_chat_home: {text: "Abhyas home"}
+ui_chat_open_menu: {text: "Open menu"}
+ui_chat_main_menu: {text: "Main menu"}
+ui_delete_effects: {text: "If you confirm, your account, all practice scores, evidence-ladder progress, chat messages and audio records will be erased from the database for good."}
+ui_delete_irreversible_html: {text: "This is <strong>permanent and cannot be undone</strong>."}
+ui_delete_question: {text: "Do you really want to delete all your data?"}
+ui_delete_title: {text: "Delete my data — confirm"}
+ui_delete_back_progress: {text: "Back to progress"}
+ui_delete_confirm_no: {text: "No, go back"}
+ui_delete_confirm_yes: {text: "Yes, delete"}
+ui_progress_research_desc: {text: "Anonymous data is used to improve the system and teaching content."}
+ui_progress_data_desc: {text: "You can erase all your data and your account for good at any time."}
+ui_progress_share_scores_desc: {text: "Lets your cluster ARP see your practice progress and scores."}
+ui_progress_consent_saved: {text: "Your consent preferences have been saved."}
+ui_progress_explain_back: {text: "Explaining in your own words (key points covered)"}
+ui_progress_no_scores: {text: "No practice score has been recorded yet."}
+ui_progress_explain_pending: {text: "You have not yet explained this in your own words."}
+ui_progress_score_history: {text: "Practice score history (rubric scores)"}
+ui_progress_ladder: {text: "Evidence ladder"}
+ui_progress_moves_heading: {text: "Teaching moves & evidence ladder"}
+ui_progress_consent_label: {text: "Consent and privacy settings"}
+ui_progress_share_scores: {text: "Share scores with ARP"}
+ui_progress_consent_heading: {text: "Privacy & consent settings"}
+ui_progress_research: {text: "Take part in research & improvement"}
+ui_progress_moves_label: {text: "Teaching moves and progress"}
+ui_progress_page_title: {text: "My progress — Abhyas"}
+ui_progress_ladder_levels: {text: "Evidence ladder levels"}
+ui_progress_data_heading: {text: "Account & data management"}
+ui_progress_back_chat: {text: "Back to chat"}
+ui_progress_save_settings: {text: "Save settings"}
+ui_progress_data_label: {text: "Data management"}
+ui_progress_title: {text: "My progress"}
+ui_progress_attempt: {text: "Attempt"}
+ui_review_review_approve: {text: "Review & approve →"}
+ui_review_do_review: {text: "Review →"}
+ui_review_col_approval: {text: "Approval progress"}
+ui_review_col_sankul_month: {text: "Sankul month"}
+ui_review_reviewer: {text: "Reviewer:"}
+ui_review_col_action: {text: "Action"}
+ui_review_col_move_code: {text: "Move code"}
+ui_review_col_kind: {text: "Type"}
+ui_review_col_status: {text: "Status"}
+ui_review_col_title: {text: "Title"}
+ui_review_role: {text: "Role:"}
+ui_review_items: {text: "items"}
+ui_review_col_reason: {text: "Reason"}
+ui_review_col_domain: {text: "Domain"}
+ui_review_total: {text: "Total"}
+ui_review_col_time: {text: "Time"}
+ui_review_calibrate_saved: {text: "Blind calibration score saved! The next random rehearsal is shown below."}
+ui_review_blind_instruction: {text: "Read the transcript and score each criterion fairly: 0, 1 or 2."}
+ui_review_blind_scoring: {text: "Independent coach assessment (blind scoring)"}
+ui_review_note_placeholder_blind: {text: "Coach's assessment note (optional)..."}
+ui_review_no_conversation: {text: "No rehearsal conversation is available."}
+ui_review_save_blind: {text: "Save blind score"}
+ui_review_back_console: {text: "Back to review console"}
+ui_review_score_2: {text: "2 (complete / correct)"}
+ui_review_score_0: {text: "0 (incomplete)"}
+ui_review_score_1: {text: "1 (partial)"}
+ui_review_move_colon: {text: "Move:"}
+ui_review_note_placeholder: {text: "Enter the coach's corrective note..."}
+ui_review_no_transcript: {text: "No transcript is available."}
+ui_review_teacher_explanation: {text: "What the teacher explained:"}
+ui_review_points_covered: {text: "Key points covered:"}
+ui_review_guard_reason: {text: "Guard failure reason:"}
+ui_review_change: {text: "Area to improve:"}
+ui_review_strength: {text: "Strength:"}
+ui_review_ai_confidence: {text: "AI confidence:"}
+ui_review_detail_title: {text: "Review:"}
+ui_review_item_id: {text: "Item ID:"}
+ui_review_kind_colon: {text: "Type:"}
+ui_review_question: {text: "Question:"}
+ui_review_category_colon: {text: "Category:"}
+ui_review_status_colon: {text: "Status:"}
+ui_review_evidence: {text: "Evidence:"}
+ui_review_answer: {text: "Answer:"}
+ui_review_approval_rule: {text: "Publishing a move needs approval from at least 2 different coaches."}
+ui_review_h_scenario: {text: "3. Practice scenario & model rehearsal"}
+ui_review_no_approvals: {text: "No coach has approved yet."}
+ui_review_h_rubric: {text: "2. Assessment rubric criteria"}
+ui_review_h_yaml: {text: "Raw YAML & validation"}
+ui_review_approval_saved: {text: "Your approval was recorded!"}
+ui_review_h_key_points: {text: "1. Key teaching points"}
+ui_review_validate_yaml: {text: "Validate YAML (schema)"}
+ui_review_model_first_line: {text: "Model rehearsal (first line):"}
+ui_review_back_moves: {text: "Back to content list"}
+ui_review_your_approval: {text: "Your approval is recorded"}
+ui_review_approval_progress: {text: "Approval progress:"}
+ui_review_class_context: {text: "Classroom context:"}
+ui_review_sankul_colon: {text: "Sankul month:"}
+ui_review_speaker_colon: {text: "Speaker:"}
+ui_review_domain_colon: {text: "Domain:"}
+ui_review_coaches: {text: "coaches"}
+ui_trainer_privacy_text: {text: "The training dashboard never shows teachers' personal details, names or phone numbers. When a group has fewer than 10 teachers (n < 10), all progress indicators are hidden automatically to protect privacy."}
+ui_trainer_privacy_label: {text: "Privacy policy:"}
+ui_trainer_demo_mode: {text: "Demo mode:"}
+ui_trainer_avg: {text: "Average:"}
+speaker_ravi: {text: "Ravi"}
+speaker_priya: {text: "Priya"}
+speaker_aman: {text: "Aman"}
+ui_review_move_title: {text: "Move review:"}
+ui_lang_label: {text: "Language"}
+ui_lang_name_hi: {text: "हिन्दी"}
+ui_lang_name_en: {text: "English"}
+ui_login_page_title: {text: "Log in — Abhyas"}
+ui_login_subtitle: {text: "Practice partner for primary teachers"}
+ui_login_username: {text: "Username"}
+ui_login_password: {text: "Password"}
+ui_login_submit: {text: "Log in"}
+ui_login_demo_title: {text: "Demo accounts (password: {password})"}
+ui_login_demo_teacher_new: {text: "Teacher (new): teacher.demo1"}
+ui_login_demo_teacher_practiced: {text: "Teacher (practised): teacher.demo2"}
+ui_login_demo_arp: {text: "ARP: arp.demo"}
+ui_login_demo_trainer: {text: "Trainer: trainer.demo"}
+ui_login_demo_coach: {text: "Coach: coach.demo"}
+ui_login_error_missing: {text: "Please enter your username and password"}
+ui_login_error_invalid: {text: "Wrong username or password. Please try again."}
+ui_login_api_bad_json: {text: "Invalid JSON request"}
+ui_login_api_missing: {text: "Both username and password are required"}
+ui_login_api_invalid: {text: "Wrong username or password (invalid credentials)"}
+speaker_guide: {text: "Guide"}
+ui_chat_translate: {text: "Translate"}
+ui_chat_translate_loading: {text: "Translating…"}
+ui_chat_translate_hide: {text: "Hide translation"}
+ui_chat_translate_error: {text: "Could not translate this"}
+ui_chat_translate_limit: {text: "Too many requests — please try again in a moment"}
+ui_chat_translate_retry: {text: "Try again"}
+ui_chat_translation_label: {text: "English translation"}
+ui_chat_rec_unsupported: {text: "Voice recording is not available in your browser."}
+ui_chat_rec_permission: {text: "Microphone permission is needed. Please allow the microphone in your browser settings."}
+ui_chat_rec_start_failed: {text: "There was a problem starting the microphone: {error}"}
+ui_chat_rec_unknown_error: {text: "Unknown error"}
+ui_offline_title: {text: "Offline — Abhyas"}
+ui_offline_retry: {text: "Try again"}
+ui_offline_notice: {text: "You are offline — your earlier history and the classroom checklist are available."}
+ui_offline_checklist_badge: {text: "Classroom practice checklist (available offline)"}
+ui_offline_checklist_title: {text: "Two-digit subtraction with regrouping (52 − 17)"}
+ui_offline_checklist_intro: {text: "Keep these 4 steps in mind while teaching. Your ticks are saved here."}
+ui_offline_chk1_label: {text: "1. Concrete material:"}
+ui_offline_chk1_text: {text: "Gave the children sticks and bundles of 10 so they could do it themselves."}
+ui_offline_chk2_label: {text: "2. Opening a bundle:"}
+ui_offline_chk2_text: {text: "7 cannot be taken from the 2 in 52, so opened 1 bundle to make 12 ones."}
+ui_offline_chk3_label: {text: "3. Asking the child:"}
+ui_offline_chk3_text: {text: "Asked the child how many ones and tens are left now, without telling the answer."}
+ui_offline_chk4_label: {text: "4. Peer observation:"}
+ui_offline_chk4_text: {text: "A fellow teacher or the ARP observed the lesson."}
+ui_offline_history_title: {text: "Recent practice history (last 50 messages)"}
+ui_offline_history_loading: {text: "Loading history…"}
+ui_offline_history_empty: {text: "There are no saved messages."}
+ui_offline_history_failed: {text: "Could not load history."}
+ui_review_reason_low_confidence: {text: "Low confidence / review needed"}
+ui_review_reason_question_escalated: {text: "Question sent to the ARP"}
+ui_review_reason_guard_failure: {text: "Guard failure"}
+ui_review_default_move_title: {text: "Practice review"}
+ui_review_default_teacher: {text: "Teacher"}
+ui_admin_default_demo_teacher: {text: "Demo teacher"}
+ui_trainer_rubric_svg_none: {text: "Rubric distribution"}
+ui_trainer_rubric_svg_title: {text: "Score 0: {n0} ({p0}%) | Score 1: {n1} ({p1}%) | Score 2: {n2} ({p2}%)"}
+ui_arp_anonymous_teacher: {text: "Teacher #{code}"}
+ui_chat_help_text: {text: "Abhyas partner: practise for 15 minutes every week. You can talk by voice or by typing. For help, contact your ARP."}
