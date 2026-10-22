@@ -302,6 +302,30 @@ ui_default_teacher_name: {text: "शिक्षिका", text_m: "शिक�
 ui_default_move_title: {text: "दो अंकों की हासिल वाली घटाव", audio: false}
 ui_default_step_chip: {text: "चरण 4/7 · अभ्यास", audio: false}
 
+# ── Chat page: visible acknowledgment states (web/static/chat.js reads ui_chat_* as JSON) ──
+ui_chat_msg_sending: {text: "भेजा जा रहा है…", audio: false}
+ui_chat_msg_sent: {text: "भेज दिया", audio: false}
+ui_chat_msg_failed: {text: "भेजा नहीं जा सका — दोबारा भेजने के लिए छुएँ", audio: false}
+ui_chat_typing_generic: {text: "जवाब आ रहा है…", audio: false}
+ui_chat_typing_ravi: {text: "रवि सोच रहा है…", audio: false}
+ui_chat_typing_priya: {text: "प्रिया सोच रही है…", audio: false}
+ui_chat_typing_aman: {text: "अमन सोच रहा है…", audio: false}
+ui_chat_typing_timeout: {text: "जवाब आने में देर हो रही है। थोड़ी देर बाद दोबारा कोशिश करें।", audio: false}
+ui_chat_audio_loading: {text: "आवाज़ आ रही है…", audio: false}
+ui_chat_audio_ready: {text: "ऑडियो संदेश", audio: false}
+ui_chat_audio_playing: {text: "बज रही है…", audio: false}
+ui_chat_audio_error: {text: "आवाज़ नहीं चली — दोबारा छुएँ", audio: false}
+ui_chat_audio_play: {text: "आवाज़ सुनें", audio: false}
+ui_chat_audio_pause: {text: "रोकें", audio: false}
+ui_chat_audio_retry: {text: "दोबारा कोशिश करें", audio: false}
+ui_chat_rec_recording: {text: "रिकॉर्ड हो रहा है… छोड़ने पर भेजा जाएगा", audio: false}
+ui_chat_rec_uploading: {text: "आवाज़ भेजी जा रही है…", audio: false}
+ui_chat_rec_transcribing: {text: "आपकी आवाज़ को लिखा जा रहा है…", audio: false}
+ui_chat_voice_note: {text: "🎤 वॉयस नोट ({sec} सेकंड)", audio: false}
+ui_chat_chip_done: {text: "भेज दिया ✓", audio: false}
+ui_chat_cold_start: {text: "सर्वर जाग रहा है, थोड़ा रुकिए…", audio: false}
+ui_chat_reconnecting: {text: "इंटरनेट लौट आया — दोबारा जुड़ रहे हैं…", audio: false}
+
 # ── Speaker labels ───────────────────────────────────────────
 speaker_abhyas: {text: "अभ्यास", audio: false}
 speaker_coach: {text: "कोच", audio: false}

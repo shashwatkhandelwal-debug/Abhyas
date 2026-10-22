@@ -360,10 +360,15 @@ async def get_chat_messages(
                     (Message.created_at == after_msg.created_at) & (Message.id != after_msg.id)
                 )
                 cutoff_dt = audio_since_dt or after_msg.created_at
+                # Re-send rows changed after creation: a reply whose TTS audio just landed, or a
+                # voice note whose STT transcript was just filled in (the PWA swaps the text in).
                 audio_updated_cond = (
-                    (Message.audio_ref.isnot(None))
-                    & (Message.updated_at > Message.created_at)
+                    (Message.updated_at > Message.created_at)
                     & (Message.updated_at >= cutoff_dt)
+                    & (
+                        Message.audio_ref.isnot(None)
+                        | ((Message.direction == "in") & (Message.kind == "audio"))
+                    )
                 )
                 stmt = (
                     select(Message)

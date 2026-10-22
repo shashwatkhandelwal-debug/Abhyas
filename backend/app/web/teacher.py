@@ -39,7 +39,7 @@ from backend.app.auth.guards import get_current_user, require_role
 from backend.app.auth.session import clear_session_cookie
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
-from backend.app.core.messages import get_message
+from backend.app.core.messages import get_catalog, get_message
 from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
@@ -235,6 +235,7 @@ async def teacher_chat_page(
             "demo_banner_text": demo_banner_text,
             "demo_chips": demo_chips,
             "initial_messages": initial_messages,
+            "ui_strings": get_catalog().texts_with_prefix(CHAT_UI_PREFIX),
         },
     )
     if token_to_set:
@@ -634,6 +635,9 @@ async def get_manifest() -> FileResponse:
     manifest_file = STATIC_DIR / "manifest.json"
     return FileResponse(manifest_file, media_type="application/manifest+json")
 
+
+# Catalog keys chat.js needs (served as JSON in the page; the JS holds no Hindi of its own).
+CHAT_UI_PREFIX = "ui_chat_"
 
 _SW_VERSIONED_ASSETS = ("sw.js", "chat.js", "recorder.js", "app.css", "manifest.json")
 
