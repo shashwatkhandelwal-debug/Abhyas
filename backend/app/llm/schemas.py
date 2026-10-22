@@ -134,6 +134,13 @@ class RetrievedChunk(BaseModel):
     score: float | None = None
 
 
+class CoachSuggestionOutput(BaseModel):
+    """Output schema for coach_suggestion: one source-grounded idea with the chunk it came from."""
+
+    suggestion_hi: str = ""
+    chunk_id: str = ""
+
+
 class GuideAnswererOutput(BaseModel):
     """Output schema for guide_answerer role (spec/05 §5.8)."""
 

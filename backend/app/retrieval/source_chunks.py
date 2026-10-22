@@ -35,6 +35,9 @@ MANIFEST = SOURCES_DIR / "sources.yaml"
 CHUNKS_DIR = REPO_ROOT / "content" / "chunks"
 
 _BULLETS = {"•", "¾", "", "▪", "●", "–", "-", "·"}
+_RUNNING_FOOTER = re.compile(
+    r"^(NISHTHA\s*\(FLN\)|\(National Initiative for School Heads.*|APB|A\d{1,4})\s*$"
+)
 _TOC_LINE = re.compile(r"(\.{3,}|\s{2,})\s*\d{1,3}\s*$")
 
 
@@ -94,6 +97,8 @@ def extract_pages(pdf_path: Path) -> list[PageInfo]:
                 printed = int(text)
                 continue
             if ypos > 0.93 or ypos < 0.06:  # running header / footer
+                continue
+            if ypos > 0.9 and _RUNNING_FOOTER.match(text):  # e.g. NISHTHA (FLN) + its subtitle
                 continue
             text = unicodedata.normalize("NFC", text)
             if text in _BULLETS:
@@ -367,6 +372,10 @@ def build_source(entry: dict[str, Any]) -> tuple[list[dict[str, Any]], list[Page
         overlap_words=settings.CHUNK_OVERLAP_WORDS,
         ocr=ocr,
     )
+    skip = entry.get("skip_heading_regex")
+    if skip:  # e.g. video transcripts and LMS instructions: spoken text that matches everything
+        pattern = re.compile(str(skip))
+        chunks = [c for c in chunks if not pattern.search(str(c["heading"]))]
     return chunks, pages
 
 

@@ -17,6 +17,7 @@ from backend.app.llm.hindi_numbers import DEVANAGARI_DIGITS, extract_numbers
 from backend.app.llm.schemas import (
     ActTaggerOutput,
     CoachFeedbackOutput,
+    CoachSuggestionOutput,
     DiagnosisClassifierOutput,
     FidelityCheckerOutput,
     GuideAnswererOutput,
@@ -432,6 +433,34 @@ def guard_diagnosis_classifier(
     """The classified id must be one of the offered misconception ids (or "none")."""
     if output.misconception_id != "none" and output.misconception_id not in candidate_ids:
         return False, f"misconception_id {output.misconception_id!r} is not one of {candidate_ids}"
+    return True, "Valid"
+
+
+def guard_coach_suggestion(
+    output: CoachSuggestionOutput, retrieved_chunks: list[RetrievedChunk]
+) -> tuple[bool, str]:
+    """The cited chunk must be one that was retrieved, and the suggestion must come from it."""
+    cited = next((c for c in retrieved_chunks if c.chunk_id == output.chunk_id), None)
+    if cited is None:
+        return False, f"chunk_id {output.chunk_id!r} is not in the retrieved set"
+    words = output.suggestion_hi.split()
+    if not words:
+        return False, "Empty suggestion"
+    if len(words) > settings.COACH_SUGGESTION_MAX_WORDS:
+        return False, f"Suggestion exceeds {settings.COACH_SUGGESTION_MAX_WORDS} words"
+    if set(norm(output.suggestion_hi).split()) & DISRESPECTFUL_WORDS:
+        return False, "Disrespectful register: suggestion must not use तुम/तुमने"
+    cited_numbers = set(extract_numbers(cited.text))
+    for num in extract_numbers(output.suggestion_hi):
+        if num not in cited_numbers:
+            return False, f"Unauthorized number {num} in suggestion"
+    from backend.app.retrieval.search import index_terms, tokenize_hindi
+
+    terms = set(index_terms(tokenize_hindi(output.suggestion_hi, filter_stopwords=True)))
+    excerpt = f"{cited.section} {cited.text} {cited.gloss_hi} {' '.join(cited.keywords_hi)}"
+    excerpt_terms = set(index_terms(tokenize_hindi(excerpt, filter_stopwords=True)))
+    if len(terms & excerpt_terms) < settings.GUIDE_MIN_ANSWER_OVERLAP_TERMS:
+        return False, "Suggestion is not grounded in the cited excerpt"
     return True, "Valid"
 
 

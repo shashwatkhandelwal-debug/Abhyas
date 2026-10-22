@@ -819,3 +819,4 @@ ui_scene_cue_2: {text: "आधा समझ आया", audio: false}
 ui_scene_cue_3: {text: "समझ आ गया, नया सवाल दें", audio: false}
 coach_quote_suffix: {text: "आपके शब्द: «{quote}»", audio: false}
 ui_chat_scene_stop_word: {text: "बस", audio: false}
+coach_source_suggestion: {text: "स्रोत से एक सुझाव: {suggestion}", audio: false}

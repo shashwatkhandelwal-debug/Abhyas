@@ -15,7 +15,7 @@ chunks; glosses already in the committed `.jsonl` are reused by text hash).
 | `ncert_vidya_pravesh` — Vidya Pravesh (NCERT), English | 56 | **ingested**: 67 chunks | 49 pages chunked, 7 blank/near-empty skipped. |
 | `up_ganit_sandarshika_c1` — UP Samagra Shiksha, Ganit, Class 1, Hindi | 112 | **ingested via OCR**: 168 chunks (`ocr: true`) | Legacy non-Unicode font, so every page was read from its image (see below). 6 pages skipped: 2 near-empty covers, 3 flagged unreliable (PDF 4 a teacher-tracker form, 5 blank/picture, 7 contents), 1 letter grid. |
 | `up_bhasha_sandarshika_c1` — UP Samagra Shiksha, Bhasha, Class 1, Hindi | 156 | **ingested via OCR**: 325 chunks (`ocr: true`) | Legacy Chanakya-style fonts, so every page was read from its image (see below). 10 pages skipped: 2 near-empty, 2 flagged unreliable (PDF 6, 9), 6 letter-grid pages (146–151). |
-| `nishtha_fln` — NISHTHA FLN (NCERT), English | 618 | **NOT ingested** | File was not supplied. Known URL is in `sources.yaml`. |
+| `nishtha_fln` — NISHTHA FLN (NCERT), English | 618 | **ingested**: 281 chunks | Text layer is readable (sha256 in `sources.yaml`). 184 pages skipped (blank, contents, image-only or too short). Video transcripts, LMS steps and link lists are dropped by `skip_heading_regex` (spoken dialogue matched almost every query: with them recall of the older questions fell to 0.75). Glosses: 442 Haiku calls, 588,372 in / 139,898 out tokens ≈ US$0.13 (reused by text hash on re-runs). Printed page = PDF − 12. |
 
 The two NIPUN/NCERT sources are **English**: each chunk carries a one-line Hindi gloss and 5–8 Hindi
 keywords (generated once offline with `claude-haiku-5-5`) so Hindi queries match English text; the

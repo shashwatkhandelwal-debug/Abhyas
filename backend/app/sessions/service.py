@@ -25,11 +25,13 @@ from backend.app.core.types import Button, Citation, InboundMessage, OutboundMes
 from backend.app.db.models import Message
 from backend.app.llm.client import LLMUnavailable
 from backend.app.llm.roles.coach import coach_feedback
+from backend.app.llm.roles.coach_suggestion import suggest_from_sources
 from backend.app.llm.roles.fidelity_checker import check_fidelity
 from backend.app.llm.roles.guide_answerer import (
     answer_guide_question,
     citations_for_chunks,
     compose_guide_reply,
+    format_guide_citation,
 )
 from backend.app.llm.roles.question_classifier import classify_question
 from backend.app.llm.schemas import RetrievedChunk
@@ -335,6 +337,53 @@ class SessionService:
             Button(id=f"btn_trate_{n}", title_hi=get_message(f"btn_trate_{n}", address_form))
             for n in (1, 3, 5)
         ]
+
+    async def _source_suggestion(
+        self, move: MoveCard, change_hi: str, address_form: str
+    ) -> OutboundMessage | None:
+        """One tip from the FLN training package after a scene, with a tappable citation.
+
+        No retrieval support (or a failed guard) means no suggestion: nothing is invented.
+        """
+        try:
+            hits = await self.retriever.retrieve(
+                f"{move.title_hi} {change_hi}",
+                top_k=settings.COACH_SUGGESTION_POOL,
+                min_score=settings.RETRIEVAL_MIN_SCORE,
+                official_only=True,
+                min_matched_terms=settings.RETRIEVAL_MIN_MATCHED_TERMS,
+            )
+            chunks = [
+                RetrievedChunk(
+                    chunk_id=c.chunk_id,
+                    source_short_hi=getattr(c, "source_short_hi", None) or c.source,
+                    section=c.section,
+                    page=c.page,
+                    text=c.text,
+                    gloss_hi=c.gloss_hi,
+                    keywords_hi=c.keywords_hi,
+                    score=c.similarity_score,
+                )
+                for c in hits
+                if c.source == settings.COACH_SUGGESTION_SOURCE_ID
+            ][: settings.COACH_SUGGESTION_CANDIDATES]
+            result = await suggest_from_sources(move.title_hi, change_hi, chunks)
+        except (LLMUnavailable, TimeoutError, ValueError, OSError) as exc:
+            logger.warning("coach source suggestion skipped: %s", exc)
+            return None
+        if not result.suggestion_hi or result.chunk is None:
+            return None
+        cite = format_guide_citation(
+            result.chunk.source_short_hi, result.chunk.page, address_form=address_form
+        )
+        return OutboundMessage(
+            kind="text",
+            text_hi=(
+                f"{get_message('coach_source_suggestion', address_form, suggestion=result.suggestion_hi)}"
+                f"\n\n{cite}"
+            ),
+            citations=citations_for_chunks([result.chunk], address_form),
+        )
 
     async def _begin_rehearse_setup(
         self, ctx: SessionContext, teacher_id: UUID, move: MoveCard
@@ -1404,6 +1453,10 @@ class SessionService:
 
                 ctx.rehearse_stage = rehearse_setup.STAGE_NONE
                 await self._sync_context_to_db(ctx, teacher_id)
+                suggestion = await self._source_suggestion(
+                    move, coach_res.feedback.change_hi, address_form
+                )
+                suggestion_msgs = [suggestion] if suggestion else []
                 coach_outbounds: list[OutboundMessage] = list(turn_res.outbound)
                 coach_outbounds.extend(
                     [
@@ -1411,6 +1464,7 @@ class SessionService:
                             kind="text", text_hi=get_message("feedback_header", address_form)
                         ),
                         OutboundMessage(kind="text", text_hi=f"{prefix}{feedback_body}"),
+                        *suggestion_msgs,
                         OutboundMessage(
                             kind="buttons",
                             text_hi=get_message("realism_prompt", address_form),

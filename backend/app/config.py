@@ -232,6 +232,10 @@ class Settings(BaseSettings):
     # A guide answer must share at least this many distinct content terms with the excerpts it
     # cites (excerpt text, heading and Hindi gloss/keywords); otherwise it is not grounded in them.
     GUIDE_MIN_ANSWER_OVERLAP_TERMS: int = 2
+    COACH_SUGGESTION_MAX_WORDS: int = 35
+    COACH_SUGGESTION_SOURCE_ID: str = "nishtha_fln"  # the FLN training package grounds the tip
+    COACH_SUGGESTION_CANDIDATES: int = 3
+    COACH_SUGGESTION_POOL: int = 60  # retrieved before keeping only the FLN package's chunks
     MOVE_APPROVALS_REQUIRED: int = 2
     KAPPA_CALIBRATION_TARGET: float = 0.70
 

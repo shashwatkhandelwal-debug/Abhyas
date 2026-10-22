@@ -55,12 +55,14 @@
 
 - id: nishtha_fln
   title: "NCERT — NISHTHA FLN (Foundational Literacy and Numeracy) training package, English"
-  short_hi: "निष्ठा एफ़एलएन (NCERT)"
+  short_hi: "निष्ठा FLN"
   file: nishtha_fln.pdf
   url: "https://ciet.ncert.gov.in/storage/app/public/files/17/Nishtha/NISHTHA_FLN_ENGLISH.pdf"
-  sha256: "not available (file not supplied)"
+  sha256: "cc66d0fc9b0f185c910db563e4cf2e80423dcdb99e27fd43f635dddf9b65b789"
   as_of_date: "2026-10-22"
   lang: en
-  ingest: false
-  ingest_note: "PDF not supplied; skipped. Drop the file in content/sources/, fill sha256, set ingest: true and run make content-ingest."
+  ingest: true
+  # Video transcripts (spoken dialogue), LMS steps and link lists match almost any query; the
+  # written course text is kept.
+  skip_heading_regex: '^(Transcript|References|Weblinks|Watch the Video|Course Outline|Course Overview|Dear Learners|Step \d+|[A-Z][A-Za-z.\s]{2,40}: )'
   licence_note: "NCERT publication; terms not recorded."

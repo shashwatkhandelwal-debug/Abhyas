@@ -567,3 +567,4 @@ ui_scene_cue_2: {text: "Half understood"}
 ui_scene_cue_3: {text: "Understood: give a new problem"}
 coach_quote_suffix: {text: "Your words: «{quote}»"}
 ui_chat_scene_stop_word: {text: "stop"}
+coach_source_suggestion: {text: "A suggestion from the sources: {suggestion}"}
