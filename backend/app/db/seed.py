@@ -101,6 +101,31 @@ LEGACY_SEED_MOVE_IDS: dict[str, str] = {
 }
 
 
+async def dedupe_adoption_evidence(
+    session: AsyncSession, teacher_ids: list[uuid.UUID] | None = None
+) -> int:
+    """Deletes extra AdoptionEvidence rows sharing (teacher, move, level), keeping the oldest.
+
+    The table has no unique key and live use (rehearsals, reflections, ARP forms, the legacy move
+    id repair) writes more than one row per key; the seed's get-or-create lookups need one.
+    """
+    stmt = select(AdoptionEvidence).order_by(AdoptionEvidence.created_at, AdoptionEvidence.id)
+    if teacher_ids is not None:
+        stmt = stmt.where(AdoptionEvidence.teacher_id.in_(teacher_ids))
+    seen: set[tuple[uuid.UUID, str, int]] = set()
+    extras: list[uuid.UUID] = []
+    for row in (await session.execute(stmt)).scalars().all():
+        key = (row.teacher_id, row.move_id, row.level)
+        if key in seen:
+            extras.append(row.id)
+        else:
+            seen.add(key)
+    if extras:
+        await session.execute(delete(AdoptionEvidence).where(AdoptionEvidence.id.in_(extras)))
+        logger.info("Removed %d duplicate adoption evidence rows", len(extras))
+    return len(extras)
+
+
 async def _repair_legacy_move_ids(session: AsyncSession) -> None:
     """Rewrites legacy seed move ids on the demo teachers' session/path/evidence rows."""
     demo_ids = [TEACHER_DEMO1_ID, TEACHER_DEMO2_ID, TEACHER_DEMO3_ID]
@@ -156,6 +181,8 @@ async def _repair_legacy_move_ids(session: AsyncSession) -> None:
     if repaired:
         logger.info("Repaired %d demo rows with legacy move ids", repaired)
         await session.flush()
+    # The rewrite can collide with rows already written under the real id
+    await dedupe_adoption_evidence(session, demo_ids)
 
 
 DEMO2_SCENE_ID = uuid.UUID("00000000-0000-0001-0004-000000d02001")  # keeps the seeded-scene prefix
@@ -424,6 +451,7 @@ async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
                     teacher_id=TEACHER_DEMO3_ID, position=idx + 1, move_id=m_id, reason="completed"
                 )
             )
+    await dedupe_adoption_evidence(session, [teacher_id])
     await session.flush()
     logger.info("Reset demo teacher %s to the seeded state", login)
     return True
@@ -571,7 +599,7 @@ async def seed_database() -> None:
                 AdoptionEvidence.move_id == m_id,
                 AdoptionEvidence.level == lvl,
             )
-            ev = (await session.execute(stmt_ev)).scalar_one_or_none()
+            ev = (await session.execute(stmt_ev)).scalars().first()  # duplicates tolerated
             if not ev:
                 session.add(
                     AdoptionEvidence(
@@ -710,6 +738,7 @@ async def seed_database() -> None:
             await session.delete(legacy_admin)
 
         # 9. Synthetic demo cohort (db/demo_data.py)
+        await dedupe_adoption_evidence(session)
         await populate_demo_cohort(session)
 
         # 10. Document chunks into doc_chunk table (spec/10 §10.4)
