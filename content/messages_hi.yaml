@@ -172,7 +172,7 @@ ask_source_line:
   text: "स्रोत: {source}{page_part}"
   audio: false
 ask_source_citation:
-  text: "[{source}, पृ. {page}]"
+  text: "स्रोत: {source}, पृष्ठ {page}"
   audio: false
 ask_source_page_abbrev:
   text: "पृ."
@@ -182,6 +182,13 @@ ask_try_this_week:
   audio: false
 ask_escalated:
   text: "अच्छा सवाल है। इसका पक्का जवाब मैं आपके ARP से पूछकर बताती हूँ।"
+  audio: true
+learn_reference:
+  text: "सरकारी दस्तावेज़ में इस विषय पर (सार): {summary}\n{citation}"
+  audio: false
+ask_not_in_sources:
+  text: "इस सवाल का जवाब मुझे अपने सरकारी दस्तावेज़ों में नहीं मिला, इसलिए मैं अंदाज़े से नहीं बताऊँगी। मैं आपके ARP से पूछकर बताती हूँ।"
+  text_m: "इस सवाल का जवाब मुझे अपने सरकारी दस्तावेज़ों में नहीं मिला, इसलिए मैं अंदाज़े से नहीं बताऊँगा। मैं आपके ARP से पूछकर बताता हूँ।"
   audio: true
 ask_out_of_scope:
   text: "माफ़ कीजिए, मैं कक्षा 1-3 की पढ़ाई और कक्षा से जुड़े सवालों में ही मदद कर सकती हूँ।"
@@ -324,6 +331,11 @@ ui_chat_rec_transcribing: {text: "आपकी आवाज़ को लिख�
 ui_chat_voice_note: {text: "🎤 वॉयस नोट ({sec} सेकंड)", audio: false}
 ui_chat_chip_done: {text: "भेज दिया ✓", audio: false}
 ui_chat_cold_start: {text: "सर्वर जाग रहा है, थोड़ा रुकिए…", audio: false}
+ui_chat_source_page: {text: "पृष्ठ {page}", audio: false}
+ui_chat_source_printed: {text: "मुद्रित पृष्ठ {page}", audio: false}
+ui_chat_source_summary: {text: "हिंदी सार", audio: false}
+ui_chat_source_original_en: {text: "यह अंश मूल दस्तावेज़ से अंग्रेज़ी में है।", audio: false}
+ui_chat_source_error: {text: "स्रोत नहीं खुल सका — दोबारा छुएँ", audio: false}
 ui_chat_reconnecting: {text: "इंटरनेट लौट आया — दोबारा जुड़ रहे हैं…", audio: false}
 
 # ── Speaker labels ───────────────────────────────────────────

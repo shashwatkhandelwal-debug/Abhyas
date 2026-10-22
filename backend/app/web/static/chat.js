@@ -888,6 +888,21 @@ function renderMessage(msg, isLocalOptimistic = false) {
     }
   }
 
+  if (msg.citations && msg.citations.length > 0) {
+    const sources = document.createElement('div');
+    sources.className = 'bubble-sources';
+    msg.citations.forEach((c) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'source-chip';
+      chip.dataset.chunkId = c.chunk_id;
+      chip.setAttribute('aria-expanded', 'false');
+      chip.textContent = c.line_hi;
+      sources.appendChild(chip);
+    });
+    bubble.appendChild(sources);
+  }
+
   // Metadata / Status Tick
   const meta = document.createElement('div');
   meta.className = 'bubble-meta';
@@ -940,6 +955,84 @@ function renderMessage(msg, isLocalOptimistic = false) {
   container.scrollTop = container.scrollHeight;
   return true;
 }
+
+// ── Source citations: tap the chip to read the excerpt behind an answer ───────
+function buildExcerptPanel(src) {
+  const panel = document.createElement('div');
+  panel.className = 'source-excerpt';
+  panel.setAttribute('role', 'region');
+  const head = document.createElement('p');
+  head.className = 'source-excerpt-head';
+  const pageBits = [t('ui_chat_source_page', { page: src.page })];
+  if (src.printed_page) pageBits.push(t('ui_chat_source_printed', { page: src.printed_page }));
+  head.textContent = `${src.source_short_hi} · ${pageBits.join(' · ')}`;
+  panel.appendChild(head);
+  if (src.heading) {
+    const h = document.createElement('p');
+    h.className = 'source-excerpt-heading';
+    h.textContent = src.heading;
+    panel.appendChild(h);
+  }
+  if (src.gloss_hi) {
+    const g = document.createElement('p');
+    g.className = 'source-excerpt-gloss';
+    g.textContent = `${t('ui_chat_source_summary')}: ${src.gloss_hi}`;
+    panel.appendChild(g);
+  }
+  const body = document.createElement('p');
+  body.className = 'source-excerpt-text';
+  if (src.lang === 'en') body.lang = 'en';
+  body.textContent = src.text;
+  panel.appendChild(body);
+  if (src.lang === 'en') {
+    const note = document.createElement('p');
+    note.className = 'source-excerpt-note';
+    note.textContent = t('ui_chat_source_original_en');
+    panel.appendChild(note);
+  }
+  return panel;
+}
+
+async function toggleSourceExcerpt(chip) {
+  const holder = chip.closest('.bubble-sources');
+  if (!holder) return;
+  const open = holder.querySelector('.source-excerpt');
+  const err = holder.querySelector('.source-error');
+  if (err) err.remove();
+  if (open && open.dataset.chunkId === chip.dataset.chunkId) {
+    open.remove();
+    chip.setAttribute('aria-expanded', 'false');
+    return;
+  }
+  if (open) open.remove();
+  holder.querySelectorAll('.source-chip').forEach((c) => c.setAttribute('aria-expanded', 'false'));
+  chip.disabled = true;
+  chip.setAttribute('aria-busy', 'true');
+  try {
+    const res = await netFetch(`/api/source/${encodeURIComponent(chip.dataset.chunkId)}`, {
+      credentials: 'same-origin',
+    });
+    if (!res.ok) throw new Error(`source ${res.status}`);
+    const panel = buildExcerptPanel(await res.json());
+    panel.dataset.chunkId = chip.dataset.chunkId;
+    holder.appendChild(panel);
+    chip.setAttribute('aria-expanded', 'true');
+  } catch (e) {
+    const msg = document.createElement('p');
+    msg.className = 'source-error';
+    msg.setAttribute('role', 'alert');
+    msg.textContent = t('ui_chat_source_error');
+    holder.appendChild(msg);
+  } finally {
+    chip.disabled = false;
+    chip.removeAttribute('aria-busy');
+  }
+}
+
+document.addEventListener('click', (ev) => {
+  const chip = ev.target instanceof Element ? ev.target.closest('.source-chip') : null;
+  if (chip) toggleSourceExcerpt(chip);
+});
 
 function getSpeakerHindiLabel(speaker) {
   const map = {

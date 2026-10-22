@@ -147,6 +147,7 @@ class GuideAnswerResult(BaseModel):
     guarded: bool = True
     guard_error: str | None = None
     used_fallback: bool = False
+    no_sources: bool = False  # escalated because the excerpts did not support an answer
 
 
 # ── 5.9 Build-Time Roles ─────────────────────────────────────────────────────

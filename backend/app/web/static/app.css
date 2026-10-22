@@ -406,6 +406,22 @@ body {
   padding-left: 0.2rem;
 }
 
+.bubble-sources { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.source-chip {
+  font: inherit; font-size: 0.82rem; padding: 0.3rem 0.75rem; cursor: pointer; text-align: left;
+  border: 1.5px solid var(--brand); background: var(--surface); color: var(--brand);
+  border-radius: var(--radius-full); min-height: 40px;
+}
+.source-chip[aria-expanded="true"] { background: var(--brand); color: var(--brand-ink); }
+.source-excerpt, .source-error {
+  flex-basis: 100%; margin: 0; padding: 8px 10px; border-radius: var(--radius-sm);
+  font-size: 0.85rem; background: var(--brand-light); max-height: 40vh; overflow-y: auto;
+}
+.source-excerpt p { margin: 0 0 6px; }
+.source-excerpt-head { font-weight: 600; }
+.source-excerpt-gloss { font-style: italic; }
+.source-excerpt-note { font-size: 0.78rem; color: var(--muted); }
+.source-error { color: var(--danger); background: var(--danger-light); }
 .reply-chip {
   background-color: var(--surface);
   border: 1.5px solid var(--brand);

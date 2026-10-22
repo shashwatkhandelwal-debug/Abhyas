@@ -364,6 +364,7 @@ class Message(Base):
     text: Mapped[str | None] = mapped_column(Text, nullable=True)
     audio_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
     buttons: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
+    citations: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
     speaker: Mapped[str | None] = mapped_column(Text, nullable=True)
     template_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     state_at: Mapped[str | None] = mapped_column(Text, nullable=True)

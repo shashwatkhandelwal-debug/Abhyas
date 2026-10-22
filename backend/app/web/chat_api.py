@@ -40,6 +40,7 @@ from backend.app.auth.rate_limit import check_chat_rate_limit
 from backend.app.channels.web import is_teacher_pending, mark_teacher_pending, process_inbound_web
 from backend.app.db.models import AppUser, Message, RealismRating, Scene, Teacher
 from backend.app.db.session import get_db_session
+from backend.app.retrieval.search import get_guide_retriever
 from backend.app.speech.cache import tts_cache
 
 logger = logging.getLogger("abhyas.web.chat")
@@ -416,6 +417,7 @@ async def get_chat_messages(
             "text": m.text,
             "audio_ref": m.audio_ref,
             "buttons": m.buttons,
+            "citations": m.citations,
             "speaker": m.speaker,
             "template_name": m.template_name,
             "created_at": m.created_at.isoformat() if m.created_at else None,
@@ -429,6 +431,29 @@ async def get_chat_messages(
         "messages": messages_data,
         "pending": pending,
         "server_time": server_time.isoformat(),
+    }
+
+
+@router.get("/source/{chunk_id:path}")
+async def get_source_excerpt(
+    chunk_id: str,
+    current_user: Annotated[AppUser, Depends(get_current_user)],
+) -> dict[str, Any]:
+    """Excerpt behind a citation: the stored source passage and where it sits in the document."""
+    chunk = get_guide_retriever().get_chunk(chunk_id)
+    if chunk is None:
+        raise HTTPException(status_code=404, detail="source_not_found")
+    return {
+        "chunk_id": chunk["chunk_id"],
+        "source_short_hi": chunk.get("source_short_hi") or chunk.get("short_hi", ""),
+        "title": chunk.get("title", ""),
+        "heading": chunk.get("heading") or chunk.get("section", ""),
+        "lang": chunk.get("lang", "hi"),
+        "page": chunk.get("pdf_page_start") or chunk.get("page"),
+        "page_end": chunk.get("pdf_page_end"),
+        "printed_page": chunk.get("printed_page_start"),
+        "gloss_hi": chunk.get("gloss_hi", ""),
+        "text": chunk.get("text", ""),
     }
 
 

@@ -8,7 +8,7 @@ title_hi: "हासिल वाला जोड़: 10 तीलियों �
 summary_hi: "जब इकाई का जोड़ 10 या उससे ज़्यादा हो, तो 10 तीलियों का नया बंडल बनवाएँ और उसे दहाई में जोड़ें।"
 tags: [addition, regrouping, carry, place_value, ganit]
 module_ref:
-  source_id: up_ganit_sandarshika_c2
+  source_id: up_ganit_sandarshika_c1
   section: "जोड़ (हासिल सहित)"
   page: null
   verified: false

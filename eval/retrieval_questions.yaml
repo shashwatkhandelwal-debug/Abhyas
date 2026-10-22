@@ -1,0 +1,41 @@
+# Retrieval eval: 20 realistic teacher questions (Hindi + Hinglish) with where the answer lives.
+# pages = PDF page index (not printed page): one [start, end] range, or a list of ranges when the topic
+# is genuinely covered in several places. A hit = any top-5 chunk from the expected source whose page span
+# overlaps any range. `evidence` is a regex that must match text inside
+# the expected page range (checked by eval/retrieval_recall.py --verify-ground-truth), so the labels
+# do not depend on what the retriever returns. Only ingested sources can appear here (see
+# content/sources/README.md): the two UP Sandarshikas are NOT searchable, so no question targets them.
+questions:
+  - {id: q01, q: "बच्चों को उनकी मातृभाषा में पढ़ाना क्यों ज़रूरी है?", source: nipun_guidelines_2021, pages: [[41, 42], [63, 64], [98, 99], [201, 202], [264, 265]], evidence: "mother tongue|home language"}
+  - {id: q02, q: "Multilingual classroom mein bachon ki ghar ki bhasha ka use kaise karein?", source: nipun_guidelines_2021, pages: [63, 64], evidence: "Multilingual"}
+  - {id: q03, q: "गिनती सिखाते समय एक-एक वस्तु से एक संख्या मिलाना (one-to-one correspondence) क्यों ज़रूरी है?", source: nipun_guidelines_2021, pages: [85, 87], evidence: "one-to-one"}
+  - {id: q04, q: "Addition aur subtraction ko rozmarra ke sawalon se kaise jodein?", source: nipun_guidelines_2021, pages: [88, 89], evidence: "subtraction"}
+  - {id: q05, q: "बच्चों में पैटर्न की समझ कैसे विकसित करें?", source: nipun_guidelines_2021, pages: [93, 95], evidence: "Patterns"}
+  - {id: q06, q: "पढ़ने की रवानगी (reading fluency) का मतलब क्या है?", source: nipun_guidelines_2021, pages: [75, 75], evidence: "Fluency"}
+  - {id: q07, q: "Classroom mein print-rich mahaul kaise banayein?", source: nipun_guidelines_2021, pages: [39, 41], evidence: "print.rich"}
+  - {id: q08, q: "बच्चे की प्रगति दर्ज करने के लिए पोर्टफोलियो क्या होता है?", source: nipun_guidelines_2021, pages: [[144, 145], [148, 150]], evidence: "[Pp]ortfolio"}
+  - {id: q09, q: "Holistic progress card mein bachon ka record kaise rakhein?", source: nipun_guidelines_2021, pages: [148, 150], evidence: "Holistic"}
+  - {id: q10, q: "खिलौना आधारित शिक्षण का क्या महत्व है?", source: nipun_guidelines_2021, pages: [22, 22], evidence: "[Tt]oy"}
+  - {id: q11, q: "बच्चों की पढ़ाई में माता-पिता को कैसे शामिल करें?", source: nipun_guidelines_2021, pages: [238, 246], evidence: "[Pp]arent"}
+  - {id: q12, q: "Vidya Pravesh mein parents aur community ko seekhne mein kaise jodein?", source: ncert_vidya_pravesh, pages: [21, 22], evidence: "Parents"}
+  - {id: q13, q: "दिव्यांग बच्चों की ज़रूरतों के लिए कक्षा में क्या करें?", source: ncert_vidya_pravesh, pages: [19, 20], evidence: "Disabilit"}
+  - {id: q14, q: "कहानी के बाद बच्चों से उसका अभिनय (role play) कैसे करवाएँ?", source: ncert_vidya_pravesh, pages: [35, 36], evidence: "[Rr]ole play"}
+  - {id: q15, q: "Kahani zor se padhkar sunana (read aloud) kaise karein?", source: ncert_vidya_pravesh, pages: [35, 36], evidence: "[Rr]ead.aloud"}
+  - {id: q16, q: "तीन महीने का स्कूल तैयारी मॉड्यूल क्या है?", source: ncert_vidya_pravesh, pages: [11, 13], evidence: "three.month|[Tt]hree-month"}
+  - {id: q17, q: "शिक्षकों की क्षमता निर्माण (capacity building) के लिए क्या व्यवस्था है?", source: nipun_guidelines_2021, pages: [202, 204], evidence: "[Cc]apacity"}
+  - {id: q18, q: "Observation से बच्चों के सीखने का आकलन कैसे करें?", source: nipun_guidelines_2021, pages: [147, 148], evidence: "[Oo]bservation"}
+  - {id: q19, q: "बच्चों को स्वतंत्र लेखन (independent writing) के लिए कैसे प्रोत्साहित करें?", source: ncert_vidya_pravesh, pages: [37, 38], evidence: "Independent Writing"}
+  - {id: q20, q: "तीन अंकों तक की संख्याओं पर जोड़-घटाव की क्षमता FLN में कहाँ तक अपेक्षित है?", source: nipun_guidelines_2021, pages: [20, 21], evidence: "three.digit"}
+
+# Questions the sources cannot answer. The bot must say it does not know (best score < RETRIEVAL_MIN_SCORE).
+negative_questions:
+  - "चंद्रयान-3 कब लॉन्च हुआ था?"
+  - "IPL 2024 ka winner kaun tha?"
+  - "मेरी तनख्वाह कब बढ़ेगी?"
+  - "आलू के पराठे की रेसिपी बताइए"
+  - "Mere mobile ka recharge kaise karein?"
+  - "बारिश में स्कूल की छुट्टी कब होगी?"
+  - "क्रिकेट में LBW कब दिया जाता है?"
+  - "बैंक में खाता कैसे खोलें?"
+  - "सरकारी स्कूल में छात्रवृत्ति का फॉर्म कहाँ भरें?"
+  - "Python seekhne ke liye best book kaun si hai?"

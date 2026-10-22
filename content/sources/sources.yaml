@@ -1,49 +1,64 @@
+# Official source documents behind the guide answers. PDFs are NOT in git (see .gitignore);
+# only the processed chunks in content/chunks/*.jsonl are. `ingest: true` = chunked and searchable.
+# sha256 is of the exact file that was ingested; as_of_date is the date this copy was placed in the repo.
 - id: nipun_guidelines_2021
-  title: "NIPUN Bharat — Guidelines for Implementation (MoE, 2021)"
+  title: "NIPUN Bharat — Guidelines for Implementation (Ministry of Education, 2021)"
   short_hi: "निपुण भारत दिशानिर्देश"
   file: nipun_bharat_guidelines.pdf
-  url: "TODO(human)"
-  sha256: "TODO(human): sha256 of downloaded official PDF"
-  as_of_date: "2026-10-18"
-  lang: hi
-  licence_note: "Government of India publication — used for non-commercial educational purposes"
-
-- id: up_ganit_sandarshika_c2
-  title: "UP Basic Shiksha Shikshak Sandarshika, Ganit, Class 2"
-  short_hi: "गणित संदर्शिका कक्षा 2 (उ.प्र.)"
-  file: up_ganit_sandarshika_c2.pdf
-  url: "TODO(human)"
-  sha256: "TODO(human): sha256 of downloaded official PDF"
-  as_of_date: "2026-10-18"
-  lang: hi
-  licence_note: "UP Basic Shiksha Parishad publication"
-
-- id: up_bhasha_sandarshika_c1
-  title: "UP Basic Shiksha Shikshak Sandarshika, Bhasha, Class 1"
-  short_hi: "भाषा संदर्शिका कक्षा 1 (उ.प्र.)"
-  file: up_bhasha_sandarshika_c1.pdf
-  url: "TODO(human)"
-  sha256: "TODO(human): sha256 of downloaded official PDF"
-  as_of_date: "2026-10-18"
-  lang: hi
-  licence_note: "UP Basic Shiksha Parishad publication"
+  url: "https://diksha.gov.in/assets/docs/NIPUN-BHARAT-GUIDELINES-EN.pdf"
+  sha256: "496edd51fb995592452d86f1ba67c50fce2a50405e65945d4221c69e0b2145d6"
+  as_of_date: "2026-10-22"
+  lang: en
+  pages: 332
+  ingest: true
+  licence_note: "Government of India (MoE) publication. Short excerpts are shown with citation for teacher training; check the publisher's terms before any wider redistribution."
 
 - id: ncert_vidya_pravesh
-  title: "NCERT Vidya Pravesh Guidelines"
+  title: "NCERT — Vidya Pravesh: Guidelines for Three-Month Play-Based School Preparation Module for Grade I"
   short_hi: "विद्या प्रवेश (NCERT)"
   file: ncert_vidya_pravesh.pdf
-  url: "TODO(human)"
-  sha256: "TODO(human): sha256 of downloaded official PDF"
-  as_of_date: "2026-10-18"
-  lang: hi
-  licence_note: "NCERT publication"
+  url: "https://diksha.gov.in/assets/docs/vidyapravesh.pdf"
+  sha256: "5bd0e7cba5b777e3a109df7633d9cb9a1615011d7cdfc27c39eead67abf2d92b"
+  as_of_date: "2026-10-22"
+  lang: en
+  pages: 56
+  ingest: true
+  licence_note: "NCERT publication. Short excerpts are shown with citation for teacher training; check the publisher's terms before any wider redistribution."
 
-- id: ncert_fln_learning_outcomes
-  title: "NCERT FLN Learning Outcomes"
-  short_hi: "बुनियादी अधिगम प्रतिफल (NCERT)"
-  file: ncert_fln_learning_outcomes.pdf
-  url: "TODO(human)"
-  sha256: "TODO(human): sha256 of downloaded official PDF"
-  as_of_date: "2026-10-18"
+- id: up_ganit_sandarshika_c1
+  title: "UP Samagra Shiksha — Shikshak Sandarshika, Ganit (Mathematics), Grade 1"
+  short_hi: "गणित संदर्शिका कक्षा 1 (उ.प्र.)"
+  file: up_ganit_sandarshika_c1.pdf
+  url: "not recorded"
+  sha256: "f269e7e4cad01ffd6ab29ebde39d280cf000984bc4be0113697c9acca61714ab"
+  as_of_date: "2026-10-22"
   lang: hi
-  licence_note: "NCERT publication"
+  pages: 112
+  ingest: false
+  ingest_note: "Text layer uses a legacy non-Unicode Hindi font (private-use codepoints); no OCR engine available. Not searchable."
+  licence_note: "UP Samagra Shiksha publication; terms not recorded."
+
+- id: up_bhasha_sandarshika_c1
+  title: "UP Samagra Shiksha — Shikshak Sandarshika, Bhasha (Language), Grade 1"
+  short_hi: "भाषा संदर्शिका कक्षा 1 (उ.प्र.)"
+  file: up_bhasha_sandarshika_c1.pdf
+  url: "not recorded"
+  sha256: "834b7eac174fe8457fac1fedd28e410a1a75be5a312e7a20960b762454d38aee"
+  as_of_date: "2026-10-22"
+  lang: hi
+  pages: 156
+  ingest: false
+  ingest_note: "Text layer uses legacy Chanakya-style fonts (Latin glyph text, no Devanagari); no OCR engine available. Not searchable."
+  licence_note: "UP Samagra Shiksha publication; terms not recorded."
+
+- id: nishtha_fln
+  title: "NCERT — NISHTHA FLN (Foundational Literacy and Numeracy) training package, English"
+  short_hi: "निष्ठा एफ़एलएन (NCERT)"
+  file: nishtha_fln.pdf
+  url: "https://ciet.ncert.gov.in/storage/app/public/files/17/Nishtha/NISHTHA_FLN_ENGLISH.pdf"
+  sha256: "not available (file not supplied)"
+  as_of_date: "2026-10-22"
+  lang: en
+  ingest: false
+  ingest_note: "PDF not supplied; skipped. Drop the file in content/sources/, fill sha256, set ingest: true and run make content-ingest."
+  licence_note: "NCERT publication; terms not recorded."

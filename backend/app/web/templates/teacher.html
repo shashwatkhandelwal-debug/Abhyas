@@ -95,6 +95,12 @@
           </div>
           {% endif %}
 
+          {% if msg.citations %}
+          <div class="bubble-sources">
+            {% for c in msg.citations %}<button type="button" class="source-chip" data-chunk-id="{{ c.chunk_id }}" aria-expanded="false">{{ c.line_hi }}</button>{% endfor %}
+          </div>
+          {% endif %}
+
           <div class="bubble-meta">
             <span>{{ msg.time_str or "अभी" }}</span>
             {% if msg.direction == "in" %}<span class="status-icon sent" data-state="sent" role="img" aria-label="{{ (ui_strings or {}).get('ui_chat_msg_sent', '') }}">✓</span>{% else %}<span class="status-icon"></span>{% endif %}

@@ -1624,7 +1624,7 @@ For every move file:
   file: nipun_bharat_guidelines.pdf        # HUMAN INPUT: place file
   lang: hi | en
   licence_note: "Government of India publication — used for non-commercial educational purposes"
-- id: up_ganit_sandarshika_c2              # UP Basic Shiksha teacher guide (Shikshak Sandarshika), Maths, Class 2
+- id: up_ganit_sandarshika_c1              # UP Basic Shiksha teacher guide (Shikshak Sandarshika), Maths, Class 2
 - id: up_bhasha_sandarshika_c1             # Hindi language teacher guide, Class 1
 - id: ncert_vidya_pravesh
 - id: ncert_fln_learning_outcomes
@@ -2319,7 +2319,7 @@ title_hi: "हासिल वाला जोड़: 10 तीलियों �
 summary_hi: "जब इकाई का जोड़ 10 या उससे ज़्यादा हो, तो 10 तीलियों का नया बंडल बनवाएँ और उसे दहाई में जोड़ें।"
 tags: [addition, regrouping, carry, place_value, ganit]
 module_ref:
-  source_id: up_ganit_sandarshika_c2
+  source_id: up_ganit_sandarshika_c1
   section: "जोड़ (हासिल सहित)"
   page: null
   verified: false
@@ -2448,7 +2448,7 @@ title_hi: "स्थानीय मान: बंडल और खुली त
 summary_hi: "बंडल (दहाई) और खुली तीलियों (इकाई) से दो अंकों की संख्या बनवाएँ और बच्चे से पूछें कि उसने संख्या कैसे लिखी।"
 tags: [place_value, number_sense, ganit]
 module_ref:
-  source_id: up_ganit_sandarshika_c2
+  source_id: up_ganit_sandarshika_c1
   section: "स्थानीय मान (दहाई-इकाई)"
   page: null
   verified: false
@@ -2572,7 +2572,7 @@ title_hi: "हासिल वाला घटाव: बंडल खोलक�
 summary_hi: "जब इकाई में ऊपर की संख्या छोटी हो, तो बच्चे से उसका तरीका पूछें और 10-10 तीलियों के बंडल खोलकर घटाव समझाएँ।"
 tags: [subtraction, regrouping, place_value, ganit]
 module_ref:
-  source_id: up_ganit_sandarshika_c2
+  source_id: up_ganit_sandarshika_c1
   section: "घटाव (हासिल सहित)"
   page: null
   verified: false
