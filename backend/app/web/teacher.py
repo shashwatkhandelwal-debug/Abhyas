@@ -37,6 +37,7 @@ from backend.app.auth.csrf import (
 )
 from backend.app.auth.guards import get_current_user, require_role
 from backend.app.auth.session import clear_session_cookie
+from backend.app.channels.web import WebChannel
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
 from backend.app.core.messages import get_message, texts_for_lang
@@ -55,6 +56,9 @@ from backend.app.db.models import (
 from backend.app.db.session import get_db_session
 from backend.app.privacy.purge import purge_teacher_data
 from backend.app.rehearsal.header import scene_header
+from backend.app.sessions.modules import MODULE_STEPS, module_ids, module_views
+from backend.app.sessions.repository import SessionRepository
+from backend.app.sessions.service import SessionService
 from backend.app.web.chat_api import get_teacher_for_user
 from backend.app.web.ui_lang import register_ui_globals
 
@@ -498,6 +502,63 @@ async def teacher_progress_page(
     if token_to_set:
         set_csrf_cookie(response, token_to_set)
     return response
+
+
+@router.get("/teacher/modules", response_class=HTMLResponse)
+async def teacher_modules_page(
+    request: Request,
+    current_user: Annotated[AppUser, Depends(require_role("teacher"))],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> Response:
+    """Module picker: the three numeracy modules with step-by-step progress."""
+    teacher = await get_teacher_for_user(current_user, db, request=request)
+    rows = await SessionRepository(db).get_module_progress(teacher.id)
+    csrf_token = request.cookies.get(CSRF_COOKIE_NAME)
+    token_to_set: str | None = None
+    if not csrf_token:
+        csrf_token = generate_csrf_token()
+        token_to_set = csrf_token
+    response = templates.TemplateResponse(
+        request=request,
+        name="modules.html",
+        context={
+            "request": request,
+            "csrf_token": csrf_token,
+            "teacher_name": teacher.name or get_message("ui_default_teacher_name"),
+            "modules": module_views({r.module_id: r for r in rows}),
+            "steps": MODULE_STEPS,
+            "step_labels": {
+                "learn": get_message("ui_modules_step_learn"),
+                "diagnose": get_message("ui_modules_step_diagnose"),
+                "practise": get_message("ui_modules_step_practise"),
+                "check": get_message("ui_modules_step_check"),
+            },
+            "demo_mode": bool(current_user.is_demo or teacher.is_demo),
+            "demo_banner_text": get_message("ui_demo_banner"),
+        },
+    )
+    if token_to_set:
+        set_csrf_cookie(response, token_to_set)
+    return response
+
+
+@router.post("/teacher/modules/{module_id}/start")
+async def start_teacher_module(
+    module_id: str,
+    request: Request,
+    current_user: Annotated[AppUser, Depends(require_role("teacher"))],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> Response:
+    """Starts (or restarts) a module: the chat opens on its learn step."""
+    await verify_csrf_token(request)
+    if module_id not in module_ids():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown module")
+    teacher = await get_teacher_for_user(current_user, db, request=request)
+    service = SessionService(db_session=db)
+    outbound = await service.start_module(teacher.id, module_id)
+    await WebChannel().send(teacher, outbound, session=db)
+    await db.commit()
+    return RedirectResponse(url="/teacher", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/teacher/consent")

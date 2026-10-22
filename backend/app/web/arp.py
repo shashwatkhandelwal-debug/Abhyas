@@ -41,6 +41,7 @@ from backend.app.db.models import (
 )
 from backend.app.db.session import get_db_session
 from backend.app.reports.arp_digest import build_arp_digest
+from backend.app.reports.module_progress import module_progress_summary
 from backend.app.web.ui_lang import register_ui_globals
 
 logger = logging.getLogger("abhyas.web.arp")
@@ -72,6 +73,9 @@ async def get_arp_dashboard(
 
     digest_data = await build_arp_digest(db, current_user, week_start=selected_week)
 
+    # Module progress of the consenting teachers in this cluster (pilot and demo labelled)
+    modules = await module_progress_summary(db, cluster_id=current_user.cluster_id)
+
     csrf_token = request.cookies.get(CSRF_COOKIE_NAME)
     token_to_set: str | None = None
     if not csrf_token:
@@ -96,6 +100,8 @@ async def get_arp_dashboard(
         context={
             "request": request,
             "digest": digest_data,
+            "modules": modules,
+            "suppression_message": "",
             "user": current_user,
             "csrf_token": csrf_token,
             "get_message": get_message,

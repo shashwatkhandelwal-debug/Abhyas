@@ -501,6 +501,39 @@ class RealismRating(Base):
     )
 
 
+class ModuleProgress(Base):
+    """One teacher's progress through one module: learn, diagnose a child (1-1), practise, check."""
+
+    __tablename__ = "module_progress"
+    __table_args__ = (
+        CheckConstraint(
+            "diagnose_verdict IS NULL OR diagnose_verdict IN ('correct', 'partly', 'wrong', 'skipped')",
+            name="check_module_progress_verdict",
+        ),
+    )
+
+    teacher_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("teacher.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    module_id: Mapped[str] = mapped_column(Text, primary_key=True)  # the move id
+    learn_done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    diagnose_done_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    diagnose_verdict: Mapped[str | None] = mapped_column(Text, nullable=True)
+    practise_done_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    check_done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    check_passed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    check_covered: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
 class TrainingRating(Base):
     """End-of-week "rate the training" feedback: 1-5 usefulness plus an optional one-line comment."""
 

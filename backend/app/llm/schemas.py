@@ -141,6 +141,13 @@ class CoachSuggestionOutput(BaseModel):
     chunk_id: str = ""
 
 
+class ModuleCheckOutput(BaseModel):
+    """Output schema for module_check: which key points the teacher's closing answer shows."""
+
+    covered_point_ids: list[str] = Field(default_factory=list)
+    reply_hi: str = ""
+
+
 class GuideAnswererOutput(BaseModel):
     """Output schema for guide_answerer role (spec/05 §5.8)."""
 

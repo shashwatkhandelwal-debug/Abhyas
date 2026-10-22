@@ -233,6 +233,15 @@ class Settings(BaseSettings):
     # cites (excerpt text, heading and Hindi gloss/keywords); otherwise it is not grounded in them.
     GUIDE_MIN_ANSWER_OVERLAP_TERMS: int = 2
     COACH_SUGGESTION_MAX_WORDS: int = 35
+    # Modules offered in the picker (a module is a move card with a one-on-one rubric)
+    MODULE_IDS: tuple[str, ...] = (
+        "NUM_SUB_REGROUP_BUNDLES",
+        "NUM_ADD_CARRY_BUNDLES",
+        "NUM_PLACE_VALUE_BUNDLES",
+    )
+    MODULE_CHECK_REPLY_MAX_WORDS: int = 40
+    MODULE_CHECK_PASS_MUST_HAVE: int = 2  # must-have key points the closing answer must show
+    MODULE_CHECK_MIN_ANSWER_WORDS: int = 4
     COACH_SUGGESTION_SOURCE_ID: str = "nishtha_fln"  # the FLN training package grounds the tip
     COACH_SUGGESTION_CANDIDATES: int = 3
     COACH_SUGGESTION_POOL: int = 60  # retrieved before keeping only the FLN package's chunks

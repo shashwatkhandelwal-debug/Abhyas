@@ -1,0 +1,44 @@
+{# Module progress per module and label (pilot / demo). Context: modules (list[ModuleGroupRow]), suppression_message, get_message. No teacher identity is shown. #}
+<section class="card table-card" id="module-progress" aria-label="{{ get_message('ui_modprog_title') }}" style="margin: 1rem 0; padding: 1rem 1.25rem; background: var(--surface, #fff); border: 1px solid var(--border, #ddd); border-radius: 12px;">
+  <h2 style="margin: 0 0 0.25rem 0; font-size: 1.1rem;">{{ get_message("ui_modprog_title") }}</h2>
+  <p style="margin: 0 0 0.75rem 0; color: var(--muted, #5E6662); font-size: 0.9rem;">{{ get_message("ui_modprog_desc") }}</p>
+  {% if not modules %}
+    <p style="margin: 0; color: var(--muted, #5E6662);">{{ get_message("ui_modprog_none") }}</p>
+  {% else %}
+  <div style="overflow-x: auto;">
+  <table class="data-table" style="width: 100%;">
+    <thead>
+      <tr>
+        <th>{{ get_message("ui_modprog_col_module") }}</th>
+        <th>{{ get_message("ui_modprog_col_source") }}</th>
+        <th>{{ get_message("ui_modprog_col_teachers") }}</th>
+        <th>{{ get_message("ui_modprog_step_learn") }}</th>
+        <th>{{ get_message("ui_modprog_step_diagnose") }}</th>
+        <th>{{ get_message("ui_modprog_step_practise") }}</th>
+        <th>{{ get_message("ui_modprog_step_check") }}</th>
+        <th>{{ get_message("ui_modprog_col_passed") }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in modules %}
+      <tr data-module="{{ m.module_id }}" data-label="{{ m.label }}">
+        <td>{{ m.title_hi }}</td>
+        <td><span class="module-label module-label-{{ m.label }}">{% if m.label == "pilot" %}{{ get_message("ui_modprog_label_pilot") }}{% else %}{{ get_message("ui_modprog_label_demo") }}{% endif %}</span></td>
+        {% if m.suppressed %}
+        <td>{{ m.teachers }}</td>
+        <td colspan="5" style="color: var(--muted, #5E6662);">{{ suppression_message }}</td>
+        {% else %}
+        <td>{{ m.teachers }}</td>
+        <td>{{ m.steps.learn }}</td>
+        <td>{{ m.steps.diagnose }}</td>
+        <td>{{ m.steps.practise }}</td>
+        <td>{{ m.steps.check }}</td>
+        <td>{{ m.passed }}</td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% endif %}
+</section>

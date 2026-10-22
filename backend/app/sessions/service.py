@@ -33,6 +33,7 @@ from backend.app.llm.roles.guide_answerer import (
     compose_guide_reply,
     format_guide_citation,
 )
+from backend.app.llm.roles.module_check import check_module
 from backend.app.llm.roles.question_classifier import classify_question
 from backend.app.llm.schemas import RetrievedChunk
 from backend.app.rehearsal.diagnosis import DiagnosisResult
@@ -46,7 +47,7 @@ from backend.app.rule_engine.domain import (
     SceneTurn,
     TeachingAct,
 )
-from backend.app.sessions import rehearse_setup
+from backend.app.sessions import modules, rehearse_setup
 from backend.app.sessions.path import compute_move_path, load_induction_order
 from backend.app.sessions.repository import SessionRepository
 from backend.app.sessions.state_machine import (
@@ -162,6 +163,8 @@ class SessionService:
             rating_stage=str(ctx_data.get("rating_stage", "")),
             rating_level=int(ctx_data.get("rating_level", 0)),
             rating_unclear=int(ctx_data.get("rating_unclear", 0)),
+            module_mode=bool(ctx_data.get("module_mode", False)),
+            module_check_stage=str(ctx_data.get("module_check_stage", "")),
             rehearse_stage=str(ctx_data.get("rehearse_stage", "")),
             rehearse_mode=str(ctx_data.get("rehearse_mode", "")),
             rehearse_child=str(ctx_data.get("rehearse_child", "")),
@@ -225,6 +228,8 @@ class SessionService:
             "rating_stage": ctx.rating_stage,
             "rating_level": ctx.rating_level,
             "rating_unclear": ctx.rating_unclear,
+            "module_mode": ctx.module_mode,
+            "module_check_stage": ctx.module_check_stage,
             "rehearse_stage": ctx.rehearse_stage,
             "rehearse_mode": ctx.rehearse_mode,
             "rehearse_child": ctx.rehearse_child,
@@ -451,6 +456,78 @@ class SessionService:
         return [thanks, *await self._week_done_messages(ctx, teacher_id, level)]
 
     async def handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
+        """Handles one teacher message, then records which module steps it completed."""
+        out = await self._handle_inbound(inbound)
+        try:
+            await self._track_module_progress(inbound.teacher_id)
+        except SQLAlchemyError:
+            logger.warning("module progress tracking failed", exc_info=True)
+        return out
+
+    async def _track_module_progress(self, teacher_id: UUID) -> None:
+        """Derives module step completion from where the weekly loop now is (never undone)."""
+        ctx = await self.get_or_create_context(teacher_id)
+        if ctx.onboarding_state != OnboardingStateEnum.READY:
+            return
+        module_id = ctx.current_move_id
+        if module_id not in modules.module_ids():
+            return
+        learned = ctx.current_state not in (
+            SessionStateEnum.LEARN,
+            SessionStateEnum.EXPLAIN_BACK,
+            SessionStateEnum.ASK,
+        )
+        if learned:
+            await self.repo.mark_module_step(teacher_id, module_id, modules.STEP_LEARN)
+        if ctx.rehearse_mode == rehearse_setup.MODE_ONE_ON_ONE and ctx.diagnosis:
+            verdict = "skipped" if ctx.diagnosis.get("skipped") else ctx.diagnosis.get("verdict")
+            await self.repo.mark_module_step(
+                teacher_id, module_id, modules.STEP_DIAGNOSE, verdict=verdict
+            )
+            if ctx.current_state in (
+                SessionStateEnum.FEEDBACK,
+                SessionStateEnum.TRY_IN_CLASS,
+                SessionStateEnum.REFLECT_PEER,
+                SessionStateEnum.REFLECT_SELF,
+                SessionStateEnum.DONE,
+            ):
+                await self.repo.mark_module_step(teacher_id, module_id, modules.STEP_PRACTISE)
+
+    async def start_module(self, teacher_id: UUID, module_id: str) -> list[OutboundMessage]:
+        """Picker to chat: restart the weekly loop on this module (learn step first)."""
+        if module_id not in modules.module_ids():
+            raise ValueError(f"unknown module: {module_id}")
+        ctx = await self.get_or_create_context(teacher_id)
+        address_form = ctx.address_form
+        ctx.current_move_id = module_id
+        ctx.current_state = SessionStateEnum.LEARN
+        ctx.rehearsal_turns_count = 0
+        ctx.retries_count = 0
+        ctx.rating_stage = ""
+        ctx.rehearse_stage = rehearse_setup.STAGE_NONE
+        ctx.rehearse_mode = ""
+        ctx.rehearse_child = ""
+        ctx.diagnosis = {}
+        ctx.module_mode = True
+        ctx.module_check_stage = modules.CHECK_IDLE
+        await self._sync_context_to_db(ctx, teacher_id)
+        move = load_move_card(module_id)
+        intro_text, intro_cites = await self._learn_intro(move, address_form)
+        return [
+            OutboundMessage(
+                kind="text",
+                text_hi=intro_text,
+                citations=intro_cites,
+                buttons=[
+                    Button(
+                        id="btn_understood", title_hi=get_message("btn_understood", address_form)
+                    ),
+                    Button(id="btn_replay", title_hi=get_message("btn_replay", address_form)),
+                ],
+            )
+        ]
+
+    async def _handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
         """Dispatches an inbound teacher message through conversation flow and persists side effects."""
         teacher_id = inbound.teacher_id
         ctx = await self.get_or_create_context(teacher_id)
@@ -1488,6 +1565,42 @@ class SessionService:
 
         elif curr == SessionStateEnum.FEEDBACK:
             move = load_move_card(ctx.current_move_id)
+            if ctx.module_mode and ctx.module_check_stage == modules.CHECK_ASKING:
+                if matched_intent == Intent.NEXT or btn_id == "btn_continue":
+                    ctx.module_check_stage = modules.CHECK_DONE  # skipped: the module stays open
+                    await self._sync_context_to_db(ctx, teacher_id)
+                elif matched_intent != Intent.RETRY and btn_id != "btn_retry" and text_content:
+                    check = await check_module(
+                        move,
+                        text_content,
+                        get_message("module_check_prompt", address_form, move_title=move.title_hi),
+                        address_form,
+                    )
+                    await self.repo.mark_module_step(
+                        teacher_id,
+                        ctx.current_move_id,
+                        modules.STEP_CHECK,
+                        passed=check.passed,
+                        covered=check.covered,
+                    )
+                    ctx.module_check_stage = modules.CHECK_DONE
+                    await self._sync_context_to_db(ctx, teacher_id)
+                    done_key = (
+                        "module_check_done_pass" if check.passed else "module_check_done_more"
+                    )
+                    return [
+                        OutboundMessage(kind="text", text_hi=check.reply_hi, speaker="coach"),
+                        OutboundMessage(
+                            kind="buttons",
+                            text_hi=get_message(done_key, address_form),
+                            buttons=[
+                                Button(
+                                    id="btn_continue",
+                                    title_hi=get_message("btn_continue", address_form),
+                                )
+                            ],
+                        ),
+                    ]
             if matched_intent == Intent.RETRY or btn_id == "btn_retry":
                 res = wsm.transition("btn_retry")
                 await self._sync_context_to_db(ctx, teacher_id)
@@ -1515,6 +1628,22 @@ class SessionService:
                             Button(id="btn_later", title_hi=get_message("btn_later", address_form)),
                         ],
                     ),
+                ]
+            if (
+                (matched_intent == Intent.NEXT or btn_id == "btn_continue")
+                and ctx.module_mode
+                and ctx.module_check_stage == modules.CHECK_IDLE
+            ):
+                # Module closing check: one question in the teacher's own words, then the loop goes on
+                ctx.module_check_stage = modules.CHECK_ASKING
+                await self._sync_context_to_db(ctx, teacher_id)
+                return [
+                    OutboundMessage(
+                        kind="text",
+                        text_hi=get_message(
+                            "module_check_prompt", address_form, move_title=move.title_hi
+                        ),
+                    )
                 ]
             if matched_intent == Intent.NEXT or btn_id == "btn_continue":
                 wsm.transition("btn_continue")

@@ -27,6 +27,7 @@ from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
     Message,
+    ModuleProgress,
     MovePath,
     Question,
     RealismRating,
@@ -152,6 +153,16 @@ async def _snapshot(session: AsyncSession, teacher_id: UUID) -> dict[str, Any]:
         "ratings": await ids(RealismRating),
         "training_ratings": await ids(TrainingRating),
         "evidence": await ids(AdoptionEvidence),
+        "module_progress": sorted(
+            (m.module_id, m.check_passed, m.diagnose_verdict)
+            for m in (
+                await session.execute(
+                    select(ModuleProgress).where(ModuleProgress.teacher_id == teacher_id)
+                )
+            )
+            .scalars()
+            .all()
+        ),
     }
 
 
@@ -204,6 +215,20 @@ async def _dirty(session: AsyncSession, teacher_id: UUID) -> None:
     session.add(RealismRating(teacher_id=teacher_id, scene_id=scene.id, rating=4))
     session.add(TrainingRating(teacher_id=teacher_id, rating=5, comment="बहुत अच्छा"))
     session.add(Question(teacher_id=teacher_id, text="नया सवाल", status="answered"))
+    # module progress: demo3 already has the row (seeded complete), the others get a new one
+    mp = await session.get(ModuleProgress, (teacher_id, "NUM_SUB_REGROUP_BUNDLES"))
+    if mp is None:
+        session.add(
+            ModuleProgress(
+                teacher_id=teacher_id,
+                module_id="NUM_SUB_REGROUP_BUNDLES",
+                learn_done_at=now,
+                check_passed=True,
+            )
+        )
+    else:
+        mp.check_passed = False
+        mp.diagnose_verdict = "wrong"
     session.add(
         AdoptionEvidence(teacher_id=teacher_id, move_id="NUM_SUB_REGROUP_BUNDLES", level=1,
                          source="rehearsal", detail={}, created_at=now)

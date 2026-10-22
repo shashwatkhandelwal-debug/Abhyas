@@ -16,6 +16,7 @@ from backend.app.db.models import (
     ConsentLog,
     ExplainScore,
     InviteCode,
+    ModuleProgress,
     MovePath,
     Question,
     RealismRating,
@@ -419,6 +420,7 @@ class FakeSessionRepository(SessionRepository):
         self._move_paths: list[MovePath] = []
         self._realism_ratings: list[RealismRating] = []
         self._training_ratings: list[TrainingRating] = []
+        self._module_progress: dict[tuple[UUID, str], ModuleProgress] = {}
         self._invite_codes: dict[str, InviteCode] = {
             "KNP-C01-B1": InviteCode(
                 code="KNP-C01-B1",
@@ -623,6 +625,35 @@ class FakeSessionRepository(SessionRepository):
         )
         self._realism_ratings.append(rr)
         return rr
+
+    async def get_module_progress(
+        self, teacher_id: UUID, module_id: str | None = None
+    ) -> list[ModuleProgress]:
+        return [
+            r
+            for (tid, mid), r in self._module_progress.items()
+            if tid == teacher_id and (module_id is None or mid == module_id)
+        ]
+
+    async def mark_module_step(
+        self, teacher_id: UUID, module_id: str, step: str, **data: Any
+    ) -> ModuleProgress:
+        now = datetime.now(UTC)
+        row = self._module_progress.setdefault(
+            (teacher_id, module_id), ModuleProgress(teacher_id=teacher_id, module_id=module_id)
+        )
+        if step == "learn":
+            row.learn_done_at = row.learn_done_at or now
+        elif step == "diagnose":
+            row.diagnose_done_at = row.diagnose_done_at or now
+            row.diagnose_verdict = data.get("verdict") or row.diagnose_verdict
+        elif step == "practise":
+            row.practise_done_at = row.practise_done_at or now
+        elif step == "check":
+            row.check_done_at = row.check_done_at or now
+            row.check_passed = bool(data.get("passed"))
+            row.check_covered = list(data.get("covered") or [])
+        return row
 
     async def record_training_rating(
         self, teacher_id: UUID, rating: int, move_id: str | None = None

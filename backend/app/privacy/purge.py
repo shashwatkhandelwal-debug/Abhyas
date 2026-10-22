@@ -31,6 +31,7 @@ from backend.app.db.models import (
     ConsentLog,
     ExplainScore,
     Message,
+    ModuleProgress,
     MovePath,
     Question,
     RealismRating,
@@ -42,6 +43,7 @@ from backend.app.db.models import (
     Teacher,
     TeacherContact,
     TemplateSend,
+    TrainingRating,
     Turn,
 )
 
@@ -72,6 +74,8 @@ async def purge_teacher_data(db: AsyncSession, teacher_id: uuid.UUID) -> None:
     await db.execute(delete(RehearsalScore).where(RehearsalScore.teacher_id == teacher_id))
     await db.execute(delete(RealismRating).where(RealismRating.teacher_id == teacher_id))
     await db.execute(delete(Scene).where(Scene.teacher_id == teacher_id))
+    await db.execute(delete(TrainingRating).where(TrainingRating.teacher_id == teacher_id))
+    await db.execute(delete(ModuleProgress).where(ModuleProgress.teacher_id == teacher_id))
 
     # 3. Explain-back scores
     await db.execute(delete(ExplainScore).where(ExplainScore.teacher_id == teacher_id))

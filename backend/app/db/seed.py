@@ -38,6 +38,7 @@ from backend.app.db.models import (
     ExplainScore,
     InviteCode,
     Message,
+    ModuleProgress,
     MovePath,
     Question,
     RealismRating,
@@ -280,6 +281,30 @@ async def _seed_demo2_one_on_one(session: AsyncSession, *, replace: bool = False
     await session.flush()
 
 
+async def _seed_demo3_modules(session: AsyncSession) -> None:
+    """demo3 finished three modules: every step done, the check passed."""
+    now = datetime.now(UTC)
+    for idx, (m_id, _lvl, _src) in enumerate(_DEMO3_COMPLETED_MOVES):
+        if await session.get(ModuleProgress, (TEACHER_DEMO3_ID, m_id)) is not None:
+            continue
+        stamp = now - timedelta(days=(3 - idx) * 7)
+        session.add(
+            ModuleProgress(
+                teacher_id=TEACHER_DEMO3_ID,
+                module_id=m_id,
+                learn_done_at=stamp,
+                diagnose_done_at=stamp,
+                diagnose_verdict="correct",
+                practise_done_at=stamp,
+                check_done_at=stamp,
+                check_passed=True,
+                check_covered=["kp1", "kp2", "kp3"],
+                updated_at=stamp,
+            )
+        )
+    await session.flush()
+
+
 async def _seed_demo2_session_state(session: AsyncSession) -> None:
     """demo2 starts the current week in REHEARSE (attempt 1)."""
     today = date.today()
@@ -318,6 +343,7 @@ async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
     await session.execute(delete(Message).where(Message.teacher_id == teacher_id))
     await session.execute(delete(SessionState).where(SessionState.teacher_id == teacher_id))
     await session.execute(delete(MovePath).where(MovePath.teacher_id == teacher_id))
+    await session.execute(delete(ModuleProgress).where(ModuleProgress.teacher_id == teacher_id))
     await session.execute(delete(Question).where(Question.teacher_id == teacher_id))
     await session.execute(delete(RealismRating).where(RealismRating.teacher_id == teacher_id))
     await session.execute(delete(TrainingRating).where(TrainingRating.teacher_id == teacher_id))
@@ -391,6 +417,7 @@ async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
         await _seed_demo2_session_state(session)
         await _seed_demo2_one_on_one(session, replace=True)
     if teacher_id == TEACHER_DEMO3_ID:
+        await _seed_demo3_modules(session)
         for idx, (m_id, _lvl, _src) in enumerate(_DEMO3_COMPLETED_MOVES):
             session.add(
                 MovePath(
@@ -532,6 +559,8 @@ async def seed_database() -> None:
         # 5. Session State for demo2 (in REHEARSE)
         await _seed_demo2_session_state(session)
         await _seed_demo2_one_on_one(session)
+
+        await _seed_demo3_modules(session)
 
         # 6. Completed moves and Adoption Evidence for demo3
         for idx, (m_id, lvl, src) in enumerate(_DEMO3_COMPLETED_MOVES):

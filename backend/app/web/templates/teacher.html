@@ -35,6 +35,7 @@
 
       <!-- Header Menu Dropdown -->
       <nav class="menu-dropdown" id="menu-dropdown" aria-label="{{ get_message('ui_chat_main_menu') }}">
+        <a href="/teacher/modules" class="menu-item">{{ get_message('ui_chat_menu_modules') }}</a>
         <a href="/teacher/progress" class="menu-item">{{ get_message('ui_chat_menu_progress') }}</a>
         <button type="button" class="menu-item" id="lite-mode-menu-btn" onclick="toggleLiteMode()">
           {{ get_message('ui_chat_lite_on') if lite_mode else get_message('ui_chat_lite_off') }}

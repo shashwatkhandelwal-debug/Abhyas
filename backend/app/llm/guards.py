@@ -22,6 +22,7 @@ from backend.app.llm.schemas import (
     FidelityCheckerOutput,
     GuideAnswererOutput,
     IntentRouterOutput,
+    ModuleCheckOutput,
     PageOCROutput,
     QuestionClassifierOutput,
     RetrievedChunk,
@@ -461,6 +462,23 @@ def guard_coach_suggestion(
     excerpt_terms = set(index_terms(tokenize_hindi(excerpt, filter_stopwords=True)))
     if len(terms & excerpt_terms) < settings.GUIDE_MIN_ANSWER_OVERLAP_TERMS:
         return False, "Suggestion is not grounded in the cited excerpt"
+    return True, "Valid"
+
+
+def guard_module_check(output: ModuleCheckOutput, valid_ids: list[str]) -> tuple[bool, str]:
+    """Only real key-point ids; a short, respectful reply."""
+    unknown = [i for i in output.covered_point_ids if i not in valid_ids]
+    if unknown:
+        return False, f"covered_point_ids not in the module's key points: {unknown}"
+    if len(set(output.covered_point_ids)) != len(output.covered_point_ids):
+        return False, "covered_point_ids has duplicates"
+    words = output.reply_hi.split()
+    if not words:
+        return False, "Empty reply"
+    if len(words) > settings.MODULE_CHECK_REPLY_MAX_WORDS:
+        return False, f"Reply exceeds {settings.MODULE_CHECK_REPLY_MAX_WORDS} words"
+    if set(norm(output.reply_hi).split()) & DISRESPECTFUL_WORDS:
+        return False, "Disrespectful register: reply must not use तुम/तुमने"
     return True, "Valid"
 
 

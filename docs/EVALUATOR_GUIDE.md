@@ -28,6 +28,17 @@ whose answers come from a rule engine, never from the language model, and gets c
 | `coach.demo` | `<DEMO_PASSWORD>` | `/review` | **Coach review console**: queue of AI scores and escalations that need a human look, per-item resolve, calibration labelling, move-card review. |
 | `admin` | `<ADMIN_PASSWORD>` | `/admin` | **Admin dashboard**: latency, token use, guard results, scheduler jobs, WhatsApp templates, the **training ratings** card (all teachers, no suppression) and the demo controls (*Reset demo*, *fast-forward*). |
 
+## Modules
+
+Chat menu (☰) → **मॉड्यूल / Modules** (`/teacher/modules`) lists the three numeracy modules (subtraction with
+regrouping first). Each has four steps: **learn → spot a child's confusion (1-1) → practise → check**. *Start*
+opens the chat on the learn step; the 1-1 diagnosis and scene are the ones described above; after the coach
+feedback, *Continue* asks one closing question in your own words, which a guarded model (with a keyword
+fallback) checks against the module's key points. The page ticks each step as it is completed. `trainer.demo`
+and `arp.demo` show a **Module progress** card (consenting teachers only, counts only, small groups hidden on
+the trainer page); rows are labelled **Pilot** (real teachers) or **Demo (synthetic)** (the fictional cohort and
+the shared demo logins). `teacher.demo3` starts with all three modules complete.
+
 ## A suggested hour
 
 1. **teacher.demo2 (10 min).** Continue the 1-1 scene with Ravi using the sample chips (including the Hinglish
