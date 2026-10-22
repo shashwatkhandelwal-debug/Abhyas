@@ -122,6 +122,8 @@ class RetrievedChunk(BaseModel):
     section: str = ""
     page: int | None = None
     text: str
+    gloss_hi: str = ""
+    keywords_hi: list[str] = Field(default_factory=list)
     score: float | None = None
 
 

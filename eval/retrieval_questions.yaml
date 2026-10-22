@@ -39,3 +39,30 @@ negative_questions:
   - "बैंक में खाता कैसे खोलें?"
   - "सरकारी स्कूल में छात्रवृत्ति का फॉर्म कहाँ भरें?"
   - "Python seekhne ke liye best book kaun si hai?"
+
+# 20 more off-topic questions (Hindi, Hinglish, English): sport, politics, food, money, tech, health,
+# and a few that share everyday school words ("school", "fees", "bachche") with the sources but
+# are still not answerable from them. Eval gate: >= 18 of 20 must be rejected (no usable chunk
+# after the retrieval gate) while on-topic recall@5 stays >= 0.90 (eval/retrieval_recall.py).
+offtopic_questions:
+  - {id: o01, lang: hi, q: "विराट कोहली ने सबसे ज़्यादा रन किस मैच में बनाए?"}
+  - {id: o02, lang: hinglish, q: "Aaj ka cricket match kaun jeeta?"}
+  - {id: o03, lang: en, q: "Who won the last Lok Sabha election?"}
+  - {id: o04, lang: hi, q: "चुनाव में वोट डालने के लिए कौन-सा पहचान पत्र चाहिए?"}
+  - {id: o05, lang: hi, q: "पनीर बटर मसाला बनाने की आसान विधि बताइए"}
+  - {id: o06, lang: hinglish, q: "Biryani mein kitna namak aur masala daalein?"}
+  - {id: o07, lang: hi, q: "बच्चों की स्कूल फीस कब जमा करनी होती है?"}
+  - {id: o08, lang: hinglish, q: "School bus ka monthly kiraya kitna hota hai?"}
+  - {id: o09, lang: en, q: "What is the best smartphone under 15000 rupees?"}
+  - {id: o10, lang: hinglish, q: "Mere phone ki battery jaldi khatam ho jaati hai, kya karoon?"}
+  - {id: o11, lang: hi, q: "आज दिल्ली में मौसम कैसा रहेगा?"}
+  - {id: o12, lang: hi, q: "पेट की चर्बी कम करने के लिए कौन-सी कसरत करें?"}
+  - {id: o13, lang: hinglish, q: "Bijli ka bill kaise bharein online?"}
+  - {id: o14, lang: hi, q: "सोना खरीदने का सबसे अच्छा समय कौन-सा है?"}
+  - {id: o15, lang: en, q: "How do I apply for a passport?"}
+  - {id: o16, lang: hi, q: "शिक्षक भर्ती परीक्षा का रिज़ल्ट कब आएगा?"}
+  - {id: o17, lang: hinglish, q: "Mera transfer kab hoga aur pension kitni milegi?"}
+  - {id: o18, lang: hi, q: "बॉलीवुड की सबसे हिट फ़िल्म कौन-सी है?"}
+  - {id: o19, lang: en, q: "Explain how bitcoin mining works"}
+  - {id: o20, lang: hi, q: "गैस सिलेंडर पर सब्सिडी कैसे मिलेगी?"}
+

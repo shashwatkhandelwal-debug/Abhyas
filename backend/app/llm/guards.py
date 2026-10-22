@@ -497,6 +497,21 @@ def guard_guide_answerer(
     if not (0.0 <= output.confidence <= 1.0):
         return False, f"Confidence out of bounds: {output.confidence}"
 
+    # Grounding: the answer must talk about what the cited excerpts talk about
+    from backend.app.retrieval.search import index_terms, tokenize_hindi
+
+    answer_terms = set(index_terms(tokenize_hindi(output.answer_hi, filter_stopwords=True)))
+    excerpt_text = " ".join(
+        f"{c.section} {c.text} {c.gloss_hi} {' '.join(c.keywords_hi)}" for c in cited_chunks
+    )
+    excerpt_terms = set(index_terms(tokenize_hindi(excerpt_text, filter_stopwords=True)))
+    overlap = answer_terms & excerpt_terms
+    if len(overlap) < settings.GUIDE_MIN_ANSWER_OVERLAP_TERMS:
+        return False, (
+            f"Answer shares only {len(overlap)} term(s) with the cited excerpts "
+            f"(need {settings.GUIDE_MIN_ANSWER_OVERLAP_TERMS}); it is not grounded in them"
+        )
+
     return True, "Valid"
 
 

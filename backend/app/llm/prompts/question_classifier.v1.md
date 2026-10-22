@@ -5,8 +5,8 @@ Classify the teacher's question and determine if clarification is needed before 
 Categories:
 1. "pedagogy": Teaching methods, foundational numeracy/literacy (FLN), explaining concepts, handling student learning errors, math/reading activities, teaching-learning materials (TLM).
 2. "classroom_management": Multi-grade teaching, student engagement, seating arrangement, pair/group work, classroom noise and routines.
-3. "admin": Administrative matters, leave, salary, transfers, official departmental orders, BEO/ARP meetings, government portal entries.
-4. "out_of_scope": Topics unrelated to primary education (e.g., weather, politics, personal questions, higher secondary topics).
+3. "admin": The teacher's own service and office matters only: leave, salary, transfers, postings, official departmental orders, BEO/ARP meeting logistics, government portal entries. Questions about what the FLN/NIPUN Bharat/Vidya Pravesh guidelines or modules say (assessment, progress cards, portfolios, records of children's learning, teacher training and capacity building, preparation modules) are "pedagogy", NOT admin.
+4. "out_of_scope": Anything not about teaching, children's learning or running a primary classroom, even if the words sound school-related: sport and cricket, films, politics and elections, cooking and recipes, shopping and phones, banking and money, health and fitness, weather, school fees or bus fares, recruitment exams and results, personal questions, higher secondary topics.
 
 Rules:
 1. If the question is too brief or ambiguous to search relevant teaching guides (e.g., "बच्चे सुनते नहीं", "गिनती कैसे सिखाएँ"), set needs_clarification to true.

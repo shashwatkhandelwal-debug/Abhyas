@@ -465,7 +465,9 @@ class SessionService:
                 ]
 
             # Retrieval
-            chunks = await self.retriever.retrieve(classify_res.output.search_query_hi or q_text)
+            chunks = await self.retriever.retrieve_supported(
+                classify_res.output.search_query_hi or q_text
+            )
             schema_chunks = [
                 RetrievedChunk(
                     chunk_id=c.chunk_id,
@@ -473,10 +475,11 @@ class SessionService:
                     section=c.section,
                     page=c.page,
                     text=c.text,
+                    gloss_hi=c.gloss_hi,
+                    keywords_hi=c.keywords_hi,
                     score=c.similarity_score,
                 )
                 for c in chunks
-                if c.similarity_score >= settings.RETRIEVAL_MIN_SCORE
             ]
 
             # Guide Answerer
