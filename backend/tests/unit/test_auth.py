@@ -16,7 +16,8 @@ from backend.app.auth.csrf import (
 from backend.app.auth.guards import require_role
 from backend.app.auth.rate_limit import (
     MAX_LOGIN_ATTEMPTS_PER_MINUTE,
-    check_login_rate_limit,
+    check_login_allowed,
+    record_login_failure,
     reset_login_rate_limits,
 )
 from backend.app.auth.router import router as auth_router
@@ -121,7 +122,7 @@ async def test_csrf_mismatch_raises_403() -> None:
     assert exc.value.status_code == 403
 
 
-# ── Rate Limiter Tests (5/min/IP) ──────────────────────────────────────────
+# ── Rate Limiter Tests (failed attempts per IP and username) ──────────────────────────────────────────
 
 
 def test_login_rate_limiter() -> None:
@@ -137,11 +138,12 @@ def test_login_rate_limiter() -> None:
 
     # 5 attempts should succeed
     for _ in range(MAX_LOGIN_ATTEMPTS_PER_MINUTE):
-        check_login_rate_limit(req)
+        check_login_allowed(req, "u")
+        record_login_failure(req, "u")
 
     # 6th attempt should raise 429
     with pytest.raises(HTTPException) as exc:
-        check_login_rate_limit(req)
+        check_login_allowed(req, "u")
     assert exc.value.status_code == 429
     reset_login_rate_limits()
 
@@ -307,7 +309,7 @@ def test_rate_limiter_rejects_spoofed_x_forwarded_for_from_untrusted_client() ->
                 "path": "/login",
             }
         )
-        check_login_rate_limit(req)
+        record_login_failure(req, "u")
 
     # 6th attempt with another spoofed header should be blocked based on actual client host
     req_blocked = Request(
@@ -319,7 +321,7 @@ def test_rate_limiter_rejects_spoofed_x_forwarded_for_from_untrusted_client() ->
         }
     )
     with pytest.raises(HTTPException) as exc:
-        check_login_rate_limit(req_blocked)
+        check_login_allowed(req_blocked, "u")
     assert exc.value.status_code == 429
     reset_login_rate_limits()
 
@@ -339,7 +341,7 @@ def test_rate_limiter_trusted_proxy_resolves_forwarded_ip() -> None:
                 "path": "/login",
             }
         )
-        check_login_rate_limit(req)
+        record_login_failure(req, "u")
 
     # 6th attempt from same forwarded client raises 429
     req_blocked = Request(
@@ -351,7 +353,7 @@ def test_rate_limiter_trusted_proxy_resolves_forwarded_ip() -> None:
         }
     )
     with pytest.raises(HTTPException) as exc:
-        check_login_rate_limit(req_blocked)
+        check_login_allowed(req_blocked, "u")
     assert exc.value.status_code == 429
     reset_login_rate_limits()
 
@@ -375,7 +377,7 @@ def test_rate_limiter_production_environment_extracts_forwarded_ip_buckets(
                 "path": "/login",
             }
         )
-        check_login_rate_limit(req_a)
+        record_login_failure(req_a, "u")
 
     # 6th attempt from client A is blocked (429)
     req_a_blocked = Request(
@@ -387,7 +389,7 @@ def test_rate_limiter_production_environment_extracts_forwarded_ip_buckets(
         }
     )
     with pytest.raises(HTTPException) as exc:
-        check_login_rate_limit(req_a_blocked)
+        check_login_allowed(req_a_blocked, "u")
     assert exc.value.status_code == 429
 
     # Client B through the same proxy has a different last hop and succeeds
@@ -399,7 +401,7 @@ def test_rate_limiter_production_environment_extracts_forwarded_ip_buckets(
             "path": "/login",
         }
     )
-    check_login_rate_limit(req_b)
+    check_login_allowed(req_b, "u")
 
     reset_login_rate_limits()
 
@@ -439,3 +441,87 @@ async def test_bearer_token_rejected_in_production_environment(
     user = await get_current_user_optional(req, mock_db)
     assert user is None
     assert not mock_db.execute.called
+
+
+# ── Login limiter at the route: failed attempts per (IP, username) only ─────
+
+
+def _db_returning(holder: dict[str, AppUser | None]) -> AsyncMock:
+    mock_db = AsyncMock()
+    result = MagicMock()
+    mock_db.execute.return_value = result
+    result.scalar_one_or_none.side_effect = lambda: holder["user"]
+    return mock_db
+
+
+def _user(name: str, password: str, role: str = "teacher") -> AppUser:
+    from backend.app.auth.passwords import hash_password
+
+    return AppUser(
+        id=uuid.uuid4(),
+        username=name,
+        password_hash=hash_password(password),
+        role=role,
+        teacher_id=uuid.uuid4() if role == "teacher" else None,
+    )
+
+
+@pytest.mark.asyncio
+async def test_seven_quick_successful_logins_from_one_ip_are_all_accepted(
+    auth_app: FastAPI,
+) -> None:
+    holder: dict[str, AppUser | None] = {"user": None}
+    auth_app.dependency_overrides[get_db_session] = lambda: _db_returning(holder)
+    reset_login_rate_limits()
+    names = [f"teacher.demo{i}" for i in (1, 2, 3)] + ["arp.demo", "trainer.demo", "coach.demo"]
+    names.append("teacher.demo1")
+    async with AsyncClient(transport=ASGITransport(app=auth_app), base_url="http://test") as client:
+        for name in names:
+            holder["user"] = _user(name, "pw-ok")
+            res = await client.post("/login", json={"username": name, "password": "pw-ok"})
+            assert res.status_code == 200, (name, res.status_code)
+    auth_app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_six_wrong_passwords_for_one_username_get_429_even_for_the_right_password(
+    auth_app: FastAPI,
+) -> None:
+    holder: dict[str, AppUser | None] = {"user": _user("admin", "right-pw", role="admin")}
+    auth_app.dependency_overrides[get_db_session] = lambda: _db_returning(holder)
+    reset_login_rate_limits()
+    async with AsyncClient(transport=ASGITransport(app=auth_app), base_url="http://test") as client:
+        for _ in range(MAX_LOGIN_ATTEMPTS_PER_MINUTE):
+            res = await client.post("/login", json={"username": "admin", "password": "wrong"})
+            assert res.status_code == 401
+        res = await client.post("/login", json={"username": "admin", "password": "wrong"})
+        assert res.status_code == 429
+        res = await client.post("/login", json={"username": "admin", "password": "right-pw"})
+        assert res.status_code == 429  # brute-force lock holds until the window passes
+    auth_app.dependency_overrides.clear()
+    reset_login_rate_limits()
+
+
+@pytest.mark.asyncio
+async def test_wrong_passwords_for_different_usernames_do_not_block_each_other(
+    auth_app: FastAPI,
+) -> None:
+    holder: dict[str, AppUser | None] = {"user": None}
+    auth_app.dependency_overrides[get_db_session] = lambda: _db_returning(holder)
+    reset_login_rate_limits()
+    async with AsyncClient(transport=ASGITransport(app=auth_app), base_url="http://test") as client:
+        for _ in range(MAX_LOGIN_ATTEMPTS_PER_MINUTE):
+            holder["user"] = _user("teacher.demo1", "right")
+            res = await client.post("/login", json={"username": "teacher.demo1", "password": "x"})
+            assert res.status_code == 401
+        res = await client.post("/login", json={"username": "teacher.demo1", "password": "x"})
+        assert res.status_code == 429
+
+        # a different username from the same IP is unaffected, and so is a correct login
+        holder["user"] = _user("teacher.demo2", "right")
+        res = await client.post("/login", json={"username": "teacher.demo2", "password": "bad"})
+        assert res.status_code == 401
+        res = await client.post("/login", json={"username": "teacher.demo2", "password": "right"})
+        assert res.status_code == 200
+    auth_app.dependency_overrides.clear()
+    reset_login_rate_limits()
