@@ -1435,3 +1435,5 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+.nav-ack{position:fixed;top:0;left:0;right:0;z-index:1000;padding:.5rem .75rem;background:#1f2937;color:#fff;text-align:center}.nav-ack[hidden]{display:none}

@@ -445,6 +445,13 @@ function failMessage(clientMsgId, reason) {
   state.failedIds.set(clientMsgId, reason);
   setMessageState(clientMsgId, 'failed');
   setMicPhase(clientMsgId, 'failed');
+  flashStatus(failureNoticeText(reason));
+}
+
+// What the teacher is told when a send gives up: network (kept on the phone, tap ! later) vs
+// rejected by the server (refresh or type instead).
+function failureNoticeText(reason) {
+  return reason === 'network' ? t('ui_chat_send_failed_network') : t('ui_chat_send_failed_rejected');
 }
 
 async function retryMessage(clientMsgId) {
@@ -1399,6 +1406,7 @@ async function toggleLiteMode(forceValue = null) {
     });
   } catch (err) {
     console.warn('Failed to persist lite_mode setting', err);
+    flashStatus(t('ui_chat_lite_save_failed'));
   }
 }
 window.toggleLiteMode = toggleLiteMode;

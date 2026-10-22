@@ -562,3 +562,60 @@ test('end-practice button asks for confirmation, then sends the stop word as a m
   assert.equal(textPosts.length, 1);
   assert.equal(JSON.parse(textPosts[0].opts.body).text, c.t('ui_chat_scene_stop_word'));
 });
+
+// ── failure paths: each gives a specific message with a next step ───────────
+test('every recorder failure code has its own Hindi message and none is empty', () => {
+  const c = load();
+  const codes = ['unsupported', 'insecure', 'permission', 'no_mic', 'busy', 'start_failed'];
+  const texts = codes.map((code) => c.recorderErrorText(code, 'boom'));
+  for (const text of texts) assert.ok(text && !text.includes('undefined'), text);
+  assert.equal(new Set(texts).size, codes.length, 'messages must be distinct');
+  assert.ok(texts[2].includes('अनुमति'), 'permission message talks about permission');
+  // blocked / unsupported / no microphone all tell the teacher they can type instead
+  for (const i of [0, 1, 2, 3]) assert.ok(texts[i].includes('लिख'), `next step missing: ${texts[i]}`);
+  assert.ok(texts[5].includes('boom'), 'start failure shows the detail');
+});
+
+test('gave up sending on the network: status bar says the message is kept, tap ! to resend', async () => {
+  const c = load();
+  c.net.handler = async () => ({ status: 503, ok: false, json: async () => ({}) });
+  await c.handleSendText('नमस्ते');
+  await c.flush();
+  for (let i = 0; i < c.MAX_AUTO_RETRIES + 1 && !c.state.failedIds.size; i++) {
+    await c.advance(c.BACKOFF_STEPS[Math.min(i, c.BACKOFF_STEPS.length - 1)] + 100);
+    await c.flush();
+  }
+  assert.equal(c.state.failedIds.get('client-1'), 'network');
+  const bar = c.byId['status-bar'];
+  assert.equal(bar.hidden, false);
+  assert.equal(bar.textContent, strings.ui_chat_send_failed_network);
+});
+
+test('a server rejection tells the teacher to refresh or type instead', async () => {
+  const c = load();
+  c.net.handler = async () => ({ status: 403, ok: false, json: async () => ({}) });
+  await c.handleSendText('नमस्ते');
+  await c.flush();
+  assert.equal(c.byId['status-bar'].textContent, strings.ui_chat_send_failed_rejected);
+});
+
+test('a voice note that fails to upload also shows the failure notice', async () => {
+  const c = load();
+  c.net.handler = async () => ({ status: 413, ok: false, json: async () => ({}) });
+  await c.handleSendAudio({ size: 10 }, 3);
+  await c.flush();
+  assert.equal(c.byId['status-bar'].textContent, strings.ui_chat_send_failed_rejected);
+});
+
+test('lite mode that cannot reach the server says so instead of failing silently', async () => {
+  const c = load();
+  c.net.handler = async () => {
+    throw new Error('offline');
+  };
+  await c.toggleLiteMode(true);
+  assert.equal(c.byId['status-bar'].textContent, strings.ui_chat_lite_save_failed);
+});
+
+test('the voice-too-short message tells the teacher how long to speak', () => {
+  assert.ok(strings.ui_chat_rec_too_short.includes('1 सेकंड'));
+});

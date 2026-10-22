@@ -322,7 +322,7 @@ export function loadChat({ strings = {}, online = true } = {}) {
         TYPING_TIMEOUT_MS, COLD_START_HINT_MS, AUDIO_WAIT_MS, MAX_AUTO_RETRIES, BACKOFF_STEPS,
         pollMessages, updateOnlineStatus, upgradeServerAudio,
         toggleTranslation, buildTranslateControl, TRANSLATABLE_SPEAKERS, getSpeakerLabel,
-        renderSceneHeader, setupSceneEnd })`,
+        renderSceneHeader, setupSceneEnd, recorderErrorText, toggleLiteMode, flashStatus })`,
     sandbox
   );
   api.setUiStrings(strings);

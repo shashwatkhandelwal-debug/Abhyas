@@ -20,7 +20,7 @@ import math
 import uuid
 from collections import defaultdict
 from collections.abc import Sequence
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -41,20 +41,15 @@ from backend.app.config import settings
 from backend.app.core.messages import get_message
 from backend.app.db.demo_data import SEED_TEACHER_IDS
 from backend.app.db.models import (
-    AdoptionEvidence,
     AppUser,
     CalibrationLabel,
     ContentRelease,
-    ExplainScore,
     LLMCall,
-    Message,
     Move,
     Question,
-    RehearsalScore,
     ReviewItem,
     Scene,
     ScheduledJob,
-    SessionState,
     Teacher,
     TemplateSend,
     TrainingRating,
@@ -62,7 +57,6 @@ from backend.app.db.models import (
 )
 from backend.app.db.session import get_db_session
 from backend.app.jobs.tick import fast_forward_teacher
-from backend.app.sessions.state_machine import OnboardingStateEnum
 from backend.app.sessions.training_rating import training_rating_summary
 from backend.app.web.ui_lang import register_ui_globals
 
@@ -339,13 +333,18 @@ async def get_demo_teachers(db: AsyncSession) -> list[dict[str, Any]]:
 
 
 async def reset_demo_data(session: AsyncSession) -> dict[str, int]:
-    """Resets evaluator demo teachers (teacher.demo1..3) to clean initial state (spec/09 §9.6).
+    """Resets evaluator demo teachers (teacher.demo1..3) to the seeded state (spec/09 §9.6).
 
-    Preserves the 51-teacher background cohort so trainer and ARP dashboards remain unsuppressed.
+    Uses the same per-teacher code path as logout (`reset_demo_teacher`), so both resets give
+    identical state (demo2 back in the one-on-one scene, demo3 with its module rows). Before that
+    it clears rows reset_demo_teacher does not own: calibration labels on session-created scenes,
+    review items for demo questions, and scheduled jobs. The 51-teacher background cohort is left
+    alone so trainer and ARP dashboards stay unsuppressed.
     """
+    from backend.app.db.seed import DEMO_TEACHER_LOGINS, reset_demo_teacher
+
     demo_teacher_ids = list(SEED_TEACHER_IDS)
 
-    # 1. Clean up calibration labels referencing demo scenes
     stmt_scenes = select(Scene.id).where(Scene.teacher_id.in_(demo_teacher_ids))
     demo_scene_ids = list((await session.execute(stmt_scenes)).scalars().all())
     if demo_scene_ids:
@@ -353,23 +352,12 @@ async def reset_demo_data(session: AsyncSession) -> dict[str, int]:
             delete(CalibrationLabel).where(CalibrationLabel.scene_id.in_(demo_scene_ids))
         )
 
-    # 2. Clean up review items referencing demo questions or scores
     stmt_q = select(Question.id).where(Question.teacher_id.in_(demo_teacher_ids))
     q_ids = [str(qid) for qid in (await session.execute(stmt_q)).scalars().all()]
+    if q_ids:
+        await session.execute(delete(ReviewItem).where(ReviewItem.ref_id.in_(q_ids)))
 
-    stmt_rs = select(RehearsalScore.id).where(RehearsalScore.teacher_id.in_(demo_teacher_ids))
-    rs_ids = [str(rid) for rid in (await session.execute(stmt_rs)).scalars().all()]
-
-    stmt_es = select(ExplainScore.id).where(ExplainScore.teacher_id.in_(demo_teacher_ids))
-    es_ids = [str(eid) for eid in (await session.execute(stmt_es)).scalars().all()]
-
-    ref_ids_to_delete = q_ids + rs_ids + es_ids
-    if ref_ids_to_delete:
-        await session.execute(delete(ReviewItem).where(ReviewItem.ref_id.in_(ref_ids_to_delete)))
-
-    # 3. Clean up scheduled jobs referencing demo teachers
-    stmt_jobs = select(ScheduledJob)
-    all_jobs = (await session.execute(stmt_jobs)).scalars().all()
+    all_jobs = (await session.execute(select(ScheduledJob))).scalars().all()
     target_t_ids = {str(tid) for tid in demo_teacher_ids}
     jobs_to_delete = [
         j.id for j in all_jobs if j.payload and str(j.payload.get("teacher_id")) in target_t_ids
@@ -377,53 +365,11 @@ async def reset_demo_data(session: AsyncSession) -> dict[str, int]:
     if jobs_to_delete:
         await session.execute(delete(ScheduledJob).where(ScheduledJob.id.in_(jobs_to_delete)))
 
-    # 4. Delete questions, evidence, scores, turns, scenes, messages, session states for demo teachers
-    await session.execute(delete(Question).where(Question.teacher_id.in_(demo_teacher_ids)))
-    await session.execute(
-        delete(AdoptionEvidence).where(AdoptionEvidence.teacher_id.in_(demo_teacher_ids))
-    )
-    await session.execute(delete(Turn).where(Turn.teacher_id.in_(demo_teacher_ids)))
-    await session.execute(delete(Scene).where(Scene.teacher_id.in_(demo_teacher_ids)))
-    await session.execute(
-        delete(RehearsalScore).where(RehearsalScore.teacher_id.in_(demo_teacher_ids))
-    )
-    await session.execute(delete(ExplainScore).where(ExplainScore.teacher_id.in_(demo_teacher_ids)))
-    await session.execute(delete(Message).where(Message.teacher_id.in_(demo_teacher_ids)))
     await session.execute(
         delete(TrainingRating).where(TrainingRating.teacher_id.in_(demo_teacher_ids))
     )
-    await session.execute(delete(SessionState).where(SessionState.teacher_id.in_(demo_teacher_ids)))
-
-    # 5. Reset demo 1, 2, 3 to baseline seed states
-    t1 = await session.get(Teacher, SEED_TEACHER_IDS[0])
-    if t1:
-        t1.onboarding_state = OnboardingStateEnum.NEW
-        t1.last_inbound_at = None
-
-    t2 = await session.get(Teacher, SEED_TEACHER_IDS[1])
-    if t2:
-        t2.onboarding_state = OnboardingStateEnum.READY
-        t2.last_inbound_at = datetime.now(UTC)
-        today = date.today()
-        week_start = today - timedelta(days=today.weekday())
-        s2 = SessionState(
-            teacher_id=t2.id,
-            week_start=week_start,
-            move_id="NUM_SUB_REGROUP_BUNDLES",
-            state="REHEARSE",
-            prior_state="MODEL",
-            rehearse_attempts=1,
-            context={
-                "current_move_id": "NUM_SUB_REGROUP_BUNDLES",
-                "current_state": "REHEARSE",
-            },
-        )
-        session.add(s2)
-
-    t3 = await session.get(Teacher, SEED_TEACHER_IDS[2])
-    if t3:
-        t3.onboarding_state = OnboardingStateEnum.READY
-        t3.last_inbound_at = datetime.now(UTC)
+    for login in sorted(DEMO_TEACHER_LOGINS):
+        await reset_demo_teacher(session, login)
 
     await session.commit()
     logger.info("Admin reset demo seed records for %d teachers", len(demo_teacher_ids))

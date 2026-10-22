@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title_hi }}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  {% if code == 503 %}<meta http-equiv="refresh" content="12">{% endif %}
+</head>
+<body>
+  <main class="offline-card" role="alert" style="max-width: 32rem; margin: 2rem auto;">
+    <h1 lang="hi" style="font-size: 1.3rem;">{{ title_hi }}</h1>
+    <p lang="hi">{{ body_hi }}</p>
+    <h2 lang="en" style="font-size: 1.1rem;">{{ title_en }}</h2>
+    <p lang="en">{{ body_en }}</p>
+    <p>
+      <a class="btn" href="/">{{ get_message('ui_error_home', lang='hi') }} / {{ get_message('ui_error_home', lang='en') }}</a>
+      {% if code != 404 %}
+      <button type="button" class="btn" onclick="location.reload()">{{ get_message('ui_error_retry', lang='hi') }} / {{ get_message('ui_error_retry', lang='en') }}</button>
+      {% endif %}
+    </p>
+  </main>
+</body>
+</html>

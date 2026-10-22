@@ -2,7 +2,9 @@ services:
   - type: web
     name: abhyas
     runtime: docker
-    plan: starter
+    # The evaluation service was created by hand in the Render dashboard on the free plan (docs/DEPLOY.md);
+    # this blueprint is kept in step with that. Free plan: sleeps when idle, no Shell, one instance.
+    plan: free
     region: singapore
     healthCheckPath: /healthz
     autoDeploy: false

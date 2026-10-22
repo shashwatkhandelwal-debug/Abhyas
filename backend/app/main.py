@@ -23,6 +23,7 @@ from backend.app.web import (
     teacher_router,
     trainer_router,
 )
+from backend.app.web.errors import install_error_pages
 from backend.app.web.security_headers import SecurityHeadersMiddleware
 from backend.app.web.ui_lang import UiLangMiddleware
 from backend.app.web.ui_lang import router as lang_router
@@ -86,6 +87,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+install_error_pages(app)
 
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(UiLangMiddleware)

@@ -184,3 +184,29 @@ test('non-script static assets stay cache-first', async () => {
   assert.equal((await dispatch('fetch', fetchEvent('/static/manifest.json'))).body, 'cached manifest');
   assert.equal(hits, 0);
 });
+
+// ── navigation fallbacks ────────────────────────────────────────────────────
+test('navigation while the host answers 503 shows the cached waking page', async () => {
+  const { dispatch } = loadSw({ fetchImpl: async () => new FakeResponse('render-503', { status: 503 }) });
+  await dispatch('install');
+  const res = await dispatch('fetch', { request: new FakeRequest('/teacher', { mode: 'navigate' }) });
+  assert.equal(res.body, 'precached:https://abhyas.test/waking');
+});
+
+test('navigation with no network at all shows the offline page', async () => {
+  const { dispatch } = loadSw({
+    fetchImpl: async () => {
+      throw new TypeError('Failed to fetch');
+    },
+  });
+  await dispatch('install');
+  const res = await dispatch('fetch', { request: new FakeRequest('/teacher', { mode: 'navigate' }) });
+  assert.equal(res.body, 'precached:https://abhyas.test/offline.html');
+});
+
+test('a normal page response passes through untouched', async () => {
+  const { dispatch } = loadSw({ fetchImpl: async () => new FakeResponse('page', { status: 200 }) });
+  await dispatch('install');
+  const res = await dispatch('fetch', { request: new FakeRequest('/teacher', { mode: 'navigate' }) });
+  assert.equal(res.body, 'page');
+});
