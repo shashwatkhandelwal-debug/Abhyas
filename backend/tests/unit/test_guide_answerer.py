@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from backend.app.config import settings
 from backend.app.llm.client import LLMUnavailable
 from backend.app.llm.guards import guard_guide_answerer
 from backend.app.llm.roles.guide_answerer import (
@@ -66,7 +67,7 @@ async def test_answer_guide_question_success(sample_chunks: list[RetrievedChunk]
         assert result.guarded is True
         assert len(result.sources_cited) == 1
         assert result.sources_cited[0].chunk_id == "chunk_math_01"
-        assert "[गणित संदर्शिका, पृ. 45]" in result.answer_text_hi
+        assert "स्रोत: गणित संदर्शिका, पृष्ठ 45" in result.answer_text_hi
         assert "इस हफ्ते आज़माएँ" in result.answer_text_hi
 
 
@@ -129,7 +130,7 @@ async def test_answer_guide_question_low_retrieval_score_escalates() -> None:
             section="संख्या ज्ञान",
             page=12,
             text="कुछ जानकारी",
-            score=0.15,  # < 0.25 (RETRIEVAL_MIN_SCORE)
+            score=settings.RETRIEVAL_MIN_SCORE / 2,  # below RETRIEVAL_MIN_SCORE
         ),
         RetrievedChunk(
             chunk_id="chunk_low_02",
@@ -137,7 +138,7 @@ async def test_answer_guide_question_low_retrieval_score_escalates() -> None:
             section="संख्या ज्ञान",
             page=13,
             text="अन्य जानकारी",
-            score=0.20,  # < 0.25
+            score=settings.RETRIEVAL_MIN_SCORE * 0.9,  # below RETRIEVAL_MIN_SCORE
         ),
     ]
 
@@ -242,8 +243,8 @@ def test_compose_guide_reply_deduplicates_sources(sample_chunks: list[RetrievedC
     )
     reply = compose_guide_reply(out, sample_chunks, address_form="m")
     assert "मुख्य उत्तर यहाँ है।" in reply
-    assert "[गणित संदर्शिका, पृ. 45]" in reply
-    assert "[शिक्षक संदर्शिका, पृ. 46]" in reply
+    assert "स्रोत: गणित संदर्शिका, पृष्ठ 45" in reply
+    assert "स्रोत: शिक्षक संदर्शिका, पृष्ठ 46" in reply
     assert "इस हफ्ते आज़माएँ: एक छोटी गतिविधि आज़माएँ।" in reply
 
 
@@ -265,7 +266,7 @@ def test_guide_answerer_goldens() -> None:
 def test_format_guide_citation_standard() -> None:
     """format_guide_citation formats bracketed citation with Hindi page abbreviation."""
     cit = format_guide_citation("गणित संदर्शिका", 45)
-    assert cit == "[गणित संदर्शिका, पृ. 45]"
+    assert cit == "स्रोत: गणित संदर्शिका, पृष्ठ 45"
 
 
 def test_format_guide_citation_no_page() -> None:
@@ -301,4 +302,4 @@ def test_compose_guide_reply_calls_format_guide_citation(
         reply = compose_guide_reply(out, sample_chunks, address_form="f")
         assert m_cit.call_count == 1
         assert "मुख्य उत्तर।" in reply
-        assert "[गणित संदर्शिका, पृ. 45]" in reply
+        assert "स्रोत: गणित संदर्शिका, पृष्ठ 45" in reply

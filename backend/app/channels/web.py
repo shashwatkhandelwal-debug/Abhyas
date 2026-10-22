@@ -155,6 +155,12 @@ class WebChannel:
             for position, msg in enumerate(msgs):
                 if msg.already_persisted or getattr(msg, "_already_persisted", False):
                     continue
+                text = msg.text_hi
+                if text and msg.citations:
+                    # The web UI shows citations as tappable chips under the bubble
+                    for c in msg.citations:
+                        text = text.replace(c.line_hi, "")
+                    text = text.strip()
                 db_msg = Message(
                     id=msg.message_id or uuid.uuid4(),
                     teacher_id=teacher.id,
@@ -162,9 +168,10 @@ class WebChannel:
                     channel="web",
                     channel_msg_id=str(uuid.uuid4()),
                     kind=msg.kind,
-                    text=unicodedata.normalize("NFC", msg.text_hi) if msg.text_hi else None,
+                    text=unicodedata.normalize("NFC", text) if text else None,
                     audio_ref=msg.audio_ref,
                     buttons=[b.model_dump() for b in msg.buttons] if msg.buttons else None,
+                    citations=[c.model_dump() for c in msg.citations] if msg.citations else None,
                     speaker=msg.speaker,
                     template_name=msg.template_name,
                     created_at=base + timedelta(microseconds=position),

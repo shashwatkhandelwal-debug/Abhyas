@@ -16,6 +16,7 @@ import httpx
 from pydantic import ValidationError
 
 from backend.app.config import settings
+from backend.app.core.types import Citation
 from backend.app.llm.client import LLMUnavailable, call_tool, logged_role
 from backend.app.llm.guard_stats import record_guard_event
 from backend.app.llm.guards import guard_guide_answerer
@@ -146,38 +147,14 @@ async def answer_guide_question(
             used_fallback=False,
         )
 
-    # If no chunks provided, escalate immediately
+    # If no chunks provided, say so and escalate immediately
     if not chunks:
-        escalated_msg = load_catalog_message("ask_escalated", address_form=address_form)
-        return GuideAnswerResult(
-            output=GuideAnswererOutput(
-                answer_hi=escalated_msg,
-                source_ids=[],
-                confidence=0.0,
-            ),
-            answer_text_hi=escalated_msg,
-            escalated=True,
-            sources_cited=[],
-            guarded=True,
-            used_fallback=True,
-        )
+        return _not_in_sources(address_form)
 
-    # If scores are provided and max(scores) < RETRIEVAL_MIN_SCORE, escalate immediately
+    # If scores are provided and max(scores) < RETRIEVAL_MIN_SCORE, say so and escalate immediately
     scores = [c.score for c in chunks if c.score is not None]
     if scores and max(scores) < settings.RETRIEVAL_MIN_SCORE:
-        escalated_msg = load_catalog_message("ask_escalated", address_form=address_form)
-        return GuideAnswerResult(
-            output=GuideAnswererOutput(
-                answer_hi=escalated_msg,
-                source_ids=[],
-                confidence=0.0,
-            ),
-            answer_text_hi=escalated_msg,
-            escalated=True,
-            sources_cited=[],
-            guarded=True,
-            used_fallback=True,
-        )
+        return _not_in_sources(address_form)
 
     prompt_template = load_prompt("guide_answerer", PROMPT_VERSION)
     chunks_block = _format_chunks_block(chunks)
@@ -225,14 +202,17 @@ async def answer_guide_question(
                         parsed.confidence,
                         settings.GUIDE_CONFIDENCE_THRESHOLD,
                     )
-                    escalated_msg = load_catalog_message("ask_escalated", address_form=address_form)
+                    not_found = load_catalog_message(
+                        "ask_not_in_sources", address_form=address_form
+                    )
                     return GuideAnswerResult(
                         output=parsed,
-                        answer_text_hi=escalated_msg,
+                        answer_text_hi=not_found,
                         escalated=True,
                         sources_cited=[],
                         guarded=True,
                         used_fallback=False,
+                        no_sources=True,
                     )
 
                 chunks_by_id = {c.chunk_id: c for c in chunks}
@@ -302,6 +282,40 @@ async def answer_guide_question(
     )
 
 
+def citations_for_chunks(chunks: list[RetrievedChunk], address_form: str = "f") -> list[Citation]:
+    """One Citation per distinct (source, page) among the chunks actually cited in an answer."""
+    seen: set[tuple[str, int | None]] = set()
+    out: list[Citation] = []
+    for c in chunks:
+        key = (c.source_short_hi, c.page)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(
+            Citation(
+                chunk_id=c.chunk_id,
+                source_short_hi=c.source_short_hi,
+                page=c.page,
+                line_hi=format_guide_citation(c.source_short_hi, c.page, address_form=address_form),
+            )
+        )
+    return out
+
+
+def _not_in_sources(address_form: str) -> GuideAnswerResult:
+    """Honest 'not in my documents' reply that escalates to the ARP instead of guessing."""
+    msg = load_catalog_message("ask_not_in_sources", address_form=address_form)
+    return GuideAnswerResult(
+        output=GuideAnswererOutput(answer_hi=msg, source_ids=[], confidence=0.0),
+        answer_text_hi=msg,
+        escalated=True,
+        sources_cited=[],
+        guarded=True,
+        used_fallback=True,
+        no_sources=True,
+    )
+
+
 def format_guide_citation(
     source_short_hi: str,
     page: int | None = None,
@@ -320,6 +334,7 @@ def format_guide_citation(
 
 __all__ = [
     "answer_guide_question",
+    "citations_for_chunks",
     "compose_guide_reply",
     "format_guide_citation",
 ]

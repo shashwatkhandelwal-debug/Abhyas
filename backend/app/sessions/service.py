@@ -12,6 +12,8 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.config import settings
+from backend.app.content_models import MoveCard
 from backend.app.core.intents import (
     BUTTON_INTENT_MAP,
     Intent,
@@ -19,17 +21,21 @@ from backend.app.core.intents import (
     match_intent,
 )
 from backend.app.core.messages import get_message
-from backend.app.core.types import Button, InboundMessage, OutboundMessage
+from backend.app.core.types import Button, Citation, InboundMessage, OutboundMessage
 from backend.app.db.models import Message
 from backend.app.llm.client import LLMUnavailable
 from backend.app.llm.roles.coach import coach_feedback
 from backend.app.llm.roles.fidelity_checker import check_fidelity
-from backend.app.llm.roles.guide_answerer import answer_guide_question, compose_guide_reply
+from backend.app.llm.roles.guide_answerer import (
+    answer_guide_question,
+    citations_for_chunks,
+    compose_guide_reply,
+)
 from backend.app.llm.roles.question_classifier import classify_question
 from backend.app.llm.schemas import RetrievedChunk
 from backend.app.rehearsal.scene_runner import ChildLineRecord, SceneRunner, load_move_card
 from backend.app.rehearsal.scene_store import scene_store
-from backend.app.retrieval.search import GuideRetriever
+from backend.app.retrieval.search import GuideRetriever, get_guide_retriever
 from backend.app.rule_engine.domain import (
     ChildRuntime,
     ChildState,
@@ -68,7 +74,38 @@ class SessionService:
         else:
             raise ValueError("Either repository or db_session must be provided to SessionService.")
         self.scene_runner = scene_runner or SceneRunner()
-        self.retriever = GuideRetriever()
+        self.retriever: GuideRetriever = get_guide_retriever()
+
+    async def _learn_intro(self, move: MoveCard, address_form: str) -> tuple[str, list[Citation]]:
+        """Learn-step intro, plus the best matching official excerpt for the move's topic.
+
+        The excerpt comes from the ingested source documents only (never move cards). When nothing
+        scores above RETRIEVAL_MIN_SCORE the intro is returned unchanged.
+        """
+        intro = get_message("learn_intro", address_form, move_title=move.title_hi)
+        query = f"{move.title_hi} {' '.join(t.replace('_', ' ') for t in move.tags)}"
+        hits = await self.retriever.retrieve(
+            query, top_k=1, min_score=settings.RETRIEVAL_MIN_SCORE, official_only=True
+        )
+        if not hits or not hits[0].gloss_hi:
+            return intro, []
+        hit = hits[0]
+        chunk = RetrievedChunk(
+            chunk_id=hit.chunk_id,
+            source_short_hi=hit.source_short_hi,
+            section=hit.section,
+            page=hit.page,
+            text=hit.text,
+            score=hit.similarity_score,
+        )
+        cites = citations_for_chunks([chunk], address_form)
+        ref = get_message(
+            "learn_reference",
+            address_form,
+            summary=hit.gloss_hi,
+            citation=cites[0].line_hi if cites else "",
+        )
+        return f"{intro}\n\n{ref}", cites
 
     async def get_or_create_context(self, teacher_id: UUID) -> SessionContext:
         """Loads or constructs a SessionContext from database state."""
@@ -274,10 +311,12 @@ class SessionService:
                 ctx.last_inbound_at = now
                 await self._sync_context_to_db(ctx, teacher_id)
                 move = load_move_card(ctx.current_move_id)
+                intro_text, intro_cites = await self._learn_intro(move, address_form)
                 return [
                     OutboundMessage(
                         kind="text",
-                        text_hi=get_message("learn_intro", address_form, move_title=move.title_hi),
+                        text_hi=intro_text,
+                        citations=intro_cites,
                         buttons=[
                             Button(
                                 id="btn_understood",
@@ -432,10 +471,12 @@ class SessionService:
                     chunk_id=c.chunk_id,
                     source_short_hi=getattr(c, "source_short_hi", None) or c.source,
                     section=c.section,
+                    page=c.page,
                     text=c.text,
                     score=c.similarity_score,
                 )
                 for c in chunks
+                if c.similarity_score >= settings.RETRIEVAL_MIN_SCORE
             ]
 
             # Guide Answerer
@@ -466,10 +507,13 @@ class SessionService:
 
             # Compose reply
             if answer_res.escalated:
-                reply_text = get_message(
-                    "ask_admin" if classify_res.output.category == "admin" else "ask_escalated",
-                    address_form,
-                )
+                if classify_res.output.category == "admin":
+                    reply_key = "ask_admin"
+                elif answer_res.no_sources:
+                    reply_key = "ask_not_in_sources"
+                else:
+                    reply_key = "ask_escalated"
+                reply_text = get_message(reply_key, address_form)
             elif classify_res.output.category == "out_of_scope":
                 reply_text = get_message("ask_out_of_scope", address_form)
             elif classify_res.output.category == "admin":
@@ -488,7 +532,16 @@ class SessionService:
             prior_prompt = self._get_resume_prompt(ctx, prior, address_form)
 
             return [
-                OutboundMessage(kind="text", text_hi=reply_text),
+                OutboundMessage(
+                    kind="text",
+                    text_hi=reply_text,
+                    # A generated guide answer gets the "guide" speaker (the web UI offers a
+                    # translation for it); escalation / canned replies are plain system text.
+                    speaker=None if answer_res.escalated else "guide",
+                    citations=[]
+                    if answer_res.escalated
+                    else citations_for_chunks(answer_res.sources_cited, address_form),
+                ),
                 OutboundMessage(kind="text", text_hi=f"{resume_note}\n\n{prior_prompt}"),
             ]
 
@@ -731,6 +784,7 @@ class SessionService:
 
                     first_move = load_move_card(ctx.current_move_id)
                     ready_outbounds: list[OutboundMessage] = []
+                    first_text, first_cites = await self._learn_intro(first_move, ctx.address_form)
                     if turn_res:
                         ready_outbounds.extend(turn_res.outbound)
                     ready_outbounds.extend(
@@ -749,11 +803,8 @@ class SessionService:
                             ),
                             OutboundMessage(
                                 kind="buttons",
-                                text_hi=get_message(
-                                    "learn_intro",
-                                    ctx.address_form,
-                                    move_title=first_move.title_hi,
-                                ),
+                                text_hi=first_text,
+                                citations=first_cites,
                                 buttons=[
                                     Button(
                                         id="btn_understood",
@@ -779,10 +830,12 @@ class SessionService:
         if curr == SessionStateEnum.LEARN:
             move = load_move_card(ctx.current_move_id)
             if matched_intent == Intent.REPEAT or btn_id == "btn_replay":
+                intro_text, intro_cites = await self._learn_intro(move, address_form)
                 return [
                     OutboundMessage(
                         kind="buttons",
-                        text_hi=get_message("learn_intro", address_form, move_title=move.title_hi),
+                        text_hi=intro_text,
+                        citations=intro_cites,
                         buttons=[
                             Button(
                                 id="btn_understood",
@@ -1487,10 +1540,12 @@ class SessionService:
             if matched_intent == Intent.NEXT or btn_id == "btn_next_move":
                 wsm.transition("btn_next_move")
                 await self._sync_context_to_db(ctx, teacher_id)
+                intro_text, intro_cites = await self._learn_intro(move, address_form)
                 return [
                     OutboundMessage(
                         kind="buttons",
-                        text_hi=get_message("learn_intro", address_form, move_title=move.title_hi),
+                        text_hi=intro_text,
+                        citations=intro_cites,
                         buttons=[
                             Button(
                                 id="btn_understood",

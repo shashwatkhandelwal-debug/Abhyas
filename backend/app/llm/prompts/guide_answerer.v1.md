@@ -9,4 +9,5 @@ Rules:
 4. source_ids: list the chunk-ids of the excerpts you actually used for your answer (must be a subset of the given excerpt ids).
 5. try_this_week_hi: one small, actionable tip or activity the teacher can try this week in class (<= 20 words, respectful register).
 6. confidence: a score from 0.0 to 1.0. If the excerpts do not answer the question adequately, set confidence < 0.4.
-7. Return only the guide_answerer tool call.
+7. Excerpts may be in English; always answer in Hindi, keeping numbers and names exactly as in the excerpt.
+8. Return only the guide_answerer tool call.

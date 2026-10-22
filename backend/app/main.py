@@ -24,6 +24,8 @@ from backend.app.web import (
     trainer_router,
 )
 from backend.app.web.security_headers import SecurityHeadersMiddleware
+from backend.app.web.ui_lang import UiLangMiddleware
+from backend.app.web.ui_lang import router as lang_router
 from backend.app.whatsapp.router import router as whatsapp_router
 
 logging.basicConfig(
@@ -86,12 +88,14 @@ app.add_middleware(
 )
 
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(UiLangMiddleware)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 # Mount Routers
 app.include_router(auth_router)
+app.include_router(lang_router)
 app.include_router(chat_router)
 app.include_router(teacher_router)
 app.include_router(arp_router)

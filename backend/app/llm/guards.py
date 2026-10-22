@@ -482,6 +482,47 @@ def guard_guide_answerer(
     return True, "Valid"
 
 
+def _digit_numbers(text: str) -> set[str]:
+    """Numbers written with digits (Arabic or Devanagari), as strings."""
+    ascii_text = text.translate({ord(d): str(i) for i, d in enumerate(DEVANAGARI_DIGITS)})
+    return set(re.findall(r"\d+", ascii_text))
+
+
+# ── 7b. guard_translation (translator role) ──────────────────────────────────
+def guard_translation(source_hi: str, text_en: str) -> tuple[bool, str]:
+    """Validate an English translation of a Hindi bubble.
+
+    - non-empty, and (almost) no Devanagari left in it
+    - every number in the source appears in the translation, and no new number appears
+    - length is within a plausible ratio of the source (no truncation, no padding with new facts)
+    """
+    from backend.app.llm.schemas import MOCK_TRANSLATION_TEXT
+
+    if text_en.strip() == MOCK_TRANSLATION_TEXT:
+        return True, "Valid (demo placeholder)"
+    out = text_en.strip()
+    if not out:
+        return False, "Translation is empty"
+    letters = [c for c in out if c.isalpha()]
+    deva = [c for c in letters if "ऀ" <= c <= "ॿ"]
+    if letters and len(deva) / len(letters) > settings.TRANSLATE_MAX_DEVANAGARI_RATIO:
+        return False, "Translation still contains Hindi text"
+    # Digits in the source must survive; the translation may only use numbers the source has
+    # (as digits or as Hindi number words, which the model may legitimately render as digits).
+    src_digits = _digit_numbers(source_hi)
+    out_digits = _digit_numbers(out)
+    if src_digits - out_digits:
+        return False, f"Numbers missing from translation: {sorted(src_digits - out_digits)}"
+    allowed = src_digits | {str(n) for n in extract_numbers(source_hi)}
+    if out_digits - allowed:
+        return False, f"Numbers not in the source: {sorted(out_digits - allowed)}"
+    src_words = max(1, len(source_hi.split()))
+    ratio = len(out.split()) / src_words
+    if not (settings.TRANSLATE_MIN_WORD_RATIO <= ratio <= settings.TRANSLATE_MAX_WORD_RATIO):
+        return False, f"Translation length ratio {ratio:.2f} is implausible"
+    return True, "Valid"
+
+
 # ── 8. guard_page_ocr (§5.9) ─────────────────────────────────────────────────
 def guard_page_ocr(output: PageOCROutput) -> tuple[bool, str]:
     """Validate page_ocr output (§5.9).

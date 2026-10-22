@@ -39,7 +39,7 @@ class AudioRecorder {
 
   async start(onTick, onComplete, onError) {
     if (!this.isSupported()) {
-      if (onError) onError('आपके ब्राउज़र में आवाज़ रिकॉर्ड करने की सुविधा उपलब्ध नहीं है।');
+      if (onError) onError('unsupported', '');
       return;
     }
 
@@ -110,10 +110,8 @@ class AudioRecorder {
       this.cleanup();
       loggerError(err);
       const isDenied = err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError';
-      const msg = isDenied
-        ? 'माइक्रोफ़ोन की अनुमति चाहिए। कृपया ब्राउज़र सेटिंग्स में जाकर माइक्रोफ़ोन की अनुमति दें।'
-        : 'माइक्रोफ़ोन शुरू करने में समस्या आई: ' + (err.message || 'अज्ञात त्रुटि');
-      if (onError) onError(msg);
+      // Error codes, not text: chat.js maps them to catalog strings in the user's language
+      if (onError) onError(isDenied ? 'permission' : 'start_failed', err.message || '');
     }
   }
 

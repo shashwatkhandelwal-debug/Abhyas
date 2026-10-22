@@ -8,7 +8,7 @@ title_hi: "स्थानीय मान: बंडल और खुली त
 summary_hi: "बंडल (दहाई) और खुली तीलियों (इकाई) से दो अंकों की संख्या बनवाएँ और बच्चे से पूछें कि उसने संख्या कैसे लिखी।"
 tags: [place_value, number_sense, ganit]
 module_ref:
-  source_id: up_ganit_sandarshika_c2
+  source_id: up_ganit_sandarshika_c1
   section: "स्थानीय मान (दहाई-इकाई)"
   page: null
   verified: false

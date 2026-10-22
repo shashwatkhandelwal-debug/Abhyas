@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="{{ ui_lang() }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -174,11 +174,11 @@
   <div class="calibrate-container">
     <header class="calibrate-header">
       <div>
-        <a href="/review" style="color:var(--muted); text-decoration:none; font-size:0.9rem;">← समीक्षा कंसोल पर वापस जाएँ</a>
+        <a href="/review" style="color:var(--muted); text-decoration:none; font-size:0.9rem;">← {{ get_message('ui_review_back_console') }}</a>
         <h1 style="margin:0.25rem 0 0 0; font-size:1.4rem; color:var(--brand);">
           {{ get_message("ui_review_tab_calibrate") }}
         </h1>
-        <small style="color:var(--muted);">मूव: {{ move_title }}</small>
+        <small style="color:var(--muted);">{{ get_message('ui_review_move_colon') }} {{ move_title }}</small>
       </div>
       <div>
         <a href="/review/calibration.jsonl" class="btn-action" style="background:var(--surface); border:1px solid var(--border); padding:0.4rem 0.8rem; border-radius:var(--radius-sm); text-decoration:none; color:var(--ink); font-weight:600;">
@@ -189,7 +189,7 @@
 
     {% if success %}
     <div class="alert-success">
-      ब्लाइंड कैलिब्रेशन स्कोर सफलतापूर्वक दर्ज हुआ! अगला यादृच्छिक अभ्यास नीचे प्रदर्शित है।
+      {{ get_message('ui_review_calibrate_saved') }}
     </div>
     {% endif %}
 
@@ -221,15 +221,15 @@
           {% endfor %}
         </div>
         {% else %}
-        <p style="color:var(--muted);">कोई अभ्यास बातचीत उपलब्ध नहीं है।</p>
+        <p style="color:var(--muted);">{{ get_message('ui_review_no_conversation') }}</p>
         {% endif %}
       </div>
 
       <!-- Right Column: Blind Scoring Form -->
       <div class="section-card">
-        <h2>स्वतंत्र कोच मूल्यांकन (Blind Scoring)</h2>
+        <h2>{{ get_message('ui_review_blind_scoring') }}</h2>
         <p style="font-size:0.85rem; color:var(--muted); margin-top:0;">
-          ट्रांसक्रिप्ट पढ़कर प्रत्येक मानदंड पर निष्पक्ष रूप से 0, 1 या 2 अंक दें।
+          {{ get_message('ui_review_blind_instruction') }}
         </p>
 
         <form method="POST" action="/review/calibrate">
@@ -244,15 +244,15 @@
             <div class="score-selector">
               <label class="score-option">
                 <input type="radio" name="score_{{ crit.id }}" value="0" required>
-                <span>0 (अधूरी)</span>
+                <span>{{ get_message('ui_review_score_0') }}</span>
               </label>
               <label class="score-option">
                 <input type="radio" name="score_{{ crit.id }}" value="1">
-                <span>1 (आंशिक)</span>
+                <span>{{ get_message('ui_review_score_1') }}</span>
               </label>
               <label class="score-option">
                 <input type="radio" name="score_{{ crit.id }}" value="2">
-                <span>2 (पूरी / सही)</span>
+                <span>{{ get_message('ui_review_score_2') }}</span>
               </label>
             </div>
           </div>
@@ -262,11 +262,11 @@
             <label for="note" style="font-weight:600; font-size:0.95rem; display:block; margin-bottom:0.4rem;">
               {{ get_message("ui_review_notes_label") }}
             </label>
-            <textarea id="note" name="note" placeholder="कोच की मूल्यांकन टिप्पणी (वैकल्पिक)..."></textarea>
+            <textarea id="note" name="note" placeholder="{{ get_message('ui_review_note_placeholder_blind') }}"></textarea>
           </div>
 
           <button type="submit" class="btn-submit">
-            ब्लाइंड स्कोर सुरक्षित करें
+            {{ get_message('ui_review_save_blind') }}
           </button>
         </form>
       </div>

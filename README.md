@@ -61,14 +61,15 @@ button      ──►  child states,       ──► child_voice (renders ──
 - **Weekly loop:** `LEARN` → `EXPLAIN_BACK` → `MODEL` → `REHEARSE` → `FEEDBACK` → `RETRY` → `TRY_IN_CLASS` → `REFLECT` → `DONE`.
 - **Voice in, voice out:** Hindi and Hinglish speech is transcribed via STT, the turn is processed, and the reply is synthesized in a distinct voice per child. Audio is discarded after transcription; text is always rendered.
 - **Rule-engine principle:** Each simulated child has a hidden cognitive state (`misconception`, `partial`, `can_explain`) and a deterministic bug rule taken from research on primary numeracy errors. When the teacher asks Ravi to explain $43 - 27$, the deterministic rule engine computes that Ravi subtracts the smaller digit from the larger ($7 - 3 = 4$, $4 - 2 = 2$) and answers $24$. Claude is only asked to voice that exact result in a seven-year-old's speech register; an output guard rejects any generation whose numbers the engine did not allow. Telling a child the answer produces parrot behaviour, and the bug returns on the subsequent problem.
-- **Grounded answers:** Teacher questions are answered from retrieved state-guide chunks (BM25 by default) with citations (`[स्रोत, पृ. XX]`); low confidence (< 0.60) or guard failure escalates to the ARP.
+- **Grounded answers:** Teacher questions are answered only from excerpts of the official documents we have ingested (BM25 over 361 chunks; see section 8). Each answer carries `स्रोत: <document>, पृष्ठ N`; on the web the citation is a chip that opens the excerpt. If nothing scores above `RETRIEVAL_MIN_SCORE`, or confidence is low (< 0.60), or a guard fails, the bot says it did not find the answer in its documents and escalates to the ARP instead of guessing.
+- **Hindi by default, English on request:** the UI text and system messages switch to English from the chat menu or the login page (kept per user). Children's lines and coach feedback stay Hindi; a *Translate* control under child / coach / guide bubbles shows an on-demand English translation (cached per message; the fast Claude model, guarded so numbers and names are kept).
 - **Worked example:** See `docs/worked_example_ravi.md`.
 
 ### AI services used
 
 | Service | Used for | Model / product | Key | Without a key |
 |---|---|---|---|---|
-| Anthropic Claude (fast) | intent routing, act tagging, child voice, question classification | `claude-haiku-5-5` | `ANTHROPIC_API_KEY` | Mock LLM with deterministic fixtures |
+| Anthropic Claude (fast) | intent routing, act tagging, child voice, question classification, on-demand English translation; one-off Hindi glosses for source chunks (offline, ≈US$0.11) | `claude-haiku-5-5` | `ANTHROPIC_API_KEY` | Mock LLM with deterministic fixtures (translation shows a demo placeholder) |
 | Anthropic Claude (smart) | coach feedback, explain-back fidelity, guide answers, content generation | `claude-sonnet-5-5` | `ANTHROPIC_API_KEY` | Mock LLM, deterministic feedback bank |
 | Sarvam AI | Hindi speech-to-text and text-to-speech | `saaras:v4`, `bulbul:v3` | `SARVAM_API_KEY` | Mock STT/TTS, text box in web chat |
 | Meta WhatsApp Cloud API | WhatsApp channel | Graph API | `WHATSAPP_*` | Channel disabled; mocked Graph API in tests |
@@ -154,10 +155,11 @@ Abhyas implements explicit data-minimisation and privacy safeguards, noting the 
   - `NUM_ADD_CARRY_BUNDLES`: Addition with bundle-making.
   - `NUM_PLACE_VALUE_BUNDLES`: Tens and ones representation.
   - `LIT_MATRA_BLENDING`: Hindi akshar grid and matra blending.
-- **Official State Guides (HUMAN INPUT H7):**
-  - Source manifests and schemas are defined in `content/sources/sources.yaml`.
-  - The extraction and OCR pipeline (`backend/app/retrieval/ingest.py`) supports `pdfplumber` and Tesseract/Surya OCR.
-  - Official government PDF files are not yet ingested (source URLs are set to `TODO(human)` awaiting the official PDFs). Seed content chunks currently cover the 4 approved moves.
+- **Official source documents** (`content/sources/README.md` has the full table and limits):
+  - **Ingested and searchable:** NIPUN Bharat Guidelines (MoE, 332 pp) and NCERT Vidya Pravesh (56 pp), both English — 361 chunks in `content/chunks/`, each with page span, a one-line Hindi gloss and Hindi keywords so Hindi questions match English text. Recall@5 on 20 Hindi/Hinglish teacher questions: **0.95** (`make eval-retrieval`).
+  - **Supplied but NOT ingested:** the two UP Samagra Shiksha Sandarshikas (Ganit and Bhasha, Class 1, Hindi). Their PDFs use legacy non-Unicode fonts and no OCR engine is available, so their text is unreadable. The Grade 1 Ganit guide covers subtraction only up to 20 (weeks 16–18); two-digit subtraction with regrouping is not in it.
+  - **Not supplied:** NISHTHA FLN.
+  - The move cards' `module_ref` still point at `up_ganit_sandarshika_c1` (`verified: false`); those cards are not backed by an ingested page.
 
 ---
 

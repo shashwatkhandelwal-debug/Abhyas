@@ -26,6 +26,7 @@ from backend.app.auth.access import (
     get_teacher_display_name_for_arp,
     scope_teachers_query,
 )
+from backend.app.core.messages import get_message
 from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
@@ -362,7 +363,7 @@ async def build_arp_digest(
         if t_obj:
             t_display = get_teacher_display_name_for_arp(user, t_obj)
         else:
-            t_display = "शिक्षक #unknown"
+            t_display = get_message("ui_arp_anonymous_teacher", code="unknown")
 
         escalated_items.append(
             EscalatedQuestionItem(

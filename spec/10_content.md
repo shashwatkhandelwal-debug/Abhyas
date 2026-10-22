@@ -91,7 +91,7 @@ For every move file:
   file: nipun_bharat_guidelines.pdf        # HUMAN INPUT: place file
   lang: hi | en
   licence_note: "Government of India publication — used for non-commercial educational purposes"
-- id: up_ganit_sandarshika_c2              # UP Basic Shiksha teacher guide (Shikshak Sandarshika), Maths, Class 2
+- id: up_ganit_sandarshika_c1              # UP Basic Shiksha teacher guide (Shikshak Sandarshika), Maths, Class 2
 - id: up_bhasha_sandarshika_c1             # Hindi language teacher guide, Class 1
 - id: ncert_vidya_pravesh
 - id: ncert_fln_learning_outcomes

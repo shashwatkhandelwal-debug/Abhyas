@@ -168,10 +168,10 @@ def validate_move_card(move_data: dict[str, Any]) -> MoveCard:
     """Helper alias for validating a move card with default manifests."""
     sources_manifest = {
         "nipun_guidelines_2021",
-        "up_ganit_sandarshika_c2",
+        "up_ganit_sandarshika_c1",
         "up_bhasha_sandarshika_c1",
         "ncert_vidya_pravesh",
-        "ncert_fln_learning_outcomes",
+        "nishtha_fln",
     }
     known_personas = {"ravi", "priya", "aman"}
     return validate_move(move_data, sources_manifest, known_personas)

@@ -28,6 +28,7 @@ from backend.app.reports.trainer_aggregates import (
     build_trainer_report,
     generate_trainer_csv,
 )
+from backend.app.web.ui_lang import register_ui_globals
 
 logger = logging.getLogger("abhyas.web.trainer")
 
@@ -35,7 +36,7 @@ WEB_DIR = Path(__file__).resolve().parent
 TEMPLATES_DIR = WEB_DIR / "templates"
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-templates.env.globals["get_message"] = get_message
+register_ui_globals(templates.env)
 
 router = APIRouter(prefix="/trainer", tags=["Trainer View (DIET/SCERT)"])
 

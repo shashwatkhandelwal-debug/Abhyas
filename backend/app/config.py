@@ -136,8 +136,24 @@ class Settings(BaseSettings):
     VOYAGE_API_KEY: str = ""
     VOYAGE_MODEL: str = "voyage-multilingual-2"
     RETRIEVAL_TOP_K: int = 5
-    RETRIEVAL_MIN_SCORE: float = 0.25
+    # Calibrated on eval/retrieval_questions.yaml: every answerable question scored >= 0.119, 6 of 10
+    # off-topic ones scored < 0.10 (the rest are caught by GUIDE_CONFIDENCE_THRESHOLD in the answerer).
+    RETRIEVAL_MIN_SCORE: float = 0.10
     QUOTE_FUZZY_MIN: float = 90.0
+    # Source-PDF chunking (offline, make content-ingest)
+    CHUNK_MIN_WORDS: int = 150
+    CHUNK_TARGET_WORDS: int = 300
+    CHUNK_MAX_WORDS: int = 400
+    CHUNK_OVERLAP_WORDS: int = 40
+
+    # ── On-demand English translation of bubbles ─────────────────────────
+    TRANSLATE_MAX_REQUESTS_PER_MINUTE: int = 10
+    TRANSLATE_RATE_LIMIT_WINDOW_SECONDS: int = 60
+    TRANSLATE_MAX_DEVANAGARI_RATIO: float = 0.05
+    TRANSLATE_MIN_WORD_RATIO: float = 0.3
+    TRANSLATE_MAX_WORD_RATIO: float = 3.0
+    TRANSLATE_MAX_SOURCE_CHARS: int = 2000
+    TRANSLATE_MAX_OUTPUT_TOKENS: int = 1500  # Devanagari-heavy sources cost many tokens
 
     # ── Pedagogical & Rule Engine Thresholds ──────────────────────────────
     MAX_TURNS_PER_REHEARSAL: int = 8

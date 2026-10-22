@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="{{ ui_lang() }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -195,11 +195,11 @@
     <header class="review-header">
       <div class="review-title-group">
         <h1>
-          <span>अभ्यास</span>
+          <span>{{ get_message('ui_app_name') }}</span>
           <span style="color:var(--muted); font-size:1.2rem; font-weight:normal;">/</span>
           <span>{{ get_message("ui_review_title") }}</span>
         </h1>
-        <small style="color:var(--muted);">समीक्षक: {{ user.display_name or user.username }} (रोल: {{ user.role }})</small>
+        <small style="color:var(--muted);">{{ get_message('ui_review_reviewer') }} {{ user.display_name or user.username }} ({{ get_message('ui_review_role') }} {{ user.role }})</small>
       </div>
 
       <div class="review-actions">
@@ -209,6 +209,7 @@
         <a href="/review/calibration.jsonl" class="btn-action">
           {{ get_message("ui_review_export_calibration") }}
         </a>
+        {{ lang_switch() }}
         <a href="/logout" class="btn-action">
           {{ get_message("ui_logout") }}
         </a>
@@ -264,7 +265,7 @@
         </a>
       </div>
       <div style="font-size:0.9rem; color:var(--muted);">
-        कुल {{ items | length }} आइटम
+        {{ get_message('ui_review_total') }} {{ items | length }} {{ get_message('ui_review_items') }}
       </div>
     </div>
 
@@ -274,11 +275,11 @@
       <table>
         <thead>
           <tr>
-            <th>समय</th>
-            <th>प्रकार</th>
-            <th>कारण</th>
-            <th>स्थिति</th>
-            <th>कार्रवाई</th>
+            <th>{{ get_message('ui_review_col_time') }}</th>
+            <th>{{ get_message('ui_review_col_kind') }}</th>
+            <th>{{ get_message('ui_review_col_reason') }}</th>
+            <th>{{ get_message('ui_review_col_status') }}</th>
+            <th>{{ get_message('ui_review_col_action') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -294,7 +295,7 @@
             </td>
             <td>
               <a href="/review/items/{{ it.id }}" class="btn-action" style="padding:0.35rem 0.8rem; font-size:0.85rem; min-height:36px;">
-                समीक्षा करें →
+                {{ get_message('ui_review_do_review') }}
               </a>
             </td>
           </tr>
@@ -314,13 +315,13 @@
       <table>
         <thead>
           <tr>
-            <th>मूव कोड</th>
-            <th>शीर्षक</th>
-            <th>विषय</th>
-            <th>संकुल माह</th>
-            <th>मंज़ूरी प्रगति</th>
-            <th>स्थिति</th>
-            <th>कार्रवाई</th>
+            <th>{{ get_message('ui_review_col_move_code') }}</th>
+            <th>{{ get_message('ui_review_col_title') }}</th>
+            <th>{{ get_message('ui_review_col_domain') }}</th>
+            <th>{{ get_message('ui_review_col_sankul_month') }}</th>
+            <th>{{ get_message('ui_review_col_approval') }}</th>
+            <th>{{ get_message('ui_review_col_status') }}</th>
+            <th>{{ get_message('ui_review_col_action') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -332,7 +333,7 @@
             <td>{{ m.sankul_month }}</td>
             <td>
               <strong>{{ m.approvals_count }} / {{ m.approvals_required }}</strong>
-              <small style="color:var(--muted);">कोच</small>
+              <small style="color:var(--muted);">{{ get_message('speaker_coach') }}</small>
             </td>
             <td>
               <span class="status-badge {% if m.status == 'approved' %}status-approved{% else %}status-pending{% endif %}">
@@ -341,7 +342,7 @@
             </td>
             <td>
               <a href="/review/moves/{{ m.id }}" class="btn-action" style="padding:0.35rem 0.8rem; font-size:0.85rem; min-height:36px;">
-                समीक्षा व मंज़ूरी →
+                {{ get_message('ui_review_review_approve') }}
               </a>
             </td>
           </tr>

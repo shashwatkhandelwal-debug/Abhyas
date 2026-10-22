@@ -6,7 +6,8 @@
     "expect": "Act tagged ask_to_explain → Ravi moves to CAN_EXPLAIN and explains his bug: '3 में से 7 नहीं घटता, तो 7 में से 3 घटाया… 24!' (never says 16).",
     "chip_label": "रवि से तरीका पूछें",
     "audio_available": false,
-    "audio_url": null
+    "audio_url": null,
+    "chip_label_en": "Ask Ravi how he did it"
   },
   {
     "id": "s2_bundles_all",
@@ -15,7 +16,8 @@
     "expect": "concrete_representation to the whole class → all children reach PARTIAL; Ravi answers 16 hesitantly; Aman may interject off-topic.",
     "chip_label": "बंडल-तीली से समझाएँ",
     "audio_available": false,
-    "audio_url": null
+    "audio_url": null,
+    "chip_label_en": "Explain with bundles and sticks"
   },
   {
     "id": "s3_tell_answer_hinglish",
@@ -24,7 +26,8 @@
     "expect": "Hinglish handled. tell_answer → Aman parrots '16…?' without understanding (state unchanged). If the evaluator then says 'अमन, अब 61 में से 28 करो', Aman relapses to his bug (40). Coach later scores 'no telling' = 0 and suggests contrasting answers.",
     "chip_label": "सीधा उत्तर बताएँ (हिंग्लिश)",
     "audio_available": false,
-    "audio_url": null
+    "audio_url": null,
+    "chip_label_en": "Tell the answer (Hinglish)"
   },
   {
     "id": "s4_explain_back",
@@ -33,7 +36,8 @@
     "expect": "Fidelity: kp1, kp2, kp3, kp5 covered with quotes; kp4 missing → reply names the one missing point.",
     "chip_label": "तरीका समझाएँ (Explain-back)",
     "audio_available": false,
-    "audio_url": null
+    "audio_url": null,
+    "chip_label_en": "Explain the move (explain-back)"
   },
   {
     "id": "s5_question_multigrade",
@@ -42,6 +46,7 @@
     "expect": "Classified classroom_management → answer ≤ 80 words citing a source chunk + one thing to try this week; if no good chunk, escalated to ARP (visible on arp.demo).",
     "chip_label": "बहु-कक्षा सवाल (Ask)",
     "audio_available": false,
-    "audio_url": null
+    "audio_url": null,
+    "chip_label_en": "Multi-grade question (Ask)"
   }
 ]

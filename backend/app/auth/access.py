@@ -13,6 +13,7 @@ Roles and permissions:
 from typing import Any
 
 from backend.app.config import settings
+from backend.app.core.messages import get_message
 from backend.app.db.models import AppUser, Teacher
 
 
@@ -78,7 +79,7 @@ def get_teacher_display_name_for_arp(user: AppUser, teacher: Teacher) -> str:
     if teacher.consent_share_scores and teacher.name:
         return teacher.name
     short_hash = str(teacher.id).replace("-", "")[:6]
-    return f"शिक्षक #{short_hash}"
+    return get_message("ui_arp_anonymous_teacher", code=short_hash)
 
 
 def scope_teachers_query(query: Any, user: AppUser) -> Any:

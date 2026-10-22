@@ -6,7 +6,7 @@ Lane 3 implements the official government document ingestion pipeline, OCR fallb
 ## 2. Official Sources Registry & Policy Compliance
 - **Government-Only Sources**: Registered 5 official foundational learning documents in `content/sources/sources.yaml`:
   1. `nipun_guidelines_2021`: MoE NIPUN Bharat Guidelines (`education.gov.in`)
-  2. `up_ganit_sandarshika_c2`: UP Basic Shiksha Parishad Ganit Class 2 Sandarshika (`scertup.gov.in`)
+  2. `up_ganit_sandarshika_c1`: UP Basic Shiksha Parishad Ganit Class 2 Sandarshika (`scertup.gov.in`)
   3. `up_bhasha_sandarshika_c1`: UP Basic Shiksha Parishad Bhasha Class 1 Sandarshika (`scertup.gov.in`)
   4. `ncert_vidya_pravesh`: NCERT Vidya Pravesh Guidelines (`ncert.nic.in`)
   5. `ncert_fln_learning_outcomes`: NCERT FLN Learning Outcomes (`ncert.nic.in`)

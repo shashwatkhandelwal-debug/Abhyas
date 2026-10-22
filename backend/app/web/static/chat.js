@@ -834,7 +834,7 @@ function renderMessage(msg, isLocalOptimistic = false) {
   if (msg.direction === 'out' && msg.speaker) {
     const speakerEl = document.createElement('div');
     speakerEl.className = `speaker-tag ${msg.speaker.toLowerCase()}`;
-    speakerEl.textContent = getSpeakerHindiLabel(msg.speaker);
+    speakerEl.textContent = getSpeakerLabel(msg.speaker);
     bubble.appendChild(speakerEl);
   }
 
@@ -888,6 +888,26 @@ function renderMessage(msg, isLocalOptimistic = false) {
     }
   }
 
+  if (msg.citations && msg.citations.length > 0) {
+    const sources = document.createElement('div');
+    sources.className = 'bubble-sources';
+    msg.citations.forEach((c) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'source-chip';
+      chip.dataset.chunkId = c.chunk_id;
+      chip.setAttribute('aria-expanded', 'false');
+      chip.textContent = c.line_hi;
+      sources.appendChild(chip);
+    });
+    bubble.appendChild(sources);
+  }
+
+  // On-demand English translation under child / coach / guide bubbles
+  if (msg.direction === 'out' && msg.id && msg.text && TRANSLATABLE_SPEAKERS.has(msg.speaker)) {
+    bubble.appendChild(buildTranslateControl(msg.id));
+  }
+
   // Metadata / Status Tick
   const meta = document.createElement('div');
   meta.className = 'bubble-meta';
@@ -895,7 +915,7 @@ function renderMessage(msg, isLocalOptimistic = false) {
   const timeEl = document.createElement('span');
   timeEl.textContent = msg.created_at
     ? new Date(msg.created_at).toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' })
-    : t('ui_time_just_now') || 'अभी';
+    : t('ui_time_just_now');
   meta.appendChild(timeEl);
   const statusEl = document.createElement('span');
   const statusKey = msg.client_msg_id || msg.id;
@@ -941,16 +961,164 @@ function renderMessage(msg, isLocalOptimistic = false) {
   return true;
 }
 
-function getSpeakerHindiLabel(speaker) {
-  const map = {
-    abhyas: 'अभ्यास',
-    coach: 'कोच',
-    model_teacher: 'आदर्श शिक्षिका',
-    ravi: 'रवि',
-    priya: 'प्रिया',
-    aman: 'अमन',
-  };
-  return map[speaker] || speaker;
+// ── On-demand translation: "Translate" under child / coach / guide bubbles ─────
+// The Hindi stays; the English text appears below it. The server caches per (message, 'en').
+const TRANSLATABLE_SPEAKERS = new Set(['ravi', 'priya', 'aman', 'coach', 'guide', 'model_teacher']);
+
+function buildTranslateControl(messageId) {
+  const wrap = document.createElement('div');
+  wrap.className = 'translate-wrap';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'translate-btn';
+  btn.dataset.messageId = messageId;
+  btn.textContent = t('ui_chat_translate');
+  wrap.appendChild(btn);
+  return wrap;
+}
+
+async function toggleTranslation(btn) {
+  const wrap = btn.closest('.translate-wrap');
+  if (!wrap || btn.disabled) return;
+  const shown = wrap.querySelector('.bubble-translation');
+  const oldErr = wrap.querySelector('.translate-error');
+  if (oldErr) oldErr.remove();
+  if (shown) {
+    shown.remove();
+    btn.textContent = t('ui_chat_translate');
+    return;
+  }
+  btn.disabled = true;
+  btn.setAttribute('aria-busy', 'true');
+  btn.textContent = t('ui_chat_translate_loading');
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    const csrfToken = getCsrfToken();
+    if (csrfToken) headers['x-csrf-token'] = csrfToken;
+    const res = await netFetch('/api/chat/translate', {
+      method: 'POST',
+      headers,
+      credentials: 'same-origin',
+      body: JSON.stringify({ message_id: btn.dataset.messageId }),
+    });
+    if (!res.ok) {
+      const err = new Error(`translate ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+    const data = await res.json();
+    const out = document.createElement('p');
+    out.className = 'bubble-translation';
+    out.lang = 'en';
+    out.setAttribute('aria-label', t('ui_chat_translation_label'));
+    out.textContent = data.text;
+    wrap.appendChild(out);
+    btn.textContent = t('ui_chat_translate_hide');
+  } catch (e) {
+    const msg = document.createElement('p');
+    msg.className = 'translate-error';
+    msg.setAttribute('role', 'alert');
+    msg.textContent = e && e.status === 429 ? t('ui_chat_translate_limit') : t('ui_chat_translate_error');
+    wrap.appendChild(msg);
+    btn.textContent = t('ui_chat_translate_retry');
+  } finally {
+    btn.disabled = false;
+    btn.removeAttribute('aria-busy');
+  }
+}
+
+document.addEventListener('click', (ev) => {
+  const btn = ev.target instanceof Element ? ev.target.closest('.translate-btn') : null;
+  if (btn) toggleTranslation(btn);
+});
+
+// ── Source citations: tap the chip to read the excerpt behind an answer ───────
+function buildExcerptPanel(src) {
+  const panel = document.createElement('div');
+  panel.className = 'source-excerpt';
+  panel.setAttribute('role', 'region');
+  const head = document.createElement('p');
+  head.className = 'source-excerpt-head';
+  const pageBits = [t('ui_chat_source_page', { page: src.page })];
+  if (src.printed_page) pageBits.push(t('ui_chat_source_printed', { page: src.printed_page }));
+  head.textContent = `${src.source_short_hi} · ${pageBits.join(' · ')}`;
+  panel.appendChild(head);
+  if (src.heading) {
+    const h = document.createElement('p');
+    h.className = 'source-excerpt-heading';
+    h.textContent = src.heading;
+    panel.appendChild(h);
+  }
+  if (src.gloss_hi) {
+    const g = document.createElement('p');
+    g.className = 'source-excerpt-gloss';
+    g.textContent = `${t('ui_chat_source_summary')}: ${src.gloss_hi}`;
+    panel.appendChild(g);
+  }
+  const body = document.createElement('p');
+  body.className = 'source-excerpt-text';
+  if (src.lang === 'en') body.lang = 'en';
+  body.textContent = src.text;
+  panel.appendChild(body);
+  if (src.lang === 'en') {
+    const note = document.createElement('p');
+    note.className = 'source-excerpt-note';
+    note.textContent = t('ui_chat_source_original_en');
+    panel.appendChild(note);
+  }
+  return panel;
+}
+
+async function toggleSourceExcerpt(chip) {
+  const holder = chip.closest('.bubble-sources');
+  if (!holder) return;
+  const open = holder.querySelector('.source-excerpt');
+  const err = holder.querySelector('.source-error');
+  if (err) err.remove();
+  if (open && open.dataset.chunkId === chip.dataset.chunkId) {
+    open.remove();
+    chip.setAttribute('aria-expanded', 'false');
+    return;
+  }
+  if (open) open.remove();
+  holder.querySelectorAll('.source-chip').forEach((c) => c.setAttribute('aria-expanded', 'false'));
+  chip.disabled = true;
+  chip.setAttribute('aria-busy', 'true');
+  try {
+    const res = await netFetch(`/api/source/${encodeURIComponent(chip.dataset.chunkId)}`, {
+      credentials: 'same-origin',
+    });
+    if (!res.ok) throw new Error(`source ${res.status}`);
+    const panel = buildExcerptPanel(await res.json());
+    panel.dataset.chunkId = chip.dataset.chunkId;
+    holder.appendChild(panel);
+    chip.setAttribute('aria-expanded', 'true');
+  } catch (e) {
+    const msg = document.createElement('p');
+    msg.className = 'source-error';
+    msg.setAttribute('role', 'alert');
+    msg.textContent = t('ui_chat_source_error');
+    holder.appendChild(msg);
+  } finally {
+    chip.disabled = false;
+    chip.removeAttribute('aria-busy');
+  }
+}
+
+document.addEventListener('click', (ev) => {
+  const chip = ev.target instanceof Element ? ev.target.closest('.source-chip') : null;
+  if (chip) toggleSourceExcerpt(chip);
+});
+
+// Speaker display names come from the catalog (speaker_<id>), in the user's UI language.
+function getSpeakerLabel(speaker) {
+  return t(`speaker_${speaker}`) || speaker;
+}
+
+function recorderErrorText(code, detail) {
+  if (code === 'unsupported') return t('ui_chat_rec_unsupported');
+  if (code === 'permission') return t('ui_chat_rec_permission');
+  return t('ui_chat_rec_start_failed', { error: detail || t('ui_chat_rec_unknown_error') });
 }
 
 // ── Chips: pressed state, locked while the request runs, inline ✓ ────────────
@@ -1107,7 +1275,7 @@ async function toggleLiteMode(forceValue = null) {
 
   const btn = document.getElementById('lite-mode-menu-btn');
   if (btn) {
-    btn.textContent = target ? 'लाइट मोड: चालू ✓' : 'लाइट मोड: बंद';
+    btn.textContent = target ? t('ui_chat_lite_on') : t('ui_chat_lite_off');
   }
 
   try {
@@ -1158,10 +1326,10 @@ function setupMicEvents() {
           state.mic = 'idle';
         });
       },
-      (errMsg) => {
+      (code, detail) => {
         state.mic = micNext(state.mic, 'denied');
         stopRecUI();
-        flashStatus(errMsg);
+        flashStatus(recorderErrorText(code, detail));
       }
     );
   };
@@ -1360,12 +1528,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     savedLite = localStorage.getItem('abhyas_lite_mode') === 'true';
   } catch (e) {}
 
-  if (liteBtn && liteBtn.textContent.includes('चालू')) {
+  if (liteBtn && liteBtn.textContent.trim() === t('ui_chat_lite_on')) {
     state.liteMode = true;
   } else if (savedLite) {
     state.liteMode = true;
     if (liteBtn) {
-      liteBtn.textContent = 'लाइट मोड: चालू ✓';
+      liteBtn.textContent = t('ui_chat_lite_on');
     }
   }
 

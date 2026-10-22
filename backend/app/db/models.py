@@ -75,6 +75,10 @@ class AppUser(Base):
     district: Mapped[str | None] = mapped_column(Text, nullable=True)
     teacher_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # UI language: 'hi' (default) or 'en'. Nullable so rows created before the column keep working.
+    ui_lang: Mapped[str | None] = mapped_column(
+        Text, nullable=True, default="hi", server_default="hi"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
@@ -341,6 +345,21 @@ class Turn(Base):
     )
 
 
+class MessageTranslation(Base):
+    """Cached on-demand translation of a bubble, keyed by (message, target language)."""
+
+    __tablename__ = "message_translation"
+
+    message_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("message.id", ondelete="CASCADE"), primary_key=True
+    )
+    lang: Mapped[str] = mapped_column(Text, primary_key=True)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
 class Message(Base):
     __tablename__ = "message"
     __table_args__ = (
@@ -364,6 +383,7 @@ class Message(Base):
     text: Mapped[str | None] = mapped_column(Text, nullable=True)
     audio_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
     buttons: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
+    citations: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
     speaker: Mapped[str | None] = mapped_column(Text, nullable=True)
     template_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     state_at: Mapped[str | None] = mapped_column(Text, nullable=True)

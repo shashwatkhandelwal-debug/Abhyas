@@ -41,6 +41,7 @@ from backend.app.db.models import (
 )
 from backend.app.db.session import get_db_session
 from backend.app.reports.arp_digest import build_arp_digest
+from backend.app.web.ui_lang import register_ui_globals
 
 logger = logging.getLogger("abhyas.web.arp")
 IST = ZoneInfo("Asia/Kolkata")
@@ -49,6 +50,7 @@ router = APIRouter(prefix="/arp", tags=["arp"])
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+register_ui_globals(templates.env)
 
 
 @router.get("", response_class=HTMLResponse)

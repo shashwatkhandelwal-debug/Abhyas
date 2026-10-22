@@ -29,6 +29,15 @@ class Button(BaseModel):
     title_hi: str = Field(max_length=20)
 
 
+class Citation(BaseModel):
+    """Source reference attached to a guide answer; tappable on the web channel."""
+
+    chunk_id: str
+    source_short_hi: str
+    page: int | None = None
+    line_hi: str  # the formatted "स्रोत: …, पृष्ठ N" line as it appears in text_hi
+
+
 class OutboundMessage(BaseModel):
     """Normalized outbound message dispatched to preferred channel (spec/02 §2.5, spec/07 §7.1)."""
 
@@ -41,3 +50,4 @@ class OutboundMessage(BaseModel):
     speaker: str | None = None  # "abhyas" | persona id | "model_teacher" | "coach"
     message_id: UUID | None = None
     already_persisted: bool = False
+    citations: list[Citation] = Field(default_factory=list)
