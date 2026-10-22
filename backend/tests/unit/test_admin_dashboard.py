@@ -2,7 +2,6 @@
 
 import uuid
 from collections.abc import AsyncIterator
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -308,9 +307,9 @@ async def test_admin_fast_forward_invalid_uuid() -> None:
 
 
 @pytest.mark.asyncio
-async def test_reset_demo_data_targets_only_seed_teachers() -> None:
-    """Verifies reset_demo_data targets SEED_TEACHER_IDS and resets demo1..3 states."""
-    from backend.app.db.demo_data import SEED_TEACHER_IDS
+async def test_reset_demo_data_uses_logout_reset_for_all_three_demo_teachers() -> None:
+    """reset_demo_data delegates to reset_demo_teacher (the logout path) for demo1..3."""
+    from backend.app.db.seed import DEMO_TEACHER_LOGINS
     from backend.app.web.admin import reset_demo_data
 
     mock_db = AsyncMock(spec=AsyncSession)
@@ -318,24 +317,9 @@ async def test_reset_demo_data_targets_only_seed_teachers() -> None:
     mock_exec.scalars.return_value.all.return_value = []
     mock_db.execute = AsyncMock(return_value=mock_exec)
 
-    t1 = Teacher(id=SEED_TEACHER_IDS[0], is_demo=True, onboarding_state="PLACEMENT")
-    t2 = Teacher(id=SEED_TEACHER_IDS[1], is_demo=True, onboarding_state="PLACEMENT")
-    t3 = Teacher(id=SEED_TEACHER_IDS[2], is_demo=True, onboarding_state="PLACEMENT")
+    with patch("backend.app.db.seed.reset_demo_teacher", new_callable=AsyncMock) as mock_reset:
+        result = await reset_demo_data(mock_db)
 
-    async def fake_get(model: Any, pk: Any) -> Any:
-        if pk == SEED_TEACHER_IDS[0]:
-            return t1
-        elif pk == SEED_TEACHER_IDS[1]:
-            return t2
-        elif pk == SEED_TEACHER_IDS[2]:
-            return t3
-        return None
-
-    mock_db.get = AsyncMock(side_effect=fake_get)
-
-    result = await reset_demo_data(mock_db)
     assert result == {"reset_teachers": 3}
-    assert t1.onboarding_state == "NEW"
-    assert t2.onboarding_state == "READY"
-    assert t3.onboarding_state == "READY"
-    assert mock_db.commit.awaited
+    assert sorted(c.args[1] for c in mock_reset.await_args_list) == sorted(DEMO_TEACHER_LOGINS)
+    mock_db.commit.assert_awaited_once()

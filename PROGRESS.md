@@ -1,5 +1,14 @@
 # PROGRESS.md — Abhyas Build Progress
 
+## Overnight run (feat/overnight, started 2026-10-22)
+
+**Placeholders still needing a person** (filled in as the run proceeds): hosted link, demo video link, team photo.
+
+| Part | Status | Notes |
+|---|---|---|
+| 0 | done | Admin "Reset demo" now calls `reset_demo_teacher` for demo1..3 (same path as logout). Postgres test asserts demo2 `rehearse_mode == one_on_one`, the seeded Scene + 5 messages, demo3's 3 ModuleProgress rows, and admin-reset == logout-reset state. Decision: the admin reset no longer deletes the seeded demo scenes/scores (they are the seeded state); it still clears calibration labels on session scenes, review items for demo questions, scheduled jobs and TrainingRating rows. Gates: ruff, format, mypy --strict, pytest (TEST_DATABASE_URL on the local pgvector container, known `test_admin_dashboard_postgres_end_to_end` deselected), 43 Node tests all green. |
+
+
 ## 1. Understanding
 
 - **What we are building**: Abhyas is a voice-first practice partner for government primary school teachers (FLN, Classes 1–3) in Hindi, delivered over WhatsApp and an equivalent lightweight web PWA. Each week a teacher spends ~15 minutes practicing one high-leverage pedagogical move.

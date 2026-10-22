@@ -39,6 +39,7 @@ from backend.app.db.models import (
     Turn,
 )
 from backend.app.db.seed import DEMO2_SCENE_ID, DEMO_TEACHER_LOGINS
+from backend.app.web.admin import reset_demo_data
 
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -316,3 +317,48 @@ async def test_reset_failure_does_not_block_logout(
 
     monkeypatch.setattr("backend.app.db.seed.reset_demo_teacher", boom)
     await _logout(session, "teacher.demo2")  # asserts the 303 inside
+
+
+async def _scene_one_on_one_state(session: AsyncSession, teacher_id: UUID) -> dict[str, Any]:
+    state = (
+        await session.execute(select(SessionState).where(SessionState.teacher_id == teacher_id))
+    ).scalar_one()
+    scene = await session.get(Scene, DEMO2_SCENE_ID)
+    messages = (
+        (await session.execute(select(Message).where(Message.teacher_id == teacher_id)))
+        .scalars()
+        .all()
+    )
+    return {
+        "rehearse_mode": (state.context or {}).get("rehearse_mode"),
+        "state": state.state,
+        "scene_active": scene is not None and scene.status == "active",
+        "messages": len(messages),
+    }
+
+
+async def test_admin_reset_restores_one_on_one_and_modules_like_logout(
+    session: AsyncSession,
+) -> None:
+    demo2 = DEMO_TEACHER_LOGINS["teacher.demo2"][0]
+    demo3 = DEMO_TEACHER_LOGINS["teacher.demo3"][0]
+    await _dirty(session, demo2)
+    await _dirty(session, demo3)
+    await session.execute(text("DELETE FROM module_progress WHERE teacher_id = :t"), {"t": demo3})
+    await session.commit()
+
+    await reset_demo_data(session)
+    admin_state = await _scene_one_on_one_state(session, demo2)
+    assert admin_state["rehearse_mode"] == "one_on_one"
+    assert admin_state["scene_active"] is True
+    assert admin_state["messages"] == 5
+    modules = (
+        (await session.execute(select(ModuleProgress).where(ModuleProgress.teacher_id == demo3)))
+        .scalars()
+        .all()
+    )
+    assert len(modules) == 3
+
+    await _dirty(session, demo2)
+    await _logout(session, "teacher.demo2")
+    assert await _scene_one_on_one_state(session, demo2) == admin_state
