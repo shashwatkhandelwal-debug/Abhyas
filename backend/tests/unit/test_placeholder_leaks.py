@@ -175,3 +175,34 @@ async def test_stt_hints_are_the_scene_child_names() -> None:
         await runner.create_scene(teacher)
         names = await scene_child_name_hints(teacher)
     assert set(names) == {"रवि", "प्रिया", "अमन"}
+
+
+@pytest.mark.parametrize(
+    "line", ["दीदी, 3 आया... अरे मेरा बस्ता कहाँ गया... तो 45!", "दीदी, 45! पेंसिल गिर गई।"]
+)
+def test_guard_rejects_a_digression_in_a_lesson_answer(line: str) -> None:
+    resp = ChildResponse(
+        persona_id="aman",
+        kind=ResponseKind.ANSWER,
+        answer=45,
+        prior_state=ChildState.MISCONCEPTION,
+        new_state=ChildState.MISCONCEPTION,
+        affect="distracted",
+        item=Problem(type="sub", a=52, b=17),
+        allowed_numbers={45, 3},
+    )
+    ok, why = guard_child_line(line, resp)
+    assert not ok and "digress" in why
+
+
+def test_an_engine_chosen_off_topic_line_may_digress() -> None:
+    resp = ChildResponse(
+        persona_id="aman",
+        kind=ResponseKind.OFF_TOPIC,
+        answer=None,
+        prior_state=ChildState.MISCONCEPTION,
+        new_state=ChildState.MISCONCEPTION,
+        affect="distracted",
+        item=Problem(type="sub", a=52, b=17),
+    )
+    assert guard_child_line("दीदी, मेरी पेंसिल गिर गई!", resp)[0]

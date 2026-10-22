@@ -358,8 +358,10 @@ async def coach_feedback(
             else "with three simulated children"
         ),
         one_on_one_rules=(
-            "One-on-one: in strength_hi quote a few of the teacher's own words from the scene "
-            "in «» (copied exactly). If the diagnosis verdict is not 'correct', change_hi "
+            "One-on-one: in strength_hi quote at most 6 of the teacher's own words from the "
+            "scene in «» (copied exactly); the quoted words COUNT towards the 60-word total. Hard "
+            "limits: strength_hi at most 22 words (quote included), change_hi at most 20, "
+            "exact_words_hi at most 15. If the diagnosis verdict is not 'correct', change_hi "
             "should say what the child's real mistake was. Never alter the verdict."
             if one_on_one
             else "Group scene: nothing extra."

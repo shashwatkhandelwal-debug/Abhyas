@@ -199,6 +199,26 @@ class Settings(BaseSettings):
     # at ~2.5 words/s, still short enough for a rehearsal turn.
     MAX_CHILD_LINE_WORDS_EXPLAIN: int = 30
     MAX_DISTRACTIONS_PER_SCENE: int = 1
+    # Everyday things a distracted child may mention ONLY in an engine-chosen off-topic / interject
+    # line; a child answering the lesson must not (the live 1-1 run showed the model adding
+    # "अरे मेरा बस्ता..." to explanations, which defeats MAX_DISTRACTIONS_PER_SCENE).
+    CHILD_DISTRACTION_WORDS: tuple[str, ...] = (
+        "बस्ता",
+        "पेंसिल",
+        "तितली",
+        "चिड़िया",
+        "पतंग",
+        "खिड़की",
+        "बंदर",
+        "चप्पल",
+        "मेहमान",
+        "मिड-डे",
+        "टिफिन",
+        "गेंद",
+        "कुत्ता",
+        "बिल्ली",
+        "आसमान",
+    )
     # Problems the simulated children can handle (the rule engine answers CONFUSED outside it).
     PROBLEM_MIN_OPERAND: int = 10
     PROBLEM_MAX_OPERAND: int = 99

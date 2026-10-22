@@ -225,6 +225,12 @@ def guard_child_line(
     if len(eng_tokens) > 3:
         return False, "Line contains more than 3 English words"
 
+    # 5b. Only an engine-chosen OFF_TOPIC / INTERJECT line may digress to everyday things
+    if response.kind not in (ResponseKind.OFF_TOPIC, ResponseKind.INTERJECT):
+        for word in settings.CHILD_DISTRACTION_WORDS:
+            if word in line_hi:
+                return False, f"Line digresses ('{word}') but this turn is not a distraction"
+
     # 6. OFF_TOPIC / INTERJECT: contains no numbers at all
     extracted_nums = extract_numbers(line_hi)
     if response.kind in (ResponseKind.OFF_TOPIC, ResponseKind.INTERJECT):
