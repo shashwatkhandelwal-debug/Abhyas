@@ -363,6 +363,10 @@ coach_exact_words_contrast_lit:
   text: "दोनों के पढ़े शब्द सुनो, अक्षर मिलाकर बताओ कि कौन-सा सही है?"
   audio: false
 
+coach_fallback_neutral:
+  text: "अभी आपके शब्दों में इस अभ्यास की कोई ख़ास बात साफ़ नहीं दिखी; नीचे का सुझाव आज़माकर दोबारा कोशिश करें।"
+  audio: false
+
 # ── Ingest and retrieval titles ──────────────────────────────
 ingest_summary_title:
   text: "अभ्यास मूव सारांश"

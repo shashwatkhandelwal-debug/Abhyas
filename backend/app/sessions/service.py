@@ -1169,6 +1169,7 @@ class SessionService:
                         target_child_id=target_child_id,
                         current_item_answer=current_item_answer,
                         attempt=ctx.retries_count + 1,
+                        reason=f"coach_error:{type(exc).__name__}",
                     )
                     coach_res = CoachResult(
                         feedback=coach_fb,
