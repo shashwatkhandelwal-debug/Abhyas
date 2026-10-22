@@ -1,0 +1,14 @@
+{
+ "page": 9,
+ "image_key": "35ed4459e0a9182d5801345d",
+ "text_hi": "",
+ "printed_page": null,
+ "legibility": "poor",
+ "guard_ok": false,
+ "guard_reason": "no valid output",
+ "illegible_marks": 0,
+ "input_tokens": 6540,
+ "output_tokens": 6000,
+ "model": "claude-haiku-5-5",
+ "from_cache": false
+}

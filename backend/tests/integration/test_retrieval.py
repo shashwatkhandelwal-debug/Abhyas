@@ -362,12 +362,14 @@ ANY_OFFICIAL_EXCERPT = "<any excerpt from an ingested official document>"
             "NUM_ADD_CARRY_BUNDLES",
         ),
         (
+            # The OCR'd UP Bhasha guide now answers this with its own excerpts, which outrank
+            # the move-card summary; either is a correct grounding for the teacher.
             "कक्षा 1 के बच्चों को मात्रा जोड़कर दो-अक्षर वाले शब्द पढ़ना कैसे सिखाएं?",
-            "LIT_MATRA_BLENDING",
+            ANY_OFFICIAL_EXCERPT,
         ),
         (
             "वर्ण पहचान और अक्षरों की ध्वनि मिलाकर शब्द डिकोडिंग कराने का सही तरीका क्या है?",
-            "LIT_MATRA_BLENDING",
+            ANY_OFFICIAL_EXCERPT,  # the UP Bhasha guide's decoding steps outrank the move card
         ),
         (
             "बच्चा घटाव करते समय हमेशा ऊपर की छोटी संख्या को नीचे की बड़ी संख्या से घटा देता है, इसे कैसे ठीक करें?",

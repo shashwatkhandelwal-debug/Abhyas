@@ -1,0 +1,14 @@
+{
+ "page": 1,
+ "image_key": "49a7dd6ac58e1acca21abf81",
+ "text_hi": "उत्तर प्रदेश शासन\nसमग्र शिक्षा\nSamagra Shiksha\nNIPUN BHARAT\nआधारशिला क्रियान्वयन शिक्षक संदर्शिका\nभाषा\nकक्षा 1\nसत्र 2024—2025",
+ "printed_page": null,
+ "legibility": "clear",
+ "guard_ok": true,
+ "guard_reason": "Valid",
+ "illegible_marks": 0,
+ "input_tokens": 3270,
+ "output_tokens": 181,
+ "model": "claude-haiku-5-5",
+ "from_cache": false
+}

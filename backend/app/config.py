@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     GIT_SHA: str = "dev"
 
     # ── Database ─────────────────────────────────────────────────────────
-    # Supabase session pooler in prod; docker compose locally
+    # Render Postgres (internal URL, postgresql+asyncpg://) in prod; docker compose locally
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/abhyas"
     ALEMBIC_DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/abhyas"
 
@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     PHONE_ENC_KEY: str = "P5sUu77tT3i8_R1m2tZ_7lqf4xL6D-0K0A5vG4J-7-8="
     DEMO_PASSWORD: str = "abhyas-demo-2026"
     ADMIN_PASSWORD: str = "abhyas-admin-2026"
+    # Logout resets the shared demo teachers; rows younger than this are session-made, older are seed
+    DEMO_RESET_SEED_MIN_AGE_HOURS: int = 24
     TRUSTED_PROXY_IPS: str = "127.0.0.1"
     MAX_LOGIN_ATTEMPTS_PER_MINUTE: int = 5
     LOGIN_RATE_LIMIT_WINDOW_SECONDS: int = 60
@@ -119,6 +121,10 @@ class Settings(BaseSettings):
     REHEARSE_TURN_MAX_S: int = 30
     LEARN_AUDIO_MAX_SECONDS: int = 120
     SPEECH_PROVIDER_LIVE: bool = False
+    # First-boot voice prewarm (scripts/start.sh -> scripts/prewarm_tts.py, background process)
+    PREWARM_ON_BOOT: bool = False
+    PREWARM_REQUEST_INTERVAL_SECONDS: float = 7.0  # stays under ~10 requests/min
+    PREWARM_MAX_SYNTH_PER_RUN: int = 100  # new clips per boot; the next boot continues
     SPEECH_DAILY_BUDGET_INR: float = 50.0
     SPEECH_TOTAL_BUDGET_INR: float = 500.0
     # Pricing as-of 2026-10: https://docs.sarvam.ai/api-reference-docs/pricing
@@ -158,6 +164,16 @@ class Settings(BaseSettings):
     CHUNK_TARGET_WORDS: int = 300
     CHUNK_MAX_WORDS: int = 400
     CHUNK_OVERLAP_WORDS: int = 40
+    # Page OCR for legacy-font Hindi guides (offline, `python -m backend.app.retrieval.page_ocr`)
+    OCR_MAX_IMAGE_EDGE_PX: int = 1568  # longest edge sent to the vision model (no further resize)
+    OCR_MAX_OUTPUT_TOKENS: int = 3000
+    OCR_CONCURRENCY: int = 4
+    OCR_BUDGET_USD: float = 1.50  # hard cap per run; the run aborts before exceeding it
+    # claude-haiku-5-5 list price, USD per million tokens (same rates as the Hindi gloss cost
+    # reported in content/sources/README.md)
+    OCR_PRICE_INPUT_USD_PER_MTOK: float = 0.10
+    OCR_PRICE_OUTPUT_USD_PER_MTOK: float = 0.50
+    OCR_MAX_ILLEGIBLE_MARKS: int = 6  # pages with more [?] marks than this are flagged unreliable
 
     # ── On-demand English translation of bubbles ─────────────────────────
     TRANSLATE_MAX_REQUESTS_PER_MINUTE: int = 10
@@ -210,6 +226,10 @@ class Settings(BaseSettings):
     FOLLOWUP_TRY_IN_CLASS_HOURS: int = 48
     RETENTION_PURGE_HOUR_IST: int = 3
     DATA_RETENTION_DAYS: int = 90
+
+    # ── "Rate the training" after REFLECT ────────────────────────────────
+    TRAINING_COMMENT_MAX_CHARS: int = 200
+    TRAINING_RATING_RECENT_COMMENTS: int = 5  # latest comments shown in trainer/admin views
 
     # ── Demo / Evaluation & Observability ────────────────────────────────
     SERVE_IN_REVIEW_TO_DEMO: bool = True

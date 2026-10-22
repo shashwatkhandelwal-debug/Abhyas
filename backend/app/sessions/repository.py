@@ -23,6 +23,7 @@ from backend.app.db.models import (
     ReviewItem,
     SessionState,
     Teacher,
+    TrainingRating,
 )
 from backend.app.sessions.path import MovePathEntry
 
@@ -282,6 +283,34 @@ class SessionRepository:
         await self.session.commit()
         return rr
 
+    async def record_training_rating(
+        self, teacher_id: UUID, rating: int, move_id: str | None = None
+    ) -> TrainingRating:
+        """Stores the 1-5 "how useful was this session" rating (comment is added afterwards)."""
+        tr = TrainingRating(
+            id=uuid4(),
+            teacher_id=teacher_id,
+            move_id=move_id,
+            rating=rating,
+            created_at=datetime.now(UTC),
+        )
+        self.session.add(tr)
+        await self.session.commit()
+        return tr
+
+    async def set_training_comment(self, teacher_id: UUID, comment: str) -> None:
+        """Attaches the optional one-line comment to the teacher's latest training rating."""
+        res = await self.session.execute(
+            select(TrainingRating)
+            .where(TrainingRating.teacher_id == teacher_id)
+            .order_by(TrainingRating.created_at.desc())
+            .limit(1)
+        )
+        row = res.scalar_one_or_none()
+        if row is not None:
+            row.comment = comment
+            await self.session.commit()
+
     async def record_question(
         self,
         teacher_id: UUID,
@@ -327,6 +356,9 @@ class SessionRepository:
         await self.session.execute(delete(ConsentLog).where(ConsentLog.teacher_id == teacher_id))
         await self.session.execute(
             delete(RealismRating).where(RealismRating.teacher_id == teacher_id)
+        )
+        await self.session.execute(
+            delete(TrainingRating).where(TrainingRating.teacher_id == teacher_id)
         )
         res = await self.session.execute(select(Teacher).where(Teacher.id == teacher_id))
         teacher = res.scalar_one_or_none()

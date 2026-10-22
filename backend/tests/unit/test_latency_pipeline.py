@@ -218,6 +218,7 @@ async def test_prewarm_tts_mock_noop() -> None:
     """prewarm_tts is a no-op when running against mock TTS without --force-mock."""
     res = await prewarm_tts(force_mock=False)
     assert res["synthesized"] == 0
+    assert res["tts_calls"] == 0
     assert res["cost_inr"] == 0.0
 
 

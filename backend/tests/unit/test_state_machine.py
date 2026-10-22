@@ -23,6 +23,7 @@ from backend.app.db.models import (
     ReviewItem,
     SessionState,
     Teacher,
+    TrainingRating,
 )
 from backend.app.sessions.path import MovePathEntry
 from backend.app.sessions.repository import SessionRepository
@@ -417,6 +418,7 @@ class FakeSessionRepository(SessionRepository):
         self._questions: list[Question] = []
         self._move_paths: list[MovePath] = []
         self._realism_ratings: list[RealismRating] = []
+        self._training_ratings: list[TrainingRating] = []
         self._invite_codes: dict[str, InviteCode] = {
             "KNP-C01-B1": InviteCode(
                 code="KNP-C01-B1",
@@ -622,6 +624,24 @@ class FakeSessionRepository(SessionRepository):
         self._realism_ratings.append(rr)
         return rr
 
+    async def record_training_rating(
+        self, teacher_id: UUID, rating: int, move_id: str | None = None
+    ) -> TrainingRating:
+        tr = TrainingRating(
+            id=uuid4(),
+            teacher_id=teacher_id,
+            move_id=move_id,
+            rating=rating,
+            created_at=datetime.now(UTC),
+        )
+        self._training_ratings.append(tr)
+        return tr
+
+    async def set_training_comment(self, teacher_id: UUID, comment: str) -> None:
+        mine = [r for r in self._training_ratings if r.teacher_id == teacher_id]
+        if mine:
+            mine[-1].comment = comment
+
     async def record_question(
         self,
         teacher_id: UUID,
@@ -826,7 +846,16 @@ async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence(
     )
     ctx = await service.get_or_create_context(t_id)
     assert ctx.current_state == SessionStateEnum.DONE
-    assert any("शाबाश" in str(m.text_hi or "") for m in out19)
+    # the week is not closed yet: "rate the training" comes first (rating, then optional comment)
+    assert not any("शाबाश" in str(m.text_hi or "") for m in out19)
+    assert out19[0].text_hi == get_message("rate_training_prompt", "f")
+    assert ctx.rating_stage == "rating"
+    out19b = await service.handle_inbound(make_inbound(teacher_id=t_id, text="4"))
+    assert out19b[0].text_hi == get_message("rate_training_comment_prompt", "f")
+    out19c = await service.handle_inbound(make_inbound(teacher_id=t_id, button_id="btn_trate_skip"))
+    assert any("शाबाश" in str(m.text_hi or "") for m in out19c)
+    ctx = await service.get_or_create_context(t_id)
+    assert ctx.rating_stage == "" and ctx.current_state == SessionStateEnum.DONE
 
     # 20. Assert evidence recorded in DB >= 2 per §8.8
     all_evidence = await service.repo.get_adoption_evidence(t_id)

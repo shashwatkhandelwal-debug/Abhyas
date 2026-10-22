@@ -195,3 +195,5 @@ class PageOCROutput(BaseModel):
     """Output schema for page_ocr role (spec/05 §5.9)."""
 
     text_hi: str
+    printed_page: int | None = None
+    legibility: Literal["clear", "partial", "poor"] = "clear"

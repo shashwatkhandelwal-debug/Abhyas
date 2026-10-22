@@ -501,6 +501,31 @@ class RealismRating(Base):
     )
 
 
+class TrainingRating(Base):
+    """End-of-week "rate the training" feedback: 1-5 usefulness plus an optional one-line comment."""
+
+    __tablename__ = "training_rating"
+    __table_args__ = (
+        CheckConstraint(
+            "rating BETWEEN 1 AND 5",
+            name="check_training_rating_range",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    teacher_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("teacher.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    move_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
 # ── Ask Any Time ─────────────────────────────────────────────────────────
 
 

@@ -3,6 +3,10 @@
 Synthesizes and caches fixed catalog messages with audio: true and move learn narration.
 - Idempotent: Skips lines already present in tts_cache.
 - Budget-capped: Respects SPEECH_DAILY_BUDGET_INR and SPEECH_TOTAL_BUDGET_INR.
+- Paced: PREWARM_REQUEST_INTERVAL_SECONDS between provider calls, at most
+  PREWARM_MAX_SYNTH_PER_RUN new clips per run (a later run continues where this one stopped).
+- Demo lines: catalog + move scripts + persona/engine template child lines
+  (backend/app/speech/prewarm_lines.py); `--no-demo-lines` limits it to catalog + learn scripts.
 - Mock-aware: No-op when running against MockTTS unless --force-mock is passed.
 """
 
@@ -24,12 +28,18 @@ sys.path.insert(0, str(REPO_ROOT))
 from backend.app.config import settings  # noqa: E402
 from backend.app.speech.audio import to_wav  # noqa: E402
 from backend.app.speech.cache import tts_cache  # noqa: E402
+from backend.app.speech.prewarm_lines import build_prewarm_targets  # noqa: E402
 from backend.app.speech.spend import (  # noqa: E402
     calculate_gemini_tts_cost,
     calculate_tts_cost,
     speech_budget,
 )
-from backend.app.speech.tts import TTSProvider, get_tts_provider, tts_cache_key  # noqa: E402
+from backend.app.speech.tts import (  # noqa: E402
+    TTSProvider,
+    get_tts_provider,
+    split_sentences_for_tts,
+    tts_cache_key,
+)
 from backend.app.speech.voices import get_voice  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -89,6 +99,9 @@ async def prewarm_tts(
     tts_provider: TTSProvider | None = None,
     force_mock: bool = False,
     dry_run: bool = False,
+    include_demo_lines: bool = False,
+    request_interval_s: float = 0.0,
+    max_synth: int | None = None,
 ) -> dict[str, int | float]:
     """Executes TTS pre-warming for fixed audio prompts."""
     active_tts = tts_provider or get_tts_provider()
@@ -101,15 +114,20 @@ async def prewarm_tts(
         logger.info("TTS provider is mock. Prewarming is a no-op on mock TTS.")
         return {
             "total_targets": 0,
+            "tts_calls": 0,
             "synthesized": 0,
             "already_cached": 0,
             "skipped_budget": 0,
             "cost_inr": 0.0,
         }
 
-    targets = load_prewarm_targets(messages_path, moves_dir)
+    if include_demo_lines:
+        targets = await build_prewarm_targets(messages_path, moves_dir)
+    else:
+        targets = load_prewarm_targets(messages_path, moves_dir)
 
     synthesized_count = 0
+    provider_calls = 0
     cached_count = 0
     skipped_budget_count = 0
     total_cost_inr = 0.0
@@ -157,7 +175,16 @@ async def prewarm_tts(
             skipped_budget_count += 1
             continue
 
+        if max_synth is not None and synthesized_count >= max_synth:
+            logger.info(
+                "Stopping: PREWARM_MAX_SYNTH_PER_RUN=%d reached; rerun to continue", max_synth
+            )
+            break
+
         try:
+            if request_interval_s > 0 and provider_calls > 0:
+                await asyncio.sleep(request_interval_s)
+            provider_calls += len(split_sentences_for_tts(text_hi))
             synth_res = await active_tts.synthesize(text_hi, voice=voice)
             if synth_res.audio:
                 wav_bytes = (
@@ -181,16 +208,20 @@ async def prewarm_tts(
             logger.error("Failed synthesizing '%s': %s", label, exc)
 
     logger.info(
-        "TTS Pre-warming Complete: targets=%d, synthesized=%d, already_cached=%d, skipped_budget=%d, cost=%.4f INR",
+        "TTS Pre-warming Complete: provider=%s targets=%d, synthesized=%d, already_cached=%d, "
+        "skipped_budget=%d, tts_calls=%d, cost=%.4f INR",
+        provider_name,
         len(targets),
         synthesized_count,
         cached_count,
         skipped_budget_count,
+        provider_calls,
         total_cost_inr,
     )
 
     return {
         "total_targets": len(targets),
+        "tts_calls": provider_calls,
         "synthesized": synthesized_count,
         "already_cached": cached_count,
         "skipped_budget": skipped_budget_count,
@@ -213,6 +244,12 @@ def main() -> None:
     parser.add_argument(
         "--dry-run", action="store_true", help="Inspect targets without synthesizing"
     )
+    parser.add_argument(
+        "--demo-lines",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Also prewarm move model lines, persona lines and engine template child lines",
+    )
 
     args = parser.parse_args()
     res = asyncio.run(
@@ -221,9 +258,15 @@ def main() -> None:
             moves_dir=args.moves_dir,
             force_mock=args.force_mock,
             dry_run=args.dry_run,
+            include_demo_lines=args.demo_lines,
+            request_interval_s=settings.PREWARM_REQUEST_INTERVAL_SECONDS,
+            max_synth=settings.PREWARM_MAX_SYNTH_PER_RUN,
         )
     )
-    print(f"Pre-warm complete: synthesized={res['synthesized']}, cached={res['already_cached']}")
+    print(
+        f"Pre-warm complete: targets={res['total_targets']}, synthesized={res['synthesized']}, "
+        f"cached={res['already_cached']}, tts_calls={res['tts_calls']}"
+    )
 
 
 if __name__ == "__main__":

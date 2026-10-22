@@ -57,11 +57,13 @@ from backend.app.db.models import (
     SessionState,
     Teacher,
     TemplateSend,
+    TrainingRating,
     Turn,
 )
 from backend.app.db.session import get_db_session
 from backend.app.jobs.tick import fast_forward_teacher
 from backend.app.sessions.state_machine import OnboardingStateEnum
+from backend.app.sessions.training_rating import training_rating_summary
 from backend.app.web.ui_lang import register_ui_globals
 
 logger = logging.getLogger("abhyas.web.admin")
@@ -387,6 +389,9 @@ async def reset_demo_data(session: AsyncSession) -> dict[str, int]:
     )
     await session.execute(delete(ExplainScore).where(ExplainScore.teacher_id.in_(demo_teacher_ids)))
     await session.execute(delete(Message).where(Message.teacher_id.in_(demo_teacher_ids)))
+    await session.execute(
+        delete(TrainingRating).where(TrainingRating.teacher_id.in_(demo_teacher_ids))
+    )
     await session.execute(delete(SessionState).where(SessionState.teacher_id.in_(demo_teacher_ids)))
 
     # 5. Reset demo 1, 2, 3 to baseline seed states
@@ -445,6 +450,7 @@ async def admin_dashboard(
     template_stats = await get_template_stats(db)
     job_stats = await get_scheduled_jobs_stats(db)
     demo_teachers = await get_demo_teachers(db)
+    ratings = await training_rating_summary(db)  # all teachers, no suppression (admin)
 
     response = templates.TemplateResponse(
         request=request,
@@ -461,6 +467,8 @@ async def admin_dashboard(
             "template_stats": template_stats,
             "job_stats": job_stats,
             "demo_teachers": demo_teachers,
+            "ratings": ratings,
+            "suppression_message": "",
             "msg": msg,
             "advanced": advanced,
             "get_message": get_message,

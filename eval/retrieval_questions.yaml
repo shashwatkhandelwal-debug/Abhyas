@@ -4,7 +4,7 @@
 # overlaps any range. `evidence` is a regex that must match text inside
 # the expected page range (checked by eval/retrieval_recall.py --verify-ground-truth), so the labels
 # do not depend on what the retriever returns. Only ingested sources can appear here (see
-# content/sources/README.md): the two UP Sandarshikas are NOT searchable, so no question targets them.
+# content/sources/README.md): q21-q30 target the two OCR'd UP Sandarshikas (content/sources/README.md).
 questions:
   - {id: q01, q: "बच्चों को उनकी मातृभाषा में पढ़ाना क्यों ज़रूरी है?", source: nipun_guidelines_2021, pages: [[41, 42], [63, 64], [98, 99], [201, 202], [264, 265]], evidence: "mother tongue|home language"}
   - {id: q02, q: "Multilingual classroom mein bachon ki ghar ki bhasha ka use kaise karein?", source: nipun_guidelines_2021, pages: [63, 64], evidence: "Multilingual"}
@@ -26,6 +26,17 @@ questions:
   - {id: q18, q: "Observation से बच्चों के सीखने का आकलन कैसे करें?", source: nipun_guidelines_2021, pages: [147, 148], evidence: "[Oo]bservation"}
   - {id: q19, q: "बच्चों को स्वतंत्र लेखन (independent writing) के लिए कैसे प्रोत्साहित करें?", source: ncert_vidya_pravesh, pages: [37, 38], evidence: "Independent Writing"}
   - {id: q20, q: "तीन अंकों तक की संख्याओं पर जोड़-घटाव की क्षमता FLN में कहाँ तक अपेक्षित है?", source: nipun_guidelines_2021, pages: [20, 21], evidence: "three.digit"}
+  # Answerable from the OCR'd UP Hindi guides (q21-q30); pages = PDF page index, verified by eye on the images
+  - {id: q21, q: "उल्टी गिनती करके घटाव कैसे सिखाएँ?", source: up_ganit_sandarshika_c1, pages: [45, 47], evidence: "उल्टी गिनती"}
+  - {id: q22, q: "बच्चों को सप्ताह के दिनों के नाम कैसे सिखाएँ?", source: up_ganit_sandarshika_c1, pages: [70, 70], evidence: "सप्ताह के दिनों के नाम"}
+  - {id: q23, q: "साल के बारह महीनों के नाम सिखाने की गतिविधि क्या है?", source: up_ganit_sandarshika_c1, pages: [71, 71], evidence: "बंदर"}
+  - {id: q24, q: "गणित बोर्ड में कौन-कौन से बोर्ड दिए गए हैं?", source: up_ganit_sandarshika_c1, pages: [88, 88], evidence: "घटाव के लिए बोर्ड"}
+  - {id: q25, q: "स्थानीय मान समझाने के लिए अवधारणा बोर्ड का उपयोग कैसे करें?", source: up_ganit_sandarshika_c1, pages: [85, 91], evidence: "स्थानीय मान"}
+  - {id: q26, q: "संख्या पट्टी पर count on पद्धति से जोड़ कैसे करवाएँ?", source: up_ganit_sandarshika_c1, pages: [41, 44], evidence: "[Cc]ount on"}
+  - {id: q27, q: "कविता पोस्टर पर कार्य कैसे करवाएँ?", source: up_bhasha_sandarshika_c1, pages: [112, 112], evidence: "कविता पोस्टर"}
+  - {id: q28, q: "शब्द पठन में पूरे शब्द को एक इकाई के रूप में कैसे पढ़वाएँ?", source: up_bhasha_sandarshika_c1, pages: [30, 36], evidence: "एक इकाई"}
+  - {id: q29, q: "वाक्यांश पठन का अभ्यास कैसे करवाएँ?", source: up_bhasha_sandarshika_c1, pages: [[45, 51], [56, 57], [62, 62], [13, 13]], evidence: "वाक्यांश पठन"}
+  - {id: q30, q: "चित्र चार्ट पर बच्चों से बंद और खुले छोर के प्रश्न कैसे पूछें?", source: up_bhasha_sandarshika_c1, pages: [[31, 31], [18, 33]], evidence: "खुले छोर"}
 
 # Questions the sources cannot answer. The bot must say it does not know (best score < RETRIEVAL_MIN_SCORE).
 negative_questions:
