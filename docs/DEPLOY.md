@@ -1,254 +1,216 @@
-# Production Deployment Guide: Render + Supabase
+# Deployment runbook: Render only (web service + Render Postgres)
 
-This document provides a click-by-click operational runbook for deploying **Abhyas** to production on Render and Supabase in compliance with `spec/12_deploy_ops.md`.
+Abhyas is hosted on **Render** alone: one Docker web service and one Render Postgres database. There is
+no Supabase, no separate object store and no Redis. This page is the click path, the environment
+variable names, what to look for in the logs, and what the free plan does to the demo.
 
----
+Related: `spec/12_deploy_ops.md` (original design; it still mentions Starter + Supabase, and this page
+supersedes it for the evaluation deployment), `docs/EVALUATOR_GUIDE.md` (what an evaluator sees),
+`scripts/start.sh` (what runs at container start).
 
-## 1. Supabase Setup (Database & Vector Store)
-
-### 1.1 Create Project
-1. Log in to [Supabase Console](https://supabase.com/dashboard).
-2. Click **New Project** and select your organization.
-3. Configure project details:
-   - **Name**: `abhyas-prod`
-   - **Database Password**: Generate a secure, 32+ character password. Store this securely in a password manager.
-   - **Region**: **Singapore (`ap-southeast-1`)** (co-located in the same region as the app).
-   - **Pricing Plan**: Free or Pro tier.
-4. Click **Create new project** and wait 2–3 minutes for provisioning.
-
-### 1.2 Enable Vector Extension (`pgvector`)
-1. In the Supabase project dashboard, navigate to **Database** -> **Extensions**.
-2. Search for `vector`.
-3. Toggle the switch to **Active / Enable**, or execute via **SQL Editor**:
-   ```sql
-   CREATE EXTENSION IF NOT EXISTS vector;
-   ```
-
-### 1.3 Obtain Connection Strings
-Under **Project Settings** -> **Database** -> **Connection string**:
-1. **Session Pooler URL (for `DATABASE_URL`)**:
-   - Select **URI** tab, mode **Session** (port 5432).
-   - Prefix protocol with `postgresql+asyncpg://`:
-     ```text
-     postgresql+asyncpg://postgres.[PROJECT-REF]:[DB-PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
-     ```
-   - This connection string is used by FastAPI's asynchronous SQLAlchemy engine (`asyncpg`).
-2. **Session Pooler URL for Migrations (for `ALEMBIC_DATABASE_URL`)**:
-   - Select **URI** tab, mode **Session** (port 5432).
-   - Format (plain `postgresql://` protocol):
-     ```text
-     postgresql://postgres.[PROJECT-REF]:[DB-PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
-     ```
-   - `ALEMBIC_DATABASE_URL` must use the Supabase SESSION POOLER URI (port 5432, plain `postgresql://`), not the direct connection. Supabase's direct host defaults to IPv6, which causes connection failures on environments without IPv6 routing (such as Render or Docker). The Session pooler supports full transactional DDL for Alembic migrations.
-
-### 1.4 Enable Row Level Security (RLS)
-The Abhyas backend interacts with Postgres via server-side credentials and does not expose direct client access to the Supabase data APIs.
-Run the following in the **SQL Editor** after running migrations to ensure RLS is enabled on all tables:
-```sql
-DO $$
-DECLARE
-    r RECORD;
-BEGIN
-    FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
-        EXECUTE 'ALTER TABLE public.' || quote_ident(r.tablename) || ' ENABLE ROW LEVEL SECURITY;';
-    END LOOP;
-END $$;
-```
+> **Free-plan facts that matter during evaluation** (details in §8)
+> - The free Postgres **expires 30 days after it was created. This one expires on 2026-11-20.** After that the
+>   database is gone: create a new one, point `DATABASE_URL` at it and redeploy with `SEED_ON_BOOT=true`.
+> - The free web service **sleeps after about 15 minutes without traffic**; the next request cold-starts it
+>   in **about a minute**. Open `/healthz` once before a demo.
+> - Render's **health check path is `/healthz`** (returns `{"status": "ok", "git_sha": "..."}`).
+> - The free plan has **no Shell**, so seeding and prewarming run from `scripts/start.sh` via
+>   `SEED_ON_BOOT` and `PREWARM_ON_BOOT`.
+> - `render.yaml` describes a *Starter* instance; the evaluation deployment is created by hand on the
+>   Free plan (below), so do not sync the blueprint over it without changing `plan`.
 
 ---
 
-## 2. Render Setup (Web Service)
+## 1. Create the database (Render Postgres, free)
 
-### 2.1 Create Web Service
-1. Log in to [Render Dashboard](https://dashboard.render.com).
-2. Click **New +** -> **Web Service**.
-3. Connect your GitHub repository (`Abhyas`).
-4. In the service creation form:
-   - **Name**: `abhyas`
-   - **Region**: **Singapore (`singapore`)** (closest Render region to India).
-   - **Branch**: `main` (or designated freeze tag/branch, e.g. `lane-c`).
-   - **Runtime**: **Docker**.
-   - **Dockerfile Path**: `./Dockerfile`
-   - **Docker Context**: `.`
-   - **Instance Type / Plan**: **Starter** ($7/mo — 512 MB RAM, 0.5 CPU, persistent execution without cold-start sleep).
-   - **Auto-Deploy**: **No** (`false`). Set auto-deploy to manual to prevent unexpected updates during active evaluation and freeze windows.
+1. Render Dashboard → **New +** → **PostgreSQL**.
+2. **Name** `abhyas-db`, **Database** `abhyas`, **Region** `Singapore` (same region as the web service,
+   so the *Internal* URL works), **PostgreSQL version** 16, **Instance type** `Free`.
+3. Create it and wait until it shows **Available**. Note the creation date: the free database lasts
+   30 days from this day.
+4. Open the database page → **Connections** and copy the **Internal Database URL** (it looks like
+   `postgresql://USER:PASSWORD@HOST/DBNAME`). Use the internal URL, not the external one: internal needs no
+   SSL setup and only works from services in the same Render region.
 
-### 2.2 Health Check Configuration
-1. Expand **Advanced** settings.
-2. In **Health Check Path**, enter:
-   ```text
-   /healthz
-   ```
-3. Render monitors this endpoint and will only route traffic after `/healthz` returns HTTP 200 `{"status": "ok", "git_sha": "..."}`.
+There is nothing to enable by hand: the first Alembic migration runs `CREATE EXTENSION IF NOT EXISTS
+vector` and `pgcrypto` itself, and every table is created by `alembic upgrade head` at container start.
 
-### 2.3 Single-Worker Constraint (§12.2)
-The application runs as a **single worker instance** (`--workers 1`) because the in-process conversation lock and session scheduler require a single process. Do not scale beyond 1 instance without deploying an external Redis queue.
+## 2. Create the web service
 
-### 2.4 Ingress Proxy & Forwarded Client IP
-The container starts uvicorn with `--proxy-headers --forwarded-allow-ips="*"`.
+1. **New +** → **Web Service** → connect the GitHub repository.
+2. **Name** `abhyas`, **Region** `Singapore`, **Branch** `main` (or the freeze branch/tag),
+   **Runtime** `Docker`, **Dockerfile Path** `./Dockerfile`, **Instance type** `Free`.
+3. **Advanced** → **Health Check Path** `/healthz`. **Auto-Deploy** `No` (deploy by hand so nothing
+   changes during evaluation).
+4. Do not set a start command: the Dockerfile `CMD` runs `sh scripts/start.sh`
+   (migrate → optional seed → optional background prewarm → single-worker uvicorn).
 
-**Why `--forwarded-allow-ips="*"` is safe on Render**:
-Render provides an isolated container execution environment where Render's own ingress load balancer is the sole entrypoint. Render terminates TLS, strips untrusted client-supplied headers, and injects the authentic `X-Forwarded-For` client IP chain and `X-Forwarded-Proto` header.
-In `ENVIRONMENT=production`, FastAPI's rate limiter directly inspects the first hop of `X-Forwarded-For` (`backend/app/auth/rate_limit.py`) to enforce the 5-attempt-per-minute login limit per client IP. Allowing forwarded headers from the ingress proxy ensures accurate client IP attribution without false-positive throttling across distinct users.
+The app must stay at **one worker / one instance** (the conversation lock and the scheduler live in the
+process).
 
----
+## 3. Environment variables
 
-## 3. Environment Variables & Speech Configuration
+Set them under the service's **Environment** tab. **Never commit values.** Names only here.
 
-### 3.1 Initial Zero-Key Deploy vs Live Speech Activation
-- **Initial Deploy Boots Cleanly**: By default in `render.yaml`, `STT_PROVIDER=mock`, `TTS_PROVIDER=mock`, and `SPEECH_PROVIDER_LIVE=false`. This allows the initial production service to boot up and pass health checks immediately without failing fast on absent speech keys.
-- **Activating Live Speech (Sarvam AI)**:
-  Once `SARVAM_API_KEY` is obtained:
-  1. Open the Render Dashboard -> Select **abhyas** -> **Environment**.
-  2. Add `SARVAM_API_KEY` with your secret key.
-  3. Change `STT_PROVIDER` to `sarvam`.
-  4. Change `TTS_PROVIDER` to `sarvam`.
-  5. Change `SPEECH_PROVIDER_LIVE` to `true`.
-  6. Save changes; Render will redeploy with full Hindi STT and child-voice TTS enabled.
+**Required for the service to start** (it refuses to boot in production without them):
 
-#### Speech provider order for hosted testing
-For the hosted evaluation build, use Gemini first and Sarvam as the fallback: set `STT_PROVIDER=gemini`, `STT_FALLBACK_PROVIDER=sarvam`, `TTS_PROVIDER=gemini` and `TTS_FALLBACK_PROVIDER=sarvam`, and provide both `GEMINI_API_KEY` and `SARVAM_API_KEY`. If a Gemini call times out or returns 5xx twice, or returns any 4xx (401/402/403/429 included), that request is retried on Sarvam; only provider names are logged. If both fail, the normal speech-error path runs (no mock audio is substituted). With `*_FALLBACK_PROVIDER=none` (the default) only the primary provider is used.
+| Name | Notes |
+|---|---|
+| `ENVIRONMENT` | `production` |
+| `DATABASE_URL` | the Internal Database URL with the scheme changed to `postgresql+asyncpg://` |
+| `ALEMBIC_DATABASE_URL` | same URL with plain `postgresql://` (optional: migrations fall back to `DATABASE_URL`) |
+| `PUBLIC_BASE_URL` | the service's `https://….onrender.com` URL |
+| `SESSION_SECRET`, `PHONE_HASH_SALT`, `PHONE_ENC_KEY` | random secrets; the dev defaults are rejected in production |
+| `DEMO_PASSWORD`, `ADMIN_PASSWORD` | must differ from the built-in defaults; `DEMO_PASSWORD` is shared by the six demo logins, `ADMIN_PASSWORD` is for `admin` |
+| `ANTHROPIC_API_KEY` | Claude key (without it the app would only run on mocks, which production refuses) |
 
-### 3.2 Environment Variables Checklist Table
-Configure environment variables in **Render Dashboard** -> **Environment**.
-Never commit real production credentials to Git.
+**Speech** (all optional; with the defaults STT/TTS are mocks):
+`STT_PROVIDER`, `TTS_PROVIDER`, `STT_FALLBACK_PROVIDER`, `TTS_FALLBACK_PROVIDER`, `SPEECH_PROVIDER_LIVE`,
+`GEMINI_API_KEY`, `SARVAM_API_KEY`, `SPEECH_DAILY_BUDGET_INR`, `SPEECH_TOTAL_BUDGET_INR`.
+A provider named in any of the four `*_PROVIDER` variables needs its key, or startup fails.
+
+**Boot helpers** (both default to `false`): `SEED_ON_BOOT`, `PREWARM_ON_BOOT` (§5).
+
+Others (`DEMO_MODE`, `LOG_LEVEL`, WhatsApp, Voyage, Sentry, model ids…) are in the reference table in §9.
+
+## 4. First deploy
+
+1. Create the database (§1), then the service (§2), then fill in the environment (§3). Set
+   `SEED_ON_BOOT=true` for this first deploy (and `PREWARM_ON_BOOT=true` only if a TTS key is set).
+2. **Manual Deploy** → *Deploy latest commit*. The first build takes several minutes (ffmpeg, Python deps).
+3. Watch **Logs**; a healthy first boot prints, in order:
+   - Alembic lines ending in `Running upgrade … -> <head>` (or nothing new on later boots);
+   - `start.sh: seeding demo data (SEED_ON_BOOT=true)`, then `Starting database seed` and finally
+     `Successfully seeded demo users, teachers, clusters, synthetic cohort, and doc chunks.`;
+   - with prewarm on: `start.sh: prewarming TTS audio in the background (PREWARM_ON_BOOT=true)`;
+   - `Uvicorn running on http://0.0.0.0:…`, and Render marks the service **Live** once `/healthz` returns 200.
+4. A failed seed does not stop startup: you will see `start.sh: ERROR: demo data seed failed; continuing
+   startup` plus the traceback above it. Fix the cause and redeploy.
+5. Open `https://<service>.onrender.com/healthz` (expect `"status": "ok"` and the deployed `git_sha`), then
+   log in as `teacher.demo1` and run `python scripts/smoke_test.py --base-url https://<service>.onrender.com`.
+6. Set `SEED_ON_BOOT` back to `false` (saving the variable redeploys). Leave it `false` afterwards: the
+   seed is idempotent but takes time at every cold start.
+
+## 5. Boot helpers: `SEED_ON_BOOT` and `PREWARM_ON_BOOT`
+
+| Variable | What it does | When to use |
+|---|---|---|
+| `SEED_ON_BOOT=true` | Runs `python -m backend.app.db.seed` after the migrations and before uvicorn starts. Creates clusters, batches, invite codes, the demo logins, the synthetic 51-teacher cohort and the retrieval chunks; re-applies `DEMO_PASSWORD` and `ADMIN_PASSWORD`. Idempotent. | First deploy, after a new database, after changing the demo password. |
+| `PREWARM_ON_BOOT=true` | Starts `python scripts/prewarm_tts.py` **in the background** (it does not delay uvicorn) to synthesize the demo's fixed Hindi lines into the TTS cache in Postgres. Skips lines already cached (cache keys include the provider name), waits `PREWARM_REQUEST_INTERVAL_SECONDS` between provider calls, stops after `PREWARM_MAX_SYNTH_PER_RUN` new clips (the next boot continues) and respects `SPEECH_DAILY_BUDGET_INR` / `SPEECH_TOTAL_BUDGET_INR`. With mock TTS it logs "no-op" and does nothing. | After the TTS keys are set, once per new database. |
+
+The prewarm covers **90 lines (7,394 characters)**: 13 catalog prompts (welcome, consent, name, placement,
+explain-back, try-in-class, escalation, coach scene-end), 26 move lines (learn scripts and the scripted model
+rehearsal), 24 persona off-topic lines (Ravi, Priya, Aman, with the "सर" variants) and 27 engine template
+child lines. Lines the LLM writes (live child voice, coach feedback with the teacher's own words, guide
+answers) cannot be predicted and are not prewarmed. Prewarm progress is in the log with the prefix
+`prewarm:`; the last line reads `TTS Pre-warming Complete: provider=… targets=… synthesized=…
+already_cached=… skipped_budget=… tts_calls=… cost=… INR` (`tts_calls` is the total number of TTS provider
+requests this run made). Running it by hand (a paid instance with Shell): `python scripts/prewarm_tts.py`
+(`--dry-run` to count only, `--no-demo-lines` for catalog + learn scripts only).
+
+## 6. Redeploying
+
+- **Code change**: push to the deployed branch, then **Manual Deploy** → *Deploy latest commit*. Render builds a
+  new image and swaps it in when `/healthz` is OK. Migrations run at start; the database is kept.
+- **Env change**: saving a variable restarts the service.
+- **Reseed / reset demo data**: set `SEED_ON_BOOT=true`, deploy, check the log line, set it back to `false`.
+  Logging out of `teacher.demo1/2/3` also resets that teacher; the admin console has a *Reset demo* button.
+- **Rollback**: Render → **Events** / **Deploys** → pick the previous deploy → **Rollback**. Migrations are not
+  reversed, so only roll back across a migration if it was additive.
+- **Freeze**: after the submission freeze make no deploys that change the commit (`spec/12_deploy_ops.md`).
+
+## 7. Reading the logs
+
+Render → service → **Logs** (filter with the search box). Lines are plain `key=value` text.
+
+| Line | Meaning | What to do |
+|---|---|---|
+| `llm_role role=<r> model=<m> latency_ms=<n> fallback_used=<true\|false>` | One line per Claude role call (`act_tagger`, `child_voice`, `coach`, `fidelity_checker`, `guide_answerer`, `intent_router`, `question_classifier`, `translator`). `fallback_used=true` means the model output failed its schema or guard twice (or the call failed) and the deterministic template was used instead. | Occasional `true` is by design. If one role is `true` for most calls, check `ANTHROPIC_API_KEY`, the model ids and the quota; `latency_ms` shows slow roles. |
+| `<role> guard failed (attempt N): <reason>` | The first or second guard rejection that precedes a fallback. | The reason names the rule (for example a child line that said a forbidden number). |
+| `coach_fallback reason=<r> move=<MOVE_ID>` | The coach feedback was built from the move card's feedback bank instead of by the model. `reason` is `guard_failed` (output failed the guard twice), `llm_unavailable` (no key / provider error) or `call_or_validation_error` (call or schema error). Only acts evidenced in the teacher's own words are credited. | `llm_unavailable` right after a deploy means the Anthropic key is missing or invalid. The feedback is still shown to the teacher and queued for coach review. |
+| `web_stt_failed reason=<r> message_id=<id>` | A web voice note produced no transcript: `reason=stt_failed` (provider error or empty transcript) or `stt_budget_type_please` (speech budget reached). The teacher got the Hindi "please speak again or type" reply. | Check the STT key and `STT_PROVIDER`; `STT failed for web voice note …` just above has the provider error. Budget: raise `SPEECH_DAILY_BUDGET_INR` or wait for the next IST day. |
+| `page_ocr_failed …` | Only from the offline OCR tool, never from the service. | n/a |
+| `Production startup failed: required secrets missing or insecure: …` | The service refused to boot; the list names the missing variables. | Set them (§3) and redeploy. |
+| `start.sh: ERROR: demo data seed failed; continuing startup` | The seed raised; the app is up without demo data. | Read the traceback above it. |
+
+Counts are also in the admin console (`/admin`: latency, token use, guard results, scheduler jobs).
+
+## 8. What the free plan does
+
+- **Sleep and cold start.** After ~15 minutes without requests the instance spins down. The next request
+  waits about a minute while the container starts (migrations, optional seed). The PWA shows a "server is
+  waking up" hint after 5 seconds and keeps the message in its outbox; it is sent when the server answers.
+  Hit `/healthz` before a demo.
+- **Scheduler.** The scheduler (ARP digest on Saturday 17:00 IST, follow-ups, aggregates at 02:00 IST) runs
+  inside the web process, so jobs due while the service sleeps run late, when it next wakes.
+- **Memory.** 512 MB. Measured on a development machine, the API plus the 876-chunk retrieval index is
+  about 185 MB resident. Render's own figure has not been measured here.
+- **No Shell, no persistent disk.** Anything that must survive a restart lives in Postgres (the TTS cache
+  included). Use `SEED_ON_BOOT` / `PREWARM_ON_BOOT` instead of a Shell.
+- **Free Postgres lifetime.** 30 days from creation, then it is deleted (check Render's current expiry and grace-period
+  policy; it is not verified here). **This database expires on 2026-11-20**, which may fall inside the evaluation window: either
+  upgrade the database to a paid instance before then, or create a new free one, update `DATABASE_URL`
+  (and `ALEMBIC_DATABASE_URL`), redeploy with `SEED_ON_BOOT=true` and `PREWARM_ON_BOOT=true`, and tell the
+  evaluators that real (non-demo) teacher data from the old database is lost.
+
+## 9. Environment variable reference
+
+Configure in **Render Dashboard → Environment**. Never commit real credentials.
 
 | Variable Name | Description | Provider / Source | Required in Prod? |
 |---|---|---|---|
 | `ENVIRONMENT` | Must be set to `production` | Render configuration | **Yes** (`production`) |
 | `PORT` | Listening port for web server | Render automatically sets `$PORT` | Render default (8000) |
 | `LOG_LEVEL` | Log severity level (`INFO` in prod) | Application logging | Optional (default: `INFO`) |
-| `PUBLIC_BASE_URL` | Public HTTPS URL of the service (e.g. `https://abhyas.onrender.com`) | Render service URL / Custom domain | **Yes** |
-| `GIT_SHA` | Deployed git commit SHA | Render build / `RENDER_GIT_COMMIT` | Optional (default: `dev`) |
-| `DATABASE_URL` | Supabase session pooler URI (`postgresql+asyncpg://...`) | Supabase Session Pooler | **Yes** |
-| `ALEMBIC_DATABASE_URL` | Supabase session pooler URI (plain `postgresql://...`, port 5432) | Supabase Session Pooler (port 5432) | **Yes** |
-| `SESSION_SECRET` | 64-char random hex string for cookie signing (`token_hex(32)`) | System admin / secrets generator | **Yes** |
-| `PHONE_HASH_SALT` | 32-char random hex string for anonymized phone hashes | System admin / secrets generator | **Yes** |
-| `PHONE_ENC_KEY` | 32-byte Fernet encryption key (`Fernet.generate_key()`) | System admin / Fernet generator | **Yes** |
-| `DEMO_PASSWORD` | Password for evaluation demo accounts (must NOT be default) | System admin | **Yes** (must rotate) |
-| `ADMIN_PASSWORD` | Password for admin and coach consoles (must NOT be default) | System admin | **Yes** (must rotate) |
-| `TRUSTED_PROXY_IPS` | Comma-separated trusted proxy IPs (dev/staging testing) | System admin | Optional (default: `127.0.0.1`) |
-| `LLM_PROVIDER` | LLM engine (`anthropic`) | Architecture configuration | Optional (default: `anthropic`) |
-| `ANTHROPIC_API_KEY` | Claude API secret key (`sk-ant-...`) | Anthropic Console | **Yes** |
-| `CLAUDE_MODEL_FAST` | Haiku model ID for fast child responses | Anthropic | Optional (default: `claude-haiku-5-5`) |
-| `CLAUDE_MODEL_SMART` | Sonnet model ID for coach feedback | Anthropic | Optional (default: `claude-sonnet-5-5`) |
-| `CLAUDE_MODEL_BUILD` | Sonnet model ID for move generation | Anthropic | Optional (default: `claude-sonnet-5-5`) |
-| `LLM_DAILY_TOKEN_BUDGET` | Daily token safety cap (default `3000000`) | Budget control | Optional |
-| `STT_PROVIDER` | Speech-to-text provider (`mock` initial, `sarvam` live) | Architecture configuration | Optional (default: `mock`) |
-| `TTS_PROVIDER` | Text-to-speech provider (`mock` initial, `sarvam` live) | Architecture configuration | Optional (default: `mock`) |
-| `SPEECH_PROVIDER_LIVE` | Live speech switch (`false` initial, `true` when live) | Architecture configuration | Optional (default: `false`) |
-| `SPEECH_DAILY_BUDGET_INR`| Daily speech budget cap in INR | Budget control | Optional (default: `50.0`) |
-| `SPEECH_TOTAL_BUDGET_INR`| Total evaluation speech budget in INR | Budget control | Optional (default: `500.0`) |
-| `STT_FALLBACK_PROVIDER` | STT provider tried when the primary is unavailable (`none`, `sarvam`, `bhashini`, `google`, `gemini`, `mock`; `mock` rejected in prod) | Architecture configuration | Optional (default: `none`) |
-| `TTS_FALLBACK_PROVIDER` | TTS provider tried when the primary is unavailable (`none`, `sarvam`, `gemini`, `mock`; `mock` rejected in prod) | Architecture configuration | Optional (default: `none`) |
-| `GEMINI_API_KEY` | Gemini API key (sent as `x-goog-api-key`) | Google AI Studio | Required if `gemini` is a primary or fallback speech provider |
-| `GEMINI_BASE_URL` | Gemini API base URL | Google | Optional (default: `https://generativelanguage.googleapis.com/v1beta`) |
-| `GEMINI_STT_MODEL` | Gemini audio-understanding model used for transcription | Google | Optional (default: `gemini-3.8-flash`) |
-| `GEMINI_TTS_MODEL` | Gemini speech-generation model | Google | Optional (default: `gemini-3.8-flash-tts`) |
-| `GEMINI_TTS_VOICE_F` | Gemini prebuilt voice for female `VoiceSpec`s | Google | Optional (default: `Kore`) |
-| `GEMINI_TTS_VOICE_M` | Gemini prebuilt voice for male `VoiceSpec`s | Google | Optional (default: `Puck`) |
-| `GEMINI_STT_COST_INR_PER_MIN` | Gemini STT cost recorded in `speech_spend` | Budget control | Optional (default: `0.0`) |
-| `GEMINI_TTS_COST_INR_PER_1K_CHARS` | Gemini TTS cost recorded in `speech_spend` | Budget control | Optional (default: `0.0`) |
-| `SARVAM_API_KEY` | Sarvam AI API subscription key | Sarvam AI Dashboard | Required if live speech or `sarvam` is a primary/fallback provider |
-| `SARVAM_BASE_URL` | Sarvam API base URL | Sarvam AI | Optional (default: `https://api.sarvam.ai`) |
-| `SARVAM_STT_MODEL` | Sarvam speech-to-text model | Sarvam AI | Optional (default: `saaras:v4`) |
-| `SARVAM_TTS_MODEL` | Sarvam text-to-speech model | Sarvam AI | Optional (default: `bulbul:v3`) |
-| `BHASHINI_USER_ID` | Bhashini fallback user ID | Bhashini ULCA | Optional |
-| `BHASHINI_API_KEY` | Bhashini fallback API key | Bhashini ULCA | Optional |
-| `GOOGLE_APPLICATION_CREDENTIALS` | Path or JSON string for Google Cloud fallback STT | Google Cloud Console | Optional |
-| `MOCK_STT_TEXT` | Fallback Devanagari text for testing | Development / Mock | Optional |
-| `WHATSAPP_ENABLED` | Set `true` once Meta credentials are configured | Meta Cloud API | Optional (default: `false`) |
-| `WHATSAPP_GRAPH_VERSION` | Graph API version | Meta Developers | Optional (default: `v23.0`) |
-| `WHATSAPP_PHONE_NUMBER_ID` | Phone number ID for WhatsApp Business | Meta WhatsApp Manager | Optional (Required if WhatsApp enabled) |
-| `WHATSAPP_ACCESS_TOKEN` | System User permanent access token | Meta Business Manager | Optional (Required if WhatsApp enabled) |
-| `WHATSAPP_APP_SECRET` | App secret for HMAC-SHA256 signature verification | Meta App Dashboard | Optional (Required if WhatsApp enabled) |
-| `WHATSAPP_VERIFY_TOKEN` | Webhook verification token challenge | User configured string | Optional (Required if WhatsApp enabled) |
-| `WHATSAPP_DISPLAY_NUMBER` | Formatted phone number (e.g., `+91 98765 43210`) | Meta WhatsApp Manager | Optional |
-| `WHATSAPP_UTILITY_COST_INR` | Per-conversation utility cost | Cost tracking | Optional (default: `0.12`) |
-| `VOYAGE_API_KEY` | Dense embedding key for hybrid retrieval | Voyage AI | Optional |
-| `VOYAGE_MODEL` | Multilingual embedding model | Voyage AI | Optional (default: `voyage-multilingual-2`) |
-| `SERVE_IN_REVIEW_TO_DEMO` | Allow demo accounts to view cards under review | Product configuration | Optional (default: `true`) |
-| `DEMO_MODE` | Enable demo chips and demo login switcher UI | Evaluation configuration | Optional (default: `true`) |
-| `SENTRY_DSN` | Sentry DSN for production exception telemetry | Sentry.io | Optional |
-| `SEED_ON_BOOT` | Run `python -m backend.app.db.seed` in `scripts/start.sh` before uvicorn starts. Set true for one deploy on Render free (no Shell), then set false. | Render configuration | Optional (default: `false`) |
+| `PUBLIC_BASE_URL` | Public HTTPS URL of the service | Render service URL / custom domain | **Yes** |
+| `GIT_SHA` | Deployed git commit SHA (returned by `/healthz`) | Render build / `RENDER_GIT_COMMIT` | Optional (default: `dev`) |
+| `DATABASE_URL` | Render Postgres Internal URL, `postgresql+asyncpg://…` | Render Postgres → Connections | **Yes** |
+| `ALEMBIC_DATABASE_URL` | Same database, plain `postgresql://…` (falls back to `DATABASE_URL`) | Render Postgres → Connections | Recommended |
+| `SESSION_SECRET` | 64-char random hex string for cookie signing | System admin / secrets generator | **Yes** |
+| `PHONE_HASH_SALT` | Random string for anonymized phone hashes | System admin / secrets generator | **Yes** |
+| `PHONE_ENC_KEY` | 32-byte Fernet key | System admin / Fernet generator | **Yes** |
+| `DEMO_PASSWORD` | Password of the six demo logins (must NOT be default) | System admin | **Yes** (must rotate) |
+| `ADMIN_PASSWORD` | Password of the `admin` login (must NOT be default) | System admin | **Yes** (must rotate) |
+| `TRUSTED_PROXY_IPS` | Comma-separated trusted proxy IPs (dev/staging testing) | System admin | Optional |
+| `LLM_PROVIDER` | LLM engine (`anthropic`) | Architecture configuration | Optional |
+| `ANTHROPIC_API_KEY` | Claude API key | Anthropic Console | **Yes** |
+| `CLAUDE_MODEL_FAST` / `CLAUDE_MODEL_SMART` / `CLAUDE_MODEL_BUILD` | Model ids per role family | Anthropic | Optional |
+| `LLM_DAILY_TOKEN_BUDGET` | Daily token safety cap | Budget control | Optional |
+| `STT_PROVIDER` / `TTS_PROVIDER` | Speech providers (`mock`, `sarvam`, `gemini`) | Architecture configuration | Optional (default: `mock`) |
+| `STT_FALLBACK_PROVIDER` / `TTS_FALLBACK_PROVIDER` | Provider tried when the primary fails (`none`, `sarvam`, `gemini`, …; `mock` rejected in prod) | Architecture configuration | Optional (default: `none`) |
+| `SPEECH_PROVIDER_LIVE` | Live speech switch (fails closed on a DB error when `true`) | Architecture configuration | Optional (default: `false`) |
+| `SPEECH_DAILY_BUDGET_INR` / `SPEECH_TOTAL_BUDGET_INR` | Speech budget caps in INR | Budget control | Optional |
+| `GEMINI_API_KEY` | Gemini API key | Google AI Studio | If `gemini` is a primary or fallback provider |
+| `GEMINI_BASE_URL`, `GEMINI_STT_MODEL`, `GEMINI_TTS_MODEL`, `GEMINI_TTS_VOICE_F`, `GEMINI_TTS_VOICE_M` | Gemini endpoint, models and voices | Google | Optional |
+| `GEMINI_STT_COST_INR_PER_MIN`, `GEMINI_TTS_COST_INR_PER_1K_CHARS` | Cost recorded in `speech_spend` | Budget control | Optional |
+| `SARVAM_API_KEY` | Sarvam AI key | Sarvam dashboard | If `sarvam` is a primary or fallback provider |
+| `SARVAM_BASE_URL`, `SARVAM_STT_MODEL`, `SARVAM_TTS_MODEL` | Sarvam endpoint and models | Sarvam AI | Optional |
+| `BHASHINI_USER_ID`, `BHASHINI_API_KEY`, `GOOGLE_APPLICATION_CREDENTIALS` | Extra STT/TTS fallbacks | Bhashini / Google Cloud | Optional |
+| `MOCK_STT_TEXT` | Transcript returned by the mock STT | Development | Optional |
+| `WHATSAPP_ENABLED`, `WHATSAPP_GRAPH_VERSION`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_DISPLAY_NUMBER`, `WHATSAPP_UTILITY_COST_INR` | WhatsApp Cloud API (see `docs/whatsapp_setup.md`); token, phone-number id and app secret are required once enabled | Meta | Optional |
+| `VOYAGE_API_KEY`, `VOYAGE_MODEL` | Dense embeddings (BM25 is used when absent) | Voyage AI | Optional |
+| `SERVE_IN_REVIEW_TO_DEMO` | Let demo accounts see move cards still in review | Product configuration | Optional (default: `true`) |
+| `DEMO_MODE` | Demo chips, login demo card, demo banners | Evaluation configuration | Optional (default: `true`) |
+| `SENTRY_DSN` | Sentry DSN | Sentry.io | Optional |
+| `SEED_ON_BOOT` | Seed demo data in `scripts/start.sh` (§5) | Render configuration | Optional (default: `false`) |
+| `PREWARM_ON_BOOT` | Background TTS prewarm in `scripts/start.sh` (§5) | Render configuration | Optional (default: `false`) |
+| `PREWARM_REQUEST_INTERVAL_SECONDS`, `PREWARM_MAX_SYNTH_PER_RUN` | Pace and per-boot cap of the prewarm | Budget control | Optional |
 
----
-
-## 4. Database Initialization & Seeding
-
-When the container boots on Render, the Docker `CMD` runs `sh scripts/start.sh`, which executes:
-```bash
-alembic upgrade head
-# only if SEED_ON_BOOT=true (a failed seed is logged; startup continues)
-python -m backend.app.db.seed
-exec uvicorn backend.app.main:app ...
-```
-**Render free plan (no Shell):** set `SEED_ON_BOOT=true` for one deploy, confirm the log line `start.sh: seeding demo data` and a working demo login, then set `SEED_ON_BOOT=false`. The seed is idempotent and re-applies `DEMO_PASSWORD` / `ADMIN_PASSWORD` to the demo and admin accounts on every run.
-
-To seed demo teachers, school metadata, and approved pedagogical moves from a Shell instead:
-1. Open the Render Dashboard -> Select **abhyas** -> Click **Shell**.
-2. Run the database seed CLI:
-   ```bash
-   python -m backend.app.db.seed
-   ```
-3. Confirm that seed output completes with:
-   ```text
-   Seed completed: pedagogical content and demo cohort initialized.
-   ```
-4. Pre-warm speech cache for fixed messages and narration (idempotent, budget-capped):
-   ```bash
-   python scripts/prewarm_tts.py --write
-   ```
-   This pre-synthesizes and caches all catalog messages with `audio: true` and the 3 shipped moves' `learn` narration into `TTSCache`, eliminating synthesis latency during live teacher rehearsals.
-
----
-
-## 5. Post-Deployment Smoke Test
-
-Immediately after deployment is healthy on Render, run the standalone smoke test from any machine:
+## 10. Smoke test
 
 ```bash
-# Run against the deployed URL
-python scripts/smoke_test.py --base-url https://abhyas.onrender.com
+python scripts/smoke_test.py --base-url https://<service>.onrender.com
 ```
 
-### Smoke Test Steps Executed:
-1. **GET `/healthz`**: Validates HTTP 200 and matches deployed `git_sha`.
-2. **GET `/login`**: Validates that Hindi login UI loads and `abhyas_csrf` cookie is set.
-3. **POST `/login`**: Authenticates demo teacher (`teacher.demo1`) and verifies `abhyas_session` signed cookie.
-4. **POST `/api/chat/text`**: Sends an inbound text message and validates HTTP 202 Accepted.
-5. **Summary Report**: Prints detailed pass/fail table and exits `0` on success, `1` on failure.
+It checks `GET /healthz` (HTTP 200 and `git_sha`), `GET /login` (Hindi UI, CSRF cookie), `POST /login` as
+`teacher.demo1` (signed session cookie) and `POST /api/chat/text` (HTTP 202), prints a pass/fail table and exits
+`0`/`1`. Manually, on a phone: open the site → tap a demo badge → log in → send a text or voice message.
+The first request after a sleep takes about a minute.
 
-### Manual Verification Checklist:
-- Open `https://abhyas.onrender.com` in a mobile browser (Chrome / Safari):
-  - Automatically redirects to `/login`.
-  - Tap demo badge `शिक्षिका (नई): teacher.demo1`.
-  - Tap **लॉगिन करें** -> redirects to `/teacher` PWA interface.
-  - Send a sample voice or text message -> verify child voice response and Hindi transcript bubble.
+## 11. Source documents and OCR (offline, not part of the service)
 
----
-
-## 6. Official Document Ingestion & OCR Setup
-
-The core runtime web application does not depend on heavy OCR or PDF libraries. For operators running document ingestion or OCR on legacy scanned state guides:
-
-1. **Install Python Optional Extras**:
-   ```bash
-   pip install -e ".[ocr]"
-   ```
-   This installs `pdfplumber`, `pytesseract`, and `pdf2image`.
-
-2. **System Dependencies for Tesseract (Ubuntu/Debian)**:
-   ```bash
-   apt-get update && apt-get install -y tesseract-ocr tesseract-ocr-hin poppler-utils
-   ```
-   Ensure Hindi language data (`hin.traineddata`) is available under `/usr/share/tesseract-ocr/4.00/tessdata/` or `/usr/share/tesseract-ocr/5/tessdata/`.
-
-3. **Alternative: Surya OCR**:
-   For environments where native Tesseract binaries cannot be installed or cause glibc compatibility issues, Surya OCR (`pip install surya-ocr`) serves as a pure-Python, deep-learning based OCR and layout analysis alternative for Hindi documents.
-
-4. **Running Ingestion**:
-   Once official PDFs are placed in `content/sources/`, run:
-   ```bash
-   python -m backend.app.retrieval.ingest
-   ```
+The service reads only the committed `content/chunks/*.jsonl`. They are built on a developer machine:
+`make content-ingest` chunks the PDFs in `content/sources/`; the two UP Hindi guides (legacy fonts) are first
+read from page images by `python -m backend.app.retrieval.page_ocr --source <id>` (Claude Haiku vision, cached
+by image hash in `content/sources/ocr_cache/`, hard cap `OCR_BUDGET_USD`). No Tesseract or Surya is used. See
+`content/sources/README.md` for what was ingested and the measured OCR error rate.

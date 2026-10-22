@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     GIT_SHA: str = "dev"
 
     # ── Database ─────────────────────────────────────────────────────────
-    # Supabase session pooler in prod; docker compose locally
+    # Render Postgres (internal URL, postgresql+asyncpg://) in prod; docker compose locally
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/abhyas"
     ALEMBIC_DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/abhyas"
 

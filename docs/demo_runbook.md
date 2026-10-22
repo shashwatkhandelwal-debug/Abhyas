@@ -5,7 +5,7 @@ Exact click path for the video and the live demo. Passwords are in the submissio
 ## Before recording or presenting
 1. `GET <host>/healthz` returns `status: ok` and the expected `git_sha`.
 2. Run `python scripts/smoke_test.py --base-url <host>`; all steps pass.
-3. Reset demo data: run `python -m backend.app.db.seed` on the deployed service (Render shell). TODO(human): replace this with the admin page "Reset demo" once T35 ships.
+3. Reset demo data: log out of `teacher.demo1/2/3` (logout resets each demo teacher to its seeded state), or press *Reset demo* on the admin page. The Render free plan has no shell; to reseed everything set `SEED_ON_BOOT=true` for one deploy (`docs/DEPLOY.md` §5).
 4. Use a clean browser profile or a private window, 1280×720, Hindi UI text visible.
 5. Real API keys set on the service; confirm the latency report header does not say "mock".
 
