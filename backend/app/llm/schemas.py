@@ -114,6 +114,13 @@ class QuestionClassificationResult(BaseModel):
     used_fallback: bool = False
 
 
+class DiagnosisClassifierOutput(BaseModel):
+    """Output schema for the diagnosis_classifier role (teacher's diagnosis -> misconception id)."""
+
+    misconception_id: str  # one of the offered ids, or "none"
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
 class RetrievedChunk(BaseModel):
     """Retrieved reference document chunk for guide_answerer (§5.8)."""
 

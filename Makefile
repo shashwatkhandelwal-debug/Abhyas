@@ -72,7 +72,7 @@ eval-realism:
 	python eval/realism/survey_analysis.py
 
 content-validate:
-	python content/pipeline/validate.py
+	python -m content.pipeline.validator
 
 content-publish:
 	python content/pipeline/publish.py

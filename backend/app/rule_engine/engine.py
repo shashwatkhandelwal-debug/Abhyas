@@ -46,7 +46,18 @@ _DIRECT_RESPONSE_ACTS: frozenset[TeachingAct] = frozenset(
 
 def _check_end_conditions(scene: SceneState) -> None:
     """Evaluates scene end conditions and updates scene.ended and scene.end_reason."""
-    if len(scene.children) == 1:
+    if scene.one_on_one:
+        # One child: the scene ends once the child answered correctly on a second turn (the
+        # teacher's check on a new problem), or at the one-on-one turn limit.
+        child = scene.children[0]
+        correct_turns = sum(1 for _, st in child.history if st == ChildState.CORRECT)
+        if correct_turns >= 2:
+            scene.ended = True
+            scene.end_reason = "all_correct"
+        elif scene.teacher_turns >= scene.max_turns:
+            scene.ended = True
+            scene.end_reason = "turn_limit"
+    elif len(scene.children) == 1:
         # Placement mode: 2 teacher turns then end
         if scene.teacher_turns >= 2:
             scene.ended = True

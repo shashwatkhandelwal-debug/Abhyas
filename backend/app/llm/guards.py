@@ -17,6 +17,7 @@ from backend.app.llm.hindi_numbers import DEVANAGARI_DIGITS, extract_numbers
 from backend.app.llm.schemas import (
     ActTaggerOutput,
     CoachFeedbackOutput,
+    DiagnosisClassifierOutput,
     FidelityCheckerOutput,
     GuideAnswererOutput,
     IntentRouterOutput,
@@ -419,6 +420,15 @@ def guard_fidelity_checker(
 
 
 # ── 6. guard_question_classifier (§5.8) ──────────────────────────────────────
+def guard_diagnosis_classifier(
+    output: DiagnosisClassifierOutput, candidate_ids: list[str]
+) -> tuple[bool, str]:
+    """The classified id must be one of the offered misconception ids (or "none")."""
+    if output.misconception_id != "none" and output.misconception_id not in candidate_ids:
+        return False, f"misconception_id {output.misconception_id!r} is not one of {candidate_ids}"
+    return True, "Valid"
+
+
 def guard_question_classifier(output: QuestionClassifierOutput) -> tuple[bool, str]:
     """Validate question_classifier output (§5.8).
 

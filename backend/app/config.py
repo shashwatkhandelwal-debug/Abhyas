@@ -186,6 +186,7 @@ class Settings(BaseSettings):
 
     # ── Pedagogical & Rule Engine Thresholds ──────────────────────────────
     MAX_TURNS_PER_REHEARSAL: int = 8
+    MAX_TURNS_ONE_ON_ONE: int = 10  # one child, teacher-led diagnose / teach / check
     SHY_SILENT_TURNS: int = 1
     MAX_REHEARSAL_RETRIES_PER_WEEK: int = 3
     COACH_CONFIDENCE_THRESHOLD: float = 0.60
