@@ -742,7 +742,7 @@ ui_chat_translate_error: {text: "अनुवाद नहीं हो सक�
 ui_chat_translate_limit: {text: "अनुरोध बहुत जल्दी-जल्दी आ रहे हैं — थोड़ी देर बाद फिर कोशिश करें", audio: false}
 ui_chat_translate_retry: {text: "दोबारा कोशिश करें", audio: false}
 ui_chat_translation_label: {text: "अंग्रेज़ी अनुवाद", audio: false}
-ui_chat_rec_unsupported: {text: "आपके ब्राउज़र में आवाज़ रिकॉर्ड नहीं हो सकती। संदेश लिखकर भेजें, या Chrome में खोलें।", audio: false}
+ui_chat_rec_unsupported: {text: "इस ब्राउज़र में आवाज़ रिकॉर्ड करने की सुविधा नहीं है। संदेश लिखकर भेजें, या Chrome में खोलें।", audio: false}
 ui_chat_rec_permission: {text: "माइक्रोफ़ोन की अनुमति नहीं मिली। पते के पास 🔒 छूकर माइक्रोफ़ोन “अनुमति दें” चुनें और पेज ताज़ा करें, या लिखकर भेजें।", audio: false}
 ui_chat_rec_start_failed: {text: "माइक्रोफ़ोन शुरू नहीं हो सका ({error})। दोबारा छुएँ, या लिखकर भेजें।", audio: false}
 ui_chat_rec_unknown_error: {text: "अज्ञात त्रुटि", audio: false}
