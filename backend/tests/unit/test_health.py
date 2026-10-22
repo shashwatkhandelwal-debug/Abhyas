@@ -1,5 +1,7 @@
 """Tests for system health, liveness, static assets, and web entrypoints (spec/12, T30)."""
 
+import re
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import httpx
@@ -72,7 +74,9 @@ async def test_service_worker(async_client: AsyncClient) -> None:
     assert response.status_code == 200
     assert "application/javascript" in response.headers.get("content-type", "")
     assert response.headers.get("Service-Worker-Allowed") == "/"
-    assert "abhyas-static-v" in response.text
+    assert "abhyas-static-" in response.text
+    assert "__BUILD_VERSION__" not in response.text
+    assert response.headers.get("Cache-Control") == "no-cache"
 
 
 @pytest.mark.asyncio
@@ -159,3 +163,36 @@ def test_smoke_test_settings_fallback_password(monkeypatch: pytest.MonkeyPatch) 
     assert result is True
     login_call = client.post.call_args_list[0]
     assert login_call.kwargs["data"]["password"] == settings.DEMO_PASSWORD
+
+
+@pytest.mark.asyncio
+async def test_service_worker_cache_name_changes_with_build(
+    async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Each deploy must change sw.js bytes, else browsers never install the new worker."""
+
+    def cache_name(text: str) -> str:
+        match = re.search(r"const BUILD_VERSION = '([^']+)'", text)
+        assert match, "BUILD_VERSION not stamped"
+        return match.group(1)
+
+    monkeypatch.setattr(settings, "GIT_SHA", "aaaaaaa1111")
+    first = cache_name((await async_client.get("/sw.js")).text)
+    assert first.startswith("aaaaaaa1111-")
+    monkeypatch.setattr(settings, "GIT_SHA", "bbbbbbb2222")
+    second = cache_name((await async_client.get("/sw.js")).text)
+    assert second.startswith("bbbbbbb2222-") and first != second
+
+
+def test_service_worker_version_tracks_asset_content(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With GIT_SHA unset ("dev"), editing chat.js alone still moves the version."""
+    from backend.app.web import teacher
+
+    for name in teacher._SW_VERSIONED_ASSETS:
+        (tmp_path / name).write_text("v1", encoding="utf-8")
+    monkeypatch.setattr(teacher, "STATIC_DIR", tmp_path)
+    before = teacher.sw_build_version()
+    (tmp_path / "chat.js").write_text("v2", encoding="utf-8")
+    assert teacher.sw_build_version() != before

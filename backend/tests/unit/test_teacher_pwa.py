@@ -527,7 +527,8 @@ def test_service_worker_contract() -> None:
     sw_content = (STATIC_DIR / "sw.js").read_text(encoding="utf-8")
 
     # Cache names
-    assert "CACHE_NAME_STATIC = 'abhyas-static-v1'" in sw_content
+    assert "CACHE_NAME_STATIC = STATIC_CACHE_PREFIX + BUILD_VERSION" in sw_content
+    assert "'abhyas-static-v1'" not in sw_content  # fixed name pinned returning browsers to old JS
     assert "CACHE_NAME_AUDIO = 'abhyas-audio-v1'" in sw_content
 
     # Audio LRU 30 items
