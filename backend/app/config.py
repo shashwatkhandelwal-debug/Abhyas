@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     PHONE_ENC_KEY: str = "P5sUu77tT3i8_R1m2tZ_7lqf4xL6D-0K0A5vG4J-7-8="
     DEMO_PASSWORD: str = "abhyas-demo-2026"
     ADMIN_PASSWORD: str = "abhyas-admin-2026"
+    # Logout resets the shared demo teachers; rows younger than this are session-made, older are seed
+    DEMO_RESET_SEED_MIN_AGE_HOURS: int = 24
     TRUSTED_PROXY_IPS: str = "127.0.0.1"
     MAX_LOGIN_ATTEMPTS_PER_MINUTE: int = 5
     LOGIN_RATE_LIMIT_WINDOW_SECONDS: int = 60

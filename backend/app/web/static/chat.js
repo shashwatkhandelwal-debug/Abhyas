@@ -112,6 +112,45 @@ async function getCachedMessages() {
   });
 }
 
+// ── Logout: wipe this browser's chat state so the next login never sees stale bubbles ──────
+const LOGOUT_CLEAR_TIMEOUT_MS = 1500; // never let a stuck IndexedDB delete block the logout
+
+function deleteChatDatabase() {
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.deleteDatabase(DB_NAME); // outbox + rendered-message cache
+      req.onsuccess = () => resolve();
+      req.onerror = () => resolve();
+      req.onblocked = () => resolve();
+    } catch (e) {
+      resolve();
+    }
+  });
+}
+
+async function clearLocalState() {
+  const wipes = [deleteChatDatabase()];
+  if (window.caches) {
+    wipes.push(caches.delete('abhyas-audio-v1').catch(() => false)); // played voice replies
+  }
+  await Promise.race([
+    Promise.all(wipes),
+    new Promise((resolve) => setTimeout(resolve, LOGOUT_CLEAR_TIMEOUT_MS)),
+  ]);
+}
+window.clearLocalState = clearLocalState;
+
+function setupLogoutCleanup() {
+  document.addEventListener('click', (e) => {
+    const link = e.target && e.target.closest ? e.target.closest('a[href="/logout"]') : null;
+    if (!link) return;
+    e.preventDefault();
+    clearLocalState().finally(() => {
+      window.location.href = '/logout';
+    });
+  });
+}
+
 // ── Localised strings (catalog keys ui_chat_*, served as JSON in the page) ───
 let UI = {};
 
@@ -1612,6 +1651,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 4. Setup Mic & Demo Chips
   setupMicEvents();
   setupDemoChips();
+
+  setupLogoutCleanup();
 
   // 5. Register SW
   registerServiceWorker();

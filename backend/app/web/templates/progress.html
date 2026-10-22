@@ -157,5 +157,19 @@
       </section>
     </main>
   </div>
+  <script>
+    // Logout also wipes this browser's chat cache (same database name as static/chat.js)
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a[href="/logout"]');
+      if (!a) return;
+      e.preventDefault();
+      var go = function () { window.location.href = '/logout'; };
+      try {
+        var r = indexedDB.deleteDatabase('abhyas_chat_db');
+        r.onsuccess = r.onerror = r.onblocked = go;
+        setTimeout(go, 1500);
+      } catch (err) { go(); }
+    });
+  </script>
 </body>
 </html>

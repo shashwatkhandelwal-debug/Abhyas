@@ -18,21 +18,34 @@ import logging
 import uuid
 from datetime import UTC, date, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.passwords import hash_password
 from backend.app.config import settings
-from backend.app.db.demo_data import populate_demo_cohort, repair_onboarding_state
+from backend.app.db.demo_data import (
+    FICTIONAL_TEACHER_NAMES,
+    populate_demo_cohort,
+    repair_onboarding_state,
+)
 from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
     Batch,
     Cluster,
+    ConsentLog,
+    ExplainScore,
     InviteCode,
+    Message,
     MovePath,
+    Question,
+    RealismRating,
+    RehearsalScore,
+    ReviewItem,
+    Scene,
     SessionState,
     Teacher,
+    Turn,
 )
 from backend.app.db.session import async_session_factory
 from backend.app.retrieval.ingest import load_chunks_to_db
@@ -53,6 +66,29 @@ USER_TRAINER_ID = uuid.UUID("00000000-0000-0000-0001-000000000005")
 USER_COACH_ID = uuid.UUID("00000000-0000-0001-0000-000000000006")
 USER_ADMIN_ID = uuid.UUID("00000000-0000-0001-0000-000000000007")
 
+
+# The three shared demo teacher logins that are reset on logout (judges share them).
+# login -> (teacher id, 1-based position in demo_data's cohort list, used for the name).
+DEMO_TEACHER_LOGINS: dict[str, tuple[uuid.UUID, int]] = {
+    "teacher.demo1": (TEACHER_DEMO1_ID, 1),
+    "teacher.demo2": (TEACHER_DEMO2_ID, 2),
+    "teacher.demo3": (TEACHER_DEMO3_ID, 3),
+}
+
+# Seed fields of the demo teachers that a chat/onboarding session can change.
+# login -> (onboarding_state, classes, consent_share_scores)
+_DEMO_TEACHER_PROFILE: dict[str, tuple[OnboardingStateEnum, list[int], bool]] = {
+    "teacher.demo1": (OnboardingStateEnum.NEW, [1, 2], True),
+    "teacher.demo2": (OnboardingStateEnum.READY, [2, 3], True),
+    "teacher.demo3": (OnboardingStateEnum.READY, [1, 2, 3], False),
+}
+
+# demo3's seeded completed moves: (move_id, adoption level, evidence source)
+_DEMO3_COMPLETED_MOVES: list[tuple[str, int, str]] = [
+    ("NUM_SUB_REGROUP_BUNDLES", 5, "child_check"),
+    ("NUM_ADD_CARRY_BUNDLES", 4, "arp_observation"),
+    ("NUM_PLACE_VALUE_BUNDLES", 3, "peer_checklist"),
+]
 
 # Move ids written by older seeds that have no card in content/moves -> the real card
 LEGACY_SEED_MOVE_IDS: dict[str, str] = {
@@ -117,6 +153,126 @@ async def _repair_legacy_move_ids(session: AsyncSession) -> None:
     if repaired:
         logger.info("Repaired %d demo rows with legacy move ids", repaired)
         await session.flush()
+
+
+async def _seed_demo2_session_state(session: AsyncSession) -> None:
+    """demo2 starts the current week in REHEARSE (attempt 1)."""
+    today = date.today()
+    week_start = today - timedelta(days=today.weekday())
+    if await session.get(SessionState, (TEACHER_DEMO2_ID, week_start)):
+        return
+    session.add(
+        SessionState(
+            teacher_id=TEACHER_DEMO2_ID,
+            week_start=week_start,
+            move_id="NUM_SUB_REGROUP_BUNDLES",
+            state="REHEARSE",
+            prior_state="MODEL",
+            rehearse_attempts=1,
+            context={"current_move_id": "NUM_SUB_REGROUP_BUNDLES", "current_state": "REHEARSE"},
+        )
+    )
+
+
+async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
+    """Restores one shared demo teacher to the seeded state; False for any non-demo login.
+
+    Deletes the chat history and everything a session wrote (scenes, turns, scores, questions,
+    ratings, fresh evidence), then restores profile, onboarding, week state and move path as
+    seed_database creates them. Seeded cohort rows (deterministic ids) are kept so the ARP and
+    trainer aggregates do not move. Does not commit: the caller owns the transaction.
+    """
+    entry = DEMO_TEACHER_LOGINS.get(login)
+    if entry is None:
+        return False
+    teacher_id, position = entry
+    onboarding, classes, share_scores = _DEMO_TEACHER_PROFILE[login]
+    now = datetime.now(UTC)
+    cutoff = now - timedelta(hours=settings.DEMO_RESET_SEED_MIN_AGE_HOURS)
+
+    await session.execute(delete(Message).where(Message.teacher_id == teacher_id))
+    await session.execute(delete(SessionState).where(SessionState.teacher_id == teacher_id))
+    await session.execute(delete(MovePath).where(MovePath.teacher_id == teacher_id))
+    await session.execute(delete(Question).where(Question.teacher_id == teacher_id))
+    await session.execute(delete(RealismRating).where(RealismRating.teacher_id == teacher_id))
+    await session.execute(
+        delete(ConsentLog).where(
+            ConsentLog.teacher_id == teacher_id, ConsentLog.created_at > cutoff
+        )
+    )
+    # Evidence seeded at install time is older than the cutoff; ARP-written rows are left alone.
+    await session.execute(
+        delete(AdoptionEvidence).where(
+            AdoptionEvidence.teacher_id == teacher_id,
+            AdoptionEvidence.created_at > cutoff,
+            AdoptionEvidence.source != "arp_observation",
+        )
+    )
+
+    # Seeded cohort rows have deterministic ids with these prefixes (db/demo_data.py)
+    stale_refs: list[str] = []
+    rehearsal_scores = (
+        (
+            await session.execute(
+                select(RehearsalScore).where(RehearsalScore.teacher_id == teacher_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for rs in rehearsal_scores:
+        if not str(rs.id).startswith("00000000-0000-0001-0005-"):
+            stale_refs.append(str(rs.id))
+            await session.delete(rs)
+    explain_scores = (
+        (await session.execute(select(ExplainScore).where(ExplainScore.teacher_id == teacher_id)))
+        .scalars()
+        .all()
+    )
+    for es in explain_scores:
+        if not str(es.id).startswith("00000000-0000-0001-0006-"):
+            stale_refs.append(str(es.id))
+            await session.delete(es)
+    if stale_refs:
+        await session.execute(delete(ReviewItem).where(ReviewItem.ref_id.in_(stale_refs)))
+    await session.flush()
+
+    scenes = (
+        (await session.execute(select(Scene).where(Scene.teacher_id == teacher_id))).scalars().all()
+    )
+    for scene in scenes:
+        if not str(scene.id).startswith("00000000-0000-0001-0004-"):
+            await session.execute(delete(Turn).where(Turn.scene_id == scene.id))
+            await session.delete(scene)
+    await session.flush()
+
+    teacher = await session.get(Teacher, teacher_id)
+    if teacher is not None:
+        teacher.onboarding_state = onboarding
+        teacher.name = f"डेमो {FICTIONAL_TEACHER_NAMES[position - 1]}"
+        teacher.classes = list(classes)
+        teacher.consent_service = True
+        teacher.consent_share_scores = share_scores
+        teacher.consent_class_audio = False
+        teacher.consent_research = False
+        teacher.address_form = "f"
+        teacher.lite_mode = False
+        teacher.phone_hash = None
+        teacher.preferred_channel = "web"
+        teacher.last_inbound_at = None if onboarding == OnboardingStateEnum.NEW else now
+
+    if teacher_id == TEACHER_DEMO2_ID:
+        await _seed_demo2_session_state(session)
+    if teacher_id == TEACHER_DEMO3_ID:
+        for idx, (m_id, _lvl, _src) in enumerate(_DEMO3_COMPLETED_MOVES):
+            session.add(
+                MovePath(
+                    teacher_id=TEACHER_DEMO3_ID, position=idx + 1, move_id=m_id, reason="completed"
+                )
+            )
+    await session.flush()
+    logger.info("Reset demo teacher %s to the seeded state", login)
+    return True
 
 
 async def seed_database() -> None:
@@ -247,30 +403,10 @@ async def seed_database() -> None:
         await _repair_legacy_move_ids(session)
 
         # 5. Session State for demo2 (in REHEARSE)
-        today = date.today()
-        # Monday of current week
-        week_start = today - timedelta(days=today.weekday())
-        s2 = await session.get(SessionState, (TEACHER_DEMO2_ID, week_start))
-        if not s2:
-            s2 = SessionState(
-                teacher_id=TEACHER_DEMO2_ID,
-                week_start=week_start,
-                move_id="NUM_SUB_REGROUP_BUNDLES",
-                state="REHEARSE",
-                prior_state="MODEL",
-                rehearse_attempts=1,
-                context={"current_move_id": "NUM_SUB_REGROUP_BUNDLES", "current_state": "REHEARSE"},
-            )
-            session.add(s2)
+        await _seed_demo2_session_state(session)
 
         # 6. Completed moves and Adoption Evidence for demo3
-        for idx, (m_id, lvl, src) in enumerate(
-            [
-                ("NUM_SUB_REGROUP_BUNDLES", 5, "child_check"),
-                ("NUM_ADD_CARRY_BUNDLES", 4, "arp_observation"),
-                ("NUM_PLACE_VALUE_BUNDLES", 3, "peer_checklist"),
-            ]
-        ):
+        for idx, (m_id, lvl, src) in enumerate(_DEMO3_COMPLETED_MOVES):
             # Same key as demo_data's cohort evidence: the cohort also writes demo3 rows
             # for these real moves (other levels), so (teacher, move) alone is not unique
             stmt_ev = select(AdoptionEvidence).where(

@@ -16,7 +16,7 @@ from backend.app.auth.csrf import (
     set_csrf_cookie,
     verify_csrf_token,
 )
-from backend.app.auth.guards import get_current_user
+from backend.app.auth.guards import get_current_user, get_current_user_optional
 from backend.app.auth.passwords import verify_password
 from backend.app.auth.rate_limit import check_login_rate_limit
 from backend.app.auth.session import (
@@ -382,10 +382,33 @@ async def login(
     return redir_resp
 
 
+async def _reset_demo_teacher_on_logout(db: AsyncSession, user: AppUser | None) -> None:
+    """Resets a shared demo teacher login to the seeded state. Never blocks the logout."""
+    if user is None or not user.is_demo or user.role != "teacher":
+        return
+    from backend.app.db.seed import reset_demo_teacher
+
+    try:
+        async with db.begin_nested():
+            await reset_demo_teacher(db, user.username)
+    except Exception:
+        logger.exception("demo_reset_failed username=%s", user.username)
+
+
 @router.post("/logout")
 @router.get("/logout")
-async def logout(request: Request) -> Response:
-    """Logs user out by clearing session cookie (§9.7)."""
+async def logout(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> Response:
+    """Logs user out by clearing session cookie (§9.7); shared demo teachers are reset."""
+    try:
+        user = await get_current_user_optional(request, db)
+    except Exception:
+        logger.exception("logout_user_lookup_failed")
+        user = None
+    await _reset_demo_teacher_on_logout(db, user)
+
     accept = request.headers.get("accept", "")
     if "application/json" in accept and "text/html" not in accept:
         json_resp = JSONResponse(content={"ok": True, "redirect": "/login"})
