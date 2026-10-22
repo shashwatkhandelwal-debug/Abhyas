@@ -874,3 +874,4 @@ ui_error_retry: {text: "दोबारा कोशिश करें", audio:
 ui_waking_title: {text: "अभ्यास जाग रहा है…", audio: false}
 ui_waking_body: {text: "मुफ़्त सर्वर कुछ देर सोने के बाद जागता है। इसमें करीब एक मिनट लगता है। इस पेज को खुला रखें — तैयार होते ही आप अपने आप पहुँच जाएँगे।", audio: false}
 ui_waking_still: {text: "अभी भी जाग रहा है… कृपया थोड़ा और रुकें।", audio: false}
+learn_buttons_reminder: {text: "इस चरण में नीचे दिए दो बटनों में से एक दबाइए: “{next}” या “{replay}”। लिखा हुआ जवाब यहाँ आगे नहीं बढ़ाता।", audio: false}

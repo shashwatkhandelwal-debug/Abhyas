@@ -1084,3 +1084,30 @@ async def test_new_teacher_free_text_gets_welcome_and_consent_buttons() -> None:
     teacher = await service.repo.get_or_create_teacher(t_id)
     assert teacher.onboarding_state == "NEW"
     assert teacher.consent_service is False
+
+
+@pytest.mark.asyncio
+async def test_learn_step_free_text_reminds_of_the_two_buttons_and_does_not_advance() -> None:
+    service = SessionService(repository=FakeSessionRepository())
+    t_id = uuid4()
+    ctx = await service.get_or_create_context(t_id)
+    ctx.onboarding_state = OnboardingStateEnum.READY
+    ctx.current_state = SessionStateEnum.LEARN
+    await service._sync_context_to_db(ctx, t_id)
+
+    out = await service.handle_inbound(make_inbound(teacher_id=t_id, text="कुछ और लिख रही हूँ"))
+
+    assert len(out) == 1
+    assert out[0].text_hi != get_message("unclear", "f")
+    assert get_message("btn_understood", "f") in (out[0].text_hi or "")
+    assert get_message("btn_replay", "f") in (out[0].text_hi or "")
+    assert [b.id for b in out[0].buttons or []] == ["btn_understood", "btn_replay"]
+    assert (await service.get_or_create_context(t_id)).current_state == SessionStateEnum.LEARN
+
+    # Either button still works from here
+    out = await service.handle_inbound(make_inbound(teacher_id=t_id, button_id="btn_replay"))
+    assert [b.id for b in out[0].buttons or []] == ["btn_understood", "btn_replay"]
+    await service.handle_inbound(make_inbound(teacher_id=t_id, button_id="btn_understood"))
+    assert (
+        await service.get_or_create_context(t_id)
+    ).current_state == SessionStateEnum.EXPLAIN_BACK

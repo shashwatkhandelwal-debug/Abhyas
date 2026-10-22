@@ -620,3 +620,4 @@ ui_error_retry: {text: "Try again"}
 ui_waking_title: {text: "Abhyas is waking up…"}
 ui_waking_body: {text: "The free server sleeps when idle and wakes up again; this takes about a minute. Keep this page open — you will be taken in automatically as soon as it is ready."}
 ui_waking_still: {text: "Still waking up… please wait a little longer."}
+learn_buttons_reminder: {text: "At this step, tap one of the two buttons below: “{next}” or “{replay}”. Typed text does not move it forward here."}

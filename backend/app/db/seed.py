@@ -308,6 +308,60 @@ async def _seed_demo2_one_on_one(session: AsyncSession, *, replace: bool = False
     await session.flush()
 
 
+# demo3 starts on the learning step of the next weekly move (all three numeracy modules are done)
+_DEMO3_LEARN_MOVE_ID = "LIT_MATRA_BLENDING"
+DEMO3_LEARN_MESSAGE_ID = uuid.UUID("00000000-0000-0001-0007-000000d03001")
+
+
+async def _seed_demo3_learn_step(session: AsyncSession) -> None:
+    """demo3's week is on LEARN and its chat already shows the learning step with its 2 buttons.
+
+    The text and button titles come from the real catalog (same strings `_handle_inbound` sends);
+    the official-excerpt line the live learn step may add is left out so the seed needs no
+    retrieval. Idempotent: a week row or message that exists is kept.
+    """
+    from backend.app.core.messages import get_message
+    from backend.app.core.types import Button
+    from backend.app.rehearsal.scene_runner import load_move_card
+
+    today = date.today()
+    week_start = today - timedelta(days=today.weekday())
+    if await session.get(SessionState, (TEACHER_DEMO3_ID, week_start)) is None:
+        session.add(
+            SessionState(
+                teacher_id=TEACHER_DEMO3_ID,
+                week_start=week_start,
+                move_id=_DEMO3_LEARN_MOVE_ID,
+                state="LEARN",
+                prior_state=None,
+                rehearse_attempts=0,
+                context={"current_move_id": _DEMO3_LEARN_MOVE_ID, "current_state": "LEARN"},
+            )
+        )
+    if await session.get(Message, DEMO3_LEARN_MESSAGE_ID) is None:
+        move = load_move_card(_DEMO3_LEARN_MOVE_ID)
+        buttons = [
+            Button(id="btn_understood", title_hi=get_message("btn_understood", lang="hi")),
+            Button(id="btn_replay", title_hi=get_message("btn_replay", lang="hi")),
+        ]
+        stamp = datetime.now(UTC) - timedelta(minutes=1)
+        session.add(
+            Message(
+                id=DEMO3_LEARN_MESSAGE_ID,
+                teacher_id=TEACHER_DEMO3_ID,
+                direction="out",
+                channel="web",
+                channel_msg_id="seed-demo3-learn",
+                kind="buttons",
+                text=get_message("learn_intro", lang="hi", move_title=move.title_hi),
+                buttons=[b.model_dump() for b in buttons],
+                created_at=stamp,
+                updated_at=stamp,
+            )
+        )
+    await session.flush()
+
+
 async def _seed_demo3_modules(session: AsyncSession) -> None:
     """demo3 finished three modules: every step done, the check passed."""
     now = datetime.now(UTC)
@@ -445,6 +499,7 @@ async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
         await _seed_demo2_one_on_one(session, replace=True)
     if teacher_id == TEACHER_DEMO3_ID:
         await _seed_demo3_modules(session)
+        await _seed_demo3_learn_step(session)
         for idx, (m_id, _lvl, _src) in enumerate(_DEMO3_COMPLETED_MOVES):
             session.add(
                 MovePath(
@@ -589,6 +644,7 @@ async def seed_database() -> None:
         await _seed_demo2_one_on_one(session)
 
         await _seed_demo3_modules(session)
+        await _seed_demo3_learn_step(session)
 
         # 6. Completed moves and Adoption Evidence for demo3
         for idx, (m_id, lvl, src) in enumerate(_DEMO3_COMPLETED_MOVES):
