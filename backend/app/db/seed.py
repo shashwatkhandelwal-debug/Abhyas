@@ -45,6 +45,7 @@ from backend.app.db.models import (
     Scene,
     SessionState,
     Teacher,
+    TrainingRating,
     Turn,
 )
 from backend.app.db.session import async_session_factory
@@ -195,6 +196,7 @@ async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
     await session.execute(delete(MovePath).where(MovePath.teacher_id == teacher_id))
     await session.execute(delete(Question).where(Question.teacher_id == teacher_id))
     await session.execute(delete(RealismRating).where(RealismRating.teacher_id == teacher_id))
+    await session.execute(delete(TrainingRating).where(TrainingRating.teacher_id == teacher_id))
     await session.execute(
         delete(ConsentLog).where(
             ConsentLog.teacher_id == teacher_id, ConsentLog.created_at > cutoff

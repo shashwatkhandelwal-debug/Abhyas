@@ -503,6 +503,9 @@ class SessionContext(BaseModel):
     consent_service: bool = False
     consent_share_scores: bool = False
     clarifying_already_asked: bool = False
+    # "Rate the training" after REFLECT: "" (not asking), "rating" (waiting for 1-5), "comment"
+    rating_stage: str = ""
+    rating_level: int = 0  # evidence level reached, kept for the week_done message afterwards
 
 
 class WeeklyStateMachine:

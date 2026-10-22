@@ -40,6 +40,14 @@ feedback_body: {text: "👍 {strength}\n🔁 {change}\n🗣️ Next time, try sa
 feedback_trajectory: {text: "Change in the children: {trajectory}"}
 coach_low_conf_prefix: {text: "(An expert will also look at this suggestion.)"}
 realism_prompt: {text: "Did these children feel like real classroom children? Choose from 1 (not at all) to 5 (exactly like them)."}
+rate_training_prompt: {text: "How useful was this week's practice for your work? Tell us any number from 1 (not at all) to 5 (very useful), typed or spoken."}
+rate_training_comment_prompt: {text: "Thank you! If you like, tell us in one line what worked or what to change, typed or spoken. Tap 'Skip' if you would rather not."}
+rate_training_unclear: {text: "Please give a number from 1 to 5 (5 = very useful)."}
+btn_trate_1: {text: "1 (not at all)"}
+btn_trate_3: {text: "3 (so-so)"}
+btn_trate_5: {text: "5 (very useful)"}
+rate_training_thanks: {text: "Thank you for your feedback."}
+rate_training_skip_words: {text: "skip, no, none, nothing, n/a, na"}
 retry_limit: {text: "You have completed this week's 3 practices. Now it's time to try it in class!"}
 try_in_class: {text: "Now try this move in your class. Ask a fellow teacher to watch for 5 minutes and fill in this list:"}
 try_in_class_reflect: {text: "Or answer these 2 questions yourself:"}
@@ -521,3 +529,9 @@ ui_trainer_rubric_svg_none: {text: "Rubric distribution"}
 ui_trainer_rubric_svg_title: {text: "Score 0: {n0} ({p0}%) | Score 1: {n1} ({p1}%) | Score 2: {n2} ({p2}%)"}
 ui_arp_anonymous_teacher: {text: "Teacher #{code}"}
 ui_chat_help_text: {text: "Abhyas partner: practise for 15 minutes every week. You can talk by voice or by typing. For help, contact your ARP."}
+ui_ratings_title: {text: "How useful teachers found the training (ratings)"}
+ui_ratings_avg: {text: "Average rating (out of 5)"}
+ui_ratings_count: {text: "Number of ratings"}
+ui_ratings_latest: {text: "Latest comments"}
+ui_ratings_none: {text: "No ratings yet."}
+ui_ratings_distribution: {text: "Distribution of ratings, 1 to 5"}

@@ -75,6 +75,7 @@ def test_alembic_migrations_round_trip() -> None:
             "explain_score",
             "adoption_evidence",
             "realism_rating",
+            "training_rating",
             "question",
             "doc_chunk",
             "review_item",
@@ -89,6 +90,14 @@ def test_alembic_migrations_round_trip() -> None:
         }
         for table in expected_tables:
             assert table in tables, f"Table {table} missing after upgrade"
+
+        # training_rating: columns, FK cascade and the 1-5 check
+        columns = {c["name"] for c in inspector.get_columns("training_rating")}
+        assert columns == {"id", "teacher_id", "move_id", "rating", "comment", "created_at"}
+        checks = {c["name"] for c in inspector.get_check_constraints("training_rating")}
+        assert "check_training_rating_range" in checks
+        fks = inspector.get_foreign_keys("training_rating")
+        assert fks and fks[0]["options"].get("ondelete") == "CASCADE"
 
         # Verify extensions
         with engine.connect() as conn:

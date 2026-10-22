@@ -19,14 +19,20 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.auth.access import SUPPRESSION_MESSAGE
 from backend.app.auth.csrf import generate_csrf_token, set_csrf_cookie
 from backend.app.auth.guards import require_role
+from backend.app.config import settings
 from backend.app.core.messages import get_message
 from backend.app.db.models import AppUser
 from backend.app.db.session import get_db_session
 from backend.app.reports.trainer_aggregates import (
     build_trainer_report,
     generate_trainer_csv,
+)
+from backend.app.sessions.training_rating import (
+    TrainingRatingSummary,
+    training_rating_summary,
 )
 from backend.app.web.ui_lang import register_ui_globals
 
@@ -57,6 +63,17 @@ async def get_trainer_dashboard(
         selected_move_id=move_id,
     )
 
+    # Teachers' "rate the training" answers: own district, consenting teachers only, n<10 suppressed
+    if current_user.district or current_user.role == "admin":
+        ratings = await training_rating_summary(
+            db,
+            district=current_user.district,
+            consenting_only=True,
+            suppress_below=settings.AGGREGATION_SUPPRESSION_N,
+        )
+    else:
+        ratings = TrainingRatingSummary(count=0, average=None)
+
     csrf_token = generate_csrf_token()
     demo_banner_text = get_message("ui_demo_banner")
 
@@ -66,6 +83,8 @@ async def get_trainer_dashboard(
         context={
             "request": request,
             "report": report,
+            "ratings": ratings,
+            "suppression_message": SUPPRESSION_MESSAGE,
             "user": current_user,
             "csrf_token": csrf_token,
             "get_message": get_message,

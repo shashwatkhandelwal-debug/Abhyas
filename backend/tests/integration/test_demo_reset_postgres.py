@@ -34,6 +34,7 @@ from backend.app.db.models import (
     Scene,
     SessionState,
     Teacher,
+    TrainingRating,
     Turn,
 )
 from backend.app.db.seed import DEMO_TEACHER_LOGINS
@@ -149,6 +150,7 @@ async def _snapshot(session: AsyncSession, teacher_id: UUID) -> dict[str, Any]:
         "rehearsal_scores": await ids(RehearsalScore),
         "questions": await ids(Question),
         "ratings": await ids(RealismRating),
+        "training_ratings": await ids(TrainingRating),
         "evidence": await ids(AdoptionEvidence),
     }
 
@@ -200,6 +202,7 @@ async def _dirty(session: AsyncSession, teacher_id: UUID) -> None:
         Turn(teacher_id=teacher_id, scene_id=scene.id, idx=1, role="teacher", transcript="x")
     )
     session.add(RealismRating(teacher_id=teacher_id, scene_id=scene.id, rating=4))
+    session.add(TrainingRating(teacher_id=teacher_id, rating=5, comment="बहुत अच्छा"))
     session.add(Question(teacher_id=teacher_id, text="नया सवाल", status="answered"))
     session.add(
         AdoptionEvidence(teacher_id=teacher_id, move_id="NUM_SUB_REGROUP_BUNDLES", level=1,

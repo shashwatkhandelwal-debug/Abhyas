@@ -54,9 +54,13 @@ def test_alembic_migration_revisions_chain() -> None:
     heads = script.get_heads()
     assert len(heads) == 1
     head_rev = heads[0]
-    assert head_rev == "b4d6f8a0c2e5"
+    assert head_rev == "d5f7a9b1c3e6"
 
-    rev_lang = script.get_revision(head_rev)
+    rev_rating = script.get_revision(head_rev)
+    assert rev_rating is not None
+    assert rev_rating.down_revision == "b4d6f8a0c2e5"
+
+    rev_lang = script.get_revision("b4d6f8a0c2e5")
     assert rev_lang is not None
     assert rev_lang.down_revision == "a3c5e7f9b1d4"
 

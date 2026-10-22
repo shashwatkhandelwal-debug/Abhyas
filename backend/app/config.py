@@ -227,6 +227,10 @@ class Settings(BaseSettings):
     RETENTION_PURGE_HOUR_IST: int = 3
     DATA_RETENTION_DAYS: int = 90
 
+    # ── "Rate the training" after REFLECT ────────────────────────────────
+    TRAINING_COMMENT_MAX_CHARS: int = 200
+    TRAINING_RATING_RECENT_COMMENTS: int = 5  # latest comments shown in trainer/admin views
+
     # ── Demo / Evaluation & Observability ────────────────────────────────
     SERVE_IN_REVIEW_TO_DEMO: bool = True
     DEMO_MODE: bool = True

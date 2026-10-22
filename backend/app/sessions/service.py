@@ -53,6 +53,7 @@ from backend.app.sessions.state_machine import (
     SessionStateEnum,
     WeeklyStateMachine,
 )
+from backend.app.sessions.training_rating import is_skip_comment, parse_training_rating
 
 logger = logging.getLogger("abhyas.sessions.service")
 IST = ZoneInfo("Asia/Kolkata")
@@ -150,6 +151,8 @@ class SessionService:
             evidence_level=int(ctx_data.get("evidence_level", 0)),
             child_states=ctx_data.get("child_states", {}),
             clarifying_already_asked=bool(ctx_data.get("clarifying_already_asked", False)),
+            rating_stage=str(ctx_data.get("rating_stage", "")),
+            rating_level=int(ctx_data.get("rating_level", 0)),
             name=teacher.name,
             address_form=teacher.address_form or "f",
             cluster_id=teacher.cluster_id,
@@ -206,6 +209,8 @@ class SessionService:
                 ctx.prior_state_before_delete.value if ctx.prior_state_before_delete else None
             ),
             "clarifying_already_asked": ctx.clarifying_already_asked,
+            "rating_stage": ctx.rating_stage,
+            "rating_level": ctx.rating_level,
         }
         await self.repo.save_session_state(db_state)
         if (
@@ -255,6 +260,110 @@ class SessionService:
             return get_message(prior_prompt_key, address_form, scene_intro=move.scenario.intro_hi)
         else:
             return get_message(prior_prompt_key, address_form)
+
+    async def _week_done_messages(
+        self, ctx: SessionContext, teacher_id: UUID, level: int
+    ) -> list[OutboundMessage]:
+        """The end-of-week message with the evidence level reached and the next move."""
+        address_form = ctx.address_form
+        level_name = get_message(f"evidence_level_{level}", address_form)
+        next_title = await self._get_next_move_title(teacher_id, ctx.current_move_id)
+        default_name = (
+            get_message("btn_female", address_form)
+            if address_form == "f"
+            else get_message("btn_male", address_form)
+        )
+        return [
+            OutboundMessage(
+                kind="buttons",
+                text_hi=get_message(
+                    "week_done",
+                    address_form,
+                    name=ctx.name or default_name,
+                    level_name=level_name,
+                    next_move_title=next_title,
+                ),
+                buttons=[
+                    Button(
+                        id="btn_next_move",
+                        title_hi=get_message("btn_next_move", address_form),
+                    ),
+                    Button(
+                        id="btn_progress",
+                        title_hi=get_message("btn_progress", address_form),
+                    ),
+                ],
+            )
+        ]
+
+    async def _begin_training_rating(
+        self, ctx: SessionContext, teacher_id: UUID, level: int
+    ) -> list[OutboundMessage]:
+        """After REFLECT: ask for the 1-5 usefulness rating before the week_done message."""
+        ctx.rating_stage = "rating"
+        ctx.rating_level = level
+        await self._sync_context_to_db(ctx, teacher_id)
+        return [
+            OutboundMessage(
+                kind="buttons",
+                text_hi=get_message("rate_training_prompt", ctx.address_form),
+                buttons=self._rating_buttons(ctx.address_form),
+            )
+        ]
+
+    @staticmethod
+    def _rating_buttons(address_form: str) -> list[Button]:
+        """Three quick taps for the anchors; 2 and 4 (and all of 1-5) can be typed or spoken."""
+        return [
+            Button(id=f"btn_trate_{n}", title_hi=get_message(f"btn_trate_{n}", address_form))
+            for n in (1, 3, 5)
+        ]
+
+    async def _handle_training_rating(
+        self, ctx: SessionContext, teacher_id: UUID, text: str, btn_id: str | None
+    ) -> list[OutboundMessage]:
+        """Reads the rating (button, typed digit or spoken number), then the optional comment."""
+        address_form = ctx.address_form
+        if ctx.rating_stage == "rating":
+            value = parse_training_rating(text, btn_id)
+            if value is None:
+                return [
+                    OutboundMessage(
+                        kind="buttons",
+                        text_hi=get_message("rate_training_unclear", address_form),
+                        buttons=self._rating_buttons(address_form),
+                    )
+                ]
+            await self.repo.record_training_rating(
+                teacher_id=teacher_id, rating=value, move_id=ctx.current_move_id
+            )
+            ctx.rating_stage = "comment"
+            await self._sync_context_to_db(ctx, teacher_id)
+            return [
+                OutboundMessage(
+                    kind="buttons",
+                    text_hi=get_message("rate_training_comment_prompt", address_form),
+                    buttons=[
+                        Button(id="btn_trate_skip", title_hi=get_message("btn_skip", address_form))
+                    ],
+                )
+            ]
+
+        # comment stage: free text (typed or transcribed from a voice note) or Skip
+        comment = unicodedata.normalize("NFC", text).strip()
+        skipped = btn_id == "btn_trate_skip" or is_skip_comment(comment)
+        if comment and not skipped:
+            await self.repo.set_training_comment(
+                teacher_id, comment[: settings.TRAINING_COMMENT_MAX_CHARS]
+            )
+        level = ctx.rating_level or ctx.evidence_level
+        ctx.rating_stage = ""
+        ctx.rating_level = 0
+        await self._sync_context_to_db(ctx, teacher_id)
+        thanks = OutboundMessage(
+            kind="text", text_hi=get_message("rate_training_thanks", address_form)
+        )
+        return [thanks, *await self._week_done_messages(ctx, teacher_id, level)]
 
     async def handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
         """Dispatches an inbound teacher message through conversation flow and persists side effects."""
@@ -330,6 +439,16 @@ class SessionService:
                 ]
 
         ctx.last_inbound_at = now
+
+        # 1b. "Rate the training" (after REFLECT): the rating and the one-line comment are free
+        # answers, so they are read here before intent routing can mistake them for commands.
+        if (
+            ctx.rating_stage
+            and ctx.current_state == SessionStateEnum.DONE
+            and matched_intent != Intent.DELETE
+            and text_content != "delete"
+        ):
+            return await self._handle_training_rating(ctx, teacher_id, text_content, btn_id)
 
         # 2. Delete confirmation flow (§8.3 step 7)
         if ctx.awaiting_delete_confirm:
@@ -1433,35 +1552,7 @@ class SessionService:
                     source="peer_checklist",
                 )
                 await self._sync_context_to_db(ctx, teacher_id)
-                level_name = get_message("evidence_level_3", address_form)
-                next_title = await self._get_next_move_title(teacher_id, ctx.current_move_id)
-                default_name = (
-                    get_message("btn_female", address_form)
-                    if address_form == "f"
-                    else get_message("btn_male", address_form)
-                )
-                return [
-                    OutboundMessage(
-                        kind="buttons",
-                        text_hi=get_message(
-                            "week_done",
-                            address_form,
-                            name=ctx.name or default_name,
-                            level_name=level_name,
-                            next_move_title=next_title,
-                        ),
-                        buttons=[
-                            Button(
-                                id="btn_next_move",
-                                title_hi=get_message("btn_next_move", address_form),
-                            ),
-                            Button(
-                                id="btn_progress",
-                                title_hi=get_message("btn_progress", address_form),
-                            ),
-                        ],
-                    )
-                ]
+                return await self._begin_training_rating(ctx, teacher_id, 3)
             await self._sync_context_to_db(ctx, teacher_id)
             step_idx = max(0, ctx.reflect_step - 1)
             item_text = move.peer_checklist[step_idx] if step_idx < len(move.peer_checklist) else ""
@@ -1494,35 +1585,7 @@ class SessionService:
                     source="reflection",
                 )
                 await self._sync_context_to_db(ctx, teacher_id)
-                level_name = get_message("evidence_level_2", address_form)
-                next_title = await self._get_next_move_title(teacher_id, ctx.current_move_id)
-                default_name = (
-                    get_message("btn_female", address_form)
-                    if address_form == "f"
-                    else get_message("btn_male", address_form)
-                )
-                return [
-                    OutboundMessage(
-                        kind="buttons",
-                        text_hi=get_message(
-                            "week_done",
-                            address_form,
-                            name=ctx.name or default_name,
-                            level_name=level_name,
-                            next_move_title=next_title,
-                        ),
-                        buttons=[
-                            Button(
-                                id="btn_next_move",
-                                title_hi=get_message("btn_next_move", address_form),
-                            ),
-                            Button(
-                                id="btn_progress",
-                                title_hi=get_message("btn_progress", address_form),
-                            ),
-                        ],
-                    )
-                ]
+                return await self._begin_training_rating(ctx, teacher_id, 2)
             await self._sync_context_to_db(ctx, teacher_id)
             step_idx = max(0, ctx.reflect_step - 1)
             q_text = (

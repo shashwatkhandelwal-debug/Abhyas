@@ -1,0 +1,35 @@
+{# "Rate the training" aggregate. Context: ratings (TrainingRatingSummary), suppression_message, get_message. No teacher identity is shown. #}
+<section class="card table-card" id="training-ratings" style="margin: 1rem 0; padding: 1rem 1.25rem; background: var(--surface, #fff); border: 1px solid var(--border, #ddd); border-radius: 12px;">
+  <h2 style="margin: 0 0 0.75rem 0; font-size: 1.1rem;">{{ get_message("ui_ratings_title") }}</h2>
+  {% if ratings.count == 0 %}
+    <p style="margin: 0; color: var(--muted, #5E6662);">{{ get_message("ui_ratings_none") }}</p>
+  {% elif ratings.suppressed %}
+    <p style="margin: 0 0 0.25rem 0;"><strong>{{ get_message("ui_ratings_count") }}:</strong> {{ ratings.count }}</p>
+    <p style="margin: 0; color: var(--muted, #5E6662);">{{ suppression_message }}</p>
+  {% else %}
+    <div style="display: flex; gap: 2rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+      <div><div style="font-size: 0.85rem; color: var(--muted, #5E6662);">{{ get_message("ui_ratings_avg") }}</div>
+        <div id="ratings-average" style="font-size: 1.6rem; font-weight: 700;">{{ "%.2f"|format(ratings.average) }}</div></div>
+      <div><div style="font-size: 0.85rem; color: var(--muted, #5E6662);">{{ get_message("ui_ratings_count") }}</div>
+        <div id="ratings-count" style="font-size: 1.6rem; font-weight: 700;">{{ ratings.count }}</div></div>
+    </div>
+    <div aria-label="{{ get_message('ui_ratings_distribution') }}" style="margin-bottom: 0.75rem;">
+      {% for star in [5, 4, 3, 2, 1] %}
+        {% set n = ratings.distribution.get(star, 0) %}
+        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem;">
+          <span style="width: 1.2rem;">{{ star }}</span>
+          <span style="display: inline-block; height: 0.7rem; width: {{ (n * 100 / ratings.count)|round|int }}%; max-width: 70%; min-width: {{ 2 if n else 0 }}px; background: var(--brand, #1F6F5C); border-radius: 4px;"></span>
+          <span>{{ n }}</span>
+        </div>
+      {% endfor %}
+    </div>
+    {% if ratings.latest_comments %}
+      <h3 style="margin: 0.5rem 0 0.25rem 0; font-size: 0.95rem;">{{ get_message("ui_ratings_latest") }}</h3>
+      <ul id="ratings-comments" style="margin: 0; padding-left: 1.2rem;">
+        {% for c in ratings.latest_comments %}
+          <li>{{ c.rating }}/5 &mdash; {{ c.comment }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endif %}
+</section>

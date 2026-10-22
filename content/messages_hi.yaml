@@ -123,6 +123,24 @@ coach_low_conf_prefix:
 realism_prompt:
   text: "ये बच्चे असली कक्षा के बच्चों जैसे लगे? 1 (बिल्कुल नहीं) से 5 (बिल्कुल वैसे ही) चुनें।"
   audio: false
+rate_training_prompt:
+  text: "इस हफ्ते का अभ्यास आपके काम का कितना रहा? 1 (बिल्कुल नहीं) से 5 (बहुत ज़्यादा) तक कोई भी अंक बताइए, लिखकर या बोलकर।"
+  audio: false
+rate_training_comment_prompt:
+  text: "धन्यवाद! चाहें तो एक पंक्ति में बताइए कि क्या अच्छा लगा या क्या बदलना चाहिए, लिखकर या बोलकर। न बताना हो तो 'छोड़ें' दबाइए।"
+  audio: false
+rate_training_unclear:
+  text: "कृपया 1 से 5 के बीच एक अंक बताइए (5 = बहुत ज़्यादा काम का)।"
+  audio: false
+btn_trate_1: {text: "1 (बिल्कुल नहीं)", audio: false}
+btn_trate_3: {text: "3 (ठीक-ठाक)", audio: false}
+btn_trate_5: {text: "5 (बहुत ज़्यादा)", audio: false}
+rate_training_thanks:
+  text: "आपकी राय के लिए धन्यवाद।"
+  audio: false
+rate_training_skip_words:
+  text: "छोड़ें, छोड़ो, छोड़ दें, नहीं, कुछ नहीं, ना"
+  audio: false
 retry_limit:
   text: "इस हफ्ते के 3 अभ्यास पूरे हो गए। अब कक्षा में आज़माने की बारी है!"
   audio: false
@@ -761,3 +779,9 @@ ui_trainer_rubric_svg_none: {text: "रुब्रिक वितरण", audi
 ui_trainer_rubric_svg_title: {text: "0 अंक: {n0} ({p0}%) | 1 अंक: {n1} ({p1}%) | 2 अंक: {n2} ({p2}%)", audio: false}
 ui_arp_anonymous_teacher: {text: "शिक्षक #{code}", audio: false}
 ui_chat_help_text: {text: "अभ्यास साथी: हर सप्ताह 15 मिनट अभ्यास करें। आप बोलकर या लिखकर बात कर सकती हैं। सहायता के लिए अपने ARP से संपर्क करें।", audio: false}
+ui_ratings_title: {text: "प्रशिक्षण कितना काम का रहा (शिक्षकों की रेटिंग)", audio: false}
+ui_ratings_avg: {text: "औसत रेटिंग (5 में से)", audio: false}
+ui_ratings_count: {text: "रेटिंग की संख्या", audio: false}
+ui_ratings_latest: {text: "हाल की टिप्पणियाँ", audio: false}
+ui_ratings_none: {text: "अभी कोई रेटिंग नहीं मिली है।", audio: false}
+ui_ratings_distribution: {text: "1 से 5 तक रेटिंग का वितरण", audio: false}
