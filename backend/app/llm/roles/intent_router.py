@@ -14,7 +14,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from backend.app.config import settings
-from backend.app.llm.client import LLMUnavailable, call_tool
+from backend.app.llm.client import LLMUnavailable, call_tool, logged_role, mark_fallback
 from backend.app.llm.guard_stats import record_guard_event
 from backend.app.llm.guards import guard_intent_router
 from backend.app.llm.prompts import load_prompt
@@ -30,12 +30,14 @@ def fallback_intent_router(state: str) -> IntentRouterOutput:
 
     `answer_for_step` for EXPLAIN_BACK/REFLECT, else `unclear` (send help menu).
     """
+    mark_fallback()
     clean_state = state.strip().upper()
     if clean_state in ("EXPLAIN_BACK", "REFLECT"):
         return IntentRouterOutput(intent="answer_for_step", confidence=0.0)
     return IntentRouterOutput(intent="unclear", confidence=0.0)
 
 
+@logged_role("intent_router", lambda: settings.CLAUDE_MODEL_FAST)
 async def route_intent(
     text: str,
     *,

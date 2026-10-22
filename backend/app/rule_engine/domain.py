@@ -170,6 +170,8 @@ class SceneState(BaseModel):
     max_turns: int = 8
     shy_silent_turns: int = 1
     distracted_interject_after: int = 3
+    max_distractions: int = 1  # per scene; set from settings.MAX_DISTRACTIONS_PER_SCENE
+    distractions_used: int = 0  # OFF_TOPIC/INTERJECT lines already spent this scene
 
 
 class TaggedTurn(BaseModel):

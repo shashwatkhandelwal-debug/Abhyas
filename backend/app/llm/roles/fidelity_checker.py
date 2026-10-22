@@ -15,7 +15,7 @@ from pydantic import ValidationError
 
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
-from backend.app.llm.client import LLMUnavailable, call_tool
+from backend.app.llm.client import LLMUnavailable, call_tool, logged_role
 from backend.app.llm.guard_stats import record_guard_event
 from backend.app.llm.guards import guard_fidelity_checker, norm, substring_match
 from backend.app.llm.messages import load_catalog_message
@@ -163,6 +163,7 @@ def fallback_fidelity(move: MoveCard, transcript: str) -> FidelityCheckerOutput:
     )
 
 
+@logged_role("fidelity_checker", lambda: settings.CLAUDE_MODEL_SMART)
 async def check_fidelity(move: MoveCard, transcript: str) -> FidelityResult:
     """Evaluates teacher explain-it-back explanation matching spec/05 §5.7.
 

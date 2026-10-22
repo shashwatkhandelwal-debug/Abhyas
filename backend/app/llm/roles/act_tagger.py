@@ -6,6 +6,7 @@ with a deterministic, rule_engine-independent keyword fallback.
 
 import logging
 import re
+import time
 import unicodedata
 from collections.abc import Sequence
 from pathlib import Path
@@ -14,7 +15,7 @@ from typing import Any
 import yaml
 
 from backend.app.config import settings
-from backend.app.llm.client import LLMUnavailable, call_tool
+from backend.app.llm.client import LLMUnavailable, call_tool, log_role_call
 from backend.app.llm.guard_stats import record_guard_event
 from backend.app.llm.guards import guard_act_tagger
 from backend.app.llm.hindi_numbers import extract_numbers
@@ -317,6 +318,7 @@ async def tag_act(
     messages: list[dict[str, Any]] = [{"role": "user", "content": user_message}]
 
     # 2. Attempt LLM call with retry per §5.2
+    started = time.perf_counter()
     for attempt in range(2):
         try:
             tool_input = await call_tool(
@@ -327,7 +329,7 @@ async def tag_act(
                 tool_name="tag_acts",
                 input_schema=ActTaggerOutput.model_json_schema(),
                 temperature=0.0,
-                max_tokens=256,
+                max_tokens=settings.ACT_TAGGER_MAX_TOKENS,
                 timeout_s=settings.LLM_TIMEOUT_SECONDS,
             )
 
@@ -335,6 +337,7 @@ async def tag_act(
             is_valid, err_msg = guard_act_tagger(parsed, transcript, scene_persona_ids)
             record_guard_event("act_tagger", attempt, is_valid, err_msg)
             if is_valid:
+                log_role_call("act_tagger", settings.CLAUDE_MODEL_FAST, started, False)
                 return parsed
 
             logger.warning("act_tagger guard failed (attempt %d): %s", attempt + 1, err_msg)
@@ -342,16 +345,27 @@ async def tag_act(
                 messages.append(
                     {
                         "role": "user",
-                        "content": f"Your previous output failed guard check: {err_msg}. Fix it and try again.",
+                        "content": (
+                            f"Your previous output was {parsed.model_dump_json()} and failed a "
+                            f"check: {err_msg}. Return corrected tag_acts input with at least one "
+                            "act (use repeat_question if nothing else clearly applies)."
+                        ),
                     }
                 )
         except (LLMUnavailable, NotImplementedError, Exception) as exc:
             logger.warning("act_tagger LLM call failed (attempt %d): %s", attempt + 1, exc)
-            if attempt == 1:
-                break
+            if attempt == 0:
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": "Your previous reply was empty or incomplete. Return the full "
+                        "tag_acts input: acts (at least one), addressed_child, problem, quote.",
+                    }
+                )
 
     # 3. Deterministic fallback
     logger.info("Using keyword fallback tagger for teacher turn")
+    log_role_call("act_tagger", settings.CLAUDE_MODEL_FAST, started, True)
     return fallback_tag_act(
         transcript=transcript,
         scene_persona_ids=scene_persona_ids,

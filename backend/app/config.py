@@ -67,6 +67,11 @@ class Settings(BaseSettings):
     LLM_TIMEOUT_SECONDS: float = 8.0
     LLM_BUILD_TIMEOUT_SECONDS: float = 60.0
     LLM_MAX_RETRIES: int = 1
+    # Devanagari costs ~4 tokens/word plus tool-call overhead: a 25-word child line needs
+    # ~110 output tokens, so 128 truncated to {} (spec/05 role budgets live here).
+    LLM_MAX_TOKENS_CEILING: int = 1024
+    ACT_TAGGER_MAX_TOKENS: int = 512
+    CHILD_VOICE_MAX_TOKENS: int = 384
     GUARD_EVENT_RING_SIZE: int = 2000
     GUARD_EVENT_REASON_MAX_CHARS: int = 200
     GUARD_EVENT_LOG_PATH: str = ""
@@ -142,6 +147,7 @@ class Settings(BaseSettings):
     FIDELITY_CONFIDENCE_THRESHOLD: float = 0.60
     GUIDE_CONFIDENCE_THRESHOLD: float = 0.60
     MAX_CHILD_LINE_WORDS: int = 25
+    MAX_DISTRACTIONS_PER_SCENE: int = 1
     MAX_COACH_FEEDBACK_WORDS: int = 60
     MAX_GUIDE_ANSWER_WORDS: int = 80
     MOVE_APPROVALS_REQUIRED: int = 2

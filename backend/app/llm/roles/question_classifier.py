@@ -16,7 +16,7 @@ import httpx
 from pydantic import ValidationError
 
 from backend.app.config import settings
-from backend.app.llm.client import LLMUnavailable, call_tool
+from backend.app.llm.client import LLMUnavailable, call_tool, logged_role
 from backend.app.llm.guard_stats import record_guard_event
 from backend.app.llm.guards import guard_question_classifier
 from backend.app.llm.messages import load_catalog_message
@@ -43,6 +43,7 @@ def _deterministic_fallback(question: str) -> QuestionClassifierOutput:
     )
 
 
+@logged_role("question_classifier", lambda: settings.CLAUDE_MODEL_FAST)
 async def classify_question(
     question: str,
     *,

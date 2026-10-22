@@ -5,12 +5,14 @@ using Claude fast model (or MockLLM) with a deterministic template fallback.
 """
 
 import logging
+import re
+import time
 from pathlib import Path
 from typing import Any
 
 from backend.app.config import settings
 from backend.app.content_models import PersonaCard
-from backend.app.llm.client import LLMUnavailable, call_tool
+from backend.app.llm.client import LLMUnavailable, call_tool, log_role_call
 from backend.app.llm.guard_stats import record_guard_event
 from backend.app.llm.guards import guard_child_line
 from backend.app.llm.schemas import ChildVoiceOutput
@@ -108,6 +110,29 @@ def template_line(
     return f"{response.answer}!" if response.answer is not None else ""
 
 
+_SENTENCE_END = re.compile(r"(?<=[।?!])\s+")
+
+
+def truncate_at_sentence_boundary(line: str, max_words: int) -> str:
+    """Shortens `line` to at most `max_words`, keeping whole sentences when possible.
+
+    Falls back to a hard cut at a word boundary only if the first sentence alone is too long.
+    """
+    if len(line.split()) <= max_words:
+        return line.strip()
+    kept: list[str] = []
+    words = 0
+    for sentence in _SENTENCE_END.split(line.strip()):
+        n = len(sentence.split())
+        if words + n > max_words:
+            break
+        kept.append(sentence)
+        words += n
+    if kept:
+        return " ".join(kept)
+    return " ".join(line.split()[:max_words]).rstrip(",…-") + "…"
+
+
 async def voice_child_line(
     response: ChildResponse,
     persona: PersonaCard,
@@ -155,6 +180,9 @@ async def voice_child_line(
     messages: list[dict[str, Any]] = [{"role": "user", "content": user_message}]
 
     # 2. Attempt LLM call with retry per §5.2
+    started = time.perf_counter()
+    max_words = settings.MAX_CHILD_LINE_WORDS
+    shortened: str | None = None  # guard-clean truncation of an over-long attempt
     for attempt in range(2):
         try:
             tool_input = await call_tool(
@@ -165,7 +193,7 @@ async def voice_child_line(
                 tool_name="child_voice",
                 input_schema=ChildVoiceOutput.model_json_schema(),
                 temperature=0.4,
-                max_tokens=128,
+                max_tokens=settings.CHILD_VOICE_MAX_TOKENS,
                 timeout_s=settings.LLM_TIMEOUT_SECONDS,
             )
 
@@ -173,23 +201,43 @@ async def voice_child_line(
             is_valid, err_msg = guard_child_line(parsed.line_hi, response)
             record_guard_event("child_voice", attempt, is_valid, err_msg)
             if is_valid:
+                log_role_call("child_voice", settings.CLAUDE_MODEL_FAST, started, False)
                 return parsed.line_hi
 
             logger.warning("child_voice guard failed (attempt %d): %s", attempt + 1, err_msg)
+            feedback = f"Your previous line failed a check: {err_msg}. Follow the hard rules."
+            n_words = len(parsed.line_hi.split())
+            if n_words > max_words:
+                feedback = (
+                    f"Your previous line was {n_words} words: «{parsed.line_hi}». "
+                    f"Shorten it to at most {max_words} words; keep the answer and every required "
+                    "number, and drop any unrelated remark."
+                )
+                candidate = truncate_at_sentence_boundary(parsed.line_hi, max_words)
+                if guard_child_line(candidate, response)[0]:
+                    shortened = candidate
+            if attempt == 0:
+                messages.append({"role": "user", "content": feedback})
+        except (LLMUnavailable, NotImplementedError, Exception) as exc:
+            logger.warning("child_voice LLM call failed (attempt %d): %s", attempt + 1, exc)
             if attempt == 0:
                 messages.append(
                     {
                         "role": "user",
-                        "content": f"Your previous line failed guard check: {err_msg}. Follow the hard rules and try again.",
+                        "content": "Your previous reply was empty or incomplete. Return the "
+                        f"line_hi field, at most {max_words} words.",
                     }
                 )
-        except (LLMUnavailable, NotImplementedError, Exception) as exc:
-            logger.warning("child_voice LLM call failed (attempt %d): %s", attempt + 1, exc)
-            if attempt == 1:
-                break
 
-    # 3. Deterministic template fallback
+    # 3. Keep the model's own words (cut at a sentence boundary) before any template
+    if shortened is not None:
+        logger.info("Truncated over-long child voice line at sentence boundary")
+        log_role_call("child_voice", settings.CLAUDE_MODEL_FAST, started, False)
+        return shortened
+
+    # 4. Deterministic template fallback
     logger.info("Using template fallback for child voice line")
+    log_role_call("child_voice", settings.CLAUDE_MODEL_FAST, started, True)
     return template_line(
         response=response,
         persona=persona,

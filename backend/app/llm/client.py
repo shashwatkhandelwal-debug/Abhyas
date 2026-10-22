@@ -6,15 +6,18 @@ daily token budget guard (spec/12 §12.8), and deterministic MockLLM.
 
 from __future__ import annotations
 
+import contextvars
+import functools
 import hashlib
 import inspect
 import json
 import logging
 import time
 import zoneinfo
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 import anthropic
 from anthropic import (
@@ -153,6 +156,53 @@ async def close_anthropic_client() -> None:
     if _anthropic_client is not None:
         await _anthropic_client.close()
         _anthropic_client = None
+
+
+_role_fallback: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "abhyas_role_fallback", default=False
+)
+_R = TypeVar("_R")
+
+
+def mark_fallback() -> None:
+    """Called by a role's deterministic fallback so `logged_role` can report fallback_used."""
+    _role_fallback.set(True)
+
+
+def logged_role(
+    role: str, model: Callable[[], str]
+) -> Callable[[Callable[..., Awaitable[_R]]], Callable[..., Awaitable[_R]]]:
+    """Decorator: one `llm_role` INFO line per role call (role, model, latency_ms, fallback_used).
+
+    Fallback is read from the result's `used_fallback` field, or from `mark_fallback()`.
+    """
+
+    def wrap(fn: Callable[..., Awaitable[_R]]) -> Callable[..., Awaitable[_R]]:
+        @functools.wraps(fn)
+        async def inner(*args: Any, **kwargs: Any) -> _R:
+            _role_fallback.set(False)
+            started = time.perf_counter()
+            result = await fn(*args, **kwargs)
+            used = getattr(result, "used_fallback", None)
+            log_role_call(
+                role, model(), started, _role_fallback.get() if used is None else bool(used)
+            )
+            return result
+
+        return inner
+
+    return wrap
+
+
+def log_role_call(role: str, model: str, started_at: float, fallback_used: bool) -> None:
+    """One INFO line per role invocation (not per HTTP call): role, model, latency, fallback."""
+    logger.info(
+        "llm_role role=%s model=%s latency_ms=%d fallback_used=%s",
+        role,
+        model,
+        int((time.perf_counter() - started_at) * 1000),
+        str(fallback_used).lower(),
+    )
 
 
 # In-memory prompt cache
@@ -488,6 +538,7 @@ async def call_tool(
 
     retries = 0
     max_retries = settings.LLM_MAX_RETRIES
+    truncation_retried = False
 
     while True:
         t0 = time.perf_counter()
@@ -515,6 +566,32 @@ async def call_tool(
                 output_tokens=output_tokens,
                 cache_read_tokens=cache_read_tokens,
             )
+
+            # A reply cut off by max_tokens still carries a tool_use block, but its input is
+            # the partial JSON parsed as {} -- never hand that to a role as if it were output.
+            if getattr(response, "stop_reason", None) == "max_tokens":
+                logger.warning(
+                    "LLM reply truncated for role %s (model=%s, max_tokens=%d, output_tokens=%d)",
+                    role,
+                    model,
+                    max_tokens,
+                    output_tokens,
+                )
+                await log_llm_call(
+                    role=role,
+                    prompt_version=prompt_version,
+                    model=model,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    cache_read_tokens=cache_read_tokens,
+                    latency_ms=latency_ms,
+                    outcome="truncated",
+                )
+                if not truncation_retried and max_tokens < settings.LLM_MAX_TOKENS_CEILING:
+                    truncation_retried = True
+                    max_tokens = min(max_tokens * 2, settings.LLM_MAX_TOKENS_CEILING)
+                    continue
+                raise LLMUnavailable(f"Anthropic reply truncated at max_tokens for {tool_name}")
 
             # Extract tool use output
             for content_block in response.content:
