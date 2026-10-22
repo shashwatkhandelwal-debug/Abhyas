@@ -236,6 +236,8 @@ class Settings(BaseSettings):
 
     # ── "Rate the training" after REFLECT ────────────────────────────────
     TRAINING_COMMENT_MAX_CHARS: int = 200
+    # Unclear replies to the 1-5 rating prompt tolerated before the rating is skipped.
+    TRAINING_RATING_MAX_UNCLEAR: int = 1
     TRAINING_RATING_RECENT_COMMENTS: int = 5  # latest comments shown in trainer/admin views
 
     # ── Demo / Evaluation & Observability ────────────────────────────────

@@ -48,6 +48,7 @@ btn_trate_3: {text: "3 (so-so)"}
 btn_trate_5: {text: "5 (very useful)"}
 rate_training_thanks: {text: "Thank you for your feedback."}
 rate_training_skip_words: {text: "skip, no, none, nothing, n/a, na"}
+rate_training_language_words: {text: "language, change language, english, hindi, lang"}
 retry_limit: {text: "You have completed this week's 3 practices. Now it's time to try it in class!"}
 try_in_class: {text: "Now try this move in your class. Ask a fellow teacher to watch for 5 minutes and fill in this list:"}
 try_in_class_reflect: {text: "Or answer these 2 questions yourself:"}

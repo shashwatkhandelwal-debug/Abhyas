@@ -505,6 +505,7 @@ class SessionContext(BaseModel):
     clarifying_already_asked: bool = False
     # "Rate the training" after REFLECT: "" (not asking), "rating" (waiting for 1-5), "comment"
     rating_stage: str = ""
+    rating_unclear: int = 0  # unclear replies to the 1-5 prompt so far
     rating_level: int = 0  # evidence level reached, kept for the week_done message afterwards
 
 

@@ -53,7 +53,11 @@ from backend.app.sessions.state_machine import (
     SessionStateEnum,
     WeeklyStateMachine,
 )
-from backend.app.sessions.training_rating import is_skip_comment, parse_training_rating
+from backend.app.sessions.training_rating import (
+    is_rating_escape,
+    is_skip_comment,
+    parse_training_rating,
+)
 
 logger = logging.getLogger("abhyas.sessions.service")
 IST = ZoneInfo("Asia/Kolkata")
@@ -153,6 +157,7 @@ class SessionService:
             clarifying_already_asked=bool(ctx_data.get("clarifying_already_asked", False)),
             rating_stage=str(ctx_data.get("rating_stage", "")),
             rating_level=int(ctx_data.get("rating_level", 0)),
+            rating_unclear=int(ctx_data.get("rating_unclear", 0)),
             name=teacher.name,
             address_form=teacher.address_form or "f",
             cluster_id=teacher.cluster_id,
@@ -211,6 +216,7 @@ class SessionService:
             "clarifying_already_asked": ctx.clarifying_already_asked,
             "rating_stage": ctx.rating_stage,
             "rating_level": ctx.rating_level,
+            "rating_unclear": ctx.rating_unclear,
         }
         await self.repo.save_session_state(db_state)
         if (
@@ -301,6 +307,7 @@ class SessionService:
     ) -> list[OutboundMessage]:
         """After REFLECT: ask for the 1-5 usefulness rating before the week_done message."""
         ctx.rating_stage = "rating"
+        ctx.rating_unclear = 0
         ctx.rating_level = level
         await self._sync_context_to_db(ctx, teacher_id)
         return [
@@ -319,6 +326,12 @@ class SessionService:
             for n in (1, 3, 5)
         ]
 
+    async def _clear_rating_stage(self, ctx: SessionContext, teacher_id: UUID) -> None:
+        ctx.rating_stage = ""
+        ctx.rating_level = 0
+        ctx.rating_unclear = 0
+        await self._sync_context_to_db(ctx, teacher_id)
+
     async def _handle_training_rating(
         self, ctx: SessionContext, teacher_id: UUID, text: str, btn_id: str | None
     ) -> list[OutboundMessage]:
@@ -326,7 +339,14 @@ class SessionService:
         address_form = ctx.address_form
         if ctx.rating_stage == "rating":
             value = parse_training_rating(text, btn_id)
+            if value is None and ctx.rating_unclear >= settings.TRAINING_RATING_MAX_UNCLEAR:
+                # Second unclear reply: never trap the teacher. Skip the rating, store nothing.
+                level = ctx.rating_level or ctx.evidence_level
+                await self._clear_rating_stage(ctx, teacher_id)
+                return await self._week_done_messages(ctx, teacher_id, level)
             if value is None:
+                ctx.rating_unclear += 1
+                await self._sync_context_to_db(ctx, teacher_id)
                 return [
                     OutboundMessage(
                         kind="buttons",
@@ -357,9 +377,7 @@ class SessionService:
                 teacher_id, comment[: settings.TRAINING_COMMENT_MAX_CHARS]
             )
         level = ctx.rating_level or ctx.evidence_level
-        ctx.rating_stage = ""
-        ctx.rating_level = 0
-        await self._sync_context_to_db(ctx, teacher_id)
+        await self._clear_rating_stage(ctx, teacher_id)
         thanks = OutboundMessage(
             kind="text", text_hi=get_message("rate_training_thanks", address_form)
         )
@@ -448,7 +466,12 @@ class SessionService:
             and matched_intent != Intent.DELETE
             and text_content != "delete"
         ):
-            return await self._handle_training_rating(ctx, teacher_id, text_content, btn_id)
+            if is_rating_escape(matched_intent, text_content):
+                # A known command (menu, next, progress, language...) ends the rating prompt
+                # without storing anything and is processed normally below.
+                await self._clear_rating_stage(ctx, teacher_id)
+            else:
+                return await self._handle_training_rating(ctx, teacher_id, text_content, btn_id)
 
         # 2. Delete confirmation flow (§8.3 step 7)
         if ctx.awaiting_delete_confirm:

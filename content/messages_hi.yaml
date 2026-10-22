@@ -141,6 +141,9 @@ rate_training_thanks:
 rate_training_skip_words:
   text: "छोड़ें, छोड़ो, छोड़ दें, नहीं, कुछ नहीं, ना"
   audio: false
+rate_training_language_words:
+  text: "भाषा, भाषा बदलें, हिंदी, हिन्दी, अंग्रेज़ी, अंग्रेजी, language, english, hindi"
+  audio: false
 retry_limit:
   text: "इस हफ्ते के 3 अभ्यास पूरे हो गए। अब कक्षा में आज़माने की बारी है!"
   audio: false
