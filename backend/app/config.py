@@ -70,6 +70,9 @@ class Settings(BaseSettings):
     # Devanagari costs ~4 tokens/word plus tool-call overhead: a 25-word child line needs
     # ~110 output tokens, so 128 truncated to {} (spec/05 role budgets live here).
     LLM_MAX_TOKENS_CEILING: int = 1024
+    # With tool_choice=auto, claude-sonnet-5-5 writes a short text preamble before the tool call
+    # (measured 650-770 output tokens for the coach vs 1024 max_tokens); give it headroom.
+    LLM_AUTO_TOOL_CHOICE_TOKEN_HEADROOM: int = 512
     ACT_TAGGER_MAX_TOKENS: int = 512
     CHILD_VOICE_MAX_TOKENS: int = 384
     GUARD_EVENT_RING_SIZE: int = 2000
