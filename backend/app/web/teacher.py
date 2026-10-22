@@ -763,3 +763,9 @@ async def get_service_worker() -> Response:
 async def get_offline_page(request: Request) -> Response:
     """Serves the offline fallback page (§9.2); it carries both languages (the SW caches one copy)."""
     return templates.TemplateResponse(request=request, name="offline.html", context={})
+
+
+@router.get("/waking", response_class=HTMLResponse)
+async def get_waking_page(request: Request) -> Response:
+    """Cold-start page: the service worker serves it when the hosting answers 502/503/504."""
+    return templates.TemplateResponse(request=request, name="waking.html", context={})

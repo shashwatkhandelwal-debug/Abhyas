@@ -224,12 +224,12 @@ async def measure_first_load(
 
             # 5. Extract and fetch all referenced assets
             referenced_paths = _extract_asset_paths(res_teacher.text)
-            # Ensure standard PWA offline assets are audited
+            # Ensure standard PWA offline assets are audited (the service worker is one file,
+            # served at /sw.js; counting /static/sw.js as well would count it twice)
             for extra in (
                 "/static/app.css",
                 "/static/chat.js",
                 "/static/recorder.js",
-                "/static/sw.js",
                 "/sw.js",
                 "/offline.html",
                 "/manifest.json",

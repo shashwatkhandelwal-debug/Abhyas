@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ get_message('ui_waking_title', lang='hi') }}</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <main class="offline-card" role="status" aria-live="polite" style="max-width: 32rem; margin: 2rem auto;">
+    <h1 lang="hi" style="font-size: 1.3rem;">{{ get_message('ui_waking_title', lang='hi') }}</h1>
+    <p lang="hi">{{ get_message('ui_waking_body', lang='hi') }}</p>
+    <h2 lang="en" style="font-size: 1.1rem;">{{ get_message('ui_waking_title', lang='en') }}</h2>
+    <p lang="en">{{ get_message('ui_waking_body', lang='en') }}</p>
+    <p id="waking-still" hidden>
+      <span lang="hi">{{ get_message('ui_waking_still', lang='hi') }}</span><br>
+      <span lang="en">{{ get_message('ui_waking_still', lang='en') }}</span>
+    </p>
+  </main>
+  <script>
+    // Poll the liveness probe; as soon as the server answers, reload the page we were sent to
+    // (the service worker serves this page at the original URL while the server is asleep).
+    (function () {
+      var started = Date.now();
+      function check() {
+        fetch('/healthz', { cache: 'no-store' }).then(function (r) {
+          if (r.ok) { location.reload(); return; }
+          again();
+        }).catch(again);
+      }
+      function again() {
+        if (Date.now() - started > 60000) document.getElementById('waking-still').hidden = false;
+        setTimeout(check, 3000);
+      }
+      setTimeout(check, 2000);
+    })();
+  </script>
+</body>
+</html>

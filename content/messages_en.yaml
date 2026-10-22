@@ -161,7 +161,7 @@ ui_chat_rec_uploading: {text: "Sending your voice…"}
 ui_chat_rec_transcribing: {text: "Writing out what you said…"}
 ui_chat_voice_note: {text: "🎤 Voice note ({sec} seconds)"}
 ui_chat_chip_done: {text: "Sent ✓"}
-ui_chat_cold_start: {text: "The server is waking up, please wait a moment…"}
+ui_chat_cold_start: {text: "The server is waking up — this can take about a minute. Please wait; your message is safe."}
 ui_chat_source_page: {text: "page {page}"}
 ui_chat_source_printed: {text: "printed page {page}"}
 ui_chat_source_summary: {text: "Hindi summary"}
@@ -490,9 +490,9 @@ ui_chat_translate_error: {text: "Could not translate this"}
 ui_chat_translate_limit: {text: "Too many requests — please try again in a moment"}
 ui_chat_translate_retry: {text: "Try again"}
 ui_chat_translation_label: {text: "English translation"}
-ui_chat_rec_unsupported: {text: "Voice recording is not available in your browser."}
-ui_chat_rec_permission: {text: "Microphone permission is needed. Please allow the microphone in your browser settings."}
-ui_chat_rec_start_failed: {text: "There was a problem starting the microphone: {error}"}
+ui_chat_rec_unsupported: {text: "Voice recording does not work in this browser. Type your message instead, or open the page in Chrome."}
+ui_chat_rec_permission: {text: "Microphone permission was not given. Tap the 🔒 next to the address, choose “Allow” for the microphone and refresh, or type instead."}
+ui_chat_rec_start_failed: {text: "The microphone could not start ({error}). Tap to try again, or type instead."}
 ui_chat_rec_unknown_error: {text: "Unknown error"}
 stt_unclear_label: {text: "(voice not understood)"}
 ui_chat_rec_auto_sent: {text: "One minute reached — your voice note was sent."}
@@ -604,3 +604,19 @@ ui_modprog_step_practise: {text: "Practise"}
 ui_modprog_step_check: {text: "Check"}
 ui_modprog_label_pilot: {text: "Pilot"}
 ui_modprog_label_demo: {text: "Demo (synthetic)"}
+ui_nav_opening: {text: "Opening…"}
+ui_nav_waking: {text: "The server is waking up — this can take about a minute. Please wait, the page will open by itself."}
+ui_chat_send_failed_network: {text: "No internet. Your message is kept on this phone — when the internet is back, tap the ‘!’ to send it again."}
+ui_chat_send_failed_rejected: {text: "The message could not be sent. Refresh the page and try again, or type it instead."}
+ui_chat_lite_save_failed: {text: "Lite mode changed on this phone but did not reach the server. Tap again when the internet is back."}
+ui_error_404_title: {text: "This page was not found"}
+ui_error_404_body: {text: "The link may be old or wrong. Go to the home page and start again."}
+ui_error_500_title: {text: "Something went wrong"}
+ui_error_500_body: {text: "This is a problem on our side, not yours. Your work is safe. Please try again in a little while."}
+ui_error_503_title: {text: "The service is getting ready"}
+ui_error_503_body: {text: "The server is waking up — this can take about a minute. Please wait, the page will reopen by itself."}
+ui_error_home: {text: "Go to the home page"}
+ui_error_retry: {text: "Try again"}
+ui_waking_title: {text: "Abhyas is waking up…"}
+ui_waking_body: {text: "The free server sleeps when idle and wakes up again; this takes about a minute. Keep this page open — you will be taken in automatically as soon as it is ready."}
+ui_waking_still: {text: "Still waking up… please wait a little longer."}

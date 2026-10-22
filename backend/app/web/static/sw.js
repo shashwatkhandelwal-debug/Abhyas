@@ -4,7 +4,7 @@
  *   every GET /sw.js), so each deploy installs a fresh cache and activate drops the old ones.
  * - Stale-while-revalidate for /static/*.js and *.css; cache-first for other /static/*
  * - LRU cache (max 30 items) for /api/audio/* already played
- * - Network-first for HTML pages with fallback to offline.html
+ * - Network-first for HTML pages with fallback to offline.html (network error) or waking (502-504)
  */
 
 const BUILD_VERSION = '__BUILD_VERSION__';
@@ -17,8 +17,10 @@ const STATIC_ASSETS = [
   '/static/app.css',
   '/static/chat.js',
   '/static/recorder.js',
+  '/static/ack.js',
   '/static/manifest.json',
   '/offline.html',
+  '/waking',
 ];
 
 self.addEventListener('install', (event) => {
@@ -85,7 +87,16 @@ self.addEventListener('fetch', (event) => {
   // 2. HTML navigation requests - Network-first with offline.html fallback
   if (event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html')) {
     event.respondWith(
-      fetch(event.request).catch(async () => {
+      fetch(event.request).then(async (response) => {
+        // Hosting answers 502/503/504 while the sleeping server boots: show the "waking up" page,
+        // which polls /healthz and reloads this URL once the server is back.
+        if ([502, 503, 504].includes(response.status)) {
+          const cache = await caches.open(CACHE_NAME_STATIC);
+          const waking = await cache.match('/waking');
+          if (waking) return waking;
+        }
+        return response;
+      }).catch(async () => {
         const cache = await caches.open(CACHE_NAME_STATIC);
         const cachedOffline = await cache.match('/offline.html');
         return cachedOffline || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
