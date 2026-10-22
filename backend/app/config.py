@@ -121,6 +121,10 @@ class Settings(BaseSettings):
     REHEARSE_TURN_MAX_S: int = 30
     LEARN_AUDIO_MAX_SECONDS: int = 120
     SPEECH_PROVIDER_LIVE: bool = False
+    # First-boot voice prewarm (scripts/start.sh -> scripts/prewarm_tts.py, background process)
+    PREWARM_ON_BOOT: bool = False
+    PREWARM_REQUEST_INTERVAL_SECONDS: float = 7.0  # stays under ~10 requests/min
+    PREWARM_MAX_SYNTH_PER_RUN: int = 100  # new clips per boot; the next boot continues
     SPEECH_DAILY_BUDGET_INR: float = 50.0
     SPEECH_TOTAL_BUDGET_INR: float = 500.0
     # Pricing as-of 2026-10: https://docs.sarvam.ai/api-reference-docs/pricing

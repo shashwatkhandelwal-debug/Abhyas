@@ -77,7 +77,6 @@ TOOL: dict[str, Any] = {
 }
 
 
-
 @dataclass
 class OcrPage:
     page: int  # 1-based PDF page
