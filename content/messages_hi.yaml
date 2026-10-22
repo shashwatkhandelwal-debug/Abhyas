@@ -725,7 +725,7 @@ ui_chat_rec_permission: {text: "माइक्रोफ़ोन की अन�
 ui_chat_rec_start_failed: {text: "माइक्रोफ़ोन शुरू करने में समस्या आई: {error}", audio: false}
 ui_chat_rec_unknown_error: {text: "अज्ञात त्रुटि", audio: false}
 stt_unclear_label: {text: "(आवाज़ साफ़ नहीं आई)", audio: false}
-ui_chat_rec_auto_sent: {text: "एक मिनट पूरा हुआ — आपकी आवाज़ भेज दी गई।", audio: false}
+ui_chat_rec_auto_sent: {text: "एक मिनट पूरा हुआ — आपकी आवाज़ भेजी जा चुकी है।", audio: false}
 ui_chat_rec_busy: {text: "माइक्रोफ़ोन किसी और ऐप में चल रहा है। उसे बंद करके फिर कोशिश करें।", audio: false}
 ui_chat_rec_insecure: {text: "माइक्रोफ़ोन के लिए सुरक्षित (https) पेज चाहिए। कृपया https वाले लिंक से खोलें या लिखकर भेजें।", audio: false}
 ui_chat_rec_no_mic: {text: "माइक्रोफ़ोन नहीं मिला। माइक्रोफ़ोन जोड़ें या संदेश लिखकर भेजें।", audio: false}
