@@ -110,6 +110,10 @@ class Settings(BaseSettings):
     # Retries per speech provider call; a primary with a fallback configured gets 0
     SPEECH_MAX_RETRIES: int = 1
     STT_MIN_CONFIDENCE: float = 0.50
+    # Web voice recorder (static/recorder.js reads these through #rec-config)
+    REC_MAX_SECONDS: int = 60  # auto-stop and send
+    REC_MIN_SECONDS: float = 1.0  # shorter recordings are discarded with a hint
+    REC_HOLD_MS: int = 400  # press longer than this = hold-to-talk, shorter = tap-to-toggle
     MAX_INBOUND_AUDIO_S: int = 90
     EXPLAIN_BACK_MAX_SECONDS: int = 60
     REHEARSE_TURN_MAX_S: int = 30

@@ -25,6 +25,7 @@ from backend.app.db.models import Message, Teacher
 from backend.app.db.session import async_session_factory
 from backend.app.sessions.service import SessionService
 from backend.app.speech.audio import AudioProcessingError, to_wav16k
+from backend.app.speech.spend import SpeechBudgetExceededError
 from backend.app.speech.stt import get_stt_provider
 
 logger = logging.getLogger("abhyas.channels.web")
@@ -225,6 +226,7 @@ async def process_inbound_web(
 
                 # Step 2: STT if audio
                 if kind == "audio" and audio_bytes:
+                    address_form = teacher.address_form or "f"
                     wav_data = audio_bytes
                     try:
                         wav_data = await to_wav16k(audio_bytes)
@@ -232,10 +234,36 @@ async def process_inbound_web(
                         logger.warning(
                             "Audio conversion to_wav16k failed: %s; falling back to raw bytes", exc
                         )
-                    stt = get_stt_provider()
-                    transcript = await stt.transcribe(wav_data)
-                    final_text = unicodedata.normalize("NFC", transcript.text)
+                    failure_key: str | None = None
+                    transcript_text = ""
+                    try:
+                        stt = get_stt_provider()
+                        transcript = await stt.transcribe(wav_data)
+                        transcript_text = unicodedata.normalize("NFC", transcript.text).strip()
+                        if not transcript_text:
+                            failure_key = "stt_failed"
+                    except SpeechBudgetExceededError:
+                        failure_key = "stt_budget_type_please"
+                    except Exception as exc:  # provider down, timeout, bad audio...
+                        logger.warning("STT failed for web voice note %s: %s", message_id, exc)
+                        failure_key = "stt_failed"
                     db_msg = await session.get(Message, message_id)
+                    if failure_key is not None:
+                        # Never leave the chat silent: resolve the "transcribing…" bubble and
+                        # tell the teacher in Hindi to speak again or type.
+                        logger.info(
+                            "web_stt_failed reason=%s message_id=%s", failure_key, message_id
+                        )
+                        if db_msg:
+                            db_msg.text = get_message("stt_unclear_label", address_form)
+                            db_msg.updated_at = datetime.now(UTC)
+                            await session.commit()
+                        retry = OutboundMessage(
+                            kind="text", text_hi=get_message(failure_key, address_form)
+                        )
+                        await WebChannel().send(teacher, [retry], session=session)
+                        return
+                    final_text = transcript_text
                     if db_msg:
                         db_msg.text = final_text
                         # Bump updated_at so /api/chat/messages re-sends the row and the PWA

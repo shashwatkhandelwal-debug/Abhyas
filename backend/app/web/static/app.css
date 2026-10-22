@@ -663,6 +663,29 @@ body {
   align-items: center;
 }
 
+/* Big Stop/Send button shown while recording (tap mode and hold mode) */
+.btn-stop-rec {
+  min-height: 52px;
+  min-width: 52px;
+  padding: 0 1rem;
+  border: none;
+  border-radius: 26px;
+  background-color: var(--brand);
+  color: var(--brand-ink);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.recording-overlay {
+  gap: 0.4rem;
+}
+
 /* ==========================================================================
    Progress & Deletion Pages (spec/09 §9.1, §9.2)
    ========================================================================== */
@@ -1284,6 +1307,7 @@ body {
 .demo-chip,
 .btn-send,
 .btn-mic,
+.btn-stop-rec,
 .btn-cancel-rec {
   transition: transform 0.12s ease, background-color 0.15s ease, opacity 0.15s ease;
 }
@@ -1293,6 +1317,7 @@ body {
 .btn-send:active,
 .btn-mic:active,
 .btn-play:active,
+.btn-stop-rec:active,
 .btn-cancel-rec:active {
   transform: scale(0.96);
 }
