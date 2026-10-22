@@ -7,6 +7,7 @@ daily token budget guard (spec/12 §12.8), and deterministic MockLLM.
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import logging
 import time
@@ -23,6 +24,7 @@ from anthropic import (
     InternalServerError,
     RateLimitError,
 )
+from anthropic.resources.messages import AsyncMessages
 from sqlalchemy import func, select
 
 from backend.app.config import settings
@@ -374,6 +376,35 @@ def get_mock_llm() -> MockLLM:
     return _mock_llm_instance
 
 
+# Parameters accepted by the installed SDK's Messages.create(). Newer anthropic releases
+# (1.13.0 and 2.0.0 checked) no longer accept `temperature`; passing it raises TypeError.
+SDK_CREATE_PARAMS: frozenset[str] = frozenset(inspect.signature(AsyncMessages.create).parameters)
+
+
+def build_create_kwargs(
+    *,
+    model: str,
+    max_tokens: int,
+    system_blocks: list[dict[str, Any]],
+    messages: list[dict[str, Any]],
+    tools: list[dict[str, Any]],
+    tool_choice: dict[str, Any],
+    temperature: float | None = None,
+) -> dict[str, Any]:
+    """Builds Messages.create() kwargs; optional params are sent only if the SDK supports them."""
+    kwargs: dict[str, Any] = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "system": system_blocks,
+        "messages": messages,
+        "tools": tools,
+        "tool_choice": tool_choice,
+    }
+    if temperature is not None and "temperature" in SDK_CREATE_PARAMS:
+        kwargs["temperature"] = temperature
+    return kwargs
+
+
 async def call_tool(
     role: str,
     model: str,
@@ -461,15 +492,15 @@ async def call_tool(
     while True:
         t0 = time.perf_counter()
         try:
-            create_kwargs: dict[str, Any] = {
-                "model": model,
-                "max_tokens": max_tokens,
-                "system": system_blocks,
-                "messages": messages,
-                "tools": tools_spec,
-                "tool_choice": tool_choice,
-                "temperature": temperature,
-            }
+            create_kwargs = build_create_kwargs(
+                model=model,
+                max_tokens=max_tokens,
+                system_blocks=system_blocks,
+                messages=messages,
+                tools=tools_spec,
+                tool_choice=tool_choice,
+                temperature=temperature,
+            )
             response = await client.messages.create(**create_kwargs)
             latency_ms = int((time.perf_counter() - t0) * 1000)
 

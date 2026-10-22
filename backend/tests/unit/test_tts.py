@@ -255,7 +255,11 @@ async def test_tts_cache_hit_with_use_db_makes_zero_provider_calls() -> None:
                 def scalar_one_or_none(self) -> Any:
                     return self._row
 
+            # TTSCache.get selects a single bytes column (TTSAudio.ogg / .mp3)
+            columns = list(stmt.selected_columns)
             for row in db_storage.values():
+                if len(columns) == 1 and getattr(columns[0], "key", None) in ("ogg", "mp3"):
+                    return FakeResult(getattr(row, columns[0].key))
                 return FakeResult(row)
             return FakeResult(None)
 

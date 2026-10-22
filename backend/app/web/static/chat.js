@@ -175,6 +175,10 @@ async function drainOutbox() {
 
         if (resp && resp.status >= 200 && resp.status < 300) {
           success = true;
+          const body = await resp.json().catch(() => null);
+          if (body && body.message_id) {
+            adoptServerMessageId(item.client_msg_id, body.message_id);
+          }
           await removeFromOutbox(item.client_msg_id);
           updateMessageStatus(item.client_msg_id, '✓');
         }
@@ -258,7 +262,22 @@ function triggerImmediatePoll() {
 }
 
 // ── UI Rendering ────────────────────────────────────────────────────────────
+// The optimistic bubble is keyed by client_msg_id; the server copy of the same
+// message (POST response / poll) carries the server id. Re-key the bubble so the
+// polled copy is recognised instead of being rendered as a second bubble.
+function adoptServerMessageId(clientMsgId, serverId) {
+  if (!clientMsgId || !serverId || clientMsgId === serverId) return;
+  if (!state.renderedMsgIds.has(clientMsgId)) return;
+  state.renderedMsgIds.add(serverId);
+  const row = document.getElementById(`msg-${clientMsgId}`);
+  if (row) row.id = `msg-${serverId}`;
+}
+
 function renderMessage(msg, isLocalOptimistic = false) {
+  if (msg.id && msg.client_msg_id && state.renderedMsgIds.has(msg.client_msg_id)) {
+    adoptServerMessageId(msg.client_msg_id, msg.id);
+    updateMessageStatus(msg.client_msg_id, '✓');
+  }
   const msgKey = msg.id || msg.client_msg_id;
   if (state.renderedMsgIds.has(msgKey)) {
     // Text-first delivery support: attach audio to previously rendered text bubble

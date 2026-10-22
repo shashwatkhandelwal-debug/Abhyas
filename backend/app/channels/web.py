@@ -13,12 +13,13 @@ import unicodedata
 import uuid
 from collections import defaultdict
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.conversation import ConversationService
+from backend.app.core.messages import get_message
 from backend.app.core.types import InboundMessage, OutboundMessage
 from backend.app.db.models import Message, Teacher
 from backend.app.db.session import async_session_factory
@@ -148,7 +149,10 @@ class WebChannel:
             return
 
         async def _persist(s: AsyncSession) -> None:
-            for msg in msgs:
+            # Strictly increasing timestamps keep a multi-message reply in order: the
+            # poll orders by (created_at, id) and coarse clocks gave equal created_at.
+            base = datetime.now(UTC)
+            for position, msg in enumerate(msgs):
                 if msg.already_persisted or getattr(msg, "_already_persisted", False):
                     continue
                 db_msg = Message(
@@ -163,7 +167,7 @@ class WebChannel:
                     buttons=[b.model_dump() for b in msg.buttons] if msg.buttons else None,
                     speaker=msg.speaker,
                     template_name=msg.template_name,
-                    created_at=datetime.now(UTC),
+                    created_at=base + timedelta(microseconds=position),
                 )
                 s.add(db_msg)
             await s.commit()
@@ -260,5 +264,26 @@ async def process_inbound_web(
         logger.exception(
             "Error in process_inbound_web for teacher %s msg %s", teacher_id, message_id
         )
+        await _send_failure_reply(teacher_id)
     finally:
         unmark_teacher_pending(teacher_id)
+
+
+async def _send_failure_reply(teacher_id: uuid.UUID) -> None:
+    """Tells the teacher something went wrong instead of leaving the chat silent.
+
+    Uses a fresh session: the pipeline's session may be in a failed transaction.
+    """
+    try:
+        factory = get_channel_session_factory()
+        async with factory() as session:
+            teacher = await session.get(Teacher, teacher_id)
+            if teacher is None:
+                return
+            reply = OutboundMessage(
+                kind="text",
+                text_hi=get_message("system_error_retry", teacher.address_form or "f"),
+            )
+            await WebChannel().send(teacher, [reply], session=session)
+    except Exception:
+        logger.exception("Could not send failure reply to teacher %s", teacher_id)

@@ -224,6 +224,9 @@ unsupported_type:
 unclear:
   text: "माफ़ कीजिए, मैं समझ नहीं पाई। 'मदद' लिखकर विकल्प देखें।"
   audio: false
+system_error_retry:
+  text: "माफ़ कीजिए, अभी कुछ तकनीकी दिक्कत है। कृपया अपना संदेश फिर से भेजें।"
+  audio: false
 lite_on:
   text: "लाइट मोड चालू: अब केवल लिखे संदेश आएँगे, आवाज़ नहीं। इससे डेटा बचेगा।"
   audio: false

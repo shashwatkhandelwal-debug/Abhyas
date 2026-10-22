@@ -32,7 +32,10 @@ dependencies = [
     "python-multipart>=0.0.9",
     "pypdf>=4.1.0",
     "httpx>=0.27.0",
-    "anthropic>=0.20.0",
+    # Tested: 1.13.0 (full suite). 1.13.0 and 2.0.0 have no `temperature` in
+    # messages.create(); 2.0.0 also switches auth to "Authorization: Bearer",
+    # not yet verified against the live API.
+    "anthropic>=1.13.0,<1.14",
     "pyyaml>=6.0.1",
     "jinja2>=3.1.3",
 ]

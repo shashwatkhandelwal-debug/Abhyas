@@ -1145,3 +1145,91 @@ async def test_audio_update_committed_after_query_delivered_on_next_poll(
         assert matching2[0]["id"] == str(child_msg_id)
         assert matching2[0]["kind"] == "audio"
         assert matching2[0]["audio_ref"] == cached_ref
+
+
+@pytest.mark.asyncio
+async def test_polled_inbound_message_carries_client_msg_id(web_test_app: FastAPI) -> None:
+    """The PWA matches its optimistic bubble to the polled copy via client_msg_id.
+
+    Without it, one send rendered two identical user bubbles (optimistic + polled).
+    """
+    client_msg_id = str(uuid.uuid4())
+    async with AsyncClient(
+        transport=ASGITransport(app=web_test_app), base_url="http://test"
+    ) as client:
+        res = await client.post(
+            "/api/chat/text", json={"client_msg_id": client_msg_id, "text": "नमस्ते"}
+        )
+        assert res.status_code == 202
+        server_id = res.json()["message_id"]
+
+        polled = (await client.get("/api/chat/messages")).json()["messages"]
+
+    inbound = [m for m in polled if m["id"] == server_id]
+    assert len(inbound) == 1
+    assert inbound[0]["direction"] == "in"
+    assert inbound[0]["client_msg_id"] == client_msg_id
+    assert all(m["client_msg_id"] is None for m in polled if m["direction"] == "out")
+
+
+@pytest.mark.asyncio
+async def test_pipeline_failure_sends_catalog_error_reply(
+    mock_teacher_id: uuid.UUID, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Live bug: when processing failed the teacher got no reply at all."""
+    from backend.app.core.messages import get_message
+    from backend.app.db.models import Message
+
+    mock_session = AsyncMock(spec=AsyncSession)
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=None)
+    mock_session.get.return_value = Teacher(id=mock_teacher_id, name="शिक्षिका", address_form="f")
+    set_channel_session_factory(lambda: mock_session)
+
+    class FailingSessionService:
+        async def handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
+            raise FileNotFoundError("Move card file not found: missing.yaml")
+
+    set_session_service_factory(lambda s: FailingSessionService())
+    try:
+        mark_teacher_pending(mock_teacher_id)
+        await process_inbound_web(
+            teacher_id=mock_teacher_id, message_id=uuid.uuid4(), kind="text", text="नमस्ते"
+        )
+    finally:
+        set_session_service_factory(None)
+
+    assert "Error in process_inbound_web" in caplog.text  # still logged, not hidden
+    added = [c.args[0] for c in mock_session.add.call_args_list]
+    replies = [m for m in added if isinstance(m, Message) and m.direction == "out"]
+    assert len(replies) == 1
+    assert replies[0].text == get_message("system_error_retry", "f")
+    assert is_teacher_pending(mock_teacher_id) is False
+
+
+@pytest.mark.asyncio
+async def test_send_keeps_multi_message_reply_order_with_coarse_clock(
+    mock_teacher_id: uuid.UUID, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Smoke bug: welcome + consent got the same created_at, so the poll could swap them."""
+    from backend.app.channels import web as web_mod
+    from backend.app.db.models import Message
+
+    frozen = datetime(2026, 10, 21, 12, 0, 0, tzinfo=UTC)
+
+    class FrozenDatetime(datetime):
+        @classmethod
+        def now(cls, tz: Any = None) -> "FrozenDatetime":  # every call returns the same tick
+            return cls.fromtimestamp(frozen.timestamp(), tz=UTC)
+
+    monkeypatch.setattr(web_mod, "datetime", FrozenDatetime)
+    teacher = Teacher(id=mock_teacher_id, name="शिक्षिका")
+    msgs = [OutboundMessage(kind="text", text_hi=f"संदेश {n}") for n in ("एक", "दो", "तीन")]
+    mock_session = AsyncMock(spec=AsyncSession)
+
+    await WebChannel().send(teacher, msgs, session=mock_session)
+
+    added = [c.args[0] for c in mock_session.add.call_args_list if isinstance(c.args[0], Message)]
+    assert [m.text for m in added] == ["संदेश एक", "संदेश दो", "संदेश तीन"]
+    stamps = [m.created_at for m in added]
+    assert stamps == sorted(stamps) and len(set(stamps)) == 3
