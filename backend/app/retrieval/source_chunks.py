@@ -119,6 +119,8 @@ def extract_pages(pdf_path: Path) -> list[PageInfo]:
 def mark_skipped(pages: list[PageInfo]) -> None:
     """Flag blank, index/contents and near-empty pages so they never become chunks."""
     for p in pages:
+        if p.skipped:  # already flagged unreliable by the OCR step
+            continue
         words = sum(len(ln.text.split()) for ln in p.lines)
         toc = sum(1 for ln in p.lines if _TOC_LINE.search(ln.text))
         if words < 40:
@@ -149,6 +151,7 @@ def chunk_pages(
     target_words: int,
     max_words: int,
     overlap_words: int,
+    ocr: bool = False,
 ) -> list[dict[str, Any]]:
     """Group lines into 150-400 word chunks, breaking at headings, tracking page span."""
     chunks: list[dict[str, Any]] = []
@@ -193,6 +196,8 @@ def chunk_pages(
                 "tags": [],
             }
         )
+        if ocr:
+            chunks[-1]["ocr"] = True
         carry = _split_sentences_tail(body.split(), overlap_words) if overlap_words else []
         buf = []
 
@@ -342,7 +347,13 @@ def _load_existing(path: Path) -> dict[str, tuple[str, list[str]]]:
 
 def build_source(entry: dict[str, Any]) -> tuple[list[dict[str, Any]], list[PageInfo]]:
     pdf = SOURCES_DIR / str(entry["file"])
-    pages = extract_pages(pdf)
+    ocr = bool(entry.get("ocr"))
+    if ocr:  # legacy-font PDF: text comes from the cached page_ocr output, not the text layer
+        from backend.app.retrieval.page_ocr import load_ocr_pages
+
+        pages = load_ocr_pages(entry)
+    else:
+        pages = extract_pages(pdf)
     mark_skipped(pages)
     chunks = chunk_pages(
         pages,
@@ -354,6 +365,7 @@ def build_source(entry: dict[str, Any]) -> tuple[list[dict[str, Any]], list[Page
         target_words=settings.CHUNK_TARGET_WORDS,
         max_words=settings.CHUNK_MAX_WORDS,
         overlap_words=settings.CHUNK_OVERLAP_WORDS,
+        ocr=ocr,
     )
     return chunks, pages
 
@@ -392,6 +404,8 @@ def main() -> None:
         )
         wc = [len(c["text"].split()) for c in chunks]
         skipped = [(p.pdf_page, p.skipped) for p in pages if p.skipped]
+        if entry.get("ocr"):
+            print(f"{entry['id']}: skipped pages: {skipped}")
         print(
             f"{entry['id']}: pages={len(pages)} skipped_pages={len(skipped)} chunks={len(chunks)} "
             f"words/chunk median={statistics.median(wc):.0f} min={min(wc)} max={max(wc)} "

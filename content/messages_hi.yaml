@@ -335,6 +335,7 @@ ui_chat_source_page: {text: "पृष्ठ {page}", audio: false}
 ui_chat_source_printed: {text: "मुद्रित पृष्ठ {page}", audio: false}
 ui_chat_source_summary: {text: "हिंदी सार", audio: false}
 ui_chat_source_original_en: {text: "यह अंश मूल दस्तावेज़ से अंग्रेज़ी में है।", audio: false}
+ui_chat_source_ocr: {text: "यह अंश स्कैन किए गए पन्ने से मशीन द्वारा पढ़ा गया है, इसमें छोटी-मोटी गलतियाँ हो सकती हैं।", audio: false}
 ui_chat_source_error: {text: "स्रोत नहीं खुल सका — दोबारा छुएँ", audio: false}
 ui_chat_reconnecting: {text: "इंटरनेट लौट आया — दोबारा जुड़ रहे हैं…", audio: false}
 

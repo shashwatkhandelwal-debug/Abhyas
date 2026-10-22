@@ -160,6 +160,16 @@ class Settings(BaseSettings):
     CHUNK_TARGET_WORDS: int = 300
     CHUNK_MAX_WORDS: int = 400
     CHUNK_OVERLAP_WORDS: int = 40
+    # Page OCR for legacy-font Hindi guides (offline, `python -m backend.app.retrieval.page_ocr`)
+    OCR_MAX_IMAGE_EDGE_PX: int = 1568  # longest edge sent to the vision model (no further resize)
+    OCR_MAX_OUTPUT_TOKENS: int = 3000
+    OCR_CONCURRENCY: int = 4
+    OCR_BUDGET_USD: float = 1.50  # hard cap per run; the run aborts before exceeding it
+    # claude-haiku-5-5 list price, USD per million tokens (same rates as the Hindi gloss cost
+    # reported in content/sources/README.md)
+    OCR_PRICE_INPUT_USD_PER_MTOK: float = 0.10
+    OCR_PRICE_OUTPUT_USD_PER_MTOK: float = 0.50
+    OCR_MAX_ILLEGIBLE_MARKS: int = 6  # pages with more [?] marks than this are flagged unreliable
 
     # ── On-demand English translation of bubbles ─────────────────────────
     TRANSLATE_MAX_REQUESTS_PER_MINUTE: int = 10

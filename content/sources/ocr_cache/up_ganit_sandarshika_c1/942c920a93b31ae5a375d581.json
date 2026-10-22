@@ -1,0 +1,14 @@
+{
+ "page": 4,
+ "image_key": "942c920a93b31ae5a375d581",
+ "text_hi": "## साप्ताहिक शिक्षक ट्रैकर (2024–2025)\n\nट्रैकर भरने का उदाहरण\n\nसप्ताह 7 | 24/07/2024 → 30/07/2024\nसाप्ताहिक कक्षा कार्य की शुरुआत और समाप्ति पर दिनांक भरें। (रविवार और अन्य अवकाश को छोड़ कर)\nकालांश 1 + 2 + 3\nदिन के तीनों कालांश का कार्य पूरा होने के बाद ट्रैकर भरें।\n\nसप्ताह 9 | DD/ MM/ YYYY → DD/ MM/ YYYY\nसप्ताह 10 | DD/ MM/ YYYY → DD/ MM/ YYYY\nसप्ताह 11 | DD/ MM/ YYYY → DD/ MM/ YYYY\nसप्ताह 12 | DD/ MM/ YYYY → DD/ MM/ YYYY\nसप्ताह 13 | DD/ MM/ YYYY → DD/ MM/ YYYY\nसप्ताह 14 | DD/ MM/ YYYY → DD/ MM/ YYYY\nसप्ताह 15 | DD/ MM/ YYYY → DD/ MM/ YYYY\nसप्ताह 16 | DD/ MM/ YYYY → DD/ MM/ YYYY\nसप्ताह 17 | DD/ MM/ YYYY → DD/ MM/ YYYY\nसप्ताह 18 | DD/ MM/ YYYY → DD/ MM/ YYYY\nसप्ताह 19 | DD/ MM/ YYYY → DD/ MM/ YYYY\nसप्ताह 20 | DD/ MM/ YYYY → DD/ MM/ YYYY\nसप्ताह 21 | DD/ MM/ YYYY → DD/ MM/ YYYY\nसप्ताह 22 | DD/ MM/ YYYY → DD/ MM/ YYYY\nसप्ताह 23 | DD/ MM/ YYYY → DD/ MM/ YYYY\nसप्ताह 24 | DD/ MM/ YYYY → DD/ MM/ YYYY\nसप्ताह 25 | DD/ MM/ YYYY → DD/ MM/ YYYY\n\nकक्षा 1 । आधारशिला क्रियान्वयन शिक्षक संदर्शिका। गणित",
+ "printed_page": 2,
+ "legibility": "clear",
+ "guard_ok": false,
+ "guard_reason": "Devanagari character ratio too low (0.41 < 0.60)",
+ "illegible_marks": 0,
+ "input_tokens": 6540,
+ "output_tokens": 1862,
+ "model": "claude-haiku-5-5",
+ "from_cache": false
+}

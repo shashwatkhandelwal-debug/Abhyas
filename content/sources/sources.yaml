@@ -34,8 +34,9 @@
   as_of_date: "2026-10-22"
   lang: hi
   pages: 112
-  ingest: false
-  ingest_note: "Text layer uses a legacy non-Unicode Hindi font (private-use codepoints); no OCR engine available. Not searchable."
+  ingest: true
+  ocr: true
+  ingest_note: "Legacy non-Unicode Hindi font (private-use codepoints): the text layer is unusable, so every page was read from its image by claude-haiku-5-5 (page_ocr role, cached in content/sources/ocr_cache/). Chunks are marked ocr: true; see content/sources/README.md for the measured error rate."
   licence_note: "UP Samagra Shiksha publication; terms not recorded."
 
 - id: up_bhasha_sandarshika_c1
@@ -47,8 +48,9 @@
   as_of_date: "2026-10-22"
   lang: hi
   pages: 156
-  ingest: false
-  ingest_note: "Text layer uses legacy Chanakya-style fonts (Latin glyph text, no Devanagari); no OCR engine available. Not searchable."
+  ingest: true
+  ocr: true
+  ingest_note: "Legacy Chanakya-style fonts (Latin glyph text, no Devanagari): the text layer is unusable, so every page was read from its image by claude-haiku-5-5 (page_ocr role, cached in content/sources/ocr_cache/). Chunks are marked ocr: true; see content/sources/README.md for the measured error rate."
   licence_note: "UP Samagra Shiksha publication; terms not recorded."
 
 - id: nishtha_fln

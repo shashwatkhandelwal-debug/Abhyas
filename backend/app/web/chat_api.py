@@ -514,6 +514,7 @@ async def get_source_excerpt(
         "printed_page": chunk.get("printed_page_start"),
         "gloss_hi": chunk.get("gloss_hi", ""),
         "text": chunk.get("text", ""),
+        "ocr": bool(chunk.get("ocr", False)),
     }
 
 

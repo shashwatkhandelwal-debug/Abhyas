@@ -1,0 +1,14 @@
+{
+ "page": 148,
+ "image_key": "afa3b0df5332f46b649ee16d",
+ "text_hi": "## ग्रिड-6\nअ | के | ला | ल\nक | रे | ला | ते\nसे | ब | क | रे\nआ | ग | ले | ना\nम | हु | आ | ते\n* सप्ताह 17 दिवस 3 से उपयोग हेतु\n\n## ग्रिड-7\nते | ज | मी | ल\nमे | घा | स | ब\nजे | ब | स | दा\nचा | रा | गा | य\nध | के | ला | ज\n* सप्ताह 19 दिवस 1 से उपयोग हेतु",
+ "printed_page": 146,
+ "legibility": "clear",
+ "guard_ok": true,
+ "guard_reason": "Valid",
+ "illegible_marks": 0,
+ "input_tokens": 3270,
+ "output_tokens": 268,
+ "model": "claude-haiku-5-5",
+ "from_cache": false
+}

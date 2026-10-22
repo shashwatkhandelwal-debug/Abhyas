@@ -1123,6 +1123,12 @@ function buildExcerptPanel(src) {
     note.textContent = t('ui_chat_source_original_en');
     panel.appendChild(note);
   }
+  if (src.ocr) {
+    const ocrNote = document.createElement('p');
+    ocrNote.className = 'source-excerpt-note';
+    ocrNote.textContent = t('ui_chat_source_ocr');
+    panel.appendChild(ocrNote);
+  }
   return panel;
 }
 
