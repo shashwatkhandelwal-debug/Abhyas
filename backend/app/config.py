@@ -45,7 +45,8 @@ class Settings(BaseSettings):
     # Logout resets the shared demo teachers; rows younger than this are session-made, older are seed
     DEMO_RESET_SEED_MIN_AGE_HOURS: int = 24
     TRUSTED_PROXY_IPS: str = "127.0.0.1"
-    MAX_LOGIN_ATTEMPTS_PER_MINUTE: int = 5
+    MAX_LOGIN_ATTEMPTS_PER_MINUTE: int = 5  # failed attempts per (IP, username) per window
+    MAX_LOGIN_FAILURES_PER_IP_PER_MINUTE: int = 30  # failed attempts per IP across usernames
     LOGIN_RATE_LIMIT_WINDOW_SECONDS: int = 60
     CHAT_MAX_MESSAGES_PER_MINUTE: int = 20
     CHAT_RATE_LIMIT_WINDOW_SECONDS: int = 60

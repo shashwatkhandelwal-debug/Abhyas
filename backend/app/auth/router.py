@@ -18,7 +18,11 @@ from backend.app.auth.csrf import (
 )
 from backend.app.auth.guards import get_current_user, get_current_user_optional
 from backend.app.auth.passwords import verify_password
-from backend.app.auth.rate_limit import check_login_rate_limit
+from backend.app.auth.rate_limit import (
+    check_login_allowed,
+    clear_login_failures,
+    record_login_failure,
+)
 from backend.app.auth.session import (
     clear_session_cookie,
     create_session_token,
@@ -281,9 +285,8 @@ async def login(
     csrf_token: Annotated[str | None, Form()] = None,
     ui_lang: Annotated[str | None, Form()] = None,
 ) -> Response:
-    """Authenticates user with rate limiting (5/min/IP), CSRF verification, and signed session cookie."""
-    # 1. Rate limiting: 5/min/IP (§7.4)
-    check_login_rate_limit(request)
+    """Authenticates user with failed-attempt rate limiting, CSRF verification and a signed cookie."""
+    # 1. Rate limiting (§7.4): only FAILED attempts count, per (IP, username); see rate_limit.py
 
     # 2. Check content-type: support both Form and JSON
     user_val: str | None = username
@@ -302,7 +305,9 @@ async def login(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=get_message("ui_login_api_bad_json"),
             ) from None
+        check_login_allowed(request, user_val)
     else:
+        check_login_allowed(request, user_val)
         # Verify CSRF on form submissions
         await verify_csrf_token(request)
 
@@ -326,6 +331,7 @@ async def login(
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(pass_val, user.password_hash):
+        record_login_failure(request, user_val)
         if is_json:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -338,6 +344,8 @@ async def login(
         )
         set_csrf_cookie(resp, token)
         return resp
+
+    clear_login_failures(request, user_val)
 
     # 4. Create session token
     session_payload: dict[str, Any] = {

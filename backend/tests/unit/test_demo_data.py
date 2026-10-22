@@ -62,6 +62,9 @@ class MockScalars:
     def all(self) -> list[Any]:
         return self._items
 
+    def first(self) -> Any:
+        return self._items[0] if self._items else None
+
 
 class MockResult:
     """Mock result object providing scalar_one_or_none and scalars."""

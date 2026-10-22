@@ -255,3 +255,59 @@ async def _context_failures(db_name: str) -> dict[str, str]:
     finally:
         await engine.dispose()
     return failures
+
+
+def test_reseed_tolerates_duplicate_adoption_evidence(scratch_db: str) -> None:
+    """Live use writes several evidence rows per (teacher, move, level); the seed must not crash."""
+    _run(["-m", "alembic", "upgrade", "head"], scratch_db)
+    _run(["-m", "backend.app.db.seed"], scratch_db)
+    engine = create_engine(_sync_url(scratch_db))
+    try:
+        with engine.begin() as conn:
+            row = conn.execute(
+                text(
+                    "SELECT teacher_id, move_id, level FROM adoption_evidence ae "
+                    "WHERE EXISTS (SELECT 1 FROM module_progress mp WHERE mp.teacher_id = ae.teacher_id) "
+                    "AND teacher_id > '00000000-0000-0000-0000-000000000010' LIMIT 1"
+                )
+            ).one()
+            conn.execute(
+                text(
+                    "INSERT INTO adoption_evidence (id, teacher_id, move_id, level, source, detail, created_at) "
+                    "VALUES (:i, :t, :m, :l, 'rehearsal', '{}', now())"
+                ),
+                {"i": uuid4(), "t": row[0], "m": row[1], "l": row[2]},
+            )
+            dup = conn.execute(
+                text(
+                    "SELECT count(*) FROM adoption_evidence "
+                    "WHERE teacher_id = :t AND move_id = :m AND level = :l"
+                ),
+                {"t": row[0], "m": row[1], "l": row[2]},
+            ).scalar_one()
+            assert dup == 2
+    finally:
+        engine.dispose()
+
+    _run(["-m", "backend.app.db.seed"], scratch_db)  # must not raise MultipleResultsFound
+
+    engine = create_engine(_sync_url(scratch_db))
+    try:
+        with engine.connect() as conn:
+            cohort_modules = conn.execute(
+                text(
+                    "SELECT count(*) FROM module_progress "
+                    "WHERE teacher_id > '00000000-0000-0000-0000-000000000010'"
+                )
+            ).scalar_one()
+            remaining = conn.execute(
+                text(
+                    "SELECT count(*) FROM adoption_evidence "
+                    "WHERE teacher_id = :t AND move_id = :m AND level = :l"
+                ),
+                {"t": row[0], "m": row[1], "l": row[2]},
+            ).scalar_one()
+        assert cohort_modules >= 40
+        assert remaining == 1
+    finally:
+        engine.dispose()

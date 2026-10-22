@@ -1148,11 +1148,23 @@ class SessionService:
                         ],
                     )
                 ]
-            # Free text does NOT silently advance (§8.3 step 4)
+            # Free text does NOT silently advance (§8.3 step 4); remind of the two buttons
             return [
                 OutboundMessage(
-                    kind="text",
-                    text_hi=get_message("unclear", address_form),
+                    kind="buttons",
+                    text_hi=get_message(
+                        "learn_buttons_reminder",
+                        address_form,
+                        next=get_message("btn_understood", address_form),
+                        replay=get_message("btn_replay", address_form),
+                    ),
+                    buttons=[
+                        Button(
+                            id="btn_understood",
+                            title_hi=get_message("btn_understood", address_form),
+                        ),
+                        Button(id="btn_replay", title_hi=get_message("btn_replay", address_form)),
+                    ],
                 )
             ]
 

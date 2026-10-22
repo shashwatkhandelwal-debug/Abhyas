@@ -54,9 +54,13 @@ from backend.app.db.models import (
     Turn,
 )
 from backend.app.jobs.aggregates import compute_aggregates_for_batch
-from backend.app.llm.roles.coach import coach_feedback
-from backend.app.llm.roles.fidelity_checker import check_fidelity
-from backend.app.llm.schemas import SceneTurn
+from backend.app.llm.roles.coach import fallback_coach_feedback
+from backend.app.llm.roles.fidelity_checker import (
+    FidelityResult,
+    compose_fidelity_reply,
+    fallback_fidelity,
+)
+from backend.app.llm.schemas import CoachResult, SceneTurn
 from backend.app.rehearsal.scene_runner import SceneRunner
 from backend.app.rehearsal.scene_store import SceneStore
 from backend.app.rule_engine.domain import ChildState, TeachingAct
@@ -389,22 +393,24 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
             turns_low, acts_low, traj_low = _extract_scene_data(stored_low)
 
             # Run real coach path on the engine-generated turns
-            coach_res_high = await coach_feedback(
-                move=move,
-                turns=turns_high,
-                acts=acts_high,
-                trajectories=traj_high,
-                target_child_id="ravi",
-                current_item_answer=16,
-            )
-            coach_res_low = await coach_feedback(
-                move=move,
-                turns=turns_low,
-                acts=acts_low,
-                trajectories=traj_low,
-                target_child_id="ravi",
-                current_item_answer=16,
-            )
+            # Deterministic coach and fidelity fallbacks, never the LLM roles: a seed costs
+            # nothing, gives the same scores on every run and logs no guard warnings.
+            def _seed_coach(
+                turns: list[SceneTurn],
+                acts: list[list[TeachingAct]],
+                traj: dict[str, list[ChildState]],
+            ) -> CoachResult:
+                return CoachResult(
+                    feedback=fallback_coach_feedback(
+                        move, turns, acts, traj, "ravi", 16, reason="seed_demo_cohort"
+                    ),
+                    needs_review=True,
+                    review_reason="seed_demo_cohort",
+                    used_fallback=True,
+                )
+
+            coach_res_high = _seed_coach(turns_high, acts_high, traj_high)
+            coach_res_low = _seed_coach(turns_low, acts_low, traj_low)
 
             # Explain-it-back scripts through real check_fidelity
             transcript_high = (
@@ -413,8 +419,18 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
             )
             transcript_partial = "डेमो: घटाव में बच्चों को तीलियों से अभ्यास कराया जाएगा।"
 
-            fid_res_high = await check_fidelity(move, transcript_high)
-            fid_res_partial = await check_fidelity(move, transcript_partial)
+            def _seed_fidelity(transcript: str) -> FidelityResult:
+                out = fallback_fidelity(move=move, transcript=transcript)
+                return FidelityResult(
+                    output=out,
+                    reply_hi=compose_fidelity_reply(move, out),
+                    needs_review=True,
+                    review_reason="seed_demo_cohort",
+                    used_fallback=True,
+                )
+
+            fid_res_high = _seed_fidelity(transcript_high)
+            fid_res_partial = _seed_fidelity(transcript_partial)
 
         # Seed rows for each demo teacher
         for idx, teacher in enumerate(teachers):
@@ -581,7 +597,8 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
                     AdoptionEvidence.move_id == target_move_id,
                     AdoptionEvidence.level == lvl,
                 )
-                ae = (await session.execute(stmt_ae)).scalar_one_or_none()
+                # Live use writes one row per action, so duplicates are possible: .first()
+                ae = (await session.execute(stmt_ae)).scalars().first()
                 if not ae:
                     session.add(
                         AdoptionEvidence(

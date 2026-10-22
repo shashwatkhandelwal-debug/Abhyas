@@ -266,7 +266,9 @@ async def test_logout_resets_demo_teacher_to_seed(session: AsyncSession, login: 
     await _logout(session, login)
     after = await _snapshot(session, teacher_id)
     # demo2 resumes inside a one-on-one scene with Ravi, so it starts with that chat history
-    assert after["messages"] == (seeded["messages"] if login == "teacher.demo2" else [])
+    assert after["messages"] == (
+        seeded["messages"] if login in ("teacher.demo2", "teacher.demo3") else []
+    )
     assert after == seeded
     if login == "teacher.demo2":
         scene = await session.get(Scene, DEMO2_SCENE_ID)
@@ -362,3 +364,44 @@ async def test_admin_reset_restores_one_on_one_and_modules_like_logout(
     await _dirty(session, demo2)
     await _logout(session, "teacher.demo2")
     assert await _scene_one_on_one_state(session, demo2) == admin_state
+
+
+async def _demo3_learn_view(session: AsyncSession) -> dict[str, Any]:
+    demo3 = DEMO_TEACHER_LOGINS["teacher.demo3"][0]
+    state = (
+        await session.execute(select(SessionState).where(SessionState.teacher_id == demo3))
+    ).scalar_one()
+    msgs = (
+        (await session.execute(select(Message).where(Message.teacher_id == demo3))).scalars().all()
+    )
+    return {
+        "state": state.state,
+        "messages": len(msgs),
+        "buttons": [[b["id"], b["title_hi"]] for b in (msgs[0].buttons or [])] if msgs else [],
+        "text": msgs[0].text if msgs else None,
+    }
+
+
+async def test_demo3_starts_on_the_learning_step_with_two_buttons_and_logout_restores_it(
+    session: AsyncSession,
+) -> None:
+    from backend.app.core.messages import get_message
+
+    demo3 = DEMO_TEACHER_LOGINS["teacher.demo3"][0]
+    seeded = await _demo3_learn_view(session)
+    assert seeded["state"] == "LEARN"
+    assert seeded["messages"] == 1
+    assert seeded["buttons"] == [
+        ["btn_understood", get_message("btn_understood", lang="hi")],
+        ["btn_replay", get_message("btn_replay", lang="hi")],
+    ]
+    assert seeded["buttons"][0][1] == "समझ गई, आगे" and seeded["buttons"][1][1] == "फिर से सुनें"
+
+    await _dirty(session, demo3)
+    assert await _demo3_learn_view(session) != seeded
+    await _logout(session, "teacher.demo3")
+    assert await _demo3_learn_view(session) == seeded
+
+    await _dirty(session, demo3)
+    await reset_demo_data(session)
+    assert await _demo3_learn_view(session) == seeded

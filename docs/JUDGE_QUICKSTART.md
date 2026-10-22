@@ -30,7 +30,7 @@ classify, coach and answer from cited documents.**
 |---|---|---|
 | `teacher.demo1` | `/teacher` | New teacher: welcome, consent (service / score sharing), onboarding, first move, a voice note. |
 | `teacher.demo2` | `/teacher` | The Ravi scene above; after feedback, retry and pick 1-1 or three children; say a diagnosis sentence (input 1). |
-| `teacher.demo3` | `/teacher` | Chat starts empty: ☰ → Modules → Start puts a learning step in the chat; only its two buttons advance it. Has not agreed to share scores. |
+| `teacher.demo3` | `/teacher` | Opens on a learning step with two buttons ("समझ गई, आगे" / "फिर से सुनें"); typing gets a reminder of them. Has not agreed to share scores. |
 | `arp.demo` | `/arp` | Weekly digest of consenting teachers only; escalated questions to answer; observation form. |
 | `trainer.demo` | `/trainer` | Module × batch table; groups under 10 teachers are suppressed (batch KNP-B3 has 8); CSV export. |
 | `coach.demo` | `/review` | Queue of AI scores needing a human look; calibration labelling; move-card review. |

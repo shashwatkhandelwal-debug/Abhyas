@@ -101,6 +101,31 @@ LEGACY_SEED_MOVE_IDS: dict[str, str] = {
 }
 
 
+async def dedupe_adoption_evidence(
+    session: AsyncSession, teacher_ids: list[uuid.UUID] | None = None
+) -> int:
+    """Deletes extra AdoptionEvidence rows sharing (teacher, move, level), keeping the oldest.
+
+    The table has no unique key and live use (rehearsals, reflections, ARP forms, the legacy move
+    id repair) writes more than one row per key; the seed's get-or-create lookups need one.
+    """
+    stmt = select(AdoptionEvidence).order_by(AdoptionEvidence.created_at, AdoptionEvidence.id)
+    if teacher_ids is not None:
+        stmt = stmt.where(AdoptionEvidence.teacher_id.in_(teacher_ids))
+    seen: set[tuple[uuid.UUID, str, int]] = set()
+    extras: list[uuid.UUID] = []
+    for row in (await session.execute(stmt)).scalars().all():
+        key = (row.teacher_id, row.move_id, row.level)
+        if key in seen:
+            extras.append(row.id)
+        else:
+            seen.add(key)
+    if extras:
+        await session.execute(delete(AdoptionEvidence).where(AdoptionEvidence.id.in_(extras)))
+        logger.info("Removed %d duplicate adoption evidence rows", len(extras))
+    return len(extras)
+
+
 async def _repair_legacy_move_ids(session: AsyncSession) -> None:
     """Rewrites legacy seed move ids on the demo teachers' session/path/evidence rows."""
     demo_ids = [TEACHER_DEMO1_ID, TEACHER_DEMO2_ID, TEACHER_DEMO3_ID]
@@ -156,6 +181,8 @@ async def _repair_legacy_move_ids(session: AsyncSession) -> None:
     if repaired:
         logger.info("Repaired %d demo rows with legacy move ids", repaired)
         await session.flush()
+    # The rewrite can collide with rows already written under the real id
+    await dedupe_adoption_evidence(session, demo_ids)
 
 
 DEMO2_SCENE_ID = uuid.UUID("00000000-0000-0001-0004-000000d02001")  # keeps the seeded-scene prefix
@@ -274,6 +301,60 @@ async def _seed_demo2_one_on_one(session: AsyncSession, *, replace: bool = False
                 kind="text",
                 text=text,
                 speaker=speaker,
+                created_at=stamp,
+                updated_at=stamp,
+            )
+        )
+    await session.flush()
+
+
+# demo3 starts on the learning step of the next weekly move (all three numeracy modules are done)
+_DEMO3_LEARN_MOVE_ID = "LIT_MATRA_BLENDING"
+DEMO3_LEARN_MESSAGE_ID = uuid.UUID("00000000-0000-0001-0007-000000d03001")
+
+
+async def _seed_demo3_learn_step(session: AsyncSession) -> None:
+    """demo3's week is on LEARN and its chat already shows the learning step with its 2 buttons.
+
+    The text and button titles come from the real catalog (same strings `_handle_inbound` sends);
+    the official-excerpt line the live learn step may add is left out so the seed needs no
+    retrieval. Idempotent: a week row or message that exists is kept.
+    """
+    from backend.app.core.messages import get_message
+    from backend.app.core.types import Button
+    from backend.app.rehearsal.scene_runner import load_move_card
+
+    today = date.today()
+    week_start = today - timedelta(days=today.weekday())
+    if await session.get(SessionState, (TEACHER_DEMO3_ID, week_start)) is None:
+        session.add(
+            SessionState(
+                teacher_id=TEACHER_DEMO3_ID,
+                week_start=week_start,
+                move_id=_DEMO3_LEARN_MOVE_ID,
+                state="LEARN",
+                prior_state=None,
+                rehearse_attempts=0,
+                context={"current_move_id": _DEMO3_LEARN_MOVE_ID, "current_state": "LEARN"},
+            )
+        )
+    if await session.get(Message, DEMO3_LEARN_MESSAGE_ID) is None:
+        move = load_move_card(_DEMO3_LEARN_MOVE_ID)
+        buttons = [
+            Button(id="btn_understood", title_hi=get_message("btn_understood", lang="hi")),
+            Button(id="btn_replay", title_hi=get_message("btn_replay", lang="hi")),
+        ]
+        stamp = datetime.now(UTC) - timedelta(minutes=1)
+        session.add(
+            Message(
+                id=DEMO3_LEARN_MESSAGE_ID,
+                teacher_id=TEACHER_DEMO3_ID,
+                direction="out",
+                channel="web",
+                channel_msg_id="seed-demo3-learn",
+                kind="buttons",
+                text=get_message("learn_intro", lang="hi", move_title=move.title_hi),
+                buttons=[b.model_dump() for b in buttons],
                 created_at=stamp,
                 updated_at=stamp,
             )
@@ -418,12 +499,14 @@ async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
         await _seed_demo2_one_on_one(session, replace=True)
     if teacher_id == TEACHER_DEMO3_ID:
         await _seed_demo3_modules(session)
+        await _seed_demo3_learn_step(session)
         for idx, (m_id, _lvl, _src) in enumerate(_DEMO3_COMPLETED_MOVES):
             session.add(
                 MovePath(
                     teacher_id=TEACHER_DEMO3_ID, position=idx + 1, move_id=m_id, reason="completed"
                 )
             )
+    await dedupe_adoption_evidence(session, [teacher_id])
     await session.flush()
     logger.info("Reset demo teacher %s to the seeded state", login)
     return True
@@ -561,6 +644,7 @@ async def seed_database() -> None:
         await _seed_demo2_one_on_one(session)
 
         await _seed_demo3_modules(session)
+        await _seed_demo3_learn_step(session)
 
         # 6. Completed moves and Adoption Evidence for demo3
         for idx, (m_id, lvl, src) in enumerate(_DEMO3_COMPLETED_MOVES):
@@ -571,7 +655,7 @@ async def seed_database() -> None:
                 AdoptionEvidence.move_id == m_id,
                 AdoptionEvidence.level == lvl,
             )
-            ev = (await session.execute(stmt_ev)).scalar_one_or_none()
+            ev = (await session.execute(stmt_ev)).scalars().first()  # duplicates tolerated
             if not ev:
                 session.add(
                     AdoptionEvidence(
@@ -710,6 +794,7 @@ async def seed_database() -> None:
             await session.delete(legacy_admin)
 
         # 9. Synthetic demo cohort (db/demo_data.py)
+        await dedupe_adoption_evidence(session)
         await populate_demo_cohort(session)
 
         # 10. Document chunks into doc_chunk table (spec/10 §10.4)
