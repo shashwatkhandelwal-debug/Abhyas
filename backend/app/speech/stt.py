@@ -196,6 +196,8 @@ class SarvamSTT:
             return Transcript(text="", confidence=0.0, language=lang, provider="sarvam", ms=0)
 
         t0 = time.perf_counter()
+        if keyterms:
+            logger.info("stt_hint_used provider=sarvam n=%d", len(keyterms))
 
         # Trim leading and trailing silence
         wav16k = await trim_silence(wav16k)
@@ -457,6 +459,8 @@ class GeminiSTT:
             return Transcript(text="", confidence=0.0, language=lang, provider="gemini", ms=0)
 
         t0 = time.perf_counter()
+        if keyterms:
+            logger.info("stt_hint_used provider=gemini n=%d", len(keyterms))
         wav16k = await trim_silence(wav16k)
         b64_audio = base64.b64encode(wav16k).decode("ascii")
         if len(b64_audio) > settings.GEMINI_STT_MAX_BYTES:

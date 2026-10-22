@@ -167,9 +167,24 @@ def shorten_keeping_required(line: str, max_words: int, response: ChildResponse)
     return " ".join(sentences[i] for i in sorted(keep))
 
 
+def _script_lines(response: ChildResponse, steps_text: str) -> str:
+    """The "what the child says" bullets; a missing answer or steps is omitted, never a placeholder."""
+    lines: list[str] = []
+    if response.answer is not None:
+        lines.append(f"- answer: {response.answer}")
+    if steps_text:
+        lines.append(
+            "- reasoning steps to express (in this order, compress freely, but keep every "
+            f"number): {steps_text}"
+        )
+    return "\n".join(lines)
+
+
 def _answer_rule(response: ChildResponse) -> str:
-    if response.kind in (ResponseKind.OFF_TOPIC, ResponseKind.INTERJECT):
+    if response.kind in (ResponseKind.OFF_TOPIC, ResponseKind.INTERJECT, ResponseKind.CONFUSED):
         return "Say NO number at all."
+    if response.answer is None:
+        return "Say no number at all."
     return f"You MUST say the answer {response.answer}, and finish the line with it."
 
 
@@ -188,6 +203,9 @@ async def voice_child_line(
     """
     if response.kind == ResponseKind.SILENT:
         return ""
+    if response.kind == ResponseKind.CONFUSED:
+        # Out-of-range problem: the child just says it is too big. Nothing to voice, no answer.
+        return template_line(response, persona, turn_idx, address_form)
 
     prompt_path = Path(__file__).resolve().parent.parent / "prompts" / f"{PROMPT_VERSION}.md"
     if prompt_path.exists():
@@ -198,9 +216,8 @@ async def voice_child_line(
     teacher_address = "सर" if address_form == "m" else "दीदी"
     max_words = child_line_word_cap(response.kind)
     # Hand the model steps already compressed to fit the cap, so it does not pad and overrun.
-    steps_text = (
-        _format_steps(response.steps, max_words=max_words - 10) if response.steps else ""
-    ) or "कोई कदम नहीं"
+    steps_text = _format_steps(response.steps, max_words=max_words - 10) if response.steps else ""
+    script_lines = _script_lines(response, steps_text)
 
     system_prompt = system_template.format(
         name=persona.name_hi,
@@ -208,10 +225,9 @@ async def voice_child_line(
         speech_style_hi=persona.speech_style_hi,
         affect=response.affect,
         kind=response.kind.value,
-        answer=response.answer if response.answer is not None else "(none)",
+        script_lines=script_lines,
         answer_rule=_answer_rule(response),
         max_words=max_words,
-        steps_text=steps_text,
         allowed_numbers=sorted(response.allowed_numbers),
         forbidden=sorted(response.forbidden),
         teacher_address=teacher_address,

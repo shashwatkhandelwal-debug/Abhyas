@@ -174,6 +174,18 @@ def child_line_word_cap(kind: ResponseKind) -> int:
     return settings.MAX_CHILD_LINE_WORDS
 
 
+_PLACEHOLDER_LEAK = re.compile(
+    r"\bnone\b|\bnull\b|\bnan\b|\bundefined\b|कोई\s+कदम\s+नहीं|[{}]",
+    re.IGNORECASE,
+)
+
+
+def find_placeholder_leak(line: str) -> str | None:
+    """Returns the first template placeholder found in a spoken line (None, null, braces...)."""
+    match = _PLACEHOLDER_LEAK.search(line)
+    return match.group(0) if match else None
+
+
 def guard_child_line(
     line_hi: str,
     response: ChildResponse,
@@ -189,6 +201,8 @@ def guard_child_line(
     words = line_hi.strip().split()
     if not words:
         return False, "Child line cannot be empty"
+    if leak := find_placeholder_leak(line_hi):
+        return False, f"Line leaks a placeholder ('{leak}')"
     word_cap = child_line_word_cap(response.kind)
     if len(words) > word_cap:
         return (

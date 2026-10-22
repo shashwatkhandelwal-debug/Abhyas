@@ -50,6 +50,7 @@ from backend.app.privacy.hashing import (
     hash_phone_number,
     normalize_phone_number,
 )
+from backend.app.rehearsal.stt_hints import scene_child_name_hints
 from backend.app.sessions.service import SessionService
 from backend.app.speech.audio import AudioProcessingError, to_wav16k
 from backend.app.speech.stt import get_stt_provider
@@ -401,7 +402,9 @@ async def process_inbound_whatsapp(
                         logger.warning("Audio to_wav16k conversion error: %s", exc)
 
                     stt = get_stt_provider()
-                    transcript = await stt.transcribe(wav_data)
+                    transcript = await stt.transcribe(
+                        wav_data, keyterms=await scene_child_name_hints(teacher_id)
+                    )
                     final_text = unicodedata.normalize("NFC", transcript.text)
 
                     # Update inbound message with transcript

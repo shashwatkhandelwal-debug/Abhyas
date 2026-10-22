@@ -198,6 +198,13 @@ class Settings(BaseSettings):
     # at ~2.5 words/s, still short enough for a rehearsal turn.
     MAX_CHILD_LINE_WORDS_EXPLAIN: int = 30
     MAX_DISTRACTIONS_PER_SCENE: int = 1
+    # Problems the simulated children can handle (the rule engine answers CONFUSED outside it).
+    PROBLEM_MIN_OPERAND: int = 10
+    PROBLEM_MAX_OPERAND: int = 99
+    PROBLEM_MAX_SUM: int = 199
+    PROBLEM_MAX_TENS: int = 9
+    PROBLEM_MAX_ONES: int = 9
+    PROBLEM_MAX_WORD_AKSHARS: int = 4
     MAX_COACH_FEEDBACK_WORDS: int = 60
     MAX_GUIDE_ANSWER_WORDS: int = 80
     # A guide answer must share at least this many distinct content terms with the excerpts it

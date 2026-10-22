@@ -3,6 +3,7 @@
 import re
 from typing import Literal
 
+from backend.app.config import settings
 from backend.app.rule_engine.bugs import (
     get_rule_info,
     make_step,
@@ -60,28 +61,29 @@ def _check_end_conditions(scene: SceneState) -> None:
 
 
 def _validate_problem(problem: Problem, domain: Domain) -> bool:
-    """Validates problem constraints per spec/04 §4.4 Step 2."""
+    """Validates problem constraints per spec/04 §4.4 Step 2 (limits live in config)."""
+    lo, hi = settings.PROBLEM_MIN_OPERAND, settings.PROBLEM_MAX_OPERAND
     if domain == Domain.NUMERACY:
         if problem.type == "sub":
             return (
                 problem.a is not None
                 and problem.b is not None
-                and 10 <= problem.b < problem.a <= 99
+                and lo <= problem.b < problem.a <= hi
             )
         if problem.type == "add":
             return (
                 problem.a is not None
                 and problem.b is not None
-                and 10 <= problem.a <= 99
-                and 10 <= problem.b <= 99
-                and (problem.a + problem.b) <= 199
+                and lo <= problem.a <= hi
+                and lo <= problem.b <= hi
+                and (problem.a + problem.b) <= settings.PROBLEM_MAX_SUM
             )
         if problem.type == "place_value":
             return (
                 problem.tens is not None
                 and problem.ones is not None
-                and 1 <= problem.tens <= 9
-                and 0 <= problem.ones <= 9
+                and 1 <= problem.tens <= settings.PROBLEM_MAX_TENS
+                and 0 <= problem.ones <= settings.PROBLEM_MAX_ONES
             )
         return False
 
@@ -89,8 +91,8 @@ def _validate_problem(problem: Problem, domain: Domain) -> bool:
         if problem.type != "read_word" or not problem.word:
             return False
         akshars = split_akshars(problem.word)
-        return 1 <= len(akshars) <= 4 and all(
-            bool(re.search(r"[\u0900-\u097F]", ak)) for ak in akshars
+        return 1 <= len(akshars) <= settings.PROBLEM_MAX_WORD_AKSHARS and all(
+            bool(re.search(r"[ऀ-ॿ]", ak)) for ak in akshars
         )
 
     return False

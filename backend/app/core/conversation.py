@@ -16,6 +16,7 @@ from backend.app.core.locks import teacher_lock
 from backend.app.core.messages import get_message
 from backend.app.core.types import Button, InboundMessage, OutboundMessage
 from backend.app.rehearsal.scene_store import scene_store
+from backend.app.rehearsal.stt_hints import scene_child_name_hints
 from backend.app.speech.audio import to_wav16k
 from backend.app.speech.spend import SpeechBudgetExceededError
 from backend.app.speech.stt import STTProvider, get_stt_provider, normalize_transcript_text
@@ -84,7 +85,9 @@ class ConversationService:
 
             try:
                 wav16k = await to_wav16k(inbound.audio_bytes, mime=inbound.audio_mime)
-                transcript = await self.stt.transcribe(wav16k)
+                transcript = await self.stt.transcribe(
+                    wav16k, keyterms=await scene_child_name_hints(inbound.teacher_id)
+                )
             except SpeechBudgetExceededError:
                 # CHANGES 254f622 Item 2: STT cap caught in ConversationService replying with stt_budget_type_please
                 return [

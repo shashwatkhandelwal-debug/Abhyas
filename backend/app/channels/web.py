@@ -23,6 +23,7 @@ from backend.app.core.messages import get_message
 from backend.app.core.types import InboundMessage, OutboundMessage
 from backend.app.db.models import Message, Teacher
 from backend.app.db.session import async_session_factory
+from backend.app.rehearsal.stt_hints import scene_child_name_hints
 from backend.app.sessions.service import SessionService
 from backend.app.speech.audio import AudioProcessingError, to_wav16k
 from backend.app.speech.spend import SpeechBudgetExceededError
@@ -238,7 +239,9 @@ async def process_inbound_web(
                     transcript_text = ""
                     try:
                         stt = get_stt_provider()
-                        transcript = await stt.transcribe(wav_data)
+                        transcript = await stt.transcribe(
+                            wav_data, keyterms=await scene_child_name_hints(teacher_id)
+                        )
                         transcript_text = unicodedata.normalize("NFC", transcript.text).strip()
                         if not transcript_text:
                             failure_key = "stt_failed"
