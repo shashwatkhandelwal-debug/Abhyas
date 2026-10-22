@@ -6,7 +6,8 @@ classify, coach and answer from cited documents.**
 
 - **App:** `<HOSTED URL>` (placeholder, filled in the submission form) · **Health check:** `<HOSTED URL>/healthz`
 - **Logins:** `teacher.demo1`, `teacher.demo2`, `teacher.demo3`, `arp.demo`, `trainer.demo`, `coach.demo` use
-  `<DEMO_PASSWORD>`; `admin` uses `<ADMIN_PASSWORD>`. Both are in the submission form, not in the repository.
+  `<DEMO_PASSWORD>`; `admin` uses `<ADMIN_PASSWORD>`. Both are in the submission form, not in the repository. With `DEMO_MODE` on (the default) the
+  login page also shows the demo password and buttons that fill in the usernames (not the admin password).
 - **Language:** Hindi by default; the **हिंदी / English** switch on the login page and in the chat menu (☰)
   turns the interface into English. The children and the coach always speak Hindi.
 - **Sample inputs to paste or speak:** `docs/SAMPLE_INPUTS.md`. **Full walkthrough:** `docs/EVALUATOR_GUIDE.md`.
@@ -51,7 +52,8 @@ classify, coach and answer from cited documents.**
    history and the offline checklist stay readable; a message you send waits in the outbox and sends by itself
    when you go online. If sending gives up, a red **!** appears: tap it to resend.
 2. Throttle to **Slow 3G**: the page stays under 150 KB; the menu has **lite mode** (audio only on tap).
-3. Cold start: a sleeping server shows the "waking up, about a minute" page and then opens by itself.
+3. Cold start: once any page of ours has loaded, a sleeping server shows the "waking up, about a minute" state and then
+   opens by itself; the very first request is answered by the hosting service's own waiting page.
 
 ## If the app is slow
 

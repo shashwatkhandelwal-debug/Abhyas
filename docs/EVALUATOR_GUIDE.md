@@ -12,8 +12,9 @@ whose answers come from a rule engine, never from the language model, and gets c
   the chat menu (☰) to see the whole interface in English; the choice is remembered. The simulated
   children and the coach speak Hindi in both.
 - **Resetting:** the three shared teacher logins are **reset to their starting state when you log out**
-  (chat history, step in the weekly loop, scores and your answers are removed; the PWA also clears its local
-  message cache). Use **Log out** between experiments. Other judges share these logins, so do not rely on
+  (chat history, step in the weekly loop, scores and your answers are removed; demo2 returns to its one-on-one
+  scene with Ravi and demo3 to its three completed modules; the PWA also clears its local message cache). The
+  admin **Reset demo** button restores all three the same way. Use **Log out** between experiments. Other judges share these logins, so do not rely on
   anything surviving a logout.
 
 ## The seven logins
@@ -78,18 +79,24 @@ the shared demo logins). `teacher.demo3` starts with all three modules complete.
 - **WhatsApp.** The same conversation exists on WhatsApp, but only if Meta credentials were configured for
   this deployment; assume the web app is the channel under test.
 - **Official documents.** Answers are grounded in these ingested sources only:
-  NIPUN Bharat Guidelines (English, 332 pp) and NCERT Vidya Pravesh (English, 56 pp) from their text layers, and
+  NIPUN Bharat Guidelines (English, 332 pp), NCERT Vidya Pravesh (English, 56 pp) and NISHTHA FLN (English,
+  618 pp) from their text layers, and
   the two **UP Samagra Shiksha Class 1 teacher guides in Hindi (Ganit, 112 pp; Bhasha, 156 pp)**, which were
   **read from page images by an AI OCR step** (their PDF text layers are unusable). The OCR was checked by eye
   on 10 random pages: about 0.2 % of words wrong (small spelling slips, and on two-column pages the reading
   order is sometimes mixed). 16 pages were skipped (covers, contents, a form, letter grids). Citations to these
   guides say the passage was machine-read. A human has not yet re-checked the OCR (`docs/ocr_samples/`).
-- **Not in the sources.** The NISHTHA FLN package was not supplied and is not ingested. The Class 1 maths
+- **Not in the sources.** The Class 1 maths
   guide covers weeks 9–25 only and has **no** two-digit subtraction with regrouping, so the demo move
   "हासिल वाला घटाव" is not backed by an official page; the system says "not in my documents" rather than
   invent one.
-- **Not verified here.** Latency on the free plan (cold start excluded), real Gemini/Sarvam speech quality on
-  low-end phones, and the WhatsApp channel against live Meta accounts.
+- **Not verified here.** Latency on the free plan (cold start excluded; per-stage latency on a laptop is in
+  `docs/PERFORMANCE.md`), real Gemini/Sarvam speech quality on low-end phones, and the WhatsApp channel against
+  live Meta accounts. No coach has approved a move card, there is no kappa figure against coaches, and no real
+  teacher has used the system (`docs/QA_SHEET.md`).
+
+Judge pack: `docs/JUDGE_QUICKSTART.md` (one screen), `docs/SAMPLE_INPUTS.md` (five inputs with real outputs),
+`docs/QA_SHEET.md`, `docs/HOW_ARE_WE_DIFFERENT.md`, `docs/PERFORMANCE.md`.
 
 More: `README.md` (product and architecture), `content/sources/README.md` (sources and OCR figures),
 `docs/DEPLOY.md` (hosting and log lines), `docs/worked_example_ravi.md` (the Ravi example step by step).

@@ -16,8 +16,8 @@ supersedes it for the evaluation deployment), `docs/EVALUATOR_GUIDE.md` (what an
 > - Render's **health check path is `/healthz`** (returns `{"status": "ok", "git_sha": "..."}`).
 > - The free plan has **no Shell**, so seeding and prewarming run from `scripts/start.sh` via
 >   `SEED_ON_BOOT` and `PREWARM_ON_BOOT`.
-> - `render.yaml` describes a *Starter* instance; the evaluation deployment is created by hand on the
->   Free plan (below), so do not sync the blueprint over it without changing `plan`.
+> - `render.yaml` says `plan: free` to match this deployment, which was created by hand in the dashboard
+>   (a comment in the file says so). It is a description, not what was applied: do not rely on a blueprint sync.
 
 ---
 
@@ -138,13 +138,18 @@ Counts are also in the admin console (`/admin`: latency, token use, guard result
 ## 8. What the free plan does
 
 - **Sleep and cold start.** After ~15 minutes without requests the instance spins down. The next request
-  waits about a minute while the container starts (migrations, optional seed). The PWA shows a "server is
-  waking up" hint after 5 seconds and keeps the message in its outbox; it is sent when the server answers.
-  Hit `/healthz` before a demo.
+  waits about a minute while the container starts (migrations, optional seed). The chat shows a "server is
+  waking up, about a minute" hint after 5 seconds and keeps the message in its outbox; it is sent when the
+  server answers. Other pages show an "Opening…" bar at once and the same hint after 4 seconds; if the host
+  answers 502/503/504 while booting, the service worker shows `/waking` (Hindi + English), which polls
+  `/healthz` and reloads by itself. Browsers never get a raw error: 404, 500 and 503 render bilingual pages
+  (`backend/app/web/errors.py`). The very first request, before any page of ours has loaded, is answered by
+  Render itself. Hit `/healthz` before a demo.
 - **Scheduler.** The scheduler (ARP digest on Saturday 17:00 IST, follow-ups, aggregates at 02:00 IST) runs
   inside the web process, so jobs due while the service sleeps run late, when it next wakes.
-- **Memory.** 512 MB. Measured on a development machine, the API plus the 876-chunk retrieval index is
-  about 185 MB resident. Render's own figure has not been measured here.
+- **Memory.** 512 MB. Measured on a Windows development machine (`docs/PERFORMANCE.md`, 2026-10-22), the
+  app plus the 1,157-chunk retrieval index is about 188 MB resident and 193 MB after one scene. Render's own
+  figure has not been measured here.
 - **No Shell, no persistent disk.** Anything that must survive a restart lives in Postgres (the TTS cache
   included). Use `SEED_ON_BOOT` / `PREWARM_ON_BOOT` instead of a Shell.
 - **Free Postgres lifetime.** 30 days from creation, then it is deleted (check Render's current expiry and grace-period
