@@ -55,5 +55,8 @@ retrieval eval contains no question targeting it. (Weeks 1–8 of the Class 1 pl
 
 - BM25 only (no embeddings). Romanised Hindi ("bachon ki bhasha") matches only through its English
   words; the question classifier's Hindi rewrite (`search_query_hi`) is what normally fixes this.
-- `RETRIEVAL_MIN_SCORE` (0.10) is calibrated on 25 queries; retrieval alone rejects 6 of 10 off-topic
-  ones, the answerer's confidence gate catches the rest. See `eval/retrieval_recall.py`.
+- Retrieval gate (`GuideRetriever.retrieve_supported`): `RETRIEVAL_MIN_SCORE` (0.10) **and** a chunk must
+  share `RETRIEVAL_MIN_MATCHED_TERMS` (2) distinct non-stopword query terms. On the 20 off-topic questions
+  in `eval/retrieval_questions.yaml` the score gate alone rejected 7; with the term gate 15 are rejected
+  (9 of the 10 older negatives). The classifier (out_of_scope) and the answerer (confidence, citation and
+  overlap guards) reject the rest. See `eval/retrieval_recall.py` and `eval/guide_e2e_live.py`.

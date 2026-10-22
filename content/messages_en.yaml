@@ -174,6 +174,7 @@ state_REFLECT_PEER: {text: "Peer checklist"}
 state_REFLECT_SELF: {text: "Sharing your experience"}
 coach_exact_words_contrast_math: {text: "दोनों के उत्तर देखो, तीलियाँ गिनकर बताओ कि कौन-सा सही है और क्यों?"}
 coach_exact_words_contrast_lit: {text: "दोनों के पढ़े शब्द सुनो, अक्षर मिलाकर बताओ कि कौन-सा सही है?"}
+coach_fallback_neutral: {text: "I could not clearly see this move in your words yet; try the suggestion below and have another go."}
 ingest_summary_title: {text: "अभ्यास मूव सारांश"}
 ingest_method_title: {text: "सीखने का तरीका"}
 ingest_key_points_title: {text: "मुख्य बिंदु"}
@@ -483,6 +484,14 @@ ui_chat_rec_unsupported: {text: "Voice recording is not available in your browse
 ui_chat_rec_permission: {text: "Microphone permission is needed. Please allow the microphone in your browser settings."}
 ui_chat_rec_start_failed: {text: "There was a problem starting the microphone: {error}"}
 ui_chat_rec_unknown_error: {text: "Unknown error"}
+stt_unclear_label: {text: "(voice not understood)"}
+ui_chat_rec_auto_sent: {text: "One minute reached — your voice note was sent."}
+ui_chat_rec_busy: {text: "Another app is using the microphone. Close it and try again."}
+ui_chat_rec_insecure: {text: "The microphone needs a secure (https) page. Open the https link, or type instead."}
+ui_chat_rec_no_mic: {text: "No microphone found. Plug one in, or type your message instead."}
+ui_chat_rec_too_short: {text: "That was too short. Press the button and speak for at least 1 second."}
+ui_chat_stop_send: {text: "Send"}
+ui_chat_rec_recording_tap: {text: "Recording… press ‘Send’ when you finish speaking"}
 ui_offline_title: {text: "Offline — Abhyas"}
 ui_offline_retry: {text: "Try again"}
 ui_offline_notice: {text: "You are offline — your earlier history and the classroom checklist are available."}

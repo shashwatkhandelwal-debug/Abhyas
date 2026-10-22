@@ -157,6 +157,23 @@ def guard_act_tagger(
 
 
 # ── 3. guard_child_line (§5.5) ───────────────────────────────────────────────
+_EXPLAINING_KINDS = frozenset(
+    {
+        ResponseKind.EXPLAIN_BUG,
+        ResponseKind.RELAPSE,
+        ResponseKind.SCAFFOLDED_CORRECT,
+        ResponseKind.CORRECT_EXPLAINED,
+    }
+)
+
+
+def child_line_word_cap(kind: ResponseKind) -> int:
+    """Max words for a child line of this kind (longer for step-explaining kinds)."""
+    if kind in _EXPLAINING_KINDS:
+        return settings.MAX_CHILD_LINE_WORDS_EXPLAIN
+    return settings.MAX_CHILD_LINE_WORDS
+
+
 def guard_child_line(
     line_hi: str,
     response: ChildResponse,
@@ -172,10 +189,11 @@ def guard_child_line(
     words = line_hi.strip().split()
     if not words:
         return False, "Child line cannot be empty"
-    if len(words) > settings.MAX_CHILD_LINE_WORDS:
+    word_cap = child_line_word_cap(response.kind)
+    if len(words) > word_cap:
         return (
             False,
-            f"Line exceeds max word count ({len(words)} > {settings.MAX_CHILD_LINE_WORDS})",
+            f"Line exceeds max word count ({len(words)} > {word_cap})",
         )
 
     # 5. Stays in character: match whole words for Latin and Devanagari tokens
@@ -478,6 +496,21 @@ def guard_guide_answerer(
 
     if not (0.0 <= output.confidence <= 1.0):
         return False, f"Confidence out of bounds: {output.confidence}"
+
+    # Grounding: the answer must talk about what the cited excerpts talk about
+    from backend.app.retrieval.search import index_terms, tokenize_hindi
+
+    answer_terms = set(index_terms(tokenize_hindi(output.answer_hi, filter_stopwords=True)))
+    excerpt_text = " ".join(
+        f"{c.section} {c.text} {c.gloss_hi} {' '.join(c.keywords_hi)}" for c in cited_chunks
+    )
+    excerpt_terms = set(index_terms(tokenize_hindi(excerpt_text, filter_stopwords=True)))
+    overlap = answer_terms & excerpt_terms
+    if len(overlap) < settings.GUIDE_MIN_ANSWER_OVERLAP_TERMS:
+        return False, (
+            f"Answer shares only {len(overlap)} term(s) with the cited excerpts "
+            f"(need {settings.GUIDE_MIN_ANSWER_OVERLAP_TERMS}); it is not grounded in them"
+        )
 
     return True, "Valid"
 

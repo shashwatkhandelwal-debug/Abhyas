@@ -1233,3 +1233,58 @@ async def test_send_keeps_multi_message_reply_order_with_coarse_clock(
     assert [m.text for m in added] == ["संदेश एक", "संदेश दो", "संदेश तीन"]
     stamps = [m.created_at for m in added]
     assert stamps == sorted(stamps) and len(set(stamps)) == 3
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stt_behaviour", ["raises", "empty_transcript"])
+async def test_stt_failure_sends_hindi_retry_instead_of_silence(
+    mock_teacher_id: uuid.UUID, monkeypatch: pytest.MonkeyPatch, stt_behaviour: str
+) -> None:
+    """A voice note that cannot be transcribed gets the Hindi 'speak again or type' reply."""
+    from backend.app.channels import web as web_mod
+    from backend.app.core.messages import get_message
+    from backend.app.speech.stt import STTUnavailable, Transcript
+
+    class FakeSTT:
+        async def transcribe(self, wav: bytes, **kw: Any) -> Transcript:
+            if stt_behaviour == "raises":
+                raise STTUnavailable("provider down")
+            return Transcript(text="  ", confidence=0.0, provider="fake", ms=1)
+
+    voice_row = Message(id=uuid.uuid4(), teacher_id=mock_teacher_id, direction="in", kind="audio")
+    teacher = Teacher(id=mock_teacher_id, name="शिक्षिका", address_form="f")
+
+    async def get(model: Any, _id: Any) -> Any:
+        return teacher if model is Teacher else voice_row
+
+    mock_session = AsyncMock(spec=AsyncSession)
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=None)
+    mock_session.get.side_effect = get
+    set_channel_session_factory(lambda: mock_session)
+    monkeypatch.setattr(web_mod, "get_stt_provider", lambda: FakeSTT())
+    monkeypatch.setattr(web_mod, "to_wav16k", AsyncMock(return_value=b"wav"))
+
+    class MustNotRun:
+        async def handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
+            raise AssertionError("the conversation must not run on an untranscribed voice note")
+
+    set_session_service_factory(lambda s: MustNotRun())
+    try:
+        mark_teacher_pending(mock_teacher_id)
+        await process_inbound_web(
+            teacher_id=mock_teacher_id,
+            message_id=voice_row.id,
+            kind="audio",
+            audio_bytes=b"opus-bytes",
+        )
+    finally:
+        set_session_service_factory(None)
+
+    added = [c.args[0] for c in mock_session.add.call_args_list]
+    replies = [m for m in added if isinstance(m, Message) and m.direction == "out"]
+    assert [m.text for m in replies] == [get_message("stt_failed", "f")]
+    assert voice_row.text == get_message(
+        "stt_unclear_label", "f"
+    )  # bubble no longer "transcribing"
+    assert is_teacher_pending(mock_teacher_id) is False

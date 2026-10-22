@@ -19,6 +19,7 @@ from pydantic import ValidationError
 
 from backend.app.config import settings
 from backend.app.content_models import FeedbackItem, MoveCard, Rubric
+from backend.app.core.intents import is_pedagogy_question_for_app
 from backend.app.llm.client import LLMUnavailable, call_tool, logged_role
 from backend.app.llm.guard_stats import record_guard_event
 from backend.app.llm.guards import guard_coach, norm
@@ -131,8 +132,14 @@ def fallback_coach_feedback(
     previous_target_criterion_id: str | None = None,
     previous_scores: dict[str, int] | None = None,
     previous_change_hi: str | None = None,
+    reason: str = "unspecified",
 ) -> CoachFeedbackOutput:
     """Deterministic fallback coach feedback matching spec/05 §5.6.
+
+    Honesty rule: the strength sentence (which names what the teacher did) is used only when a
+    rubric criterion was scored from an act the act_tagger found, with that turn's own words as
+    evidence. Otherwise the neutral catalog line is used, so we never credit an act that the
+    teacher's words do not show.
 
     Typed inputs only (no string heuristics).
     len(acts) must match the number of teacher turns.
@@ -145,6 +152,7 @@ def fallback_coach_feedback(
         raise ValueError(
             f"Misaligned acts: expected {len(teacher_turns)} act lists for {len(teacher_turns)} teacher turns, got {len(acts)}"
         )
+    logger.info("coach_fallback reason=%s move=%s", reason, move.id)
 
     # Progression rank advancement for target child
     target_traj = trajectories.get(target_child_id, [])
@@ -175,6 +183,8 @@ def fallback_coach_feedback(
         # Check for signal act and find the exact teacher turn carrying it
         matched_quote: str | None = None
         for i, turn_acts in enumerate(acts):
+            if is_pedagogy_question_for_app(teacher_turns[i].text_hi):
+                continue  # a how-to question to the app is not a move made toward a child
             if any(act.value.lower() in crit_signal_acts for act in turn_acts):
                 matched_quote = teacher_turns[i].text_hi.strip()
                 break
@@ -197,7 +207,16 @@ def fallback_coach_feedback(
     fb_best = move.feedback_bank.get(best_crit.id) or next(iter(move.feedback_bank.values()))
     fb_worst = move.feedback_bank.get(worst_crit.id) or next(iter(move.feedback_bank.values()))
 
-    strength_hi = fb_best.strength_hi
+    teacher_words = [t.text_hi.strip() for t in teacher_turns]
+    best_quote = evidence.get(best_crit.id, "")
+    strength_is_evidenced = (
+        scores.get(best_crit.id, 0) >= 1 and bool(best_quote) and best_quote in teacher_words
+    )
+    strength_hi = (
+        fb_best.strength_hi
+        if strength_is_evidenced
+        else load_catalog_message("coach_fallback_neutral")
+    )
     change_hi = fb_worst.change_hi
 
     domain_str = (
@@ -302,6 +321,7 @@ async def coach_feedback(
 
     messages: list[dict[str, Any]] = [{"role": "user", "content": user_content}]
 
+    fallback_reason = "guard_failed"
     for attempt_idx in range(2):
         try:
             tool_input = await call_tool(
@@ -363,15 +383,16 @@ async def coach_feedback(
                 messages.append({"role": "user", "content": retry_content})
         except LLMUnavailable as exc:
             logger.warning("coach LLM unavailable: %s; going straight to fallback", exc)
+            fallback_reason = "llm_unavailable"
             break
         except (ValidationError, httpx.HTTPError, httpx.TimeoutException, TimeoutError) as exc:
             logger.warning(
                 "coach LLM / validation call failed (attempt %d): %s", attempt_idx + 1, exc
             )
+            fallback_reason = "call_or_validation_error"
             if attempt_idx == 1:
                 break
 
-    logger.info("Using deterministic fallback for coach feedback on move %s", move.id)
     fb = fallback_coach_feedback(
         move=move,
         turns=turns,
@@ -383,6 +404,7 @@ async def coach_feedback(
         previous_target_criterion_id=previous_target_criterion_id,
         previous_scores=previous_scores,
         previous_change_hi=previous_change_hi,
+        reason=fallback_reason,
     )
     return CoachResult(
         feedback=fb,

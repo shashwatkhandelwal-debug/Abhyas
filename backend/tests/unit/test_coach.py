@@ -793,3 +793,52 @@ def test_coach_golden_fixtures() -> None:
             current_item_answer=inp["current_item_answer"],
         )
         assert valid is False, f"Fail fixture {ff.name} unexpectedly passed guard_coach"
+
+
+# ── 5. Fallback honesty ──────────────────────────────────────────────────────
+
+_HOWTO = "दो अलग ... बच्चे साथ बैठते हैं। हासिल वाला घटाव दोनों को एक साथ कैसे कराऊँ?"
+
+
+def test_fallback_does_not_credit_an_act_the_teacher_did_not_perform(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Production transcript: a how-to question to the app must not read 'you asked the child'."""
+    import logging
+
+    from backend.app.llm.messages import load_catalog_message
+    from backend.app.llm.roles.act_tagger import fallback_tag_act
+
+    move = _load_move("NUM_SUB_REGROUP_BUNDLES")
+    turns = [SceneTurn(speaker="teacher", text_hi=_HOWTO)]
+    acts = [fallback_tag_act(_HOWTO, ["ravi"]).acts]  # tagger wrongly finds ask_to_explain
+
+    with caplog.at_level(logging.INFO, logger="abhyas.llm.coach"):
+        fb = fallback_coach_feedback(
+            move=move,
+            turns=turns,
+            acts=acts,
+            trajectories={"ravi": [ChildState.MISCONCEPTION, ChildState.MISCONCEPTION]},
+            target_child_id="ravi",
+            current_item_answer=16,
+            reason="llm_unavailable",
+        )
+
+    assert "तरीका पूछा" not in fb.strength_hi
+    assert fb.strength_hi == load_catalog_message("coach_fallback_neutral")
+    assert "coach_fallback reason=llm_unavailable" in caplog.text
+
+
+def test_fallback_keeps_strength_when_evidence_is_the_teachers_own_words() -> None:
+    move = _load_move("NUM_SUB_REGROUP_BUNDLES")
+    quote = "रवि, तुमने 43 में से 27 कैसे घटाया? मुझे समझाओ।"
+    fb = fallback_coach_feedback(
+        move=move,
+        turns=[SceneTurn(speaker="teacher", text_hi=quote)],
+        acts=[[TeachingAct.ASK_TO_EXPLAIN]],
+        trajectories={"ravi": [ChildState.MISCONCEPTION, ChildState.CAN_EXPLAIN]},
+        target_child_id="ravi",
+        current_item_answer=16,
+    )
+    assert fb.evidence["crit_explain"] == quote
+    assert "तरीका पूछा" in fb.strength_hi

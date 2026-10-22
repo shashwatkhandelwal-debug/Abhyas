@@ -16,6 +16,7 @@ from rank_bm25 import (  # type: ignore[import-untyped]  # rank_bm25 has no PEP 
     BM25Okapi,
 )
 
+from backend.app.config import settings
 from backend.app.core.messages import get_catalog, get_message
 from backend.app.retrieval.ingest import (
     CATALOG_FILE,
@@ -110,8 +111,10 @@ class RetrievedChunk(BaseModel):
     page_end: int | None = None
     printed_page: int | None = None
     gloss_hi: str = ""
+    keywords_hi: list[str] = []
     move_id: str = ""
     tags: list[str] = []
+    matched_terms: int = 0  # distinct query terms found in this chunk (retrieval gate)
 
 
 class GuideRetriever:
@@ -129,6 +132,7 @@ class GuideRetriever:
         self._chunks: list[dict[str, Any]] = []
         self._bm25: BM25Okapi | None = None
         self._by_id: dict[str, dict[str, Any]] | None = None
+        self._doc_terms: list[frozenset[str]] = []
         self._load_corpus()
 
     def _load_corpus(self) -> None:
@@ -187,7 +191,9 @@ class GuideRetriever:
                     f"{c.get('gloss_hi', '')} {' '.join(c.get('keywords_hi', []))}",
                     filter_stopwords=True,
                 )
-                tokenized_corpus.append(index_terms(tokens + hindi * _GLOSS_WEIGHT))
+                terms = index_terms(tokens + hindi * _GLOSS_WEIGHT)
+                tokenized_corpus.append(terms)
+                self._doc_terms.append(frozenset(terms))
             self._bm25 = BM25Okapi(tokenized_corpus)
             for term, val in self._bm25.idf.items():
                 if val <= 0.0:
@@ -199,8 +205,13 @@ class GuideRetriever:
         top_k: int = 5,
         min_score: float | None = None,
         official_only: bool = False,
+        min_matched_terms: int = 0,
     ) -> list[RetrievedChunk]:
-        """Performs BM25 search over chunks, returning top_k RetrievedChunk instances."""
+        """Performs BM25 search over chunks, returning top_k RetrievedChunk instances.
+
+        min_matched_terms > 0 drops chunks sharing fewer distinct query terms than that (capped
+        at the number of distinct query terms, so a one-word question needs one match).
+        """
         if not self._chunks or self._bm25 is None:
             return []
 
@@ -212,6 +223,8 @@ class GuideRetriever:
 
         tokens = index_terms(tokens)
         scores = self._bm25.get_scores(tokens)
+        query_terms = set(tokens)
+        required_terms = min(min_matched_terms, len(query_terms))
 
         # Best case per query term is (k1 + 1) * idf. Terms absent from the corpus count at the
         # unseen-term idf, so off-topic queries (most words unmatched) score low instead of
@@ -227,10 +240,15 @@ class GuideRetriever:
         threshold = min_score if min_score is not None else self.similarity_threshold
 
         scored_chunks: list[tuple[float, float, dict[str, Any]]] = []
-        for raw_score, chunk in zip(scores, self._chunks, strict=True):
+        matched_by_id: dict[str, int] = {}
+        for raw_score, chunk, doc_terms in zip(scores, self._chunks, self._doc_terms, strict=True):
             if official_only and chunk.get("move_id"):
                 continue  # skip Abhyas move-card summaries; keep source-document excerpts
             raw_float = float(raw_score)
+            n_matched = len(query_terms & doc_terms)
+            if n_matched < required_terms:
+                continue
+            matched_by_id[chunk["chunk_id"]] = n_matched
             if s_max > 0.0:
                 norm_score = min(1.0, max(0.0, raw_float / s_max))
             else:
@@ -260,11 +278,22 @@ class GuideRetriever:
                     similarity_score=round(norm_score, 4),
                     source_short_hi=chunk.get("source_short_hi")
                     or get_message("ingest_summary_title"),
+                    keywords_hi=chunk.get("keywords_hi", []),
                     move_id=chunk.get("move_id", ""),
                     tags=chunk.get("tags", []),
+                    matched_terms=matched_by_id.get(chunk["chunk_id"], 0),
                 )
             )
         return results
+
+    async def retrieve_supported(self, query_text: str) -> list[RetrievedChunk]:
+        """Chunks good enough to answer from: score gate plus the matched-terms gate."""
+        return await self.retrieve(
+            query_text,
+            top_k=settings.RETRIEVAL_TOP_K,
+            min_score=settings.RETRIEVAL_MIN_SCORE,
+            min_matched_terms=settings.RETRIEVAL_MIN_MATCHED_TERMS,
+        )
 
     def get_chunk(self, chunk_id: str) -> dict[str, Any] | None:
         """Full stored chunk record by id (for the tappable source excerpt)."""

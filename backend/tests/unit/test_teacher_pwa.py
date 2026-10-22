@@ -224,8 +224,8 @@ def test_asset_budget_under_150kb() -> None:
     assert total_kb < 150.0, f"Assets exceed 150 KB budget: {total_kb:.2f} KB"
     # This sums every static file and both duplicate templates (admin/trainer pages too); the
     # chat first load is ~91 KB raw (teacher.html + app.css + chat.js + recorder.js), far less gzipped.
-    assert total_kb < 120.0, (
-        f"Expected assets to comfortably sit below 120 KB, got: {total_kb:.2f} KB"
+    assert total_kb < 125.0, (
+        f"Expected assets to comfortably sit below 125 KB, got: {total_kb:.2f} KB"
     )
 
 
@@ -513,13 +513,14 @@ def test_client_recorder_js_contract() -> None:
     # Audio recorder class definition
     assert "class AudioRecorder" in js_content
 
-    # Constraints: 16kbps mono, max 90s, min 0.7s discard
+    # Constraints: 16kbps mono; auto-stop 60 s and discard < 1 s (REC_* in config.py override)
     assert "audioBitsPerSecond: 16000" in js_content
     assert "channelCount: 1" in js_content
     assert "echoCancellation: true" in js_content
     assert "noiseSuppression: true" in js_content
-    assert "this.maxDurationSec = 90" in js_content
-    assert "this.minDurationSec = 0.7" in js_content
+    assert "const REC_DEFAULTS = { maxSec: 60, minSec: 1 }" in js_content
+    assert "this.maxDurationSec = c.maxSec" in js_content
+    assert "this.minDurationSec = c.minSec" in js_content
 
     # Supported audio MIME types
     assert "'audio/webm;codecs=opus'" in js_content

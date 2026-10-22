@@ -83,11 +83,43 @@ async def evaluate(k: int) -> dict[str, Any]:
     for text in data["negative_questions"]:
         res = await retriever.retrieve(text, top_k=1, min_score=0.0)
         neg_top.append(res[0].similarity_score if res else 0.0)
+    # What production sees: score gate + matched-terms gate (retrieve_supported)
+    gated_hits = 0
+    gated_misses: list[str] = []
+    for q in qs:
+        res = await retriever.retrieve(
+            q["q"],
+            top_k=k,
+            min_score=settings.RETRIEVAL_MIN_SCORE,
+            min_matched_terms=settings.RETRIEVAL_MIN_MATCHED_TERMS,
+        )
+        hit = any(
+            r.source == q["source"]
+            and any(overlaps(rng, (r.page or 0, r.page_end or r.page or 0)) for rng in ranges(q))
+            for r in res
+        )
+        gated_hits += int(hit)
+        if not hit:
+            gated_misses.append(q["id"])
+    off = data.get("offtopic_questions", [])
+    off_leaked = [o["id"] for o in off if await retriever.retrieve_supported(o["q"])]
+    neg_leaked = [
+        f"n{i:02d}"
+        for i, text in enumerate(data["negative_questions"], 1)
+        if await retriever.retrieve_supported(text)
+    ]
     return {
         "k": k,
         "n": len(qs),
         "recall_at_k": hits / len(qs),
         "misses": misses,
+        "gated_recall_at_k": gated_hits / len(qs),
+        "gated_misses": gated_misses,
+        "offtopic_n": len(off),
+        "offtopic_rejected_by_gate": len(off) - len(off_leaked),
+        "offtopic_leaked": off_leaked,
+        "negatives_rejected_by_gate": len(data["negative_questions"]) - len(neg_leaked),
+        "negatives_leaked": neg_leaked,
         "min_score_threshold": settings.RETRIEVAL_MIN_SCORE,
         "answerable_top1_score": {
             "min": min(pos_top),

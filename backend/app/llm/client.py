@@ -444,6 +444,7 @@ def build_create_kwargs(
     tools: list[dict[str, Any]],
     tool_choice: dict[str, Any],
     temperature: float | None = None,
+    disable_thinking: bool = False,
 ) -> dict[str, Any]:
     """Builds Messages.create() kwargs; optional params are sent only if the SDK supports them."""
     kwargs: dict[str, Any] = {
@@ -456,7 +457,36 @@ def build_create_kwargs(
     }
     if temperature is not None and "temperature" in SDK_CREATE_PARAMS:
         kwargs["temperature"] = temperature
+    if disable_thinking and "thinking" in SDK_CREATE_PARAMS:
+        # With tool_choice=auto the model may spend the whole max_tokens budget thinking
+        # (seen on claude-sonnet-5-5: stop_reason=max_tokens with an empty thinking block).
+        # claude-sonnet-5-5 rejects {"type": "disabled"} and asks for "between_tools".
+        kwargs["thinking"] = {"type": "between_tools"}
     return kwargs
+
+
+# Models that answered 400 to a forced tool_choice; they get {"type": "auto"} from then on.
+_MODELS_WITHOUT_FORCED_TOOL_CHOICE: set[str] = set()
+
+
+def _is_forced_tool_choice_rejection(err: APIStatusError) -> bool:
+    text = str(err).lower()
+    return err.status_code == 400 and "tool_choice" in text and "not supported" in text
+
+
+def _is_thinking_param_rejection(err: APIStatusError) -> bool:
+    return err.status_code == 400 and "thinking" in str(err).lower()
+
+
+def _with_tool_only_instruction(
+    system_blocks: list[dict[str, Any]], tool_name: str
+) -> list[dict[str, Any]]:
+    """Appends the 'answer only by calling the tool' rule used when tool_choice is auto."""
+    instruction = (
+        f"IMPORTANT: Respond ONLY by calling the `{tool_name}` tool exactly once. "
+        "Do not write any plain-text answer or any text before the tool call."
+    )
+    return [*system_blocks, {"type": "text", "text": instruction}]
 
 
 async def call_tool(
@@ -538,8 +568,17 @@ async def call_tool(
             "input_schema": input_schema,
         }
     ]
-    tool_choice: dict[str, Any] = {"type": "tool", "name": tool_name}
+    auto_tool_choice = model in _MODELS_WITHOUT_FORCED_TOOL_CHOICE
+    tool_choice: dict[str, Any] = (
+        {"type": "auto"} if auto_tool_choice else {"type": "tool", "name": tool_name}
+    )
+    token_ceiling = settings.LLM_MAX_TOKENS_CEILING
+    if auto_tool_choice:
+        system_blocks = _with_tool_only_instruction(system_blocks, tool_name)
+        max_tokens += settings.LLM_AUTO_TOOL_CHOICE_TOKEN_HEADROOM
+        token_ceiling += settings.LLM_AUTO_TOOL_CHOICE_TOKEN_HEADROOM
 
+    send_thinking_param = True
     retries = 0
     max_retries = settings.LLM_MAX_RETRIES
     truncation_retried = False
@@ -555,6 +594,7 @@ async def call_tool(
                 tools=tools_spec,
                 tool_choice=tool_choice,
                 temperature=temperature,
+                disable_thinking=auto_tool_choice and send_thinking_param,
             )
             response = await client.messages.create(**create_kwargs)
             latency_ms = int((time.perf_counter() - t0) * 1000)
@@ -591,9 +631,9 @@ async def call_tool(
                     latency_ms=latency_ms,
                     outcome="truncated",
                 )
-                if not truncation_retried and max_tokens < settings.LLM_MAX_TOKENS_CEILING:
+                if not truncation_retried and max_tokens < token_ceiling:
                     truncation_retried = True
-                    max_tokens = min(max_tokens * 2, settings.LLM_MAX_TOKENS_CEILING)
+                    max_tokens = min(max_tokens * 2, token_ceiling)
                     continue
                 raise LLMUnavailable(f"Anthropic reply truncated at max_tokens for {tool_name}")
 
@@ -665,6 +705,23 @@ async def call_tool(
 
         except APIStatusError as err:
             latency_ms = int((time.perf_counter() - t0) * 1000)
+            if not auto_tool_choice and _is_forced_tool_choice_rejection(err):
+                # Some models (e.g. claude-sonnet-5-5) reject {"type": "tool"}. Remember it and
+                # retry once with "auto" plus an instruction to answer only via the tool.
+                logger.warning(
+                    "Model %s rejects forced tool_choice; using auto for role %s", model, role
+                )
+                _MODELS_WITHOUT_FORCED_TOOL_CHOICE.add(model)
+                auto_tool_choice = True
+                tool_choice = {"type": "auto"}
+                system_blocks = _with_tool_only_instruction(system_blocks, tool_name)
+                max_tokens += settings.LLM_AUTO_TOOL_CHOICE_TOKEN_HEADROOM
+                token_ceiling += settings.LLM_AUTO_TOOL_CHOICE_TOKEN_HEADROOM
+                continue
+            if auto_tool_choice and send_thinking_param and _is_thinking_param_rejection(err):
+                logger.warning("Model %s rejects the thinking param; retrying without it", model)
+                send_thinking_param = False
+                continue
             if err.status_code >= 500 and retries < max_retries:
                 retries += 1
                 logger.warning(

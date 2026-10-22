@@ -283,6 +283,17 @@ function formatTimer(sec) {
   return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
+// Recorder limits come from the server (REC_* in config.py) through #rec-config.
+const REC_CONFIG = (() => {
+  try {
+    const el = document.getElementById('rec-config');
+    return el ? JSON.parse(el.textContent) : {};
+  } catch (err) {
+    return {};
+  }
+})();
+const REC_HOLD_MS = REC_CONFIG.holdMs || 400; // press longer than this = hold-to-talk
+
 // ── State Management ────────────────────────────────────────────────────────
 const state = {
   lastMessageId: null,
@@ -291,7 +302,7 @@ const state = {
   liteMode: false,
   isRecording: false,
   mic: 'idle',
-  recorder: new window.AudioRecorder(),
+  recorder: new window.AudioRecorder(REC_CONFIG),
   outboxRunning: false,
   drainAgain: false,
   renderedMsgIds: new Set(),
@@ -468,6 +479,13 @@ function typingEvent(ev) {
 }
 
 // ── Outbox Drainer & Backoff Retrier ────────────────────────────────────────
+function audioFileName(blob) {
+  const type = (blob && blob.type) || '';
+  if (type.includes('mp4')) return 'voice.m4a';
+  if (type.includes('webm')) return 'voice.webm';
+  return 'voice.audio';
+}
+
 async function sendOutboxItem(item) {
   const csrfToken = getCsrfToken();
   const jsonHeaders = { 'Content-Type': 'application/json' };
@@ -491,7 +509,7 @@ async function sendOutboxItem(item) {
   } else if (item.kind === 'audio' && item.audioBlob) {
     const form = new FormData();
     form.append('client_msg_id', item.client_msg_id);
-    form.append('file', item.audioBlob, 'voice.webm');
+    form.append('file', item.audioBlob, audioFileName(item.audioBlob));
     const audioHeaders = {};
     if (csrfToken) {
       audioHeaders['x-csrf-token'] = csrfToken;
@@ -1117,7 +1135,10 @@ function getSpeakerLabel(speaker) {
 
 function recorderErrorText(code, detail) {
   if (code === 'unsupported') return t('ui_chat_rec_unsupported');
+  if (code === 'insecure') return t('ui_chat_rec_insecure');
   if (code === 'permission') return t('ui_chat_rec_permission');
+  if (code === 'no_mic') return t('ui_chat_rec_no_mic');
+  if (code === 'busy') return t('ui_chat_rec_busy');
   return t('ui_chat_rec_start_failed', { error: detail || t('ui_chat_rec_unknown_error') });
 }
 
@@ -1296,45 +1317,31 @@ async function toggleLiteMode(forceValue = null) {
 window.toggleLiteMode = toggleLiteMode;
 
 // ── Mic UI Interaction ──────────────────────────────────────────────────────
+// Two ways to record, one button:
+//   tap  (press < REC_HOLD_MS): recording starts; tap the big Stop/Send button to send.
+//   hold (press >= REC_HOLD_MS): walkie-talkie style, the recording is sent on release.
+// Cancel discards. The recorder auto-stops and sends at REC_MAX_SECONDS.
 function setupMicEvents() {
   const micBtn = document.getElementById('btn-mic');
   const overlay = document.getElementById('recording-overlay');
   const timerEl = document.getElementById('recording-timer');
   const cancelBtn = document.getElementById('btn-cancel-rec');
+  const stopBtn = document.getElementById('btn-stop-rec');
   const recStatus = document.getElementById('rec-status');
   if (!micBtn) return;
 
-  let isHeld = false;
+  let pressedAt = 0;
+  let holdTimer = null;
+  const maxLabel = formatTimer(state.recorder.maxDurationSec);
 
-  const startRec = () => {
-    if (state.isRecording) return;
-    state.isRecording = true;
-    state.mic = micNext(state.mic, 'start');
-    micBtn.classList.add('recording');
-    micBtn.setAttribute('aria-pressed', 'true');
-    if (recStatus) recStatus.textContent = t('ui_chat_rec_recording');
-    if (overlay) overlay.classList.add('active');
-
-    state.recorder.start(
-      (sec) => {
-        if (timerEl) timerEl.textContent = formatTimer(sec);
-      },
-      (blob, durationSec) => {
-        state.mic = micNext(state.mic, 'stop');
-        stopRecUI();
-        handleSendAudio(blob, durationSec).finally(() => {
-          state.mic = 'idle';
-        });
-      },
-      (code, detail) => {
-        state.mic = micNext(state.mic, 'denied');
-        stopRecUI();
-        flashStatus(recorderErrorText(code, detail));
-      }
-    );
+  const setStatus = (key) => {
+    if (recStatus) recStatus.textContent = t(key);
   };
 
   const stopRecUI = () => {
+    clearTimeout(holdTimer);
+    holdTimer = null;
+    pressedAt = 0;
     state.isRecording = false;
     micBtn.classList.remove('recording');
     micBtn.setAttribute('aria-pressed', 'false');
@@ -1342,40 +1349,95 @@ function setupMicEvents() {
     if (timerEl) timerEl.textContent = '0:00';
   };
 
-  // Touch and Mouse support (Hold-to-record & Tap accessibility)
-  micBtn.addEventListener('mousedown', () => {
-    isHeld = true;
-    startRec();
-  });
+  const startRec = () => {
+    if (state.isRecording) return;
+    state.isRecording = true;
+    state.mic = micNext(state.mic, 'start');
+    micBtn.classList.add('recording');
+    micBtn.setAttribute('aria-pressed', 'true');
+    setStatus('ui_chat_rec_recording_tap');
+    if (timerEl) timerEl.textContent = `0:00 / ${maxLabel}`;
+    if (overlay) overlay.classList.add('active');
 
-  window.addEventListener('mouseup', () => {
-    if (isHeld && state.isRecording) {
-      isHeld = false;
-      state.recorder.stop();
-    }
-  });
+    state.recorder.start({
+      onTick: (sec) => {
+        if (timerEl) timerEl.textContent = `${formatTimer(sec)} / ${maxLabel}`;
+      },
+      onComplete: (blob, durationSec, reason) => {
+        state.mic = micNext(state.mic, 'stop');
+        stopRecUI();
+        if (reason === 'auto') flashStatus(t('ui_chat_rec_auto_sent'));
+        handleSendAudio(blob, durationSec).finally(() => {
+          state.mic = 'idle';
+        });
+      },
+      onTooShort: () => {
+        state.mic = micNext(state.mic, 'cancel');
+        stopRecUI();
+        flashStatus(t('ui_chat_rec_too_short'));
+      },
+      onError: (code, detail) => {
+        state.mic = micNext(state.mic, 'denied');
+        stopRecUI();
+        flashStatus(recorderErrorText(code, detail));
+      },
+    });
+  };
 
-  micBtn.addEventListener('touchstart', (e) => {
+  const stopAndSend = () => {
+    clearTimeout(holdTimer);
+    state.recorder.stop();
+  };
+
+  const cancelRec = () => {
+    state.recorder.cancel();
+    state.mic = micNext(state.mic, 'cancel');
+    stopRecUI();
+  };
+
+  // Pointer events cover mouse, touch and pen. Capturing the pointer keeps pointerup coming to
+  // the mic button after the overlay appears on top of it.
+  micBtn.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.preventDefault();
-    isHeld = true;
-    startRec();
-  });
-
-  window.addEventListener('touchend', () => {
-    if (isHeld && state.isRecording) {
-      isHeld = false;
-      state.recorder.stop();
+    if (state.isRecording) return;
+    try {
+      micBtn.setPointerCapture(e.pointerId);
+    } catch (err) {
+      /* capture is best-effort */
     }
+    pressedAt = Date.now();
+    startRec();
+    holdTimer = setTimeout(() => {
+      setStatus('ui_chat_rec_recording');
+    }, REC_HOLD_MS);
   });
 
-  if (cancelBtn) {
-    cancelBtn.onclick = () => {
-      isHeld = false;
-      state.recorder.cancel();
-      state.mic = micNext(state.mic, 'cancel');
-      stopRecUI();
-    };
-  }
+  const onRelease = () => {
+    if (!pressedAt || !state.isRecording) return;
+    const heldMs = Date.now() - pressedAt;
+    pressedAt = 0;
+    clearTimeout(holdTimer);
+    if (heldMs >= REC_HOLD_MS) {
+      stopAndSend(); // hold-to-talk: release sends
+    } else {
+      // quick tap: keep recording until Stop/Send
+      setStatus('ui_chat_rec_recording_tap');
+    }
+  };
+  micBtn.addEventListener('pointerup', onRelease);
+  micBtn.addEventListener('pointercancel', onRelease);
+
+  // Keyboard / assistive tech activate the button with a click event that has no pointer
+  micBtn.addEventListener('click', (e) => {
+    if (e.detail === 0 && !state.isRecording) startRec();
+  });
+
+  if (stopBtn) stopBtn.addEventListener('click', stopAndSend);
+  if (cancelBtn) cancelBtn.addEventListener('click', cancelRec);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && state.isRecording) cancelRec();
+  });
 }
 
 // A short notice in the slim status bar (e.g. microphone denied), replaced by the next net event.

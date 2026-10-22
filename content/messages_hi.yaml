@@ -363,6 +363,10 @@ coach_exact_words_contrast_lit:
   text: "दोनों के पढ़े शब्द सुनो, अक्षर मिलाकर बताओ कि कौन-सा सही है?"
   audio: false
 
+coach_fallback_neutral:
+  text: "अभी आपके शब्दों में इस अभ्यास की कोई ख़ास बात साफ़ नहीं दिखी; नीचे का सुझाव आज़माकर दोबारा कोशिश करें।"
+  audio: false
+
 # ── Ingest and retrieval titles ──────────────────────────────
 ingest_summary_title:
   text: "अभ्यास मूव सारांश"
@@ -720,6 +724,14 @@ ui_chat_rec_unsupported: {text: "आपके ब्राउज़र में
 ui_chat_rec_permission: {text: "माइक्रोफ़ोन की अनुमति चाहिए। कृपया ब्राउज़र सेटिंग्स में जाकर माइक्रोफ़ोन की अनुमति दें।", audio: false}
 ui_chat_rec_start_failed: {text: "माइक्रोफ़ोन शुरू करने में समस्या आई: {error}", audio: false}
 ui_chat_rec_unknown_error: {text: "अज्ञात त्रुटि", audio: false}
+stt_unclear_label: {text: "(आवाज़ साफ़ नहीं आई)", audio: false}
+ui_chat_rec_auto_sent: {text: "एक मिनट पूरा हुआ — आपकी आवाज़ भेजी जा चुकी है।", audio: false}
+ui_chat_rec_busy: {text: "माइक्रोफ़ोन किसी और ऐप में चल रहा है। उसे बंद करके फिर कोशिश करें।", audio: false}
+ui_chat_rec_insecure: {text: "माइक्रोफ़ोन के लिए सुरक्षित (https) पेज चाहिए। कृपया https वाले लिंक से खोलें या लिखकर भेजें।", audio: false}
+ui_chat_rec_no_mic: {text: "माइक्रोफ़ोन नहीं मिला। माइक्रोफ़ोन जोड़ें या संदेश लिखकर भेजें।", audio: false}
+ui_chat_rec_too_short: {text: "आवाज़ बहुत छोटी थी। बटन दबाकर कम से कम 1 सेकंड बोलें।", audio: false}
+ui_chat_stop_send: {text: "भेजें", audio: false}
+ui_chat_rec_recording_tap: {text: "रिकॉर्ड हो रहा है… बोलना पूरा होने पर ‘भेजें’ दबाएँ", audio: false}
 ui_offline_title: {text: "ऑफ़लाइन — अभ्यास (Abhyas)", audio: false}
 ui_offline_retry: {text: "पुनः प्रयास करें", audio: false}
 ui_offline_notice: {text: "आप ऑफ़लाइन हैं — पुराना इतिहास और कक्षा चेकलिस्ट उपलब्ध हैं।", audio: false}

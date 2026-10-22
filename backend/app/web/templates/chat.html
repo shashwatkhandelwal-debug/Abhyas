@@ -172,20 +172,25 @@
           </svg>
         </button>
 
-        <!-- Live Recording Overlay -->
-        <div class="recording-overlay" id="recording-overlay">
+        <!-- Live Recording Overlay: timer, Cancel, and a big Stop/Send button -->
+        <div class="recording-overlay" id="recording-overlay" role="group" aria-label="{{ get_message('ui_chat_record') }}">
           <div class="recording-timer">
             <span class="rec-blip"></span>
             <span id="recording-timer">0:00</span>
           </div>
-          <span class="slide-cancel-text" id="rec-status">{{ (ui_strings or {}).get('ui_chat_rec_recording', '') }}</span>
+          <span class="slide-cancel-text" id="rec-status" role="status">{{ (ui_strings or {}).get('ui_chat_rec_recording', '') }}</span>
           <button type="button" class="btn-cancel-rec" id="btn-cancel-rec">{{ get_message('ui_chat_cancel_rec') }}</button>
+          <button type="button" class="btn-stop-rec" id="btn-stop-rec" aria-label="{{ get_message('ui_chat_stop_send') }}">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+            <span>{{ get_message('ui_chat_stop_send') }}</span>
+          </button>
         </div>
       </form>
     </footer>
   </div>
 
   <script type="application/json" id="ui-strings">{{ (ui_strings or {})|tojson }}</script>
+  <script type="application/json" id="rec-config">{{ (rec_config or {})|tojson }}</script>
   <script src="/static/recorder.js"></script>
   <script src="/static/chat.js"></script>
   <script>

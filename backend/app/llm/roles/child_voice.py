@@ -14,7 +14,8 @@ from backend.app.config import settings
 from backend.app.content_models import PersonaCard
 from backend.app.llm.client import LLMUnavailable, call_tool, log_role_call
 from backend.app.llm.guard_stats import record_guard_event
-from backend.app.llm.guards import guard_child_line
+from backend.app.llm.guards import child_line_word_cap, guard_child_line
+from backend.app.llm.hindi_numbers import extract_numbers
 from backend.app.llm.schemas import ChildVoiceOutput
 from backend.app.rule_engine.domain import ChildResponse, ResponseKind
 
@@ -133,6 +134,45 @@ def truncate_at_sentence_boundary(line: str, max_words: int) -> str:
     return " ".join(line.split()[:max_words]).rstrip(",…-") + "…"
 
 
+def _required_in_line(sentence: str, response: ChildResponse) -> bool:
+    """True if this sentence carries the answer (the part a cut must never drop)."""
+    if isinstance(response.answer, int):
+        return response.answer in extract_numbers(sentence)
+    if isinstance(response.answer, str) and response.answer:
+        return response.answer.replace(" ", "") in sentence.replace(" ", "")
+    return False
+
+
+def shorten_keeping_required(line: str, max_words: int, response: ChildResponse) -> str:
+    """Shortens `line` to `max_words` without dropping the sentence(s) holding the answer.
+
+    Answer sentences are kept first, then earlier sentences are added back in order while they
+    fit. If the answer sentence alone is too long, falls back to the plain sentence cut.
+    """
+    if len(line.split()) <= max_words:
+        return line.strip()
+    sentences = _SENTENCE_END.split(line.strip())
+    required = {i for i, s in enumerate(sentences) if _required_in_line(s, response)}
+    if not required:
+        return truncate_at_sentence_boundary(line, max_words)
+    budget = max_words - sum(len(sentences[i].split()) for i in required)
+    if budget < 0:
+        return truncate_at_sentence_boundary(line, max_words)
+    keep = set(required)
+    for i, s in enumerate(sentences):
+        n = len(s.split())
+        if i not in keep and n <= budget:
+            keep.add(i)
+            budget -= n
+    return " ".join(sentences[i] for i in sorted(keep))
+
+
+def _answer_rule(response: ChildResponse) -> str:
+    if response.kind in (ResponseKind.OFF_TOPIC, ResponseKind.INTERJECT):
+        return "Say NO number at all."
+    return f"You MUST say the answer {response.answer}, and finish the line with it."
+
+
 async def voice_child_line(
     response: ChildResponse,
     persona: PersonaCard,
@@ -156,9 +196,11 @@ async def voice_child_line(
         system_template = "You voice a child line. Return tool call."
 
     teacher_address = "सर" if address_form == "m" else "दीदी"
+    max_words = child_line_word_cap(response.kind)
+    # Hand the model steps already compressed to fit the cap, so it does not pad and overrun.
     steps_text = (
-        " -> ".join(f"{s.text_hi}" for s in response.steps) if response.steps else "कोई कदम नहीं"
-    )
+        _format_steps(response.steps, max_words=max_words - 10) if response.steps else ""
+    ) or "कोई कदम नहीं"
 
     system_prompt = system_template.format(
         name=persona.name_hi,
@@ -166,7 +208,9 @@ async def voice_child_line(
         speech_style_hi=persona.speech_style_hi,
         affect=response.affect,
         kind=response.kind.value,
-        answer=response.answer if response.answer is not None else "कोई उत्तर नहीं",
+        answer=response.answer if response.answer is not None else "(none)",
+        answer_rule=_answer_rule(response),
+        max_words=max_words,
         steps_text=steps_text,
         allowed_numbers=sorted(response.allowed_numbers),
         forbidden=sorted(response.forbidden),
@@ -181,7 +225,6 @@ async def voice_child_line(
 
     # 2. Attempt LLM call with retry per §5.2
     started = time.perf_counter()
-    max_words = settings.MAX_CHILD_LINE_WORDS
     shortened: str | None = None  # guard-clean truncation of an over-long attempt
     for attempt in range(2):
         try:
@@ -213,7 +256,7 @@ async def voice_child_line(
                     f"Shorten it to at most {max_words} words; keep the answer and every required "
                     "number, and drop any unrelated remark."
                 )
-                candidate = truncate_at_sentence_boundary(parsed.line_hi, max_words)
+                candidate = shorten_keeping_required(parsed.line_hi, max_words, response)
                 if guard_child_line(candidate, response)[0]:
                     shortened = candidate
             if attempt == 0:

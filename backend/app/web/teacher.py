@@ -238,6 +238,11 @@ async def teacher_chat_page(
             "demo_chips": demo_chips,
             "initial_messages": initial_messages,
             "ui_strings": chat_ui_strings(),
+            "rec_config": {
+                "maxSec": settings.REC_MAX_SECONDS,
+                "minSec": settings.REC_MIN_SECONDS,
+                "holdMs": settings.REC_HOLD_MS,
+            },
         },
     )
     if token_to_set:

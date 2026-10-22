@@ -70,6 +70,9 @@ class Settings(BaseSettings):
     # Devanagari costs ~4 tokens/word plus tool-call overhead: a 25-word child line needs
     # ~110 output tokens, so 128 truncated to {} (spec/05 role budgets live here).
     LLM_MAX_TOKENS_CEILING: int = 1024
+    # With tool_choice=auto, claude-sonnet-5-5 writes a short text preamble before the tool call
+    # (measured 650-770 output tokens for the coach vs 1024 max_tokens); give it headroom.
+    LLM_AUTO_TOOL_CHOICE_TOKEN_HEADROOM: int = 512
     ACT_TAGGER_MAX_TOKENS: int = 512
     CHILD_VOICE_MAX_TOKENS: int = 384
     GUARD_EVENT_RING_SIZE: int = 2000
@@ -107,6 +110,10 @@ class Settings(BaseSettings):
     # Retries per speech provider call; a primary with a fallback configured gets 0
     SPEECH_MAX_RETRIES: int = 1
     STT_MIN_CONFIDENCE: float = 0.50
+    # Web voice recorder (static/recorder.js reads these through #rec-config)
+    REC_MAX_SECONDS: int = 60  # auto-stop and send
+    REC_MIN_SECONDS: float = 1.0  # shorter recordings are discarded with a hint
+    REC_HOLD_MS: int = 400  # press longer than this = hold-to-talk, shorter = tap-to-toggle
     MAX_INBOUND_AUDIO_S: int = 90
     EXPLAIN_BACK_MAX_SECONDS: int = 60
     REHEARSE_TURN_MAX_S: int = 30
@@ -139,6 +146,12 @@ class Settings(BaseSettings):
     # Calibrated on eval/retrieval_questions.yaml: every answerable question scored >= 0.119, 6 of 10
     # off-topic ones scored < 0.10 (the rest are caught by GUIDE_CONFIDENCE_THRESHOLD in the answerer).
     RETRIEVAL_MIN_SCORE: float = 0.10
+    # A chunk is only usable if it shares at least this many distinct (non-stopword) query terms.
+    # One shared word ("school", "online", "phone") is how off-topic questions used to leak through
+    # the score gate; on-topic questions in eval/retrieval_questions.yaml share >= 2 terms with a
+    # relevant chunk (every one that retrieval gets right; recall@5 unchanged at 0.90). A query that
+    # has a single content term only needs that one.
+    RETRIEVAL_MIN_MATCHED_TERMS: int = 2
     QUOTE_FUZZY_MIN: float = 90.0
     # Source-PDF chunking (offline, make content-ingest)
     CHUNK_MIN_WORDS: int = 150
@@ -163,9 +176,17 @@ class Settings(BaseSettings):
     FIDELITY_CONFIDENCE_THRESHOLD: float = 0.60
     GUIDE_CONFIDENCE_THRESHOLD: float = 0.60
     MAX_CHILD_LINE_WORDS: int = 25
+    # Lines that voice 2-3 reasoning steps (explain_bug, relapse, scaffolded_correct,
+    # correct_explained) must carry opener + steps (~20 words, measured on regroup items) +
+    # the answer; 25 forced truncation that dropped the answer. 30 words is ~10-12 s of child TTS
+    # at ~2.5 words/s, still short enough for a rehearsal turn.
+    MAX_CHILD_LINE_WORDS_EXPLAIN: int = 30
     MAX_DISTRACTIONS_PER_SCENE: int = 1
     MAX_COACH_FEEDBACK_WORDS: int = 60
     MAX_GUIDE_ANSWER_WORDS: int = 80
+    # A guide answer must share at least this many distinct content terms with the excerpts it
+    # cites (excerpt text, heading and Hindi gloss/keywords); otherwise it is not grounded in them.
+    GUIDE_MIN_ANSWER_OVERLAP_TERMS: int = 2
     MOVE_APPROVALS_REQUIRED: int = 2
     KAPPA_CALIBRATION_TARGET: float = 0.70
 

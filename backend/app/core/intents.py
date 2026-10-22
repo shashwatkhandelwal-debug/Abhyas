@@ -195,6 +195,42 @@ _GREETING_PATTERN = re.compile(
 )
 
 
+# Rehearsal routing: a how-to question the teacher asks the *app* (not a line spoken to a child).
+# It needs all three: question form, teacher speaking about herself/himself in the first person
+# ("कैसे कराऊँ", "how do I"), and no address to a child (second person, or a leading child name).
+_QUESTION_FORM = re.compile(
+    rf"\?|{_WB}(कैसे|क्यों|कैसा|कौन\s*सा|kaise|kyun|kyon|how|why|which){_WBE}|"
+    rf"{_WB}(तरीका|उपाय|सुझाव)\s*(क्या|बताइए|बताएं|बताएँ|बताओ){_WBE}",
+    re.IGNORECASE,
+)
+_FIRST_PERSON_VERB = re.compile(
+    r"[ऀ-ॿ]+(?:ऊँ|ऊं)(?![ऀ-ॿ])|"
+    rf"{_WB}(?:मैं|मेरे|मेरी|मेरा|main|mere|meri|mera){_WBE}|"
+    rf"{_WB}(?:kar(?:a|aa|u|oo|v?a)un|karun|karoon|sikha(?:u|oo)n|samjha(?:u|oo)n|"
+    rf"padha(?:u|oo)n|bata(?:u|oo)n|sambhal(?:u|oo)n|karwa(?:u|oo)n){_WBE}|"
+    rf"{_WB}how\s+(?:do|can|should|could|would)\s+i{_WBE}|"
+    rf"{_WB}how\s+to{_WBE}",
+    re.IGNORECASE,
+)
+_ADDRESSES_CHILD = re.compile(
+    rf"{_WB}(?:तुम|तुमने|तुम्हें|तुम्हे|तुम्हारा|तुम्हारी|तुम्हारे|tum|tumne|tumhe|you|your){_WBE}|"
+    rf"^\s*(?:रवि|प्रिया|अमन|ravi|priya|aman)\s*[,!:\-]",
+    re.IGNORECASE,
+)
+
+
+def is_pedagogy_question_for_app(text: str) -> bool:
+    """True if text is a first-person how-to question addressed to the app, not to a child."""
+    cleaned = normalize_intent_text(text)
+    if not cleaned or len(cleaned) < 8:
+        return False
+    return bool(
+        _QUESTION_FORM.search(cleaned)
+        and _FIRST_PERSON_VERB.search(cleaned)
+        and not _ADDRESSES_CHILD.search(cleaned)
+    )
+
+
 def normalize_intent_text(text: str) -> str:
     """Normalizes text for intent matching (spec/08 §8.3).
 
@@ -311,6 +347,10 @@ def match_intent(
     if _GREETING_PATTERN.match(cleaned) or _GREETING_PATTERN.match(cleaned_punct):
         return Intent.GREETING
 
+    # 6. Rehearsal only: a how-to question to the app goes to the guide, not to the children
+    if in_rehearsal and is_pedagogy_question_for_app(cleaned):
+        return Intent.ASK
+
     return None
 
 
@@ -330,5 +370,6 @@ __all__ = [
     "match_intent",
     "normalize_intent_text",
     "extract_ask_query",
+    "is_pedagogy_question_for_app",
     "BUTTON_INTENT_MAP",
 ]
