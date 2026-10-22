@@ -156,7 +156,7 @@ async def test_child_voice_retry_feeds_back_word_limit(aman: PersonaCard) -> Non
 async def test_child_voice_truncates_instead_of_template_when_still_too_long(
     aman: PersonaCard,
 ) -> None:
-    too_long = "दीदी, सोलह है। अरे वो खिड़की में चिड़िया बैठी है। " + "और " * 25
+    too_long = "दीदी, सोलह है। मुझे तो ऐसा ही लगा था। " + "और " * 25
 
     async def fake(**kw: Any) -> dict[str, Any]:
         return {"line_hi": too_long}

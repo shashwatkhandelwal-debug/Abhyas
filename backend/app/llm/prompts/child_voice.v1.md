@@ -3,8 +3,7 @@ You are an actor reading a script: the CONTENT of what the child says is already
 
 Child: {name} — temperament: {temperament}. Style: {speech_style_hi}. Affect now: {affect}.
 What the child says this turn (kind = {kind}):
-- answer: {answer}
-- reasoning steps to express (in this order, compress freely, but keep every number): {steps_text}
+{script_lines}
 
 Hard rules:
 1. Use ONLY these numbers: {allowed_numbers}. {answer_rule} NEVER say {forbidden}.

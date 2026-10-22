@@ -313,7 +313,15 @@ async def review_item_detail(
                 cards = [c for c in load_all_move_cards() if c.id == r_score.move_id]
                 if cards:
                     move_title = cards[0].title_hi
-                    for crit in cards[0].rubric.criteria:
+                    rubric = cards[0].rubric
+                    one_on_one_rubric = cards[0].rubric_one_on_one
+                    if one_on_one_rubric is not None and set(r_score.scores) == {
+                        c.id for c in one_on_one_rubric.criteria
+                    }:
+                        rubric = (
+                            one_on_one_rubric  # a one-on-one scene was scored on its own rubric
+                        )
+                    for crit in rubric.criteria:
                         lvl_desc = (
                             ", ".join(f"{k}: {v}" for k, v in crit.levels.items())
                             if crit.levels

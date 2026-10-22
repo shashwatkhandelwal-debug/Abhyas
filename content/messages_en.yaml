@@ -48,6 +48,7 @@ btn_trate_3: {text: "3 (so-so)"}
 btn_trate_5: {text: "5 (very useful)"}
 rate_training_thanks: {text: "Thank you for your feedback."}
 rate_training_skip_words: {text: "skip, no, none, nothing, n/a, na"}
+rate_training_language_words: {text: "language, change language, english, hindi, lang"}
 retry_limit: {text: "You have completed this week's 3 practices. Now it's time to try it in class!"}
 try_in_class: {text: "Now try this move in your class. Ask a fellow teacher to watch for 5 minutes and fill in this list:"}
 try_in_class_reflect: {text: "Or answer these 2 questions yourself:"}
@@ -535,3 +536,71 @@ ui_ratings_count: {text: "Number of ratings"}
 ui_ratings_latest: {text: "Latest comments"}
 ui_ratings_none: {text: "No ratings yet."}
 ui_ratings_distribution: {text: "Distribution of ratings, 1 to 5"}
+
+# ── One-on-one practice ───────────────────────────────────────────────────
+rehearse_mode_prompt: {text: "Time to practise. Who will you practise with? Talking to one child alone works best."}
+btn_rehearse_one: {text: "1-1 with a child"}
+btn_rehearse_group: {text: "With three children"}
+rehearse_mode_unclear: {text: "Please choose one of the two options below: 1-1 with a child, or with three children."}
+rehearse_child_prompt: {text: "Which child will you talk to? All three children gave a wrong answer, and each child's confusion is different."}
+btn_child_ravi: {text: "Ravi"}
+btn_child_priya: {text: "Priya"}
+btn_child_aman: {text: "Aman"}
+rehearse_child_unclear: {text: "Please pick one of Ravi, Priya or Aman."}
+diagnose_empty: {text: "Please tell me what you think {child}'s confusion is. You can speak or type it, or choose Skip."}
+diag_result_correct: {text: "You spotted it. {reveal}"}
+diag_result_partly: {text: "You are on the right track, but did not catch all of it. In fact: {reveal}"}
+diag_result_wrong: {text: "That was not the confusion. In fact: {reveal}"}
+diag_result_skipped: {text: "No problem. In fact: {reveal}"}
+rehearse_one_start: {text: "Now talk to {child}. First ask for their method, then explain with something concrete, and finally give a new problem to check. Say 'stop' to finish."}
+scene_all_correct_one: {text: "Wow! {child} used the right method on the new problem too."}
+coach_diag_change_wrong: {text: "Next time, ask the child and work out what the confusion was: {label}."}
+coach_diag_change_partly: {text: "Next time, pin the confusion down more exactly: {label}."}
+ui_scene_one_title: {text: "1-1 with {child}"}
+ui_scene_turn: {text: "Turn {turn}/{max}"}
+ui_chat_scene_end: {text: "End practice"}
+ui_chat_scene_end_confirm: {text: "End the practice now?"}
+ui_scene_cue_diagnose: {text: "First, spot the confusion"}
+ui_scene_cue_0: {text: "Confused"}
+ui_scene_cue_1: {text: "Explaining their method"}
+ui_scene_cue_2: {text: "Half understood"}
+ui_scene_cue_3: {text: "Understood: give a new problem"}
+coach_quote_suffix: {text: "Your words: «{quote}»"}
+ui_chat_scene_stop_word: {text: "stop"}
+coach_source_suggestion: {text: "A suggestion from the sources: {suggestion}"}
+
+# ── Modules ───────────────────────────────────────────────────────────────
+module_check_prompt: {text: "Last check: in \"{move_title}\", if a child makes a mistake, what will you do first, and why? Say it in your own words."}
+module_check_reply_pass: {text: "Very good, you named the main steps of this method."}
+module_check_reply_more: {text: "Good try. One more thing to remember: {point}"}
+module_check_done_pass: {text: "The module check is done. Shall we move on?"}
+module_check_done_more: {text: "Your check is saved. You can practise again if you like, or move on."}
+ui_chat_menu_modules: {text: "Modules"}
+ui_modules_page_title: {text: "Abhyas — Modules"}
+ui_modules_title: {text: "Modules"}
+ui_modules_intro: {text: "Each module has four steps: learn, spot a child's confusion (1-1), practise, and a short check at the end."}
+ui_modules_step_learn: {text: "Learn"}
+ui_modules_step_diagnose: {text: "Spot the confusion"}
+ui_modules_step_practise: {text: "Practise"}
+ui_modules_step_check: {text: "Check"}
+ui_modules_status_new: {text: "Not started"}
+ui_modules_status_progress: {text: "In progress"}
+ui_modules_status_done: {text: "Complete"}
+ui_modules_check_passed: {text: "check covered the main points"}
+ui_modules_check_more: {text: "check left some points open"}
+ui_modules_btn_start: {text: "Start"}
+ui_modules_btn_continue: {text: "Start again"}
+ui_modules_btn_again: {text: "Do it again"}
+ui_modprog_title: {text: "Module progress"}
+ui_modprog_desc: {text: "Counts only teachers who agreed to share scores. No names are shown."}
+ui_modprog_none: {text: "No module progress recorded yet."}
+ui_modprog_col_module: {text: "Module"}
+ui_modprog_col_source: {text: "Source"}
+ui_modprog_col_teachers: {text: "Teachers"}
+ui_modprog_col_passed: {text: "Passed the check"}
+ui_modprog_step_learn: {text: "Learn"}
+ui_modprog_step_diagnose: {text: "Spot the confusion"}
+ui_modprog_step_practise: {text: "Practise"}
+ui_modprog_step_check: {text: "Check"}
+ui_modprog_label_pilot: {text: "Pilot"}
+ui_modprog_label_demo: {text: "Demo (synthetic)"}

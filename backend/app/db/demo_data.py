@@ -47,6 +47,7 @@ from backend.app.db.models import (
     Batch,
     Cluster,
     ExplainScore,
+    ModuleProgress,
     RehearsalScore,
     Scene,
     Teacher,
@@ -594,6 +595,31 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
                         )
                     )
 
+    await session.flush()
+
+    # 4b. Module progress for the synthetic cohort (labelled demo on the dashboards). The three
+    # shared demo logins are skipped: they are seeded by db/seed.py.
+    for idx, teacher in enumerate(teachers):
+        if teacher.id.int <= 3:
+            continue
+        if await session.get(ModuleProgress, (teacher.id, target_move_id)) is not None:
+            continue
+        stage = idx % 5  # 0 learn only ... 3-4 everything, check passed on every other one
+        stamp = now - timedelta(days=6 - stage)
+        session.add(
+            ModuleProgress(
+                teacher_id=teacher.id,
+                module_id=target_move_id,
+                learn_done_at=stamp,
+                diagnose_done_at=stamp if stage >= 1 else None,
+                diagnose_verdict=("correct", "partly", "wrong")[idx % 3] if stage >= 1 else None,
+                practise_done_at=stamp if stage >= 2 else None,
+                check_done_at=stamp if stage >= 3 else None,
+                check_passed=(idx % 2 == 0) if stage >= 3 else None,
+                check_covered=["kp1", "kp2"] if stage >= 3 and idx % 2 == 0 else None,
+                updated_at=stamp,
+            )
+        )
     await session.flush()
 
     # 5. Compute AggModuleBatch using compute_aggregates_for_batch (no hard-coded or random numbers)

@@ -2,7 +2,7 @@
 
 This directory holds the 5 audio files corresponding to the evaluator sample inputs defined in `eval/samples/samples.yaml`:
 - `s1_ask_ravi.wav` — Teacher asking Ravi to explain his subtraction calculation
-- `s2_bundles_all.wav` — Teacher modeling concrete bundle representation to the whole class
+- `s2_diagnose_one_on_one.wav` — Teacher saying what they think the child's mistake is (1-1 diagnosis step)
 - `s3_tell_answer_hinglish.wav` — Teacher telling the direct answer in Hinglish to test relapse / parity
 - `s4_explain_back.wav` — Teacher explaining the core move pedagogy back in her own words
 - `s5_question_multigrade.wav` — Teacher asking a question about multi-grade classroom management

@@ -9,19 +9,22 @@ Exact click path for the video and the live demo. Passwords are in the submissio
 4. Use a clean browser profile or a private window, 1280×720, Hindi UI text visible.
 5. Real API keys set on the service; confirm the latency report header does not say "mock".
 
-## Path 1: teacher rehearsal (about 90 s)
-1. Log in as `teacher.demo2`. The chat opens in the rehearsal state.
-2. Tap sample chip 1 ("रवि, तुमने 43 में से 27 कैसे घटाया?"). Ravi explains his bug and says 24, never 16.
-3. Tap chip 2 (bundles). Children move to partial understanding.
-4. Tap chip 3 (Hinglish tell-answer). Aman parrots the answer.
-5. Finish the scene; the feedback card shows strength, change, exact words with a highlighted quote. Tap retry.
+## Path 1: teacher rehearsal, one-on-one (about 2 min)
+1. Log in as `teacher.demo2`. The chat opens **inside a 1-1 scene with Ravi** (header: "रवि से 1-1 बात", board 43 − 27, progress cue, turn 1/10, end button).
+2. Type or speak "देखो, ये 4 बंडल और 3 खुली तीलियाँ हैं, 3 में से 7 नहीं निकलतीं, तो एक बंडल खोलो।": the cue moves to "आधा समझ आया" (Ravi reaches partial understanding, driven by the rule engine).
+3. Tap the Hinglish tell-answer chip: Ravi repeats the answer without understanding and the cue does not move.
+4. Type a new problem ("अब 61 में से 28 करो"): Ravi relapses to his bug (no free pass because he was told).
+5. Finish with the **end practice** button; the feedback card shows strength (your own words quoted), one change, exact words, on the one-on-one rubric. Tap retry.
+6. Retry shows the choice **1-1 बच्चे से बात / तीन बच्चों के साथ**. Pick 1-1, choose Priya, tap the diagnosis chip ("उलझन पहचानें"): the diagnosis verdict (wrong for Priya, because her mistake is a different one) is shown, then her real mistake is revealed and the scene starts.
+7. Optional: type "रवि, 200 में से 120 घटाओ": the child says it is too big (out of range), no placeholder text.
+8. Optional: the same retry choice with **तीन बच्चों के साथ** starts the old three-children scene.
 
 ## Path 2: explain back and ask (about 40 s)
-1. As `teacher.demo1` or `teacher.demo2`, tap sample chip 4 in the explain-back step; show the fidelity reply naming the missing point.
-2. Tap chip 5; show the cited answer or the escalation.
+1. As `teacher.demo1` or `teacher.demo2`, tap the explain-back chip in the explain-back step; show the fidelity reply naming the missing point.
+2. Tap the multi-grade question chip; show the cited answer or the escalation.
 
 ## Path 3: ARP and trainer (about 40 s)
-1. Log in as `arp.demo`: weekly digest lists consenting teachers only; the escalated question from chip 5 appears.
+1. Log in as `arp.demo`: weekly digest lists consenting teachers only; the escalated question from the multi-grade question chip appears.
 2. Log in as `trainer.demo`: module × batch view; batch KNP-B3 is suppressed (n < 10).
 TODO(human): these pages depend on T32–T33; remove this path if they are not shipped by the freeze.
 

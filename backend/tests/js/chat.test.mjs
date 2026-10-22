@@ -1,7 +1,7 @@
 // State-machine and DOM-effect tests for static/chat.js (run: node --test backend/tests/js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadChat, catalogStrings } from './chat_harness.mjs';
+import { El, loadChat, catalogStrings } from './chat_harness.mjs';
 
 const strings = catalogStrings();
 const load = (opts = {}) => loadChat({ strings, ...opts });
@@ -470,4 +470,95 @@ test('translate: a rate-limit response gets its own message', async () => {
   c.renderMessage(outMsg());
   await c.toggleTranslation(c.container.querySelector('.translate-btn'));
   assert.equal(c.container.querySelector('.translate-error').textContent, strings.ui_chat_translate_limit);
+});
+
+// ── one-on-one header ───────────────────────────────────────────────────────
+function withSceneHeader(c) {
+  const mk = (id, parent) => {
+    const el = new El('div');
+    el.id = id;
+    (parent || c.sandbox.document.getElementById('chat-input').parentNode).appendChild(el);
+    c.byId[id] = el;
+    return el;
+  };
+  const els = {
+    header: mk('scene-header'),
+    strip: mk('rehearse-strip'),
+    child: mk('sh-child'),
+    board: mk('sh-board'),
+    turn: mk('sh-turn'),
+    steps: mk('sh-steps'),
+    cue: mk('sh-cue-text'),
+    end: mk('sh-end'),
+  };
+  els.header.hidden = true;
+  return els;
+}
+
+const SCENE = {
+  mode: 'one_on_one', child_id: 'ravi', child_name: 'रवि', board: '43 − 27',
+  turn_label: 'बारी 2/10', cue: 'अपना तरीका बता रहा है', cue_state: 1, turn: 2, max_turns: 10,
+};
+
+test('one-on-one header: child, board, turn and engine cue are shown; the group strip is hidden', () => {
+  const c = load();
+  const h = withSceneHeader(c);
+  c.renderSceneHeader(SCENE);
+  assert.equal(h.header.hidden, false);
+  assert.equal(h.strip.hidden, true);
+  assert.equal(h.child.textContent, 'रवि');
+  assert.ok(h.child.className.includes('ravi'));
+  assert.equal(h.board.textContent, '43 − 27');
+  assert.equal(h.turn.textContent, 'बारी 2/10');
+  assert.equal(h.cue.textContent, 'अपना तरीका बता रहा है');
+  assert.equal(h.steps.dataset.filled, '2'); // cue_state 1 -> two of four steps
+  c.renderSceneHeader({ ...SCENE, cue_state: -1, cue: 'पहले उलझन पहचानिए' });
+  assert.equal(h.steps.dataset.filled, '0'); // diagnosing: nothing filled yet
+  c.renderSceneHeader({ ...SCENE, cue_state: 3 });
+  assert.equal(h.steps.dataset.filled, '4');
+});
+
+test('one-on-one header disappears when there is no one-on-one scene', () => {
+  const c = load();
+  const h = withSceneHeader(c);
+  c.renderSceneHeader(SCENE);
+  c.renderSceneHeader(null);
+  assert.equal(h.header.hidden, true);
+  assert.equal(h.strip.hidden, false);
+});
+
+test('the poll drives the header; typing and message handling are untouched', async () => {
+  const c = load();
+  const h = withSceneHeader(c);
+  c.net.handler = async () => ({
+    status: 200, ok: true,
+    json: async () => ({ messages: [], pending: false, scene: SCENE, server_time: new Date(c.clock.now).toISOString() }),
+  });
+  await c.pollMessages();
+  assert.equal(h.header.hidden, false);
+  assert.equal(h.cue.textContent, SCENE.cue);
+  c.net.handler = async () => ({ status: 200, ok: true, json: async () => ({ messages: [], pending: false, scene: null }) });
+  await c.pollMessages();
+  assert.equal(h.header.hidden, true);
+});
+
+test('end-practice button asks for confirmation, then sends the stop word as a message', async () => {
+  const c = load();
+  const h = withSceneHeader(c);
+  c.setupSceneEnd();
+  const sent = [];
+  c.net.handler = async (url, opts) => {
+    sent.push(url);
+    return { status: 202, ok: true, json: async () => ({ message_id: 'x', status: 'accepted' }) };
+  };
+  c.sandbox.window.confirm = () => false;
+  h.end._listeners.click();
+  await c.flush();
+  assert.equal(c.fetchCalls.filter((f) => String(f.url).includes('/chat/text')).length, 0);
+  c.sandbox.window.confirm = () => true;
+  h.end._listeners.click();
+  await c.flush();
+  const textPosts = c.fetchCalls.filter((f) => String(f.url).includes('/chat/text'));
+  assert.equal(textPosts.length, 1);
+  assert.equal(JSON.parse(textPosts[0].opts.body).text, c.t('ui_chat_scene_stop_word'));
 });

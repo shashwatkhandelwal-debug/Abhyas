@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -505,6 +506,14 @@ class SessionContext(BaseModel):
     clarifying_already_asked: bool = False
     # "Rate the training" after REFLECT: "" (not asking), "rating" (waiting for 1-5), "comment"
     rating_stage: str = ""
+    # One-on-one rehearsal setup (see sessions/rehearse_setup.py)
+    rehearse_stage: str = ""  # "", choose_mode, choose_child, diagnose, scene
+    rehearse_mode: str = ""  # "", one_on_one, group
+    rehearse_child: str = ""  # persona id of the 1-1 child
+    diagnosis: dict[str, Any] = Field(default_factory=dict)  # DiagnosisResult + "skipped"
+    module_mode: bool = False  # the week was started from the module picker
+    module_check_stage: str = ""  # "", asking, done (the closing check question)
+    rating_unclear: int = 0  # unclear replies to the 1-5 prompt so far
     rating_level: int = 0  # evidence level reached, kept for the week_done message afterwards
 
 

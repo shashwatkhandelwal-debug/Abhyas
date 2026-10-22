@@ -25,14 +25,18 @@ from backend.app.core.types import Button, Citation, InboundMessage, OutboundMes
 from backend.app.db.models import Message
 from backend.app.llm.client import LLMUnavailable
 from backend.app.llm.roles.coach import coach_feedback
+from backend.app.llm.roles.coach_suggestion import suggest_from_sources
 from backend.app.llm.roles.fidelity_checker import check_fidelity
 from backend.app.llm.roles.guide_answerer import (
     answer_guide_question,
     citations_for_chunks,
     compose_guide_reply,
+    format_guide_citation,
 )
+from backend.app.llm.roles.module_check import check_module
 from backend.app.llm.roles.question_classifier import classify_question
 from backend.app.llm.schemas import RetrievedChunk
+from backend.app.rehearsal.diagnosis import DiagnosisResult
 from backend.app.rehearsal.scene_runner import ChildLineRecord, SceneRunner, load_move_card
 from backend.app.rehearsal.scene_store import scene_store
 from backend.app.retrieval.search import GuideRetriever, get_guide_retriever
@@ -43,6 +47,7 @@ from backend.app.rule_engine.domain import (
     SceneTurn,
     TeachingAct,
 )
+from backend.app.sessions import modules, rehearse_setup
 from backend.app.sessions.path import compute_move_path, load_induction_order
 from backend.app.sessions.repository import SessionRepository
 from backend.app.sessions.state_machine import (
@@ -53,7 +58,11 @@ from backend.app.sessions.state_machine import (
     SessionStateEnum,
     WeeklyStateMachine,
 )
-from backend.app.sessions.training_rating import is_skip_comment, parse_training_rating
+from backend.app.sessions.training_rating import (
+    is_rating_escape,
+    is_skip_comment,
+    parse_training_rating,
+)
 
 logger = logging.getLogger("abhyas.sessions.service")
 IST = ZoneInfo("Asia/Kolkata")
@@ -153,6 +162,13 @@ class SessionService:
             clarifying_already_asked=bool(ctx_data.get("clarifying_already_asked", False)),
             rating_stage=str(ctx_data.get("rating_stage", "")),
             rating_level=int(ctx_data.get("rating_level", 0)),
+            rating_unclear=int(ctx_data.get("rating_unclear", 0)),
+            module_mode=bool(ctx_data.get("module_mode", False)),
+            module_check_stage=str(ctx_data.get("module_check_stage", "")),
+            rehearse_stage=str(ctx_data.get("rehearse_stage", "")),
+            rehearse_mode=str(ctx_data.get("rehearse_mode", "")),
+            rehearse_child=str(ctx_data.get("rehearse_child", "")),
+            diagnosis=dict(ctx_data.get("diagnosis") or {}),
             name=teacher.name,
             address_form=teacher.address_form or "f",
             cluster_id=teacher.cluster_id,
@@ -211,6 +227,13 @@ class SessionService:
             "clarifying_already_asked": ctx.clarifying_already_asked,
             "rating_stage": ctx.rating_stage,
             "rating_level": ctx.rating_level,
+            "rating_unclear": ctx.rating_unclear,
+            "module_mode": ctx.module_mode,
+            "module_check_stage": ctx.module_check_stage,
+            "rehearse_stage": ctx.rehearse_stage,
+            "rehearse_mode": ctx.rehearse_mode,
+            "rehearse_child": ctx.rehearse_child,
+            "diagnosis": ctx.diagnosis,
         }
         await self.repo.save_session_state(db_state)
         if (
@@ -301,6 +324,7 @@ class SessionService:
     ) -> list[OutboundMessage]:
         """After REFLECT: ask for the 1-5 usefulness rating before the week_done message."""
         ctx.rating_stage = "rating"
+        ctx.rating_unclear = 0
         ctx.rating_level = level
         await self._sync_context_to_db(ctx, teacher_id)
         return [
@@ -319,6 +343,67 @@ class SessionService:
             for n in (1, 3, 5)
         ]
 
+    async def _source_suggestion(
+        self, move: MoveCard, change_hi: str, address_form: str
+    ) -> OutboundMessage | None:
+        """One tip from the FLN training package after a scene, with a tappable citation.
+
+        No retrieval support (or a failed guard) means no suggestion: nothing is invented.
+        """
+        try:
+            hits = await self.retriever.retrieve(
+                f"{move.title_hi} {change_hi}",
+                top_k=settings.COACH_SUGGESTION_POOL,
+                min_score=settings.RETRIEVAL_MIN_SCORE,
+                official_only=True,
+                min_matched_terms=settings.RETRIEVAL_MIN_MATCHED_TERMS,
+            )
+            chunks = [
+                RetrievedChunk(
+                    chunk_id=c.chunk_id,
+                    source_short_hi=getattr(c, "source_short_hi", None) or c.source,
+                    section=c.section,
+                    page=c.page,
+                    text=c.text,
+                    gloss_hi=c.gloss_hi,
+                    keywords_hi=c.keywords_hi,
+                    score=c.similarity_score,
+                )
+                for c in hits
+                if c.source == settings.COACH_SUGGESTION_SOURCE_ID
+            ][: settings.COACH_SUGGESTION_CANDIDATES]
+            result = await suggest_from_sources(move.title_hi, change_hi, chunks)
+        except (LLMUnavailable, TimeoutError, ValueError, OSError) as exc:
+            logger.warning("coach source suggestion skipped: %s", exc)
+            return None
+        if not result.suggestion_hi or result.chunk is None:
+            return None
+        cite = format_guide_citation(
+            result.chunk.source_short_hi, result.chunk.page, address_form=address_form
+        )
+        return OutboundMessage(
+            kind="text",
+            text_hi=(
+                f"{get_message('coach_source_suggestion', address_form, suggestion=result.suggestion_hi)}"
+                f"\n\n{cite}"
+            ),
+            citations=citations_for_chunks([result.chunk], address_form),
+        )
+
+    async def _begin_rehearse_setup(
+        self, ctx: SessionContext, teacher_id: UUID, move: MoveCard
+    ) -> list[OutboundMessage]:
+        """Entering REHEARSE_INTRO: offer 1-1 or three children (group-only moves: old intro)."""
+        messages = rehearse_setup.begin_setup(ctx, move)
+        await self._sync_context_to_db(ctx, teacher_id)
+        return messages
+
+    async def _clear_rating_stage(self, ctx: SessionContext, teacher_id: UUID) -> None:
+        ctx.rating_stage = ""
+        ctx.rating_level = 0
+        ctx.rating_unclear = 0
+        await self._sync_context_to_db(ctx, teacher_id)
+
     async def _handle_training_rating(
         self, ctx: SessionContext, teacher_id: UUID, text: str, btn_id: str | None
     ) -> list[OutboundMessage]:
@@ -326,7 +411,14 @@ class SessionService:
         address_form = ctx.address_form
         if ctx.rating_stage == "rating":
             value = parse_training_rating(text, btn_id)
+            if value is None and ctx.rating_unclear >= settings.TRAINING_RATING_MAX_UNCLEAR:
+                # Second unclear reply: never trap the teacher. Skip the rating, store nothing.
+                level = ctx.rating_level or ctx.evidence_level
+                await self._clear_rating_stage(ctx, teacher_id)
+                return await self._week_done_messages(ctx, teacher_id, level)
             if value is None:
+                ctx.rating_unclear += 1
+                await self._sync_context_to_db(ctx, teacher_id)
                 return [
                     OutboundMessage(
                         kind="buttons",
@@ -357,15 +449,85 @@ class SessionService:
                 teacher_id, comment[: settings.TRAINING_COMMENT_MAX_CHARS]
             )
         level = ctx.rating_level or ctx.evidence_level
-        ctx.rating_stage = ""
-        ctx.rating_level = 0
-        await self._sync_context_to_db(ctx, teacher_id)
+        await self._clear_rating_stage(ctx, teacher_id)
         thanks = OutboundMessage(
             kind="text", text_hi=get_message("rate_training_thanks", address_form)
         )
         return [thanks, *await self._week_done_messages(ctx, teacher_id, level)]
 
     async def handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
+        """Handles one teacher message, then records which module steps it completed."""
+        out = await self._handle_inbound(inbound)
+        try:
+            await self._track_module_progress(inbound.teacher_id)
+        except SQLAlchemyError:
+            logger.warning("module progress tracking failed", exc_info=True)
+        return out
+
+    async def _track_module_progress(self, teacher_id: UUID) -> None:
+        """Derives module step completion from where the weekly loop now is (never undone)."""
+        ctx = await self.get_or_create_context(teacher_id)
+        if ctx.onboarding_state != OnboardingStateEnum.READY:
+            return
+        module_id = ctx.current_move_id
+        if module_id not in modules.module_ids():
+            return
+        learned = ctx.current_state not in (
+            SessionStateEnum.LEARN,
+            SessionStateEnum.EXPLAIN_BACK,
+            SessionStateEnum.ASK,
+        )
+        if learned:
+            await self.repo.mark_module_step(teacher_id, module_id, modules.STEP_LEARN)
+        if ctx.rehearse_mode == rehearse_setup.MODE_ONE_ON_ONE and ctx.diagnosis:
+            verdict = "skipped" if ctx.diagnosis.get("skipped") else ctx.diagnosis.get("verdict")
+            await self.repo.mark_module_step(
+                teacher_id, module_id, modules.STEP_DIAGNOSE, verdict=verdict
+            )
+            if ctx.current_state in (
+                SessionStateEnum.FEEDBACK,
+                SessionStateEnum.TRY_IN_CLASS,
+                SessionStateEnum.REFLECT_PEER,
+                SessionStateEnum.REFLECT_SELF,
+                SessionStateEnum.DONE,
+            ):
+                await self.repo.mark_module_step(teacher_id, module_id, modules.STEP_PRACTISE)
+
+    async def start_module(self, teacher_id: UUID, module_id: str) -> list[OutboundMessage]:
+        """Picker to chat: restart the weekly loop on this module (learn step first)."""
+        if module_id not in modules.module_ids():
+            raise ValueError(f"unknown module: {module_id}")
+        ctx = await self.get_or_create_context(teacher_id)
+        address_form = ctx.address_form
+        ctx.current_move_id = module_id
+        ctx.current_state = SessionStateEnum.LEARN
+        ctx.rehearsal_turns_count = 0
+        ctx.retries_count = 0
+        ctx.rating_stage = ""
+        ctx.rehearse_stage = rehearse_setup.STAGE_NONE
+        ctx.rehearse_mode = ""
+        ctx.rehearse_child = ""
+        ctx.diagnosis = {}
+        ctx.module_mode = True
+        ctx.module_check_stage = modules.CHECK_IDLE
+        await self._sync_context_to_db(ctx, teacher_id)
+        move = load_move_card(module_id)
+        intro_text, intro_cites = await self._learn_intro(move, address_form)
+        return [
+            OutboundMessage(
+                kind="text",
+                text_hi=intro_text,
+                citations=intro_cites,
+                buttons=[
+                    Button(
+                        id="btn_understood", title_hi=get_message("btn_understood", address_form)
+                    ),
+                    Button(id="btn_replay", title_hi=get_message("btn_replay", address_form)),
+                ],
+            )
+        ]
+
+    async def _handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
         """Dispatches an inbound teacher message through conversation flow and persists side effects."""
         teacher_id = inbound.teacher_id
         ctx = await self.get_or_create_context(teacher_id)
@@ -448,7 +610,12 @@ class SessionService:
             and matched_intent != Intent.DELETE
             and text_content != "delete"
         ):
-            return await self._handle_training_rating(ctx, teacher_id, text_content, btn_id)
+            if is_rating_escape(matched_intent, text_content):
+                # A known command (menu, next, progress, language...) ends the rating prompt
+                # without storing anything and is processed normally below.
+                await self._clear_rating_stage(ctx, teacher_id)
+            else:
+                return await self._handle_training_rating(ctx, teacher_id, text_content, btn_id)
 
         # 2. Delete confirmation flow (§8.3 step 7)
         if ctx.awaiting_delete_confirm:
@@ -1068,24 +1235,12 @@ class SessionService:
                 return [
                     OutboundMessage(kind="text", text_hi=get_message("model_header", address_form)),
                     OutboundMessage(kind="text", text_hi=model_text),
-                    OutboundMessage(
-                        kind="text",
-                        text_hi=get_message(
-                            "rehearse_intro", address_form, scene_intro=move.scenario.intro_hi
-                        ),
-                    ),
+                    *await self._begin_rehearse_setup(ctx, teacher_id, move),
                 ]
             if matched_intent == Intent.SKIP or btn_id == "btn_skip":
                 wsm.transition("btn_skip")
                 await self._sync_context_to_db(ctx, teacher_id)
-                return [
-                    OutboundMessage(
-                        kind="text",
-                        text_hi=get_message(
-                            "rehearse_intro", address_form, scene_intro=move.scenario.intro_hi
-                        ),
-                    ),
-                ]
+                return await self._begin_rehearse_setup(ctx, teacher_id, move)
             # Free text does NOT silently advance
             return [
                 OutboundMessage(
@@ -1095,6 +1250,19 @@ class SessionService:
             ]
 
         elif curr == SessionStateEnum.REHEARSE_INTRO:
+            if ctx.rehearse_stage in rehearse_setup.SETUP_STAGES:
+                setup_messages = await rehearse_setup.handle_setup(
+                    ctx=ctx,
+                    teacher_id=teacher_id,
+                    move=load_move_card(ctx.current_move_id),
+                    runner=self.scene_runner,
+                    store=scene_store,
+                    matched_intent=matched_intent,
+                    btn_id=btn_id,
+                    text=text_content,
+                )
+                await self._sync_context_to_db(ctx, teacher_id)
+                return setup_messages
             # First turn begins rehearsal
             wsm.transition("start_turn")
             scene = await scene_store.get_active_for_teacher(teacher_id)
@@ -1229,8 +1397,17 @@ class SessionService:
                     )
                     return outbounds
 
-                # Generate coach feedback
+                # Generate coach feedback (one-on-one: its own rubric, plus the diagnosis result)
                 move = load_move_card(ctx.current_move_id)
+                one_on_one = scene.scene_state.one_on_one
+                diagnosis_result: DiagnosisResult | None = None
+                diagnosis_skipped = False
+                if one_on_one and ctx.diagnosis:
+                    diagnosis_skipped = bool(ctx.diagnosis.get("skipped"))
+                    diagnosis_result = DiagnosisResult.model_validate(
+                        {k: v for k, v in ctx.diagnosis.items() if k != "skipped"}
+                    )
+                coach_move = move.one_on_one_view() if one_on_one else move
                 # 1. turns: all scene turns in chronological order (teacher + child responses)
                 all_scene_turns: list[SceneTurn] = []
                 # 2. acts: actual tagged acts for each teacher turn with NO fallback to [REPEAT_QUESTION]!
@@ -1271,20 +1448,23 @@ class SessionService:
 
                 try:
                     coach_res = await coach_feedback(
-                        move=move,
+                        move=coach_move,
                         turns=all_scene_turns,
                         acts=tagged_acts,
                         trajectories=trajectories,
                         target_child_id=target_child_id,
                         current_item_answer=current_item_answer,
                         attempt=ctx.retries_count + 1,
+                        diagnosis=diagnosis_result,
+                        diagnosis_skipped=diagnosis_skipped,
+                        one_on_one=one_on_one,
                     )
                 except (LLMUnavailable, TimeoutError, ValueError, TypeError) as exc:
                     logger.warning("Coach feedback failed: %s; using deterministic fallback", exc)
                     from backend.app.llm.roles.coach import CoachResult, fallback_coach_feedback
 
                     coach_fb = fallback_coach_feedback(
-                        move=move,
+                        move=coach_move,
                         turns=all_scene_turns,
                         acts=tagged_acts,
                         trajectories=trajectories,
@@ -1292,6 +1472,9 @@ class SessionService:
                         current_item_answer=current_item_answer,
                         attempt=ctx.retries_count + 1,
                         reason=f"coach_error:{type(exc).__name__}",
+                        diagnosis=diagnosis_result,
+                        diagnosis_skipped=diagnosis_skipped,
+                        one_on_one=one_on_one,
                     )
                     coach_res = CoachResult(
                         feedback=coach_fb,
@@ -1306,7 +1489,18 @@ class SessionService:
                     move_id=ctx.current_move_id,
                     attempt=ctx.retries_count + 1,
                     scores=coach_res.feedback.scores,
-                    evidence={},
+                    evidence=(
+                        {
+                            "mode": "one_on_one",
+                            "diagnosis_verdict": (
+                                "skipped" if diagnosis_skipped else diagnosis_result.verdict.value
+                            )
+                            if diagnosis_result
+                            else None,
+                        }
+                        if one_on_one
+                        else {}
+                    ),
                     strength_hi=coach_res.feedback.strength_hi,
                     change_hi=coach_res.feedback.change_hi,
                     exact_words_hi=coach_res.feedback.exact_words_hi,
@@ -1334,7 +1528,12 @@ class SessionService:
                     exact_words=coach_res.feedback.exact_words_hi,
                 )
 
+                ctx.rehearse_stage = rehearse_setup.STAGE_NONE
                 await self._sync_context_to_db(ctx, teacher_id)
+                suggestion = await self._source_suggestion(
+                    move, coach_res.feedback.change_hi, address_form
+                )
+                suggestion_msgs = [suggestion] if suggestion else []
                 coach_outbounds: list[OutboundMessage] = list(turn_res.outbound)
                 coach_outbounds.extend(
                     [
@@ -1342,6 +1541,7 @@ class SessionService:
                             kind="text", text_hi=get_message("feedback_header", address_form)
                         ),
                         OutboundMessage(kind="text", text_hi=f"{prefix}{feedback_body}"),
+                        *suggestion_msgs,
                         OutboundMessage(
                             kind="buttons",
                             text_hi=get_message("realism_prompt", address_form),
@@ -1365,18 +1565,47 @@ class SessionService:
 
         elif curr == SessionStateEnum.FEEDBACK:
             move = load_move_card(ctx.current_move_id)
+            if ctx.module_mode and ctx.module_check_stage == modules.CHECK_ASKING:
+                if matched_intent == Intent.NEXT or btn_id == "btn_continue":
+                    ctx.module_check_stage = modules.CHECK_DONE  # skipped: the module stays open
+                    await self._sync_context_to_db(ctx, teacher_id)
+                elif matched_intent != Intent.RETRY and btn_id != "btn_retry" and text_content:
+                    check = await check_module(
+                        move,
+                        text_content,
+                        get_message("module_check_prompt", address_form, move_title=move.title_hi),
+                        address_form,
+                    )
+                    await self.repo.mark_module_step(
+                        teacher_id,
+                        ctx.current_move_id,
+                        modules.STEP_CHECK,
+                        passed=check.passed,
+                        covered=check.covered,
+                    )
+                    ctx.module_check_stage = modules.CHECK_DONE
+                    await self._sync_context_to_db(ctx, teacher_id)
+                    done_key = (
+                        "module_check_done_pass" if check.passed else "module_check_done_more"
+                    )
+                    return [
+                        OutboundMessage(kind="text", text_hi=check.reply_hi, speaker="coach"),
+                        OutboundMessage(
+                            kind="buttons",
+                            text_hi=get_message(done_key, address_form),
+                            buttons=[
+                                Button(
+                                    id="btn_continue",
+                                    title_hi=get_message("btn_continue", address_form),
+                                )
+                            ],
+                        ),
+                    ]
             if matched_intent == Intent.RETRY or btn_id == "btn_retry":
                 res = wsm.transition("btn_retry")
                 await self._sync_context_to_db(ctx, teacher_id)
                 if res.new_state == "REHEARSE_INTRO":
-                    return [
-                        OutboundMessage(
-                            kind="text",
-                            text_hi=get_message(
-                                "rehearse_intro", address_form, scene_intro=move.scenario.intro_hi
-                            ),
-                        )
-                    ]
+                    return await self._begin_rehearse_setup(ctx, teacher_id, move)
                 if self.repo.session is not None:
                     try:
                         from backend.app.jobs.handlers import schedule_followup_try_in_class
@@ -1399,6 +1628,22 @@ class SessionService:
                             Button(id="btn_later", title_hi=get_message("btn_later", address_form)),
                         ],
                     ),
+                ]
+            if (
+                (matched_intent == Intent.NEXT or btn_id == "btn_continue")
+                and ctx.module_mode
+                and ctx.module_check_stage == modules.CHECK_IDLE
+            ):
+                # Module closing check: one question in the teacher's own words, then the loop goes on
+                ctx.module_check_stage = modules.CHECK_ASKING
+                await self._sync_context_to_db(ctx, teacher_id)
+                return [
+                    OutboundMessage(
+                        kind="text",
+                        text_hi=get_message(
+                            "module_check_prompt", address_form, move_title=move.title_hi
+                        ),
+                    )
                 ]
             if matched_intent == Intent.NEXT or btn_id == "btn_continue":
                 wsm.transition("btn_continue")

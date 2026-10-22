@@ -325,3 +325,63 @@ async def test_trainer_and_admin_views_show_the_aggregate_without_identity(
     finally:
         app.dependency_overrides.clear()
         await _cleanup(session_factory, ids)
+
+
+@pytest.mark.asyncio
+async def test_rating_unclear_twice_is_skipped_and_week_done_shown(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    teacher_id = uuid4()
+    async with session_factory() as session:
+        service = SessionService(repository=SessionRepository(session))
+        await _teacher_at_end_of_reflection(service, teacher_id, SessionStateEnum.REFLECT_SELF)
+        await service.handle_inbound(_inbound(teacher_id, "आज बहुत कुछ सीखा"))
+
+        out = await service.handle_inbound(_inbound(teacher_id, "पता नहीं"))
+        assert out[0].text_hi == get_message("rate_training_unclear", "f")
+        out = await service.handle_inbound(_inbound(teacher_id, "कुछ भी"))
+        assert get_message("rate_training_unclear", "f") not in _texts(out)
+        assert out and out[0].buttons  # the week_done message with its buttons
+        ctx = await service.get_or_create_context(teacher_id)
+        assert ctx.rating_stage == "" and ctx.current_state == SessionStateEnum.DONE
+        assert await _ratings(session, teacher_id) == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("command", ["help", "progress", "next", "language"])
+async def test_command_during_rating_clears_stage_and_is_processed(
+    session_factory: async_sessionmaker[AsyncSession], command: str
+) -> None:
+    teacher_id = uuid4()
+    async with session_factory() as session:
+        service = SessionService(repository=SessionRepository(session))
+        await _teacher_at_end_of_reflection(service, teacher_id, SessionStateEnum.REFLECT_SELF)
+        await service.handle_inbound(_inbound(teacher_id, "आज बहुत कुछ सीखा"))
+
+        out = await service.handle_inbound(_inbound(teacher_id, command))
+        ctx = await service.get_or_create_context(teacher_id)
+        assert ctx.rating_stage == ""
+        assert await _ratings(session, teacher_id) == []
+        assert get_message("rate_training_unclear", "f") not in _texts(out)
+        assert get_message("rate_training_comment_prompt", "f") not in _texts(out)
+
+
+@pytest.mark.asyncio
+async def test_command_during_comment_clears_stage_and_is_processed(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    teacher_id = uuid4()
+    async with session_factory() as session:
+        service = SessionService(repository=SessionRepository(session))
+        await _teacher_at_end_of_reflection(service, teacher_id, SessionStateEnum.REFLECT_SELF)
+        await service.handle_inbound(_inbound(teacher_id, "आज बहुत कुछ सीखा"))
+        await service.handle_inbound(_inbound(teacher_id, "4"))
+        ctx = await service.get_or_create_context(teacher_id)
+        assert ctx.rating_stage == "comment"
+
+        out = await service.handle_inbound(_inbound(teacher_id, "help"))
+        ctx = await service.get_or_create_context(teacher_id)
+        assert ctx.rating_stage == ""
+        assert get_message("rate_training_thanks", "f") not in _texts(out)
+        rows = await _ratings(session, teacher_id)
+        assert [(r.rating, r.comment) for r in rows] == [(4, None)]  # rating kept, no comment

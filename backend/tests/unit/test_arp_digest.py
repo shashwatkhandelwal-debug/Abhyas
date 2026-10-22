@@ -64,6 +64,16 @@ async def test_arp_route_requires_arp_or_admin_role(
         assert "Role required" in res.json()["detail"]
 
 
+@pytest.fixture(autouse=True)
+def _no_module_progress_query(monkeypatch: pytest.MonkeyPatch) -> None:
+    """These tests use a mocked session; the module-progress card has its own tests."""
+
+    async def empty(*args: object, **kwargs: object) -> list[object]:
+        return []
+
+    monkeypatch.setattr("backend.app.web.arp.module_progress_summary", empty)
+
+
 @pytest.mark.asyncio
 async def test_arp_dashboard_renders_clean_nfc_html(
     arp_app: FastAPI,

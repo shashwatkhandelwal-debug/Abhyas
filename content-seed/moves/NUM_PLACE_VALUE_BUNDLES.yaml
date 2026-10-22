@@ -114,3 +114,202 @@ reflection_questions:
   - "किस गलती (11, 407 या 74) वाले बच्चे आपकी कक्षा में ज़्यादा हैं?"
   - "10-10 गिनवाने पर बच्चों ने क्या किया?"
 approvals: []
+
+# ── One-on-one practice (the teacher talks to ONE child; diagnose first) ──────────────────────────
+one_on_one_intro_hi: "मेज़ पर {tens} बंडल (हर बंडल में 10 तीलियाँ) और {ones} खुली तीलियाँ हैं। सवाल: कुल कितनी तीलियाँ? {child} ने उत्तर बताया: {answer}। उत्तर गलत है। पहले सोचिए: आपको क्या लगता है, {child} ने कहाँ गलती की? अपने शब्दों में बताइए।"
+one_on_one_intro_en: "The table has {tens} bundles (10 sticks in each) and {ones} loose sticks. Question: how many sticks in all? {child} answered {answer}, which is wrong. First think: where do you think {child} went wrong? Say it in your own words."
+
+diagnosis_topic_keywords:
+  - बंडल
+  - तीली
+  - दहाई
+  - इकाई
+  - अंक
+  - संख्या
+  - गिन
+  - लिख
+  - घर
+  - digit
+  - number
+  - bundle
+  - tens
+  - ones
+  - ikai
+  - dahai
+
+misconceptions:
+  PV_REVERSAL:
+    label_hi: "इकाई का अंक पहले और दहाई का अंक बाद में लिखता है (47 की जगह 74)"
+    label_en: "Writes the ones digit first and the tens digit after it"
+    reveal_hi: "{child} खुली तीलियों की संख्या 7 पहले लिखता है और बंडलों की संख्या 4 बाद में। इसी से 74 आता है।"
+    reveal_en: "{child} writes the number of loose sticks, 7, first and the number of bundles, 4, after it. That is how 74 comes about."
+    keywords:
+      - उल्टा
+      - उलट
+      - अंक उल्टे
+      - अंक बदल
+      - अंक आगे-पीछे
+      - अंक आगे पीछे
+      - इकाई पहले
+      - इकाई का अंक पहले
+      - इकाई पहले लिख
+      - दहाई बाद में
+      - दहाई का अंक बाद
+      - पहले 7
+      - 7 पहले
+      - जगह बदल
+      - जगह उल्टी
+      - दहाई और इकाई की जगह
+      - reversed
+      - reverse
+      - swapped
+      - wrote the ones first
+      - ones first
+      - ulta
+      - ank ulte
+      - ikai pehle
+  PV_BUNDLE_AS_ONE:
+    label_hi: "हर बंडल को 1 गिनता है, 10 नहीं (4 बंडल + 7 = 11)"
+    label_en: "Counts each bundle as 1, not 10 (4 bundles + 7 = 11)"
+    reveal_hi: "{child} हर बंडल को 1 तीली गिनता है: 4 बंडल यानी 4 और 7 खुली तीलियाँ, कुल 11। इसी से 11 आता है।"
+    reveal_en: "{child} counts each bundle as 1 stick: 4 bundles make 4, plus 7 loose, 11 in all. That is how 11 comes about."
+    keywords:
+      - बंडल को 1
+      - बंडल को एक
+      - बंडल एक गिन
+      - बंडल को दस नहीं
+      - बंडल को 10 नहीं
+      - बंडल में 10 नहीं
+      - बंडल की 10 तीलियाँ नहीं
+      - हर बंडल 1
+      - हर बंडल एक
+      - बंडल को एक तीली
+      - बंडल 1 तीली
+      - बंडल एक तीली
+      - 4 और 7 जोड़
+      - 4 + 7
+      - 4+7
+      - 4 और 7 को जोड़
+      - 10 नहीं गिना
+      - 10 की जगह 1
+      - दस की जगह एक
+      - counts each bundle as 1
+      - counted the bundle as 1
+      - bundle as one
+      - bundle as 1
+      - bundle ko ek
+      - bundle ek gina
+      - 4 plus 7
+  PV_CONCAT_SPOKEN:
+    label_hi: "'चालीस-सात' सुनकर 40 लिखता है और उसके आगे 7 जोड़कर 407 लिख देता है"
+    label_en: "Hears 'forty-seven', writes 40 and then writes 7 next to it, giving 407"
+    reveal_hi: "{child} पहले 40 लिखता है और फिर उसके बाद 7 लिख देता है, इसलिए 407 बनता है।"
+    reveal_en: "{child} first writes 40 and then writes 7 after it, so it becomes 407."
+    keywords:
+      - 40 लिख
+      - चालीस लिख
+      - 40 और 7 लिख
+      - 40 के बाद 7
+      - 40 के आगे 7
+      - 40 के साथ 7
+      - 40 और 7 साथ
+      - 40 7 साथ
+      - चालीस सात
+      - बोलकर लिख
+      - जैसा बोला वैसा लिख
+      - जैसा बोलते हैं वैसा
+      - सुनकर लिख
+      - शून्य के साथ
+      - 0 के साथ
+      - 40 में 7 जोड़ा नहीं
+      - 7 को 0 की जगह
+      - 0 की जगह 7 नहीं
+      - writes 40
+      - wrote 40
+      - forty seven
+      - forty-seven
+      - as it is spoken
+      - as spoken
+      - 40 aur 7 likh
+      - chalis likh
+      - bola waisa likh
+
+rubric_one_on_one:
+  criteria:
+    - id: asks_to_explain
+      text_hi: "बच्चे से उसका तरीका पूछना"
+      levels:
+        0: "बच्चे का तरीका नहीं पूछा"
+        1: "पूछा, पर केवल 'गलत है' कहकर आगे बढ़ गए"
+        2: "पूछा कि उसने संख्या कैसे लिखी या गिनी और उसकी बात सुनी"
+      signal_acts: [ask_to_explain]
+      negative_acts: []
+    - id: does_not_tell_answer
+      text_hi: "सही उत्तर बताने के बजाय बच्चे को खुद सोचने देना"
+      levels:
+        0: "सही उत्तर खुद बता दिया"
+        1: "उत्तर नहीं बताया, पर बच्चे से तुलना या जाँच नहीं करवाई"
+        2: "उत्तर नहीं बताया; दो उत्तरों की तुलना या जाँच बच्चे से करवाई"
+      signal_acts: [contrast_answers]
+      negative_acts: [tell_answer]
+    - id: uses_concrete_representation
+      text_hi: "बंडल और तीलियों का उपयोग"
+      levels:
+        0: "केवल अंकों में समझाया"
+        1: "तीलियों का ज़िक्र किया, पर बच्चे से गिनवाया नहीं"
+        2: "हर बंडल की 10 तीलियाँ गिनवाईं (10, 20, 30...) और फिर खुली तीलियाँ"
+      signal_acts: [concrete_representation, model_step_aloud]
+      negative_acts: []
+    - id: probes_with_followup
+      text_hi: "बच्चे के जवाब पर अनुवर्ती सवाल पूछना"
+      levels:
+        0: "एक सवाल पूछकर आगे बढ़ गए"
+        1: "एक अनुवर्ती सवाल पूछा"
+        2: "बच्चे के जवाब पर 'क्यों?' या किसी आसान सवाल से उसकी समझ परखी"
+      signal_acts: [probe_simpler_case, contrast_answers]
+      negative_acts: []
+    - id: checks_on_new_problem
+      text_hi: "नए सवाल पर जाँचना"
+      levels:
+        0: "नया सवाल नहीं दिया"
+        1: "नया सवाल दिया, पर देखा नहीं कि बच्चा नया तरीका लगा रहा है या नहीं"
+        2: "नया सवाल देकर देखा कि बच्चा अब खुद सही तरीका लगाता है"
+      signal_acts: [give_new_problem]
+      negative_acts: []
+
+feedback_bank_one_on_one:
+  asks_to_explain:
+    strength_hi: "आपने बच्चे से पूछा कि उसने संख्या कैसे बनाई, इससे उसकी असली उलझन सामने आई।"
+    change_hi: "अगली बार 'गलत है' कहने से पहले बच्चे से पूछिए कि उसने संख्या कैसे लिखी।"
+    exact_words_hi: "तुमने ये संख्या कैसे लिखी? पहले कौन-सा अंक लिखा और क्यों?"
+    strength_en: "You asked how the child made the number, which brought the real confusion into the open."
+    change_en: "Next time, before saying 'wrong', ask the child how they wrote the number."
+    exact_words_en: "How did you write this number? Which digit did you write first, and why?"
+  does_not_tell_answer:
+    strength_hi: "आपने उत्तर खुद नहीं बताया, बच्चे को सोचने का मौका दिया।"
+    change_hi: "उत्तर बताने के बजाय दो उत्तर सामने रखकर पूछिए कि कौन-सा सही है।"
+    exact_words_hi: "तुमने पहले एक उत्तर कहा था, अब तीलियाँ गिनकर दूसरा आया। कौन-सा ठीक है, और क्यों?"
+    strength_en: "You did not tell the answer and gave the child room to think."
+    change_en: "Instead of telling the answer, put two answers side by side and ask which one is right."
+    exact_words_en: "You said one answer before and counting the sticks gives another. Which is right, and why?"
+  uses_concrete_representation:
+    strength_hi: "आपने बंडल और तीलियाँ गिनवाईं, यह बच्चे को दिखता है।"
+    change_hi: "अगली बार हर बंडल की 10 तीलियाँ बच्चे से गिनवाइए, फिर खुली तीलियाँ।"
+    exact_words_hi: "हर बंडल में 10 तीलियाँ हैं। मेरे साथ गिनो: 10, 20, 30, 40। अब खुली तीलियाँ गिनो।"
+    strength_en: "You had the child count bundles and sticks, which the child can see."
+    change_en: "Next time, have the child count the 10 sticks in each bundle, then the loose sticks."
+    exact_words_en: "Each bundle has 10 sticks. Count with me: 10, 20, 30, 40. Now count the loose sticks."
+  probes_with_followup:
+    strength_hi: "आपने बच्चे के जवाब के बाद एक और सवाल पूछा, इससे उसकी समझ परखी गई।"
+    change_hi: "बच्चे के जवाब के बाद 'क्यों?' पूछिए या कोई आसान सवाल दीजिए।"
+    exact_words_hi: "अच्छा, ये बताओ, तुमने यहाँ ऐसा क्यों किया? आसान सवाल 2 बंडल और 3 तीलियाँ पर भी देखें?"
+    strength_en: "You asked one more question after the child's answer, which tested the understanding."
+    change_en: "After the child answers, ask 'why?' or give an easier question."
+    exact_words_en: "Tell me, why did you do it this way here? Shall we try an easier one, 2 bundles and 3 sticks?"
+  checks_on_new_problem:
+    strength_hi: "आपने नया सवाल देकर देखा कि बच्चा अब खुद तरीका लगा पाता है या नहीं।"
+    change_hi: "समझ आने पर एक नया सवाल दीजिए और देखिए कि बच्चा खुद करता है।"
+    exact_words_hi: "अब ये नया सवाल तुम खुद करो: 3 बंडल और 5 तीलियाँ। कैसे करोगे, बताओ।"
+    strength_en: "You gave a new problem to see whether the child can now use the method alone."
+    change_en: "Once the child gets it, give a new problem and watch them do it alone."
+    exact_words_en: "Now try this new one yourself: 3 bundles and 5 sticks. Tell me how you will do it."

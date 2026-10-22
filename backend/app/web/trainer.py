@@ -26,6 +26,7 @@ from backend.app.config import settings
 from backend.app.core.messages import get_message
 from backend.app.db.models import AppUser
 from backend.app.db.session import get_db_session
+from backend.app.reports.module_progress import module_progress_summary
 from backend.app.reports.trainer_aggregates import (
     build_trainer_report,
     generate_trainer_csv,
@@ -74,6 +75,13 @@ async def get_trainer_dashboard(
     else:
         ratings = TrainingRatingSummary(count=0, average=None)
 
+    # Module progress: own district, consenting teachers, pilot and demo labelled, n<10 suppressed
+    modules = await module_progress_summary(
+        db,
+        district=current_user.district if current_user.role != "admin" else None,
+        suppress_below=settings.AGGREGATION_SUPPRESSION_N,
+    )
+
     csrf_token = generate_csrf_token()
     demo_banner_text = get_message("ui_demo_banner")
 
@@ -84,6 +92,7 @@ async def get_trainer_dashboard(
             "request": request,
             "report": report,
             "ratings": ratings,
+            "modules": modules,
             "suppression_message": SUPPRESSION_MESSAGE,
             "user": current_user,
             "csrf_token": csrf_token,

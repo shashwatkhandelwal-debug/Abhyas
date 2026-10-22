@@ -186,6 +186,7 @@ class Settings(BaseSettings):
 
     # ── Pedagogical & Rule Engine Thresholds ──────────────────────────────
     MAX_TURNS_PER_REHEARSAL: int = 8
+    MAX_TURNS_ONE_ON_ONE: int = 10  # one child, teacher-led diagnose / teach / check
     SHY_SILENT_TURNS: int = 1
     MAX_REHEARSAL_RETRIES_PER_WEEK: int = 3
     COACH_CONFIDENCE_THRESHOLD: float = 0.60
@@ -198,11 +199,52 @@ class Settings(BaseSettings):
     # at ~2.5 words/s, still short enough for a rehearsal turn.
     MAX_CHILD_LINE_WORDS_EXPLAIN: int = 30
     MAX_DISTRACTIONS_PER_SCENE: int = 1
+    # Everyday things a distracted child may mention ONLY in an engine-chosen off-topic / interject
+    # line; a child answering the lesson must not (the live 1-1 run showed the model adding
+    # "अरे मेरा बस्ता..." to explanations, which defeats MAX_DISTRACTIONS_PER_SCENE).
+    CHILD_DISTRACTION_WORDS: tuple[str, ...] = (
+        "बस्ता",
+        "पेंसिल",
+        "तितली",
+        "चिड़िया",
+        "पतंग",
+        "खिड़की",
+        "बंदर",
+        "चप्पल",
+        "मेहमान",
+        "मिड-डे",
+        "टिफिन",
+        "गेंद",
+        "कुत्ता",
+        "बिल्ली",
+        "आसमान",
+    )
+    # Problems the simulated children can handle (the rule engine answers CONFUSED outside it).
+    PROBLEM_MIN_OPERAND: int = 10
+    PROBLEM_MAX_OPERAND: int = 99
+    PROBLEM_MAX_SUM: int = 199
+    PROBLEM_MAX_TENS: int = 9
+    PROBLEM_MAX_ONES: int = 9
+    PROBLEM_MAX_WORD_AKSHARS: int = 4
     MAX_COACH_FEEDBACK_WORDS: int = 60
+    COACH_QUOTE_MAX_WORDS: int = 12  # words of the teacher's own line quoted back in feedback
     MAX_GUIDE_ANSWER_WORDS: int = 80
     # A guide answer must share at least this many distinct content terms with the excerpts it
     # cites (excerpt text, heading and Hindi gloss/keywords); otherwise it is not grounded in them.
     GUIDE_MIN_ANSWER_OVERLAP_TERMS: int = 2
+    COACH_SUGGESTION_MAX_WORDS: int = 35
+    # Modules offered in the picker (a module is a move card with a one-on-one rubric)
+    MODULE_IDS: tuple[str, ...] = (
+        "NUM_SUB_REGROUP_BUNDLES",
+        "NUM_ADD_CARRY_BUNDLES",
+        "NUM_PLACE_VALUE_BUNDLES",
+    )
+    MODULE_CHECK_REPLY_MAX_WORDS: int = 40
+    MODULE_CHECK_PASS_MUST_HAVE: int = 2  # must-have key points the closing answer must show
+    MODULE_CHECK_MIN_ANSWER_WORDS: int = 4
+    COACH_SUGGESTION_SOURCE_ID: str = "nishtha_fln"  # the FLN training package grounds the tip
+    COACH_SUGGESTION_CANDIDATES: int = 3
+    COACH_SUGGESTION_POOL: int = 60  # retrieved before keeping only the FLN package's chunks
     MOVE_APPROVALS_REQUIRED: int = 2
     KAPPA_CALIBRATION_TARGET: float = 0.70
 
@@ -229,6 +271,8 @@ class Settings(BaseSettings):
 
     # ── "Rate the training" after REFLECT ────────────────────────────────
     TRAINING_COMMENT_MAX_CHARS: int = 200
+    # Unclear replies to the 1-5 rating prompt tolerated before the rating is skipped.
+    TRAINING_RATING_MAX_UNCLEAR: int = 1
     TRAINING_RATING_RECENT_COMMENTS: int = 5  # latest comments shown in trainer/admin views
 
     # ── Demo / Evaluation & Observability ────────────────────────────────

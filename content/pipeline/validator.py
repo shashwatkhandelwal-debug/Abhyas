@@ -64,6 +64,50 @@ def has_devanagari(text: str) -> bool:
     return bool(DEVANAGARI_REGEX.search(text))
 
 
+def _validate_one_on_one(move: MoveCard) -> None:
+    """One-on-one rubric / feedback / diagnosis content (Hindi NFC, taxonomy, coverage)."""
+    for child in move.scenario.children:
+        if move.rubric_one_on_one is not None and child.misconception not in move.misconceptions:
+            raise ContentValidationError(
+                f"misconceptions: missing diagnosis content for {child.misconception}"
+            )
+    if move.rubric_one_on_one is None:
+        return
+    # Signals may be any taxonomy act (a probe still scores for the teacher even if the move
+    # card does not make it advance the simulated child).
+    allowed_signals = TEACHING_ACTS_TAXONOMY
+    for crit in move.rubric_one_on_one.criteria:
+        for text in (crit.text_hi, *crit.levels.values()):
+            if not is_nfc(text) or not has_devanagari(text):
+                raise ContentValidationError(
+                    f"rubric_one_on_one '{crit.id}': Hindi text must be NFC Devanagari"
+                )
+        for sa in crit.signal_acts:
+            if sa not in allowed_signals:
+                raise ContentValidationError(
+                    f"rubric_one_on_one signal act '{sa}' in '{crit.id}' not allowed"
+                )
+        for na in crit.negative_acts:
+            if na not in TEACHING_ACTS_TAXONOMY:
+                raise ContentValidationError(
+                    f"rubric_one_on_one negative act '{na}' in '{crit.id}' not in taxonomy"
+                )
+    for crit_id, item in move.feedback_bank_one_on_one.items():
+        for text in (item.strength_hi, item.change_hi, item.exact_words_hi):
+            if not is_nfc(text) or not has_devanagari(text):
+                raise ContentValidationError(
+                    f"feedback_bank_one_on_one '{crit_id}': Hindi text must be NFC Devanagari"
+                )
+    for mid, mc in move.misconceptions.items():
+        for text in (mc.label_hi, mc.reveal_hi):
+            if not is_nfc(text) or not has_devanagari(text):
+                raise ContentValidationError(
+                    f"misconceptions '{mid}': Hindi text must be NFC Devanagari"
+                )
+        if "{child}" not in mc.reveal_hi or "{child}" not in mc.reveal_en:
+            raise ContentValidationError(f"misconceptions '{mid}': reveal text needs {{child}}")
+
+
 def validate_move(
     move_data: dict[str, Any],
     sources_manifest: set[str],
@@ -111,6 +155,9 @@ def validate_move(
             )
         if child.persona_id not in known_personas:
             raise ContentValidationError(f"Child persona '{child.persona_id}' does not exist")
+
+    # Check 2b: one-on-one content (rubric, bank, diagnosis) covers the scenario
+    _validate_one_on_one(move)
 
     # Check 5: Rubric checks
     criteria_count = len(move.rubric.criteria)

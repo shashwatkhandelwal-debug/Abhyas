@@ -27,6 +27,7 @@ from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
     Message,
+    ModuleProgress,
     MovePath,
     Question,
     RealismRating,
@@ -37,7 +38,7 @@ from backend.app.db.models import (
     TrainingRating,
     Turn,
 )
-from backend.app.db.seed import DEMO_TEACHER_LOGINS
+from backend.app.db.seed import DEMO2_SCENE_ID, DEMO_TEACHER_LOGINS
 
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -152,6 +153,16 @@ async def _snapshot(session: AsyncSession, teacher_id: UUID) -> dict[str, Any]:
         "ratings": await ids(RealismRating),
         "training_ratings": await ids(TrainingRating),
         "evidence": await ids(AdoptionEvidence),
+        "module_progress": sorted(
+            (m.module_id, m.check_passed, m.diagnose_verdict)
+            for m in (
+                await session.execute(
+                    select(ModuleProgress).where(ModuleProgress.teacher_id == teacher_id)
+                )
+            )
+            .scalars()
+            .all()
+        ),
     }
 
 
@@ -204,6 +215,20 @@ async def _dirty(session: AsyncSession, teacher_id: UUID) -> None:
     session.add(RealismRating(teacher_id=teacher_id, scene_id=scene.id, rating=4))
     session.add(TrainingRating(teacher_id=teacher_id, rating=5, comment="बहुत अच्छा"))
     session.add(Question(teacher_id=teacher_id, text="नया सवाल", status="answered"))
+    # module progress: demo3 already has the row (seeded complete), the others get a new one
+    mp = await session.get(ModuleProgress, (teacher_id, "NUM_SUB_REGROUP_BUNDLES"))
+    if mp is None:
+        session.add(
+            ModuleProgress(
+                teacher_id=teacher_id,
+                module_id="NUM_SUB_REGROUP_BUNDLES",
+                learn_done_at=now,
+                check_passed=True,
+            )
+        )
+    else:
+        mp.check_passed = False
+        mp.diagnose_verdict = "wrong"
     session.add(
         AdoptionEvidence(teacher_id=teacher_id, move_id="NUM_SUB_REGROUP_BUNDLES", level=1,
                          source="rehearsal", detail={}, created_at=now)
@@ -239,8 +264,15 @@ async def test_logout_resets_demo_teacher_to_seed(session: AsyncSession, login: 
 
     await _logout(session, login)
     after = await _snapshot(session, teacher_id)
-    assert after["messages"] == []
+    # demo2 resumes inside a one-on-one scene with Ravi, so it starts with that chat history
+    assert after["messages"] == (seeded["messages"] if login == "teacher.demo2" else [])
     assert after == seeded
+    if login == "teacher.demo2":
+        scene = await session.get(Scene, DEMO2_SCENE_ID)
+        assert scene is not None and scene.status == "active"
+        assert scene.engine_state["one_on_one"] is True
+        assert scene.engine_state["teacher_turns"] == 1
+        assert len(after["messages"]) == 5
 
 
 async def test_logout_does_not_reset_a_non_demo_teacher(session: AsyncSession) -> None:

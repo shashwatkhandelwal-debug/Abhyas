@@ -123,9 +123,14 @@ class SceneRunner:
         move_id: str = "NUM_SUB_REGROUP_BUNDLES",
         item: Problem | None = None,
         children: list[ChildRuntime] | None = None,
-        max_turns: int = 8,
+        max_turns: int | None = None,
+        one_on_one_persona: str | None = None,
     ) -> SceneRecord:
-        """Initializes a new rehearsal scene for a teacher."""
+        """Initializes a new rehearsal scene for a teacher.
+
+        `one_on_one_persona` makes a single-child scene with that persona from the move card
+        (one-on-one turn limit); otherwise the move's three children are used.
+        """
         move = self.get_move(move_id)
 
         # Parse scenario items from move card
@@ -165,10 +170,28 @@ class SceneRunner:
                     )
                 )
 
+        if one_on_one_persona is not None:
+            children = [c for c in children if c.persona_id == one_on_one_persona]
+            if not children:
+                raise ValueError(
+                    f"Move '{move_id}' has no child '{one_on_one_persona}' in its scenario"
+                )
+        one_on_one = one_on_one_persona is not None
+        if max_turns is None:
+            max_turns = (
+                settings.MAX_TURNS_ONE_ON_ONE if one_on_one else settings.MAX_TURNS_PER_REHEARSAL
+            )
+
         scene_state = SceneState(
             move_id=move_id,
+            one_on_one=one_on_one,
             domain=Domain(move.domain.value),
-            effective_acts=move.teaching_acts_effective,
+            # No peers in a one-on-one scene, so "involve a peer" cannot move the child
+            effective_acts=[
+                a
+                for a in move.teaching_acts_effective
+                if not (one_on_one and a == TeachingAct.INVOLVE_PEER.value)
+            ],
             target_causes=move.target_causes,
             items=items,
             current_item=current_item,
@@ -400,10 +423,14 @@ class SceneRunner:
                 if step_result.end_reason == "all_correct"
                 else "scene_ended_neutral"
             )
+            end_kwargs: dict[str, str] = {}
+            if scene_state.one_on_one and end_msg_key == "scene_all_correct":
+                end_msg_key = "scene_all_correct_one"
+                end_kwargs["child"] = get_message(f"speaker_{scene_state.children[0].persona_id}")
             outbound_messages.append(
                 OutboundMessage(
                     kind="text",
-                    text_hi=get_message(end_msg_key, address_form),
+                    text_hi=get_message(end_msg_key, address_form, **end_kwargs),
                     speaker="coach",
                 )
             )

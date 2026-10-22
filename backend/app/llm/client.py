@@ -313,6 +313,8 @@ def _generate_schema_default(schema: dict[str, Any], role: str | None = None) ->
             "search_query_hi": "घटाव",
             "confidence": 0.9,
         }
+    if role == "diagnosis_classifier":
+        return {"misconception_id": "none", "confidence": 0.0}
     if role == "translator":
         from backend.app.llm.schemas import MOCK_TRANSLATION_TEXT
 

@@ -286,7 +286,7 @@ export function loadChat({ strings = {}, online = true } = {}) {
     cookie: '',
   };
   const navigator = { onLine: online, serviceWorker: undefined };
-  const window = { AudioRecorder: class {}, addEventListener() {} };
+  const window = { AudioRecorder: class {}, addEventListener() {}, confirm: () => true };
   let uuid = 0;
   const sandbox = {
     window,
@@ -321,7 +321,8 @@ export function loadChat({ strings = {}, online = true } = {}) {
         drainOutbox, handleSendText, handleSendAudio, setMicPhase, onAudioButton, expectsAudio,
         TYPING_TIMEOUT_MS, COLD_START_HINT_MS, AUDIO_WAIT_MS, MAX_AUTO_RETRIES, BACKOFF_STEPS,
         pollMessages, updateOnlineStatus, upgradeServerAudio,
-        toggleTranslation, buildTranslateControl, TRANSLATABLE_SPEAKERS, getSpeakerLabel })`,
+        toggleTranslation, buildTranslateControl, TRANSLATABLE_SPEAKERS, getSpeakerLabel,
+        renderSceneHeader, setupSceneEnd })`,
     sandbox
   );
   api.setUiStrings(strings);

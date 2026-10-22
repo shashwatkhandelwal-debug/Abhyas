@@ -16,6 +16,7 @@ from backend.app.db.models import (
     ConsentLog,
     ExplainScore,
     InviteCode,
+    ModuleProgress,
     MovePath,
     Question,
     RealismRating,
@@ -282,6 +283,45 @@ class SessionRepository:
         self.session.add(rr)
         await self.session.commit()
         return rr
+
+    async def get_module_progress(
+        self, teacher_id: UUID, module_id: str | None = None
+    ) -> list[ModuleProgress]:
+        """The teacher's module progress rows (one module, or all)."""
+        stmt = select(ModuleProgress).where(ModuleProgress.teacher_id == teacher_id)
+        if module_id is not None:
+            stmt = stmt.where(ModuleProgress.module_id == module_id)
+        return list((await self.session.execute(stmt)).scalars().all())
+
+    async def mark_module_step(
+        self, teacher_id: UUID, module_id: str, step: str, **data: Any
+    ) -> ModuleProgress:
+        """Records one module step as done now (idempotent: the first completion time is kept).
+
+        Steps: learn, diagnose (verdict=...), practise, check (passed=..., covered=[...]).
+        Later steps never un-do earlier ones; a repeated step updates its details.
+        """
+        now = datetime.now(UTC)
+        row = await self.session.get(ModuleProgress, (teacher_id, module_id))
+        if row is None:
+            row = ModuleProgress(teacher_id=teacher_id, module_id=module_id, updated_at=now)
+            self.session.add(row)
+        if step == "learn":
+            row.learn_done_at = row.learn_done_at or now
+        elif step == "diagnose":
+            row.diagnose_done_at = row.diagnose_done_at or now
+            row.diagnose_verdict = data.get("verdict") or row.diagnose_verdict
+        elif step == "practise":
+            row.practise_done_at = row.practise_done_at or now
+        elif step == "check":
+            row.check_done_at = row.check_done_at or now
+            row.check_passed = bool(data.get("passed"))
+            row.check_covered = list(data.get("covered") or [])
+        else:
+            raise ValueError(f"unknown module step: {step}")
+        row.updated_at = now
+        await self.session.commit()
+        return row
 
     async def record_training_rating(
         self, teacher_id: UUID, rating: int, move_id: str | None = None

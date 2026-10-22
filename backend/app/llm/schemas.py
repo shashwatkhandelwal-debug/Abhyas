@@ -114,6 +114,13 @@ class QuestionClassificationResult(BaseModel):
     used_fallback: bool = False
 
 
+class DiagnosisClassifierOutput(BaseModel):
+    """Output schema for the diagnosis_classifier role (teacher's diagnosis -> misconception id)."""
+
+    misconception_id: str  # one of the offered ids, or "none"
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
 class RetrievedChunk(BaseModel):
     """Retrieved reference document chunk for guide_answerer (§5.8)."""
 
@@ -125,6 +132,20 @@ class RetrievedChunk(BaseModel):
     gloss_hi: str = ""
     keywords_hi: list[str] = Field(default_factory=list)
     score: float | None = None
+
+
+class CoachSuggestionOutput(BaseModel):
+    """Output schema for coach_suggestion: one source-grounded idea with the chunk it came from."""
+
+    suggestion_hi: str = ""
+    chunk_id: str = ""
+
+
+class ModuleCheckOutput(BaseModel):
+    """Output schema for module_check: which key points the teacher's closing answer shows."""
+
+    covered_point_ids: list[str] = Field(default_factory=list)
+    reply_hi: str = ""
 
 
 class GuideAnswererOutput(BaseModel):

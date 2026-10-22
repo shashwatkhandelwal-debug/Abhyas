@@ -15,6 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
+from backend.app.core.intents import Intent
 from backend.app.core.messages import get_message
 from backend.app.db.models import Teacher, TrainingRating
 from backend.app.llm.hindi_numbers import extract_numbers
@@ -34,6 +35,44 @@ def parse_training_rating(text: str, button_id: str | None) -> int | None:
     if numbers and 1 <= numbers[0] <= 5:
         return numbers[0]
     return None
+
+
+# A reply that is really a command: the rating/comment prompt must never trap the teacher.
+RATING_ESCAPE_INTENTS: frozenset[Intent] = frozenset(
+    {
+        Intent.HELP,
+        Intent.NEXT,
+        Intent.PROGRESS,
+        Intent.LITE_TOGGLE,
+        Intent.CONSENT,
+        Intent.ASK,
+        Intent.REPEAT,
+        Intent.ADMIN,
+        Intent.RETRY,
+        Intent.DELETE,
+    }
+)
+_LANGUAGE_WORDS_KEY = "rate_training_language_words"  # comma-separated, in both catalogs
+
+
+def _language_words() -> frozenset[str]:
+    words: set[str] = set()
+    for lang in ("hi", "en"):
+        raw = get_message(_LANGUAGE_WORDS_KEY, lang=lang)
+        words.update(
+            unicodedata.normalize("NFC", w).strip().lower() for w in raw.split(",") if w.strip()
+        )
+    return frozenset(words)
+
+
+def is_language_command(text: str) -> bool:
+    cleaned = unicodedata.normalize("NFC", text).strip().strip(_TRAILING_PUNCTUATION).strip()
+    return cleaned.lower() in _language_words()
+
+
+def is_rating_escape(intent: Intent | None, text: str) -> bool:
+    """True if a rating/comment-stage reply is a known command, to be processed normally."""
+    return (intent is not None and intent in RATING_ESCAPE_INTENTS) or is_language_command(text)
 
 
 def _skip_words() -> frozenset[str]:

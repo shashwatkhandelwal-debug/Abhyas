@@ -38,6 +38,23 @@ def ranges(q: dict[str, Any]) -> list[tuple[int, int]]:
     return [(int(a), int(b)) for a, b in pages]
 
 
+def targets(q: dict[str, Any], strict: bool = False) -> list[tuple[str, list[tuple[int, int]]]]:
+    """(source, page ranges) pairs that count as a hit: the question's own source, plus any `also`."""
+    out = [(q["source"], ranges(q))]
+    if not strict:
+        out += [(a["source"], ranges(a)) for a in q.get("also", [])]
+    return out
+
+
+def is_hit(res: list[Any], q: dict[str, Any], strict: bool = False) -> bool:
+    return any(
+        r.source == src
+        and any(overlaps(rng, (r.page or 0, r.page_end or r.page or 0)) for rng in rngs)
+        for r in res
+        for src, rngs in targets(q, strict)
+    )
+
+
 def overlaps(a: tuple[int, int], b: tuple[int, int]) -> bool:
     return a[0] <= b[1] and b[0] <= a[1]
 
@@ -49,15 +66,21 @@ def verify_ground_truth(questions: list[dict[str, Any]]) -> list[str]:
         chunks += [json.loads(x) for x in f.read_text(encoding="utf-8").splitlines() if x.strip()]
     bad = []
     for q in questions:
-        for rng in ranges(q):
-            ok = any(
-                c.get("source_id") == q["source"]
-                and overlaps(rng, (c["pdf_page_start"], c["pdf_page_end"]))
-                and re.search(q["evidence"], c["text"])
-                for c in chunks
+        for src_id, rngs in targets(q):
+            ev = (
+                q["evidence"]
+                if src_id == q["source"]
+                else next(a["evidence"] for a in q["also"] if a["source"] == src_id)
             )
-            if not ok:
-                bad.append(f"{q['id']}{list(rng)}")
+            for rng in rngs:
+                ok = any(
+                    c.get("source_id") == src_id
+                    and overlaps(rng, (c["pdf_page_start"], c["pdf_page_end"]))
+                    and re.search(ev, c["text"])
+                    for c in chunks
+                )
+                if not ok:
+                    bad.append(f"{q['id']}{list(rng)}")
     return bad
 
 
@@ -66,16 +89,14 @@ async def evaluate(k: int) -> dict[str, Any]:
     qs = data["questions"]
     retriever = GuideRetriever()
     hits = 0
+    strict_hits = 0
     misses: list[str] = []
     pos_top: list[float] = []
     for q in qs:
         res = await retriever.retrieve(q["q"], top_k=k, min_score=0.0)
-        hit = any(
-            r.source == q["source"]
-            and any(overlaps(rng, (r.page or 0, r.page_end or r.page or 0)) for rng in ranges(q))
-            for r in res
-        )
+        hit = is_hit(res, q)
         hits += int(hit)
+        strict_hits += int(is_hit(res, q, strict=True))
         if not hit:
             misses.append(q["id"])
         pos_top.append(res[0].similarity_score if res else 0.0)
@@ -93,11 +114,7 @@ async def evaluate(k: int) -> dict[str, Any]:
             min_score=settings.RETRIEVAL_MIN_SCORE,
             min_matched_terms=settings.RETRIEVAL_MIN_MATCHED_TERMS,
         )
-        hit = any(
-            r.source == q["source"]
-            and any(overlaps(rng, (r.page or 0, r.page_end or r.page or 0)) for rng in ranges(q))
-            for r in res
-        )
+        hit = is_hit(res, q)
         gated_hits += int(hit)
         if not hit:
             gated_misses.append(q["id"])
@@ -112,6 +129,7 @@ async def evaluate(k: int) -> dict[str, Any]:
         "k": k,
         "n": len(qs),
         "recall_at_k": hits / len(qs),
+        "strict_recall_at_k": strict_hits / len(qs),
         "misses": misses,
         "gated_recall_at_k": gated_hits / len(qs),
         "gated_misses": gated_misses,

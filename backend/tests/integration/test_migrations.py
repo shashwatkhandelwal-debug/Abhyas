@@ -76,6 +76,7 @@ def test_alembic_migrations_round_trip() -> None:
             "adoption_evidence",
             "realism_rating",
             "training_rating",
+            "module_progress",
             "question",
             "doc_chunk",
             "review_item",
@@ -97,6 +98,27 @@ def test_alembic_migrations_round_trip() -> None:
         checks = {c["name"] for c in inspector.get_check_constraints("training_rating")}
         assert "check_training_rating_range" in checks
         fks = inspector.get_foreign_keys("training_rating")
+        assert fks and fks[0]["options"].get("ondelete") == "CASCADE"
+
+        # module_progress: composite key, FK cascade and the verdict check
+        columns = {c["name"] for c in inspector.get_columns("module_progress")}
+        assert columns == {
+            "teacher_id",
+            "module_id",
+            "learn_done_at",
+            "diagnose_done_at",
+            "diagnose_verdict",
+            "practise_done_at",
+            "check_done_at",
+            "check_passed",
+            "check_covered",
+            "updated_at",
+        }
+        pk = inspector.get_pk_constraint("module_progress")["constrained_columns"]
+        assert set(pk) == {"teacher_id", "module_id"}
+        checks = {c["name"] for c in inspector.get_check_constraints("module_progress")}
+        assert "check_module_progress_verdict" in checks
+        fks = inspector.get_foreign_keys("module_progress")
         assert fks and fks[0]["options"].get("ondelete") == "CASCADE"
 
         # Verify extensions

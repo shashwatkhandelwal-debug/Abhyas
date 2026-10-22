@@ -104,8 +104,10 @@ def test_retrieval_recall_at_5_floor_and_ground_truth() -> None:
     ev = _load_eval()
     assert ev.verify_ground_truth(ev.load_questions()["questions"]) == []
     res = asyncio.run(ev.evaluate(5))
-    assert res["n"] == 30
+    assert res["n"] == 40
     assert res["recall_at_k"] >= RECALL_AT_5_FLOOR, res["misses"]
+    # the original source labels only (NISHTHA FLN now also covers some of those topics)
+    assert res["strict_recall_at_k"] >= 0.80
     # every answerable question clears the bar the answerer uses, most off-topic ones do not
     assert res["answerable_below_threshold"] == 0
     assert res["negatives_below_threshold"] >= 4  # was 5/10 before the Hindi guides were added

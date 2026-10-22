@@ -91,10 +91,13 @@ async def test_on_topic_recall_at_5_stays_above_090_through_the_gate(
             min_score=settings.RETRIEVAL_MIN_SCORE,
             min_matched_terms=settings.RETRIEVAL_MIN_MATCHED_TERMS,
         )
+        # `also` = another source that genuinely covers the topic (NISHTHA FLN, added later)
+        homes = [q, *q.get("also", [])]
         hits += any(
-            r.source == q["source"]
-            and any(a <= (r.page_end or r.page or 0) and (r.page or 0) <= b for a, b in _ranges(q))
+            r.source == h["source"]
+            and any(a <= (r.page_end or r.page or 0) and (r.page or 0) <= b for a, b in _ranges(h))
             for r in res
+            for h in homes
         )
     assert hits / len(qs) >= 0.90
 

@@ -141,6 +141,9 @@ rate_training_thanks:
 rate_training_skip_words:
   text: "छोड़ें, छोड़ो, छोड़ दें, नहीं, कुछ नहीं, ना"
   audio: false
+rate_training_language_words:
+  text: "भाषा, भाषा बदलें, हिंदी, हिन्दी, अंग्रेज़ी, अंग्रेजी, language, english, hindi"
+  audio: false
 retry_limit:
   text: "इस हफ्ते के 3 अभ्यास पूरे हो गए। अब कक्षा में आज़माने की बारी है!"
   audio: false
@@ -785,3 +788,71 @@ ui_ratings_count: {text: "रेटिंग की संख्या", audio: 
 ui_ratings_latest: {text: "हाल की टिप्पणियाँ", audio: false}
 ui_ratings_none: {text: "अभी कोई रेटिंग नहीं मिली है।", audio: false}
 ui_ratings_distribution: {text: "1 से 5 तक रेटिंग का वितरण", audio: false}
+
+# ── One-on-one practice ───────────────────────────────────────────────────
+rehearse_mode_prompt: {text: "अब अभ्यास की बारी है। आप किसके साथ अभ्यास करेंगे? किसी एक बच्चे से अकेले बात करना सबसे अच्छा तरीका है।", audio: true}
+btn_rehearse_one: {text: "1-1 बच्चे से बात", audio: false}
+btn_rehearse_group: {text: "तीन बच्चों के साथ", audio: false}
+rehearse_mode_unclear: {text: "कृपया नीचे दिए दो विकल्पों में से एक चुनें: 1-1 बच्चे से बात, या तीन बच्चों के साथ।", audio: false}
+rehearse_child_prompt: {text: "आप किस बच्चे से बात करेंगे? तीनों बच्चों ने गलत उत्तर दिया है, और हर बच्चे की उलझन अलग है।", audio: true}
+btn_child_ravi: {text: "रवि", audio: false}
+btn_child_priya: {text: "प्रिया", audio: false}
+btn_child_aman: {text: "अमन", audio: false}
+rehearse_child_unclear: {text: "कृपया रवि, प्रिया या अमन में से किसी एक को चुनें।", audio: false}
+diagnose_empty: {text: "कृपया बताइए कि आपके हिसाब से {child} की उलझन क्या है। आप बोलकर या लिखकर बता सकते हैं, या 'छोड़ें' चुनें।", audio: false}
+diag_result_correct: {text: "आपने सही पकड़ा। {reveal}", audio: false}
+diag_result_partly: {text: "आप सही दिशा में हैं, पर पूरी बात नहीं पकड़ी। असल में: {reveal}", audio: false}
+diag_result_wrong: {text: "यह वह उलझन नहीं थी। असल में: {reveal}", audio: false}
+diag_result_skipped: {text: "कोई बात नहीं। असल में: {reveal}", audio: false}
+rehearse_one_start: {text: "अब {child} से बात कीजिए। पहले उसका तरीका पूछिए, फिर कोई ठोस चीज़ से समझाइए, और अंत में एक नया सवाल देकर जाँचिए। खत्म करने के लिए 'बस' बोलें।", audio: true}
+scene_all_correct_one: {text: "वाह! {child} ने नए सवाल पर भी खुद सही तरीका लगाया।", audio: true}
+coach_diag_change_wrong: {text: "अगली बार बच्चे से पूछकर पहचानिए कि उलझन यह थी: {label}।", audio: false}
+coach_diag_change_partly: {text: "अगली बार उलझन को और सटीक पहचानिए: {label}।", audio: false}
+ui_scene_one_title: {text: "{child} से 1-1 बात", audio: false}
+ui_scene_turn: {text: "बारी {turn}/{max}", audio: false}
+ui_chat_scene_end: {text: "अभ्यास पूरा करें", audio: false}
+ui_chat_scene_end_confirm: {text: "अभ्यास अभी पूरा करें?", audio: false}
+ui_scene_cue_diagnose: {text: "पहले उलझन पहचानिए", audio: false}
+ui_scene_cue_0: {text: "उलझन में है", audio: false}
+ui_scene_cue_1: {text: "अपना तरीका बता रहा है", audio: false}
+ui_scene_cue_2: {text: "आधा समझ आया", audio: false}
+ui_scene_cue_3: {text: "समझ आ गया, नया सवाल दें", audio: false}
+coach_quote_suffix: {text: "आपके शब्द: «{quote}»", audio: false}
+ui_chat_scene_stop_word: {text: "बस", audio: false}
+coach_source_suggestion: {text: "स्रोत से एक सुझाव: {suggestion}", audio: false}
+
+# ── Modules ───────────────────────────────────────────────────────────────
+module_check_prompt: {text: "आख़िरी जाँच: \"{move_title}\" में अगर कोई बच्चा गलती करे, तो आप सबसे पहले क्या करेंगे और क्यों? अपने शब्दों में बताइए।", audio: false}
+module_check_reply_pass: {text: "बहुत अच्छा, आपने इस तरीके के मुख्य कदम बताए।", audio: false}
+module_check_reply_more: {text: "अच्छी कोशिश। एक बात और याद रखिए: {point}", audio: false}
+module_check_done_pass: {text: "मॉड्यूल की जाँच पूरी हुई। आगे बढ़ें?", audio: false}
+module_check_done_more: {text: "आपकी जाँच दर्ज है। चाहें तो फिर से अभ्यास करें, या आगे बढ़ें।", audio: false}
+ui_chat_menu_modules: {text: "मॉड्यूल", audio: false}
+ui_modules_page_title: {text: "अभ्यास — मॉड्यूल", audio: false}
+ui_modules_title: {text: "मॉड्यूल", audio: false}
+ui_modules_intro: {text: "हर मॉड्यूल में चार कदम हैं: सीखना, किसी बच्चे की उलझन पहचानना (1-1), अभ्यास करना और अंत में एक छोटी जाँच।", audio: false}
+ui_modules_step_learn: {text: "सीखना", audio: false}
+ui_modules_step_diagnose: {text: "उलझन पहचानना", audio: false}
+ui_modules_step_practise: {text: "अभ्यास", audio: false}
+ui_modules_step_check: {text: "जाँच", audio: false}
+ui_modules_status_new: {text: "अभी शुरू नहीं किया", audio: false}
+ui_modules_status_progress: {text: "चल रहा है", audio: false}
+ui_modules_status_done: {text: "पूरा हुआ", audio: false}
+ui_modules_check_passed: {text: "जाँच में मुख्य बिंदु आए", audio: false}
+ui_modules_check_more: {text: "जाँच में कुछ बिंदु बाकी हैं", audio: false}
+ui_modules_btn_start: {text: "शुरू करें", audio: false}
+ui_modules_btn_continue: {text: "फिर से शुरू करें", audio: false}
+ui_modules_btn_again: {text: "दोबारा करें", audio: false}
+ui_modprog_title: {text: "मॉड्यूल की प्रगति", audio: false}
+ui_modprog_desc: {text: "सिर्फ़ उन शिक्षकों की गिनती जिन्होंने अंक साझा करने की सहमति दी है। नाम नहीं दिखते।", audio: false}
+ui_modprog_none: {text: "अभी किसी मॉड्यूल की प्रगति दर्ज नहीं है।", audio: false}
+ui_modprog_col_module: {text: "मॉड्यूल", audio: false}
+ui_modprog_col_source: {text: "स्रोत", audio: false}
+ui_modprog_col_teachers: {text: "शिक्षक", audio: false}
+ui_modprog_col_passed: {text: "जाँच में सफल", audio: false}
+ui_modprog_step_learn: {text: "सीखना", audio: false}
+ui_modprog_step_diagnose: {text: "उलझन पहचानना", audio: false}
+ui_modprog_step_practise: {text: "अभ्यास", audio: false}
+ui_modprog_step_check: {text: "जाँच", audio: false}
+ui_modprog_label_pilot: {text: "पायलट", audio: false}
+ui_modprog_label_demo: {text: "डेमो (काल्पनिक)", audio: false}

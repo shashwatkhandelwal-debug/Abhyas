@@ -161,7 +161,9 @@ class SceneState(BaseModel):
     items: list[Problem]  # scenario items in order
     item_idx: int = 0
     current_item: Problem
-    children: list[ChildRuntime]  # exactly 3 in normal mode, 1 in placement
+    children: list[ChildRuntime]  # 3 in group mode, 1 in one-on-one (or placement) mode
+    one_on_one: bool = False  # teacher talks to a single child; scene ends after a new-item check
+    diagnosing: bool = False  # one-on-one: the teacher has not yet said what the mistake is
     teacher_turns: int = 0
     last_responder: str | None = None
     ended: bool = False

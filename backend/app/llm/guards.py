@@ -17,9 +17,12 @@ from backend.app.llm.hindi_numbers import DEVANAGARI_DIGITS, extract_numbers
 from backend.app.llm.schemas import (
     ActTaggerOutput,
     CoachFeedbackOutput,
+    CoachSuggestionOutput,
+    DiagnosisClassifierOutput,
     FidelityCheckerOutput,
     GuideAnswererOutput,
     IntentRouterOutput,
+    ModuleCheckOutput,
     PageOCROutput,
     QuestionClassifierOutput,
     RetrievedChunk,
@@ -174,6 +177,18 @@ def child_line_word_cap(kind: ResponseKind) -> int:
     return settings.MAX_CHILD_LINE_WORDS
 
 
+_PLACEHOLDER_LEAK = re.compile(
+    r"\bnone\b|\bnull\b|\bnan\b|\bundefined\b|कोई\s+कदम\s+नहीं|[{}]",
+    re.IGNORECASE,
+)
+
+
+def find_placeholder_leak(line: str) -> str | None:
+    """Returns the first template placeholder found in a spoken line (None, null, braces...)."""
+    match = _PLACEHOLDER_LEAK.search(line)
+    return match.group(0) if match else None
+
+
 def guard_child_line(
     line_hi: str,
     response: ChildResponse,
@@ -189,6 +204,8 @@ def guard_child_line(
     words = line_hi.strip().split()
     if not words:
         return False, "Child line cannot be empty"
+    if leak := find_placeholder_leak(line_hi):
+        return False, f"Line leaks a placeholder ('{leak}')"
     word_cap = child_line_word_cap(response.kind)
     if len(words) > word_cap:
         return (
@@ -209,6 +226,12 @@ def guard_child_line(
     eng_tokens = re.findall(r"\b[a-zA-Z]+\b", line_hi)
     if len(eng_tokens) > 3:
         return False, "Line contains more than 3 English words"
+
+    # 5b. Only an engine-chosen OFF_TOPIC / INTERJECT line may digress to everyday things
+    if response.kind not in (ResponseKind.OFF_TOPIC, ResponseKind.INTERJECT):
+        for word in settings.CHILD_DISTRACTION_WORDS:
+            if word in line_hi:
+                return False, f"Line digresses ('{word}') but this turn is not a distraction"
 
     # 6. OFF_TOPIC / INTERJECT: contains no numbers at all
     extracted_nums = extract_numbers(line_hi)
@@ -405,6 +428,60 @@ def guard_fidelity_checker(
 
 
 # ── 6. guard_question_classifier (§5.8) ──────────────────────────────────────
+def guard_diagnosis_classifier(
+    output: DiagnosisClassifierOutput, candidate_ids: list[str]
+) -> tuple[bool, str]:
+    """The classified id must be one of the offered misconception ids (or "none")."""
+    if output.misconception_id != "none" and output.misconception_id not in candidate_ids:
+        return False, f"misconception_id {output.misconception_id!r} is not one of {candidate_ids}"
+    return True, "Valid"
+
+
+def guard_coach_suggestion(
+    output: CoachSuggestionOutput, retrieved_chunks: list[RetrievedChunk]
+) -> tuple[bool, str]:
+    """The cited chunk must be one that was retrieved, and the suggestion must come from it."""
+    cited = next((c for c in retrieved_chunks if c.chunk_id == output.chunk_id), None)
+    if cited is None:
+        return False, f"chunk_id {output.chunk_id!r} is not in the retrieved set"
+    words = output.suggestion_hi.split()
+    if not words:
+        return False, "Empty suggestion"
+    if len(words) > settings.COACH_SUGGESTION_MAX_WORDS:
+        return False, f"Suggestion exceeds {settings.COACH_SUGGESTION_MAX_WORDS} words"
+    if set(norm(output.suggestion_hi).split()) & DISRESPECTFUL_WORDS:
+        return False, "Disrespectful register: suggestion must not use तुम/तुमने"
+    cited_numbers = set(extract_numbers(cited.text))
+    for num in extract_numbers(output.suggestion_hi):
+        if num not in cited_numbers:
+            return False, f"Unauthorized number {num} in suggestion"
+    from backend.app.retrieval.search import index_terms, tokenize_hindi
+
+    terms = set(index_terms(tokenize_hindi(output.suggestion_hi, filter_stopwords=True)))
+    excerpt = f"{cited.section} {cited.text} {cited.gloss_hi} {' '.join(cited.keywords_hi)}"
+    excerpt_terms = set(index_terms(tokenize_hindi(excerpt, filter_stopwords=True)))
+    if len(terms & excerpt_terms) < settings.GUIDE_MIN_ANSWER_OVERLAP_TERMS:
+        return False, "Suggestion is not grounded in the cited excerpt"
+    return True, "Valid"
+
+
+def guard_module_check(output: ModuleCheckOutput, valid_ids: list[str]) -> tuple[bool, str]:
+    """Only real key-point ids; a short, respectful reply."""
+    unknown = [i for i in output.covered_point_ids if i not in valid_ids]
+    if unknown:
+        return False, f"covered_point_ids not in the module's key points: {unknown}"
+    if len(set(output.covered_point_ids)) != len(output.covered_point_ids):
+        return False, "covered_point_ids has duplicates"
+    words = output.reply_hi.split()
+    if not words:
+        return False, "Empty reply"
+    if len(words) > settings.MODULE_CHECK_REPLY_MAX_WORDS:
+        return False, f"Reply exceeds {settings.MODULE_CHECK_REPLY_MAX_WORDS} words"
+    if set(norm(output.reply_hi).split()) & DISRESPECTFUL_WORDS:
+        return False, "Disrespectful register: reply must not use तुम/तुमने"
+    return True, "Valid"
+
+
 def guard_question_classifier(output: QuestionClassifierOutput) -> tuple[bool, str]:
     """Validate question_classifier output (§5.8).
 
