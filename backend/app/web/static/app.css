@@ -287,6 +287,48 @@ body {
 .child-pill.priya { background-color: var(--child-priya); }
 .child-pill.aman { background-color: var(--child-aman); }
 
+/* One-on-one header */
+.scene-header {
+  background-color: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0.45rem 0.8rem;
+  font-size: 0.85rem;
+}
+.scene-header[hidden] { display: none; }
+.sh-top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.sh-turn { margin-left: auto; font-weight: 600; color: var(--ink-soft, var(--ink)); }
+.sh-end {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--ink);
+  border-radius: var(--radius-full);
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  min-height: 2.2rem;
+}
+.sh-cue { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.3rem; }
+.sh-steps { display: inline-flex; gap: 0.2rem; }
+.sh-steps i {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  display: inline-block;
+}
+.sh-steps[data-filled="1"] i:nth-child(-n+1),
+.sh-steps[data-filled="2"] i:nth-child(-n+2),
+.sh-steps[data-filled="3"] i:nth-child(-n+3),
+.sh-steps[data-filled="4"] i:nth-child(-n+4) {
+  background-color: #1F6F5C;
+  border-color: #1F6F5C;
+}
+.sh-cue-text { font-weight: 600; }
+
 /* Chat Message Thread */
 .chat-messages {
   flex: 1;

@@ -642,6 +642,47 @@ async function drainOutbox() {
 }
 
 // ── Polling Loop (§7.3) ─────────────────────────────────────────────────────
+// One-on-one header: every field comes from the server (the child state is the rule engine's)
+function renderSceneHeader(sc) {
+  const header = document.getElementById('scene-header');
+  const strip = document.getElementById('rehearse-strip');
+  if (!header) return;
+  if (!sc) {
+    header.hidden = true;
+    if (strip) strip.hidden = false;
+    return;
+  }
+  header.hidden = false;
+  if (strip) strip.hidden = true;
+  const childEl = document.getElementById('sh-child');
+  if (childEl) {
+    childEl.textContent = sc.child_name;
+    childEl.className = `child-pill active ${sc.child_id}`;
+  }
+  const set = (id, text) => {
+    const el = document.getElementById(id);
+    if (el && el.textContent !== text) el.textContent = text;
+  };
+  set('sh-board', sc.board);
+  set('sh-turn', sc.turn_label);
+  const cueEl = document.getElementById('sh-cue-text');
+  if (cueEl && cueEl.textContent !== sc.cue) {
+    cueEl.textContent = sc.cue;
+    announce(sc.cue);
+  }
+  const steps = document.getElementById('sh-steps');
+  if (steps) steps.dataset.filled = String(sc.cue_state >= 0 ? sc.cue_state + 1 : 0);
+}
+
+function setupSceneEnd() {
+  const btn = document.getElementById('sh-end');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    if (!window.confirm(t('ui_chat_scene_end_confirm'))) return;
+    handleSendText(t('ui_chat_scene_stop_word'));
+  });
+}
+
 async function pollMessages() {
   if (!navigator.onLine) return;
 
@@ -690,6 +731,7 @@ async function pollMessages() {
       }
       if (gotReply) typingEvent({ type: 'reply' });
       if (!stale) typingEvent({ type: data.pending ? 'pending' : 'idle' });
+      renderSceneHeader(data.scene || null);
     }
   } catch (err) {
     console.warn('Poll error:', err);
@@ -1657,6 +1699,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 4. Setup Mic & Demo Chips
   setupMicEvents();
   setupDemoChips();
+  setupSceneEnd();
 
   setupLogoutCleanup();
 

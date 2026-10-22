@@ -12,7 +12,7 @@ This directory holds authentic voice recordings of government primary FLN teache
 Audio files must match the canonical sample IDs from `eval/samples/samples.yaml` with standard audio extensions:
 
 - `s1_ask_ravi.(wav|ogg|m4a)` — Teacher asking Ravi how he subtracted 27 from 43
-- `s2_bundles_all.(wav|ogg|m4a)` — Teacher modeling bundle representation to the whole class
+- `s2_diagnose_one_on_one.(wav|ogg|m4a)` — Teacher saying what they think the child's mistake is (1-1 diagnosis step)
 - `s3_tell_answer_hinglish.(wav|ogg|m4a)` — Teacher telling direct answer in Hinglish to test relapse
 - `s4_explain_back.(wav|ogg|m4a)` — Teacher explaining back the core move pedagogy
 - `s5_question_multigrade.(wav|ogg|m4a)` — Teacher asking about multi-grade subtraction management

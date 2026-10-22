@@ -794,9 +794,15 @@ async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence(
 
     # 12. MODEL -> REHEARSE_INTRO
     out12 = await service.handle_inbound(make_inbound(teacher_id=t_id, button_id="btn_listen"))
-    assert any("बच्चों से" in str(m.text_hi or "") for m in out12)
+    assert any(m.text_hi == get_message("rehearse_mode_prompt", "f") for m in out12)
     ctx = await service.get_or_create_context(t_id)
     assert ctx.current_state == SessionStateEnum.REHEARSE_INTRO
+
+    # 12b. the teacher picks the three-children scene (the 1-1 flow has its own tests)
+    out12b = await service.handle_inbound(
+        make_inbound(teacher_id=t_id, button_id="btn_rehearse_group")
+    )
+    assert any("बच्चों से" in str(m.text_hi or "") for m in out12b)
 
     # 13. REHEARSE_INTRO -> REHEARSE (first turn)
     out13 = await service.handle_inbound(

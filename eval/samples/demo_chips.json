@@ -10,20 +10,20 @@
     "chip_label_en": "Ask Ravi how he did it"
   },
   {
-    "id": "s2_bundles_all",
-    "step": "REHEARSE",
-    "text_hi": "सब लोग देखो, ये 4 बंडल और 3 खुली तीलियाँ हैं। 3 में से 7 नहीं निकलतीं, तो एक बंडल खोलते हैं। अब कितनी तीलियाँ हुईं?",
-    "expect": "concrete_representation to the whole class → all children reach PARTIAL; Ravi answers 16 hesitantly; Aman may interject off-topic.",
-    "chip_label": "बंडल-तीली से समझाएँ",
+    "id": "s2_diagnose_one_on_one",
+    "step": "REHEARSE (1-1, right after choosing the child: the diagnosis step)",
+    "text_hi": "इसने 3 में से 7 नहीं घटा पाया, तो उल्टा करके 7 में से 3 घटा दिया।",
+    "expect": "Diagnosis step: the deterministic matcher compares this with the child's real mistake. Ravi (SUB_SMALLER_FROM_LARGER): correct. Priya or Aman: wrong or partly. Then the real mistake is revealed and the scene starts.",
+    "chip_label": "उलझन पहचानें (1-1)",
     "audio_available": false,
     "audio_url": null,
-    "chip_label_en": "Explain with bundles and sticks"
+    "chip_label_en": "Spot the confusion (1-1)"
   },
   {
     "id": "s3_tell_answer_hinglish",
     "step": "REHEARSE",
-    "text_hi": "Aman, sahi answer 16 hai, yaad rakho.",
-    "expect": "Hinglish handled. tell_answer → Aman parrots '16…?' without understanding (state unchanged). If the evaluator then says 'अमन, अब 61 में से 28 करो', Aman relapses to his bug (40). Coach later scores 'no telling' = 0 and suggests contrasting answers.",
+    "text_hi": "Sahi answer 16 hai, yaad rakho.",
+    "expect": "Hinglish handled. tell_answer → the child parrots '16…?' without understanding (state unchanged). If the evaluator then gives a new problem ('अब 61 में से 28 करो'), the child relapses to their bug.",
     "chip_label": "सीधा उत्तर बताएँ (हिंग्लिश)",
     "audio_available": false,
     "audio_url": null,

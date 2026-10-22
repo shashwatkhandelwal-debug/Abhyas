@@ -423,10 +423,14 @@ class SceneRunner:
                 if step_result.end_reason == "all_correct"
                 else "scene_ended_neutral"
             )
+            end_kwargs: dict[str, str] = {}
+            if scene_state.one_on_one and end_msg_key == "scene_all_correct":
+                end_msg_key = "scene_all_correct_one"
+                end_kwargs["child"] = get_message(f"speaker_{scene_state.children[0].persona_id}")
             outbound_messages.append(
                 OutboundMessage(
                     kind="text",
-                    text_hi=get_message(end_msg_key, address_form),
+                    text_hi=get_message(end_msg_key, address_form, **end_kwargs),
                     speaker="coach",
                 )
             )

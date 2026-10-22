@@ -1,8 +1,8 @@
 # Evaluator guide (about one hour)
 
 Abhyas is a voice-first practice partner for primary (Class 1–3) teachers, in Hindi. A teacher practises a
-teaching move with three simulated children (Ravi, Priya, Aman) whose answers come from a rule engine, never
-from the language model, and gets coach feedback on their own words.
+teaching move with a simulated child (**one-on-one**, the main way) or with three children (Ravi, Priya, Aman)
+whose answers come from a rule engine, never from the language model, and gets coach feedback on their own words.
 
 - **Link:** `<HOSTED URL>` (Render free plan: if it has been idle, the first page takes **about a minute** to
   wake; open `<HOSTED URL>/healthz` first and wait for `"status": "ok"`).
@@ -21,7 +21,7 @@ from the language model, and gets coach feedback on their own words.
 | Login | Password | Start here | What it shows |
 |---|---|---|---|
 | `teacher.demo1` | `<DEMO_PASSWORD>` | `/teacher` | **A new teacher.** Nothing done yet: the first message starts the welcome, the consent question (service use and score sharing, with a "more" button) and the short onboarding, then the first move. Tap the buttons or type/speak. |
-| `teacher.demo2` | `<DEMO_PASSWORD>` | `/teacher` | **Mid-rehearsal.** Already in the REHEARSE step of "हासिल वाला घटाव" (subtraction with regrouping, 43 − 27). Use the three sample chips or type, e.g. "रवि, तुमने 43 में से 27 कैसे घटाया?": Ravi explains his own mistake and says 24, never 16. Finish the scene to get coach feedback (strength, one change, your exact words quoted) and the retry. After the reflection step you are asked to **rate the training**: a 1–5 usefulness score (say or type it, or tap 1 / 3 / 5) and an optional one-line comment (voice or text, or *Skip*). |
+| `teacher.demo2` | `<DEMO_PASSWORD>` | `/teacher` | **Mid-rehearsal, one-on-one with Ravi.** Already inside a 1-1 scene of "हासिल वाला घटाव" (subtraction with regrouping, 43 − 27): the diagnosis is done and one question asked, so the header shows "रवि से 1-1 बात", the board (43 − 27), a progress cue ("अपना तरीका बता रहा है"), the turn counter (1/10) and an **end practice** button. Use the sample chips or type, e.g. "देखो, ये 4 बंडल और 3 खुली तीलियाँ हैं, 3 में से 7 नहीं निकलतीं, तो एक बंडल खोलो।" and then give a new problem ("अब 52 में से 17 करो"): the cue moves, and when Ravi gets the new problem right the scene ends. Finish the scene to get coach feedback (strength with your own words quoted, one change, an exact sentence) on the **one-on-one rubric**, and the retry. After the reflection step you are asked to **rate the training**: a 1–5 usefulness score (say or type it, or tap 1 / 3 / 5) and an optional one-line comment (voice or text, or *Skip*). |
 | `teacher.demo3` | `<DEMO_PASSWORD>` | `/teacher` | **On the learning step of the next move**, after three completed moves. Only its **two buttons work** here ("समझ गई, आगे" / "Got it, next" to continue and "फिर से सुनें" / "Listen again" to replay); other typed text does not advance this step and gets a "did not understand" reply. This login has *not* agreed to share scores, so it never appears in the ARP digest or trainer counts. |
 | `arp.demo` | `<DEMO_PASSWORD>` | `/arp` | **Cluster resource person**, cluster KNP-C01: weekly digest of *consenting* teachers only, questions escalated from the chat (answer them here), classroom-observation form. |
 | `trainer.demo` | `<DEMO_PASSWORD>` | `/trainer` | **DIET/SCERT trainer**, district Kanpur Nagar: module × batch table (completion, most-missed key point, rubric and ladder distributions). Also the **training ratings** card: average, count and latest comments from consenting teachers in the district (hidden below 10 ratings). Groups with fewer than 10 teachers are suppressed (batch KNP-B3 has 8 and shows the privacy notice); `/trainer/export.csv` follows the same rule. No teacher names appear. |
@@ -30,9 +30,14 @@ from the language model, and gets coach feedback on their own words.
 
 ## A suggested hour
 
-1. **teacher.demo2 (10 min).** Run the rehearsal with the sample chips (including the Hinglish "tell the
-   answer" chip: Aman repeats the answer without understanding, which is the point). Notice that the same
-   input always gets the same child behaviour. Finish, read the feedback, tap retry.
+1. **teacher.demo2 (10 min).** Continue the 1-1 scene with Ravi using the sample chips (including the Hinglish
+   "tell the answer" chip: the child repeats the answer without understanding, which is the point, and
+   relapses on a new problem). Notice that the same input always gets the same child behaviour. Finish, read
+   the feedback, tap retry. After retry you choose again: **1-1 बच्चे से बात** (default) or **तीन बच्चों के साथ**.
+   For 1-1 pick Ravi, Priya or Aman (each has a different mistake, not shown yet), then say what you think the
+   child's mistake is (try the diagnosis chip, "उलझन पहचानें"): the app compares it with the child's real mistake
+   (correct / partly / wrong, decided by fixed keyword rules, not by the language model) and then reveals it.
+   Try a problem the children cannot handle ("रवि, 200 में से 120 घटाओ"): the child just says it is too big.
 2. **teacher.demo1 (10 min).** Go through welcome and consent, then the learn step and explain-back. Try a
    voice note (the mic button: tap to start, tap again to send, or hold). If a provider key is missing the
    voice may be a mock; the admin dashboard shows the configured providers.

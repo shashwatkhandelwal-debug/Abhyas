@@ -50,6 +50,8 @@ from backend.app.db.models import (
 )
 from backend.app.db.session import get_db_session
 from backend.app.llm.roles.translator import TranslationUnavailable, translate_to_english
+from backend.app.rehearsal.header import scene_header
+from backend.app.rehearsal.scene_store import scene_store
 from backend.app.retrieval.search import get_guide_retriever
 from backend.app.speech.cache import tts_cache
 
@@ -439,9 +441,14 @@ async def get_chat_messages(
 
     pending = is_teacher_pending(teacher.id)
 
+    # One-on-one header (child, progress cue, turn counter); null outside a one-on-one scene
+    scene_record = await scene_store.get_active_for_teacher(teacher.id)
+    header = scene_header(scene_record.scene_state, scene_record.active) if scene_record else None
+
     return {
         "messages": messages_data,
         "pending": pending,
+        "scene": header,
         "server_time": server_time.isoformat(),
     }
 

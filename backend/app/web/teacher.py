@@ -54,6 +54,7 @@ from backend.app.db.models import (
 )
 from backend.app.db.session import get_db_session
 from backend.app.privacy.purge import purge_teacher_data
+from backend.app.rehearsal.header import scene_header
 from backend.app.web.chat_api import get_teacher_for_user
 from backend.app.web.ui_lang import register_ui_globals
 
@@ -217,6 +218,13 @@ async def teacher_chat_page(
                     else f"{board_prefix} {current_item}"
                 )
 
+    header: dict[str, Any] | None = None
+    if active_scene is not None and active_scene.engine_state:
+        try:
+            header = scene_header(active_scene.engine_state)
+        except ValueError:
+            header = None
+
     demo_chips = load_demo_chips() if is_demo else []
     demo_banner_text = get_message("ui_demo_banner")
 
@@ -232,6 +240,7 @@ async def teacher_chat_page(
             "move_title": get_message("ui_default_move_title"),
             "step_chip": get_message("ui_default_step_chip"),
             "board_problem": board_problem,
+            "scene_header": header,
             "lite_mode": teacher.lite_mode,
             "demo_mode": is_demo,
             "demo_banner_text": demo_banner_text,

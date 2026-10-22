@@ -35,7 +35,7 @@ RECORDED_DIR = REPO_ROOT / "eval" / "samples" / "recorded"
 
 CHIP_LABELS: dict[str, str] = {
     "s1_ask_ravi": "रवि से तरीका पूछें",
-    "s2_bundles_all": "बंडल-तीली से समझाएँ",
+    "s2_diagnose_one_on_one": "उलझन पहचानें (1-1)",
     "s3_tell_answer_hinglish": "सीधा उत्तर बताएँ (हिंग्लिश)",
     "s4_explain_back": "तरीका समझाएँ (Explain-back)",
     "s5_question_multigrade": "बहु-कक्षा सवाल (Ask)",
@@ -44,7 +44,7 @@ CHIP_LABELS: dict[str, str] = {
 # English chip labels for the English UI (the sample utterances themselves stay Hindi)
 CHIP_LABELS_EN: dict[str, str] = {
     "s1_ask_ravi": "Ask Ravi how he did it",
-    "s2_bundles_all": "Explain with bundles and sticks",
+    "s2_diagnose_one_on_one": "Spot the confusion (1-1)",
     "s3_tell_answer_hinglish": "Tell the answer (Hinglish)",
     "s4_explain_back": "Explain the move (explain-back)",
     "s5_question_multigrade": "Multi-grade question (Ask)",

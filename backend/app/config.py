@@ -207,6 +207,7 @@ class Settings(BaseSettings):
     PROBLEM_MAX_ONES: int = 9
     PROBLEM_MAX_WORD_AKSHARS: int = 4
     MAX_COACH_FEEDBACK_WORDS: int = 60
+    COACH_QUOTE_MAX_WORDS: int = 12  # words of the teacher's own line quoted back in feedback
     MAX_GUIDE_ANSWER_WORDS: int = 80
     # A guide answer must share at least this many distinct content terms with the excerpts it
     # cites (excerpt text, heading and Hindi gloss/keywords); otherwise it is not grounded in them.

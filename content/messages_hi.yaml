@@ -788,3 +788,34 @@ ui_ratings_count: {text: "रेटिंग की संख्या", audio: 
 ui_ratings_latest: {text: "हाल की टिप्पणियाँ", audio: false}
 ui_ratings_none: {text: "अभी कोई रेटिंग नहीं मिली है।", audio: false}
 ui_ratings_distribution: {text: "1 से 5 तक रेटिंग का वितरण", audio: false}
+
+# ── One-on-one practice ───────────────────────────────────────────────────
+rehearse_mode_prompt: {text: "अब अभ्यास की बारी है। आप किसके साथ अभ्यास करेंगे? किसी एक बच्चे से अकेले बात करना सबसे अच्छा तरीका है।", audio: true}
+btn_rehearse_one: {text: "1-1 बच्चे से बात", audio: false}
+btn_rehearse_group: {text: "तीन बच्चों के साथ", audio: false}
+rehearse_mode_unclear: {text: "कृपया नीचे दिए दो विकल्पों में से एक चुनें: 1-1 बच्चे से बात, या तीन बच्चों के साथ।", audio: false}
+rehearse_child_prompt: {text: "आप किस बच्चे से बात करेंगे? तीनों बच्चों ने गलत उत्तर दिया है, और हर बच्चे की उलझन अलग है।", audio: true}
+btn_child_ravi: {text: "रवि", audio: false}
+btn_child_priya: {text: "प्रिया", audio: false}
+btn_child_aman: {text: "अमन", audio: false}
+rehearse_child_unclear: {text: "कृपया रवि, प्रिया या अमन में से किसी एक को चुनें।", audio: false}
+diagnose_empty: {text: "कृपया बताइए कि आपके हिसाब से {child} की उलझन क्या है। आप बोलकर या लिखकर बता सकते हैं, या 'छोड़ें' चुनें।", audio: false}
+diag_result_correct: {text: "आपने सही पकड़ा। {reveal}", audio: false}
+diag_result_partly: {text: "आप सही दिशा में हैं, पर पूरी बात नहीं पकड़ी। असल में: {reveal}", audio: false}
+diag_result_wrong: {text: "यह वह उलझन नहीं थी। असल में: {reveal}", audio: false}
+diag_result_skipped: {text: "कोई बात नहीं। असल में: {reveal}", audio: false}
+rehearse_one_start: {text: "अब {child} से बात कीजिए। पहले उसका तरीका पूछिए, फिर कोई ठोस चीज़ से समझाइए, और अंत में एक नया सवाल देकर जाँचिए। खत्म करने के लिए 'बस' बोलें।", audio: true}
+scene_all_correct_one: {text: "वाह! {child} ने नए सवाल पर भी खुद सही तरीका लगाया।", audio: true}
+coach_diag_change_wrong: {text: "अगली बार बच्चे से पूछकर पहचानिए कि उलझन यह थी: {label}।", audio: false}
+coach_diag_change_partly: {text: "अगली बार उलझन को और सटीक पहचानिए: {label}।", audio: false}
+ui_scene_one_title: {text: "{child} से 1-1 बात", audio: false}
+ui_scene_turn: {text: "बारी {turn}/{max}", audio: false}
+ui_chat_scene_end: {text: "अभ्यास पूरा करें", audio: false}
+ui_chat_scene_end_confirm: {text: "अभ्यास अभी पूरा करें?", audio: false}
+ui_scene_cue_diagnose: {text: "पहले उलझन पहचानिए", audio: false}
+ui_scene_cue_0: {text: "उलझन में है", audio: false}
+ui_scene_cue_1: {text: "अपना तरीका बता रहा है", audio: false}
+ui_scene_cue_2: {text: "आधा समझ आया", audio: false}
+ui_scene_cue_3: {text: "समझ आ गया, नया सवाल दें", audio: false}
+coach_quote_suffix: {text: "आपके शब्द: «{quote}»", audio: false}
+ui_chat_scene_stop_word: {text: "बस", audio: false}

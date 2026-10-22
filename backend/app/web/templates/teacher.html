@@ -56,7 +56,21 @@
     <div id="sr-live" class="sr-only" role="status" aria-live="polite"></div>
 
     <!-- REHEARSE Strip (Problem & 3 Children) (§9.2) -->
-    <div class="rehearse-strip" id="rehearse-strip">
+    <!-- One-on-one header: child, progress cue (from the engine), turn counter, end button -->
+    <div class="scene-header" id="scene-header" role="region" aria-label="{{ get_message('ui_chat_scene_end') }}"{% if not scene_header %} hidden{% endif %}>
+      <div class="sh-top">
+        <span class="child-pill active {{ scene_header.child_id if scene_header else '' }}" id="sh-child">{{ scene_header.child_name if scene_header else '' }}</span>
+        <span class="board-problem" id="sh-board">{{ scene_header.board if scene_header else '' }}</span>
+        <span class="sh-turn" id="sh-turn">{{ scene_header.turn_label if scene_header else '' }}</span>
+        <button type="button" class="sh-end" id="sh-end">{{ get_message('ui_chat_scene_end') }}</button>
+      </div>
+      <div class="sh-cue">
+        <span class="sh-steps" id="sh-steps" data-filled="{{ (scene_header.cue_state + 1) if scene_header and scene_header.cue_state >= 0 else 0 }}" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span class="sh-cue-text" id="sh-cue-text">{{ scene_header.cue if scene_header else '' }}</span>
+      </div>
+    </div>
+
+    <div class="rehearse-strip" id="rehearse-strip"{% if scene_header %} hidden{% endif %}>
       <span class="board-problem" id="board-problem">{{ board_problem }}</span>
       <div class="children-pills">
         <span class="child-pill ravi active" title="{{ get_message('ui_chat_child_ravi_title') }}">{{ get_message('speaker_ravi') }}</span>

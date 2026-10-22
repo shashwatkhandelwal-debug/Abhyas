@@ -536,3 +536,34 @@ ui_ratings_count: {text: "Number of ratings"}
 ui_ratings_latest: {text: "Latest comments"}
 ui_ratings_none: {text: "No ratings yet."}
 ui_ratings_distribution: {text: "Distribution of ratings, 1 to 5"}
+
+# ── One-on-one practice ───────────────────────────────────────────────────
+rehearse_mode_prompt: {text: "Time to practise. Who will you practise with? Talking to one child alone works best."}
+btn_rehearse_one: {text: "1-1 with a child"}
+btn_rehearse_group: {text: "With three children"}
+rehearse_mode_unclear: {text: "Please choose one of the two options below: 1-1 with a child, or with three children."}
+rehearse_child_prompt: {text: "Which child will you talk to? All three children gave a wrong answer, and each child's confusion is different."}
+btn_child_ravi: {text: "Ravi"}
+btn_child_priya: {text: "Priya"}
+btn_child_aman: {text: "Aman"}
+rehearse_child_unclear: {text: "Please pick one of Ravi, Priya or Aman."}
+diagnose_empty: {text: "Please tell me what you think {child}'s confusion is. You can speak or type it, or choose Skip."}
+diag_result_correct: {text: "You spotted it. {reveal}"}
+diag_result_partly: {text: "You are on the right track, but did not catch all of it. In fact: {reveal}"}
+diag_result_wrong: {text: "That was not the confusion. In fact: {reveal}"}
+diag_result_skipped: {text: "No problem. In fact: {reveal}"}
+rehearse_one_start: {text: "Now talk to {child}. First ask for their method, then explain with something concrete, and finally give a new problem to check. Say 'stop' to finish."}
+scene_all_correct_one: {text: "Wow! {child} used the right method on the new problem too."}
+coach_diag_change_wrong: {text: "Next time, ask the child and work out what the confusion was: {label}."}
+coach_diag_change_partly: {text: "Next time, pin the confusion down more exactly: {label}."}
+ui_scene_one_title: {text: "1-1 with {child}"}
+ui_scene_turn: {text: "Turn {turn}/{max}"}
+ui_chat_scene_end: {text: "End practice"}
+ui_chat_scene_end_confirm: {text: "End the practice now?"}
+ui_scene_cue_diagnose: {text: "First, spot the confusion"}
+ui_scene_cue_0: {text: "Confused"}
+ui_scene_cue_1: {text: "Explaining their method"}
+ui_scene_cue_2: {text: "Half understood"}
+ui_scene_cue_3: {text: "Understood: give a new problem"}
+coach_quote_suffix: {text: "Your words: «{quote}»"}
+ui_chat_scene_stop_word: {text: "stop"}

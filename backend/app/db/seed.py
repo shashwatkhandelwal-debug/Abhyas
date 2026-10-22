@@ -17,6 +17,7 @@ import asyncio
 import logging
 import uuid
 from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -156,6 +157,129 @@ async def _repair_legacy_move_ids(session: AsyncSession) -> None:
         await session.flush()
 
 
+DEMO2_SCENE_ID = uuid.UUID("00000000-0000-0001-0004-000000d02001")  # keeps the seeded-scene prefix
+_DEMO2_MOVE_ID = "NUM_SUB_REGROUP_BUNDLES"
+_DEMO2_CHILD = "ravi"
+_DEMO2_DIAGNOSIS_TEXT = "रवि इकाई में 3 में से 7 नहीं घटा पाता, तो उल्टा करके 7 में से 3 घटा देता है।"
+_DEMO2_TEACHER_LINE = "रवि, तुमने 43 में से 27 कैसे घटाया? मुझे एक-एक कदम बताओ।"
+
+
+def _demo2_diagnosis() -> dict[str, Any]:
+    from backend.app.rehearsal.diagnosis import judge_diagnosis
+    from backend.app.rehearsal.scene_runner import load_move_card
+
+    result = judge_diagnosis(
+        _DEMO2_DIAGNOSIS_TEXT, load_move_card(_DEMO2_MOVE_ID), "SUB_SMALLER_FROM_LARGER"
+    )
+    return {**result.model_dump(mode="json"), "skipped": False}
+
+
+def _demo2_context() -> dict[str, Any]:
+    """demo2 resumes inside a one-on-one scene with Ravi (diagnosed, one question asked)."""
+    return {
+        "current_move_id": _DEMO2_MOVE_ID,
+        "current_state": "REHEARSE",
+        "rehearse_stage": "scene",
+        "rehearse_mode": "one_on_one",
+        "rehearse_child": _DEMO2_CHILD,
+        "diagnosis": _demo2_diagnosis(),
+        "rehearsal_turns_count": 1,
+    }
+
+
+async def _seed_demo2_one_on_one(session: AsyncSession, *, replace: bool = False) -> None:
+    """The scene demo2 resumes in: a 1-1 scene with Ravi after one teacher turn, plus its chat.
+
+    Built with the real rule engine and the deterministic child line, so it is exactly what the
+    app itself would have stored. `replace` wipes the previous copy first (demo reset).
+    """
+    from backend.app.llm.roles.child_voice import template_line
+    from backend.app.rehearsal.scene_runner import SceneRunner, load_move_card, load_personas
+    from backend.app.rehearsal.scene_store import InMemorySceneStore
+    from backend.app.rule_engine.domain import TaggedTurn, TeachingAct
+    from backend.app.rule_engine.engine import RuleEngine
+
+    existing = await session.get(Scene, DEMO2_SCENE_ID)
+    if existing is not None:
+        if not replace:
+            return
+        await session.execute(delete(Turn).where(Turn.scene_id == DEMO2_SCENE_ID))
+        await session.delete(existing)
+        await session.flush()
+
+    runner = SceneRunner(store=InMemorySceneStore())
+    record = await runner.create_scene(
+        TEACHER_DEMO2_ID, _DEMO2_MOVE_ID, one_on_one_persona=_DEMO2_CHILD
+    )
+    step = RuleEngine.step(
+        record.scene_state,
+        TaggedTurn(acts=[TeachingAct.ASK_TO_EXPLAIN], addressed_child=_DEMO2_CHILD),
+    )
+    persona = load_personas()[_DEMO2_CHILD]
+    child_line = template_line(step.responses[0], persona)
+
+    now = datetime.now(UTC)
+    session.add(
+        Scene(
+            id=DEMO2_SCENE_ID,
+            teacher_id=TEACHER_DEMO2_ID,
+            move_id=_DEMO2_MOVE_ID,
+            status="active",
+            teacher_turns=record.scene_state.teacher_turns,
+            engine_state=record.scene_state.model_dump(mode="json"),
+            started_at=now - timedelta(minutes=2),
+        )
+    )
+    await session.flush()
+    session.add(
+        Turn(
+            id=uuid.uuid5(DEMO2_SCENE_ID, "turn-1"),
+            teacher_id=TEACHER_DEMO2_ID,
+            scene_id=DEMO2_SCENE_ID,
+            idx=1,
+            role="teacher",
+            transcript=_DEMO2_TEACHER_LINE,
+            acts=["ask_to_explain"],
+            addressed_child=_DEMO2_CHILD,
+            stage_ms={},
+            created_at=now - timedelta(minutes=1),
+        )
+    )
+
+    from backend.app.core.messages import get_message
+
+    diagnosis = _demo2_diagnosis()
+    reveal = (
+        load_move_card(_DEMO2_MOVE_ID)
+        .misconceptions[diagnosis["true_misconception"]]
+        .reveal_hi.format(child=get_message("speaker_ravi", lang="hi"))
+    )
+    chat: list[tuple[str, str, str | None]] = [
+        ("in", _DEMO2_DIAGNOSIS_TEXT, None),
+        ("out", get_message("diag_result_correct", lang="hi", reveal=reveal), None),
+        ("out", get_message("rehearse_one_start", lang="hi", child="रवि"), None),
+        ("in", _DEMO2_TEACHER_LINE, None),
+        ("out", child_line, _DEMO2_CHILD),
+    ]
+    for idx, (direction, text, speaker) in enumerate(chat):
+        stamp = now - timedelta(minutes=2, seconds=-10 * idx)
+        session.add(
+            Message(
+                id=uuid.uuid5(DEMO2_SCENE_ID, f"msg-{idx}"),
+                teacher_id=TEACHER_DEMO2_ID,
+                direction=direction,
+                channel="web",
+                channel_msg_id=f"seed-demo2-{idx}",
+                kind="text",
+                text=text,
+                speaker=speaker,
+                created_at=stamp,
+                updated_at=stamp,
+            )
+        )
+    await session.flush()
+
+
 async def _seed_demo2_session_state(session: AsyncSession) -> None:
     """demo2 starts the current week in REHEARSE (attempt 1)."""
     today = date.today()
@@ -170,7 +294,7 @@ async def _seed_demo2_session_state(session: AsyncSession) -> None:
             state="REHEARSE",
             prior_state="MODEL",
             rehearse_attempts=1,
-            context={"current_move_id": "NUM_SUB_REGROUP_BUNDLES", "current_state": "REHEARSE"},
+            context=_demo2_context(),
         )
     )
 
@@ -265,6 +389,7 @@ async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
 
     if teacher_id == TEACHER_DEMO2_ID:
         await _seed_demo2_session_state(session)
+        await _seed_demo2_one_on_one(session, replace=True)
     if teacher_id == TEACHER_DEMO3_ID:
         for idx, (m_id, _lvl, _src) in enumerate(_DEMO3_COMPLETED_MOVES):
             session.add(
@@ -406,6 +531,7 @@ async def seed_database() -> None:
 
         # 5. Session State for demo2 (in REHEARSE)
         await _seed_demo2_session_state(session)
+        await _seed_demo2_one_on_one(session)
 
         # 6. Completed moves and Adoption Evidence for demo3
         for idx, (m_id, lvl, src) in enumerate(_DEMO3_COMPLETED_MOVES):

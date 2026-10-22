@@ -12,7 +12,7 @@ Deviations from spec:
 import json
 import logging
 import unicodedata
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 from pydantic import ValidationError
@@ -20,6 +20,7 @@ from pydantic import ValidationError
 from backend.app.config import settings
 from backend.app.content_models import FeedbackItem, MoveCard, Rubric
 from backend.app.core.intents import is_pedagogy_question_for_app
+from backend.app.core.messages import get_message, get_ui_lang
 from backend.app.llm.client import LLMUnavailable, call_tool, logged_role
 from backend.app.llm.guard_stats import record_guard_event
 from backend.app.llm.guards import guard_coach, norm
@@ -28,6 +29,9 @@ from backend.app.llm.messages import load_catalog_message
 from backend.app.llm.prompts import load_prompt
 from backend.app.llm.schemas import CoachFeedbackOutput, CoachResult, SceneTurn
 from backend.app.rule_engine.domain import ChildState, TeachingAct, child_state_rank
+
+if TYPE_CHECKING:
+    from backend.app.rehearsal.diagnosis import DiagnosisResult
 
 logger = logging.getLogger("abhyas.llm.coach")
 
@@ -111,6 +115,31 @@ def _format_feedback_bank(feedback_bank: dict[str, FeedbackItem]) -> str:
     return "\n".join(lines)
 
 
+def _is_english() -> bool:
+    return get_ui_lang() == "en"
+
+
+def _misconception_label(move: MoveCard, diagnosis: "DiagnosisResult") -> str:
+    content = move.misconceptions.get(diagnosis.true_misconception)
+    if content is None:
+        return ""
+    return content.label_en if _is_english() else content.label_hi
+
+
+def _diagnosis_block(move: MoveCard, diagnosis: "DiagnosisResult | None", skipped: bool) -> str:
+    """Prompt text about the diagnosis step (the verdict is the deterministic matcher's)."""
+    if diagnosis is None:
+        return ""
+    said = "(the teacher skipped this step)" if skipped else f'"{diagnosis.text}"'
+    return (
+        "\nDiagnosis step (before teaching, one-on-one): the teacher said what they think the "
+        f"child's mistake is: {said}\n"
+        f"The child's real mistake: {_misconception_label(move, diagnosis)}\n"
+        "Verdict (decided by a deterministic matcher, do not change it): "
+        f"{'skipped' if skipped else diagnosis.verdict.value}\n"
+    )
+
+
 def _validate_turns(move: MoveCard, turns: list[SceneTurn]) -> None:
     """Validates that all turn speakers belong to teacher or scenario children."""
     valid_speakers = {"teacher"} | {c.persona_id for c in move.scenario.children}
@@ -133,6 +162,9 @@ def fallback_coach_feedback(
     previous_scores: dict[str, int] | None = None,
     previous_change_hi: str | None = None,
     reason: str = "unspecified",
+    diagnosis: "DiagnosisResult | None" = None,
+    diagnosis_skipped: bool = False,
+    one_on_one: bool = False,
 ) -> CoachFeedbackOutput:
     """Deterministic fallback coach feedback matching spec/05 §5.6.
 
@@ -206,6 +238,12 @@ def fallback_coach_feedback(
 
     fb_best = move.feedback_bank.get(best_crit.id) or next(iter(move.feedback_bank.values()))
     fb_worst = move.feedback_bank.get(worst_crit.id) or next(iter(move.feedback_bank.values()))
+    use_en = one_on_one and _is_english()
+    best_line = fb_best.strength_en if use_en and fb_best.strength_en else fb_best.strength_hi
+    worst_change = fb_worst.change_en if use_en and fb_worst.change_en else fb_worst.change_hi
+    worst_words = (
+        fb_worst.exact_words_en if use_en and fb_worst.exact_words_en else fb_worst.exact_words_hi
+    )
 
     teacher_words = [t.text_hi.strip() for t in teacher_turns]
     best_quote = evidence.get(best_crit.id, "")
@@ -213,17 +251,38 @@ def fallback_coach_feedback(
         scores.get(best_crit.id, 0) >= 1 and bool(best_quote) and best_quote in teacher_words
     )
     strength_hi = (
-        fb_best.strength_hi
-        if strength_is_evidenced
-        else load_catalog_message("coach_fallback_neutral")
+        best_line if strength_is_evidenced else load_catalog_message("coach_fallback_neutral")
     )
-    change_hi = fb_worst.change_hi
+    if one_on_one and strength_is_evidenced:
+        # Quote the teacher's own words (cut short) so the strength is visibly about them
+        quote = " ".join(best_quote.split()[: settings.COACH_QUOTE_MAX_WORDS])
+        strength_hi = f"{strength_hi} {get_message('coach_quote_suffix', quote=quote)}"
+    change_hi = worst_change
+    if (
+        one_on_one
+        and diagnosis is not None
+        and not diagnosis_skipped
+        and diagnosis.verdict.value == "wrong"
+    ):
+        # The teacher missed what the child's mistake was: that is the first thing to work on
+        change_hi = get_message(
+            "coach_diag_change_wrong", label=_misconception_label(move, diagnosis)
+        )
+    elif (
+        one_on_one
+        and diagnosis is not None
+        and diagnosis.verdict.value == "partly"
+        and min_score >= 1
+    ):
+        change_hi = get_message(
+            "coach_diag_change_partly", label=_misconception_label(move, diagnosis)
+        )
 
     domain_str = (
         "literacy" if getattr(move, "domain", None) == "literacy" or "LIT" in move.id else "math"
     )
     exact_words_hi = _sanitize_exact_words(
-        fb_worst.exact_words_hi,
+        worst_words,
         current_item_answer,
         rubric_rewards_not_telling,
         domain_str=domain_str,
@@ -265,6 +324,9 @@ async def coach_feedback(
     previous_target_criterion_id: str | None = None,
     previous_scores: dict[str, int] | None = None,
     previous_change_hi: str | None = None,
+    diagnosis: "DiagnosisResult | None" = None,
+    diagnosis_skipped: bool = False,
+    one_on_one: bool = False,
 ) -> CoachResult:
     """Generates coach feedback for a rehearsal scene matching spec/05 §5.6.
 
@@ -290,6 +352,18 @@ async def coach_feedback(
         key_points_block=_format_key_points(move),
         rubric_block=_format_rubric(move.rubric),
         feedback_bank_block=_format_feedback_bank(move.feedback_bank),
+        children_phrase=(
+            "one-on-one with a single simulated child (the rubric below is the one-on-one rubric)"
+            if one_on_one
+            else "with three simulated children"
+        ),
+        one_on_one_rules=(
+            "One-on-one: in strength_hi quote a few of the teacher's own words from the scene "
+            "in «» (copied exactly). If the diagnosis verdict is not 'correct', change_hi "
+            "should say what the child's real mistake was. Never alter the verdict."
+            if one_on_one
+            else "Group scene: nothing extra."
+        ),
     )
 
     transcript_text = "\n".join(f"{t.speaker}: {t.text_hi}" for t in turns)
@@ -310,6 +384,7 @@ async def coach_feedback(
         f"Teaching acts detected per teacher turn:\n{acts_text}\n\n"
         f"Child trajectories:\n{traj_text}\n"
         f"Target child: {target_child_id}\n"
+        f"{_diagnosis_block(move, diagnosis, diagnosis_skipped) if one_on_one else ''}"
     )
     prev_text = previous_change_hi
     if not prev_text and previous_target_criterion_id:
@@ -405,6 +480,9 @@ async def coach_feedback(
         previous_scores=previous_scores,
         previous_change_hi=previous_change_hi,
         reason=fallback_reason,
+        diagnosis=diagnosis,
+        diagnosis_skipped=diagnosis_skipped,
+        one_on_one=one_on_one,
     )
     return CoachResult(
         feedback=fb,

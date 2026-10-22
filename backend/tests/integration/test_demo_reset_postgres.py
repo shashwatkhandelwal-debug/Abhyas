@@ -37,7 +37,7 @@ from backend.app.db.models import (
     TrainingRating,
     Turn,
 )
-from backend.app.db.seed import DEMO_TEACHER_LOGINS
+from backend.app.db.seed import DEMO2_SCENE_ID, DEMO_TEACHER_LOGINS
 
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -239,8 +239,15 @@ async def test_logout_resets_demo_teacher_to_seed(session: AsyncSession, login: 
 
     await _logout(session, login)
     after = await _snapshot(session, teacher_id)
-    assert after["messages"] == []
+    # demo2 resumes inside a one-on-one scene with Ravi, so it starts with that chat history
+    assert after["messages"] == (seeded["messages"] if login == "teacher.demo2" else [])
     assert after == seeded
+    if login == "teacher.demo2":
+        scene = await session.get(Scene, DEMO2_SCENE_ID)
+        assert scene is not None and scene.status == "active"
+        assert scene.engine_state["one_on_one"] is True
+        assert scene.engine_state["teacher_turns"] == 1
+        assert len(after["messages"]) == 5
 
 
 async def test_logout_does_not_reset_a_non_demo_teacher(session: AsyncSession) -> None:

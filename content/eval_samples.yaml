@@ -6,14 +6,14 @@ samples:
     step: REHEARSE (move NUM_SUB_REGROUP_BUNDLES, any demo teacher in rehearsal)
     text_hi: "रवि, तुमने 43 में से 27 कैसे घटाया? मुझे एक-एक कदम बताओ।"
     expect: "Act tagged ask_to_explain → Ravi moves to CAN_EXPLAIN and explains his bug: '3 में से 7 नहीं घटता, तो 7 में से 3 घटाया… 24!' (never says 16)."
-  - id: s2_bundles_all
-    step: REHEARSE
-    text_hi: "सब लोग देखो, ये 4 बंडल और 3 खुली तीलियाँ हैं। 3 में से 7 नहीं निकलतीं, तो एक बंडल खोलते हैं। अब कितनी तीलियाँ हुईं?"
-    expect: "concrete_representation to the whole class → all children reach PARTIAL; Ravi answers 16 hesitantly; Aman may interject off-topic."
+  - id: s2_diagnose_one_on_one
+    step: "REHEARSE (1-1, right after choosing the child: the diagnosis step)"
+    text_hi: "इसने 3 में से 7 नहीं घटा पाया, तो उल्टा करके 7 में से 3 घटा दिया।"
+    expect: "Diagnosis step: the deterministic matcher compares this with the child's real mistake. Ravi (SUB_SMALLER_FROM_LARGER): correct. Priya or Aman: wrong or partly. Then the real mistake is revealed and the scene starts."
   - id: s3_tell_answer_hinglish
     step: REHEARSE
-    text_hi: "Aman, sahi answer 16 hai, yaad rakho."
-    expect: "Hinglish handled. tell_answer → Aman parrots '16…?' without understanding (state unchanged). If the evaluator then says 'अमन, अब 61 में से 28 करो', Aman relapses to his bug (40). Coach later scores 'no telling' = 0 and suggests contrasting answers."
+    text_hi: "Sahi answer 16 hai, yaad rakho."
+    expect: "Hinglish handled. tell_answer → the child parrots '16…?' without understanding (state unchanged). If the evaluator then gives a new problem ('अब 61 में से 28 करो'), the child relapses to their bug. Coach later scores 'no telling' = 0 and suggests contrasting answers."
   - id: s4_explain_back
     step: EXPLAIN_BACK
     text_hi: "इस तरीके में सबसे पहले बच्चे से पूछना है कि उसने कैसे घटाया। फिर दस-दस तीलियों के बंडल से संख्या बनवानी है, और जब इकाई में कम हो तो एक बंडल खोलना है। उत्तर खुद नहीं बताना।"

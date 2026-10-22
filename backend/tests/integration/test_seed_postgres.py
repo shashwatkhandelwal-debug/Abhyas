@@ -152,7 +152,8 @@ def test_seed_runs_on_fresh_postgres_and_is_idempotent(scratch_db: str) -> None:
     _run(["-m", "backend.app.db.seed"], scratch_db)
     first = _counts(scratch_db)
     assert first["scene"] > 0
-    assert first["rehearsal_score"] == first["scene"]
+    # every finished scene is scored; demo2's live one-on-one scene has no score yet
+    assert first["rehearsal_score"] == first["scene"] - 1
     assert first["turn"] > 0
     assert first["app_user"] > 0
     assert _orphans(scratch_db) == {"rehearsal_score": 0, "turn": 0}
