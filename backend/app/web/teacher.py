@@ -12,8 +12,10 @@ Routes:
 - GET /offline.html     Offline fallback page with cached checklist & history
 """
 
+import hashlib
 import json
 import logging
+import re
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -37,7 +39,7 @@ from backend.app.auth.guards import get_current_user, require_role
 from backend.app.auth.session import clear_session_cookie
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
-from backend.app.core.messages import get_message
+from backend.app.core.messages import get_catalog, get_message
 from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
@@ -233,6 +235,7 @@ async def teacher_chat_page(
             "demo_banner_text": demo_banner_text,
             "demo_chips": demo_chips,
             "initial_messages": initial_messages,
+            "ui_strings": get_catalog().texts_with_prefix(CHAT_UI_PREFIX),
         },
     )
     if token_to_set:
@@ -633,14 +636,39 @@ async def get_manifest() -> FileResponse:
     return FileResponse(manifest_file, media_type="application/manifest+json")
 
 
+# Catalog keys chat.js needs (served as JSON in the page; the JS holds no Hindi of its own).
+CHAT_UI_PREFIX = "ui_chat_"
+
+_SW_VERSIONED_ASSETS = ("sw.js", "chat.js", "recorder.js", "app.css", "manifest.json")
+
+
+def sw_build_version() -> str:
+    """Cache-busting id: deploy SHA plus a digest of the shipped static files.
+
+    The digest keeps the version moving when GIT_SHA is unset ("dev") or stale, so a changed
+    chat.js can never be served from a cache named after an older build.
+    """
+    digest = hashlib.sha1(usedforsecurity=False)
+    for name in _SW_VERSIONED_ASSETS:
+        path = STATIC_DIR / name
+        if path.is_file():
+            digest.update(path.read_bytes())
+    sha = re.sub(r"[^A-Za-z0-9]", "", settings.GIT_SHA)[:12] or "dev"
+    return f"{sha}-{digest.hexdigest()[:8]}"
+
+
 @router.get("/sw.js")
-async def get_service_worker() -> FileResponse:
-    """Serves service worker script with Service-Worker-Allowed root header (§9.2)."""
-    sw_file = STATIC_DIR / "sw.js"
-    return FileResponse(
-        sw_file,
+async def get_service_worker() -> Response:
+    """Serves the service worker with its cache name stamped with the build version (§9.2).
+
+    The stamp makes the script's bytes change on every deploy, which is what makes browsers
+    install the new worker; no-cache keeps the HTTP cache from hiding that.
+    """
+    body = (STATIC_DIR / "sw.js").read_text(encoding="utf-8")
+    return Response(
+        body.replace("__BUILD_VERSION__", sw_build_version()),
         media_type="application/javascript",
-        headers={"Service-Worker-Allowed": "/"},
+        headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"},
     )
 
 

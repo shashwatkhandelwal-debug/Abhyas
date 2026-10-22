@@ -1,12 +1,16 @@
 /**
  * Abhyas Chat Application (spec/09 §9.2).
  * Features:
- * - IndexedDB Outbox with retry backoff (2, 4, 8, 16, 30s)
+ * - IndexedDB Outbox with retry backoff (2, 4, 8s) and a visible failed state (tap to retry)
  * - Message deduplication with client_msg_id
  * - Polling (1.5s while pending, 20s while idle)
- * - Network banner (offline & slow connection alerts)
+ * - Visible acknowledgment for every action: bubble states, typing indicator, audio states,
+ *   mic flow, pressed/locked chips, cold-start / reconnecting status bar
  * - Lite mode toggle & audio playback
- * - Children rehearsal strip & typing indicators
+ *
+ * All Hindi shown by the acknowledgment UI comes from content/messages_hi.yaml (ui_chat_*),
+ * delivered as JSON in #ui-strings. The state machines below are pure so they can be tested
+ * under Node (backend/tests/js).
  */
 
 // ── IndexedDB Storage ───────────────────────────────────────────────────────
@@ -14,6 +18,14 @@ const DB_NAME = 'abhyas_chat_db';
 const DB_VERSION = 1;
 const STORE_OUTBOX = 'outbox';
 const STORE_MESSAGES = 'messages_cache';
+
+// ── Tunables (UI feedback timings) ──────────────────────────────────────────
+const TYPING_TIMEOUT_MS = 60000; // give up the typing indicator, show the Hindi failure hint
+const COLD_START_HINT_MS = 5000; // no response for this long -> "server is waking up"
+const AUDIO_WAIT_MS = 25000; // how long a spoken reply may wait for its audio before text-only
+const CHIP_CONFIRM_MS = 1400; // how long a tapped chip shows its inline ✓
+const MAX_AUTO_RETRIES = 3; // network/5xx attempts before a bubble shows the red "!"
+const BACKOFF_STEPS = [2000, 4000, 8000, 16000, 30000];
 
 // ── CSRF Protection ────────────────────────────────────────────────────────
 function getCsrfToken() {
@@ -100,6 +112,177 @@ async function getCachedMessages() {
   });
 }
 
+// ── Localised strings (catalog keys ui_chat_*, served as JSON in the page) ───
+let UI = {};
+
+function setUiStrings(obj) {
+  UI = obj || {};
+}
+
+function loadUiStrings() {
+  const el = document.getElementById('ui-strings');
+  if (!el) return;
+  try {
+    setUiStrings(JSON.parse(el.textContent));
+  } catch (e) {
+    console.warn('ui-strings JSON unreadable', e);
+  }
+}
+
+function fillTemplate(str, vars) {
+  let out = str;
+  for (const k in vars || {}) out = out.split('{' + k + '}').join(String(vars[k]));
+  return out;
+}
+
+// Returns '' (never an English fallback) for an unknown key; a pytest keeps keys and catalog in sync.
+function t(key, vars) {
+  const s = UI[key];
+  return s === undefined ? '' : fillTemplate(s, vars);
+}
+
+// ── Pure state machines ─────────────────────────────────────────────────────
+// Message bubble: sending -> sent | failed; failed -> (tap) sending. `sent` is final.
+const MSG_SENDING = 'sending';
+const MSG_SENT = 'sent';
+const MSG_FAILED = 'failed';
+
+function nextMsgState(cur, ev) {
+  switch (ev) {
+    case 'accepted':
+      return MSG_SENT;
+    case 'failed':
+      return cur === MSG_SENT ? MSG_SENT : MSG_FAILED;
+    case 'retry':
+      return cur === MSG_FAILED ? MSG_SENDING : cur;
+    default:
+      return cur;
+  }
+}
+
+// Typing indicator. `replied` stops the indicator coming back for the audio-rendering tail
+// of a turn whose text already arrived (server `pending` stays true until TTS is done).
+const TYPING_OFF = Object.freeze({ visible: false, timedOut: false, replied: false, speaker: null, since: 0 });
+
+function typingNext(st, ev) {
+  switch (ev.type) {
+    case 'accepted': // a POST was accepted
+      return { visible: true, timedOut: false, replied: false, speaker: ev.speaker || null, since: ev.now };
+    case 'pending': // poll says the server is still working
+      if (st.visible || st.replied) return st;
+      return { visible: true, timedOut: false, replied: false, speaker: st.speaker, since: ev.now };
+    case 'reply': // a new bot bubble rendered
+      return st.visible || !st.replied ? { ...TYPING_OFF, replied: true } : st;
+    case 'idle': // poll says nothing is pending
+      return st.visible || st.replied ? TYPING_OFF : st;
+    case 'tick':
+      if (st.visible && !st.timedOut && ev.now - st.since >= TYPING_TIMEOUT_MS) {
+        return { ...st, timedOut: true };
+      }
+      return st;
+    default:
+      return st;
+  }
+}
+
+const SPEAKER_NAMES = {
+  ravi: ['रवि', 'ravi'],
+  priya: ['प्रिया', 'priya'],
+  aman: ['अमन', 'aman'],
+};
+
+// Which child the teacher is talking to (earliest name in the text), or null.
+function guessSpeaker(text) {
+  const s = (text || '').toLowerCase();
+  let best = null;
+  let bestAt = Infinity;
+  for (const id in SPEAKER_NAMES) {
+    for (const name of SPEAKER_NAMES[id]) {
+      const at = s.indexOf(name);
+      if (at !== -1 && at < bestAt) {
+        best = id;
+        bestAt = at;
+      }
+    }
+  }
+  return best;
+}
+
+// Audio bubble. `loading` = waiting for the audio file to exist, or buffering after a tap.
+function audioNext(cur, ev) {
+  switch (cur) {
+    case 'loading':
+      if (ev === 'ready') return 'ready';
+      if (ev === 'giveup') return 'none';
+      if (ev === 'playing') return 'playing';
+      if (ev === 'pause') return 'ready';
+      if (ev === 'error') return 'error';
+      return cur;
+    case 'ready':
+      if (ev === 'play') return 'loading';
+      if (ev === 'playing') return 'playing';
+      if (ev === 'error') return 'error';
+      return cur;
+    case 'playing':
+      if (ev === 'pause' || ev === 'ended') return 'ready';
+      if (ev === 'waiting') return 'loading';
+      if (ev === 'error') return 'error';
+      return cur;
+    case 'error':
+      return ev === 'retry' ? 'loading' : cur;
+    default:
+      return cur;
+  }
+}
+
+// Mic / voice note: idle -> recording -> uploading -> transcribing -> done
+function micNext(cur, ev) {
+  switch (cur) {
+    case 'idle':
+      return ev === 'start' ? 'recording' : cur;
+    case 'recording':
+      if (ev === 'stop') return 'uploading';
+      if (ev === 'cancel' || ev === 'denied') return 'idle';
+      return cur;
+    case 'uploading':
+      if (ev === 'accepted') return 'transcribing';
+      if (ev === 'failed') return 'failed';
+      return cur;
+    case 'transcribing':
+      if (ev === 'transcript') return 'done';
+      if (ev === 'failed') return 'failed';
+      return cur;
+    case 'failed':
+      return ev === 'retry' ? 'uploading' : cur;
+    default:
+      return cur;
+  }
+}
+
+// Connection status bar: ok | cold (server waking / unreachable) | offline | reconnecting
+function netNext(cur, ev) {
+  switch (ev) {
+    case 'success':
+      return 'ok';
+    case 'slow':
+      return cur === 'ok' ? 'cold' : cur;
+    case 'fail':
+      return cur === 'ok' ? 'cold' : cur;
+    case 'offline':
+      return 'offline';
+    case 'online':
+      return cur === 'offline' ? 'reconnecting' : cur;
+    default:
+      return cur;
+  }
+}
+
+function formatTimer(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
 // ── State Management ────────────────────────────────────────────────────────
 const state = {
   lastMessageId: null,
@@ -107,96 +290,298 @@ const state = {
   pollTimer: null,
   liteMode: false,
   isRecording: false,
+  mic: 'idle',
   recorder: new window.AudioRecorder(),
   outboxRunning: false,
+  drainAgain: false,
   renderedMsgIds: new Set(),
   playedAudioRefs: new Set(),
   autoPlayDone: false,
   lastAudioPollAt: null,
   lastMessageCreated: null,
+  msgStates: new Map(), // client_msg_id -> sending | sent | failed
+  failedIds: new Map(), // client_msg_id -> 'network' | 'rejected'
+  rows: new Map(), // client_msg_id | server id -> bubble row element
+  typing: TYPING_OFF,
+  typingTimer: null,
+  net: 'ok',
+  serverSkewMs: 0, // server clock minus client clock, from poll responses
+  lastAcceptedAt: 0, // when a POST was last accepted (guards against stale poll replies)
 };
 
-// ── Outbox Drainer & Backoff Retrier ────────────────────────────────────────
-const BACKOFF_STEPS = [2000, 4000, 8000, 16000, 30000];
+function isChildSpeaker(speaker) {
+  return speaker === 'ravi' || speaker === 'priya' || speaker === 'aman';
+}
 
-async function drainOutbox() {
-  if (state.outboxRunning || !navigator.onLine) return;
-  state.outboxRunning = true;
+function rmAttr(el, name) {
+  if (el.removeAttribute) el.removeAttribute(name);
+}
 
+function announce(text) {
+  const live = document.getElementById('sr-live');
+  if (live && text) live.textContent = text;
+}
+
+// ── Connection status (cold start / reconnecting) ───────────────────────────
+function renderNetStatus() {
+  const bar = document.getElementById('status-bar');
+  if (!bar) return;
+  const key = state.net === 'cold' ? 'ui_chat_cold_start' : state.net === 'reconnecting' ? 'ui_chat_reconnecting' : '';
+  if (key) {
+    bar.textContent = t(key);
+    bar.className = `status-bar ${state.net}`;
+    bar.hidden = false;
+  } else {
+    bar.textContent = '';
+    bar.className = 'status-bar';
+    bar.hidden = true;
+  }
+}
+
+function netEvent(ev) {
+  const next = netNext(state.net, ev);
+  if (next === state.net) return;
+  state.net = next;
+  renderNetStatus();
+}
+
+// fetch() that reports to the status bar: no answer for COLD_START_HINT_MS shows the
+// "server is waking up" hint; any successful response (or a 5xx while waking) updates it.
+async function netFetch(url, opts) {
+  const timer = setTimeout(() => netEvent('slow'), COLD_START_HINT_MS);
   try {
-    const items = await getPendingOutboxItems();
-    for (const item of items) {
-      if (!navigator.onLine) break;
+    const res = await fetch(url, opts);
+    clearTimeout(timer);
+    netEvent(res.status >= 500 ? 'fail' : 'success');
+    return res;
+  } catch (err) {
+    clearTimeout(timer);
+    netEvent(navigator.onLine ? 'fail' : 'offline');
+    throw err;
+  }
+}
 
-      const retryCount = item.retryCount || 0;
-      let success = false;
+// ── Message bubble state ────────────────────────────────────────────────────
+function paintStatus(el, st, clientMsgId) {
+  el.className = `status-icon ${st}`;
+  el.setAttribute('data-state', st);
+  el.setAttribute('data-client-id', clientMsgId);
+  el.textContent = st === MSG_SENT ? '✓' : st === MSG_FAILED ? '!' : '';
+  el.setAttribute('aria-label', t(`ui_chat_msg_${st}`));
+  if (st === MSG_FAILED) {
+    el.setAttribute('role', 'button');
+    el.setAttribute('tabindex', '0');
+  } else {
+    el.setAttribute('role', 'img');
+    rmAttr(el, 'tabindex');
+  }
+}
 
-      try {
-        const startTime = Date.now();
-        let resp;
+function setMessageState(clientMsgId, ev) {
+  const cur = state.msgStates.get(clientMsgId) || MSG_SENDING;
+  const next = nextMsgState(cur, ev);
+  state.msgStates.set(clientMsgId, next);
+  const el = document.getElementById(`status-${clientMsgId}`);
+  if (el) paintStatus(el, next, clientMsgId);
+  return next;
+}
 
-        const csrfToken = getCsrfToken();
-        const jsonHeaders = { 'Content-Type': 'application/json' };
-        if (csrfToken) {
-          jsonHeaders['x-csrf-token'] = csrfToken;
-        }
+// Kept for the render path: a polled/adopted copy of an optimistic bubble means "accepted".
+function updateMessageStatus(clientMsgId) {
+  setMessageState(clientMsgId, 'accepted');
+}
 
-        if (item.kind === 'text') {
-          resp = await fetch('/api/chat/text', {
-            method: 'POST',
-            headers: jsonHeaders,
-            body: JSON.stringify({ client_msg_id: item.client_msg_id, text: item.text }),
-          });
-        } else if (item.kind === 'button') {
-          resp = await fetch('/api/chat/button', {
-            method: 'POST',
-            headers: jsonHeaders,
-            body: JSON.stringify({ client_msg_id: item.client_msg_id, button_id: item.button_id }),
-          });
-        } else if (item.kind === 'audio' && item.audioBlob) {
-          const form = new FormData();
-          form.append('client_msg_id', item.client_msg_id);
-          form.append('file', item.audioBlob, 'voice.webm');
-          const audioHeaders = {};
-          if (csrfToken) {
-            audioHeaders['x-csrf-token'] = csrfToken;
-          }
-          resp = await fetch('/api/chat/audio', {
-            method: 'POST',
-            headers: audioHeaders,
-            body: form,
-          });
-        }
+function failMessage(clientMsgId, reason) {
+  state.failedIds.set(clientMsgId, reason);
+  setMessageState(clientMsgId, 'failed');
+  setMicPhase(clientMsgId, 'failed');
+}
 
-        const duration = Date.now() - startTime;
-        if (duration > 8000) {
-          showSlowNetworkWarning();
-        }
+async function retryMessage(clientMsgId) {
+  if (!state.failedIds.has(clientMsgId)) return;
+  state.failedIds.delete(clientMsgId);
+  setMessageState(clientMsgId, 'retry');
+  setMicPhase(clientMsgId, 'retry');
+  const items = await getPendingOutboxItems();
+  const item = items.find((i) => i.client_msg_id === clientMsgId);
+  if (!item) {
+    failMessage(clientMsgId, 'rejected');
+    return;
+  }
+  item.retryCount = 0;
+  item.nextAttemptAt = 0;
+  await saveToOutbox(item); // same client_msg_id: the server dedupes if the first try did land
+  drainOutbox();
+}
 
-        if (resp && resp.status >= 200 && resp.status < 300) {
-          success = true;
-          const body = await resp.json().catch(() => null);
-          if (body && body.message_id) {
-            adoptServerMessageId(item.client_msg_id, body.message_id);
-          }
-          await removeFromOutbox(item.client_msg_id);
-          updateMessageStatus(item.client_msg_id, '✓');
-        }
-      } catch (err) {
-        console.warn('Upload error for item', item.client_msg_id, err);
+// ── Voice note phases (uploading -> transcribing -> transcript) ─────────────
+function setMicPhase(clientMsgId, ev) {
+  const row = state.rows.get(clientMsgId);
+  if (!row || !row._phaseEl) return;
+  const next = micNext(row._micPhase, ev);
+  if (next === row._micPhase) return;
+  row._micPhase = next;
+  row.setAttribute('data-phase', next);
+  const key = next === 'uploading' ? 'ui_chat_rec_uploading' : next === 'transcribing' ? 'ui_chat_rec_transcribing' : '';
+  row._phaseEl.textContent = key ? t(key) : '';
+}
+
+function applyTranscript(row, text) {
+  if (!row || !row._phaseEl || row._micPhase === 'done' || !text) return;
+  row._micPhase = 'done';
+  row.setAttribute('data-phase', 'done');
+  row._phaseEl.textContent = '';
+  if (row._textEl) row._textEl.textContent = text;
+}
+
+// ── Typing indicator ────────────────────────────────────────────────────────
+function typingLabel(speaker) {
+  return t(`ui_chat_typing_${speaker}`) || t('ui_chat_typing_generic');
+}
+
+function renderTyping() {
+  const bubble = document.getElementById('pending-bubble');
+  const label = document.getElementById('pending-text');
+  const st = state.typing;
+  if (bubble) {
+    bubble.className = `pending-bubble${st.visible ? ' active' : ''}${st.timedOut ? ' timeout' : ''}`;
+    bubble.setAttribute('aria-busy', st.visible && !st.timedOut ? 'true' : 'false');
+  }
+  if (label) label.textContent = st.timedOut ? t('ui_chat_typing_timeout') : typingLabel(st.speaker);
+  if (st.visible) {
+    const container = document.getElementById('chat-messages');
+    if (container) container.scrollTop = container.scrollHeight;
+  }
+  if (st.visible && !st.timedOut && !state.typingTimer) {
+    state.typingTimer = setInterval(() => typingEvent({ type: 'tick' }), 1000);
+  } else if ((!st.visible || st.timedOut) && state.typingTimer) {
+    clearInterval(state.typingTimer);
+    state.typingTimer = null;
+  }
+}
+
+function typingEvent(ev) {
+  const next = typingNext(state.typing, { ...ev, now: Date.now() });
+  if (next === state.typing) return;
+  state.typing = next;
+  renderTyping();
+}
+
+// ── Outbox Drainer & Backoff Retrier ────────────────────────────────────────
+async function sendOutboxItem(item) {
+  const csrfToken = getCsrfToken();
+  const jsonHeaders = { 'Content-Type': 'application/json' };
+  if (csrfToken) {
+    jsonHeaders['x-csrf-token'] = csrfToken;
+  }
+
+  let resp = null;
+  if (item.kind === 'text') {
+    resp = await netFetch('/api/chat/text', {
+      method: 'POST',
+      headers: jsonHeaders,
+      body: JSON.stringify({ client_msg_id: item.client_msg_id, text: item.text }),
+    });
+  } else if (item.kind === 'button') {
+    resp = await netFetch('/api/chat/button', {
+      method: 'POST',
+      headers: jsonHeaders,
+      body: JSON.stringify({ client_msg_id: item.client_msg_id, button_id: item.button_id }),
+    });
+  } else if (item.kind === 'audio' && item.audioBlob) {
+    const form = new FormData();
+    form.append('client_msg_id', item.client_msg_id);
+    form.append('file', item.audioBlob, 'voice.webm');
+    const audioHeaders = {};
+    if (csrfToken) {
+      audioHeaders['x-csrf-token'] = csrfToken;
+    }
+    resp = await netFetch('/api/chat/audio', { method: 'POST', headers: audioHeaders, body: form });
+  }
+
+  if (!resp) return { outcome: 'rejected' };
+  if (resp.status >= 200 && resp.status < 300) {
+    const body = await resp.json().catch(() => null);
+    return { outcome: 'accepted', body };
+  }
+  // 4xx (other than timeout / rate-limit) will not succeed by retrying the same request
+  if (resp.status >= 400 && resp.status < 500 && resp.status !== 408 && resp.status !== 429) {
+    return { outcome: 'rejected' };
+  }
+  return { outcome: 'retry' };
+}
+
+async function drainOnce() {
+  let wakeAt = 0;
+  const items = await getPendingOutboxItems();
+  items.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+  for (const item of items) {
+    const id = item.client_msg_id;
+    if (!navigator.onLine) break;
+    if (state.failedIds.has(id)) continue;
+    if (item.nextAttemptAt && item.nextAttemptAt > Date.now()) {
+      wakeAt = wakeAt ? Math.min(wakeAt, item.nextAttemptAt) : item.nextAttemptAt;
+      continue;
+    }
+
+    const startTime = Date.now();
+    let result;
+    try {
+      result = await sendOutboxItem(item);
+    } catch (err) {
+      console.warn('Upload error for item', id, err);
+      result = { outcome: 'retry' };
+    }
+    if (Date.now() - startTime > 8000) {
+      showSlowNetworkWarning();
+    }
+
+    if (result.outcome === 'accepted') {
+      if (result.body && result.body.message_id) {
+        adoptServerMessageId(id, result.body.message_id);
       }
-
-      if (!success) {
-        item.retryCount = retryCount + 1;
-        const delay = BACKOFF_STEPS[Math.min(retryCount, BACKOFF_STEPS.length - 1)];
+      await removeFromOutbox(id);
+      setMessageState(id, 'accepted');
+      setMicPhase(id, 'accepted');
+      typingEvent({ type: 'accepted', speaker: item.kind === 'text' ? guessSpeaker(item.text) : null });
+      // The server now owes a reply: poll at the fast cadence until it says it is done
+      state.lastAcceptedAt = Date.now();
+      state.isPending = true;
+      scheduleNextPoll();
+    } else if (result.outcome === 'rejected') {
+      failMessage(id, 'rejected');
+    } else {
+      item.retryCount = (item.retryCount || 0) + 1;
+      if (item.retryCount >= MAX_AUTO_RETRIES) {
         await saveToOutbox(item);
-        // Pause briefly before next retry
-        await new Promise((r) => setTimeout(r, delay));
+        failMessage(id, 'network');
+      } else {
+        item.nextAttemptAt = Date.now() + BACKOFF_STEPS[Math.min(item.retryCount - 1, BACKOFF_STEPS.length - 1)];
+        await saveToOutbox(item);
+        wakeAt = wakeAt ? Math.min(wakeAt, item.nextAttemptAt) : item.nextAttemptAt;
       }
     }
+  }
+  return wakeAt;
+}
+
+async function drainOutbox() {
+  if (state.outboxRunning) {
+    state.drainAgain = true; // an item was queued mid-run: go round again
+    return;
+  }
+  if (!navigator.onLine) return;
+  state.outboxRunning = true;
+  let wakeAt = 0;
+  try {
+    do {
+      state.drainAgain = false;
+      wakeAt = await drainOnce();
+    } while (state.drainAgain && navigator.onLine);
   } finally {
     state.outboxRunning = false;
   }
+  if (wakeAt) setTimeout(drainOutbox, Math.max(0, wakeAt - Date.now()) + 50);
 }
 
 // ── Polling Loop (§7.3) ─────────────────────────────────────────────────────
@@ -217,7 +602,7 @@ async function pollMessages() {
       url += `?${params.join('&')}`;
     }
 
-    const res = await fetch(url);
+    const res = await netFetch(url);
     const duration = Date.now() - startTime;
     if (duration > 8000) {
       showSlowNetworkWarning();
@@ -227,13 +612,18 @@ async function pollMessages() {
       const data = await res.json();
       if (data.server_time) {
         state.lastAudioPollAt = data.server_time;
+        const skew = Date.parse(data.server_time) - Date.now();
+        if (!Number.isNaN(skew)) state.serverSkewMs = skew;
       }
-      state.isPending = data.pending;
-      updatePendingIndicator(data.pending);
+      // A poll that left before the last POST was accepted cannot say whether that turn is done
+      const stale = startTime <= state.lastAcceptedAt;
+      state.isPending = data.pending || stale;
 
+      let gotReply = false;
       if (data.messages && data.messages.length > 0) {
         for (const msg of data.messages) {
-          renderMessage(msg);
+          const isNew = renderMessage(msg);
+          if (isNew && msg.direction === 'out') gotReply = true;
           if (!state.lastMessageCreated || (msg.created_at && msg.created_at >= state.lastMessageCreated)) {
             state.lastMessageId = msg.id;
             state.lastMessageCreated = msg.created_at;
@@ -241,6 +631,8 @@ async function pollMessages() {
         }
         await cacheMessages(data.messages);
       }
+      if (gotReply) typingEvent({ type: 'reply' });
+      if (!stale) typingEvent({ type: data.pending ? 'pending' : 'idle' });
     }
   } catch (err) {
     console.warn('Poll error:', err);
@@ -261,6 +653,122 @@ function triggerImmediatePoll() {
   pollMessages();
 }
 
+// ── Audio bubble ────────────────────────────────────────────────────────────
+function setAudioState(wrap, st) {
+  if (st === 'none') {
+    // audio never arrived: leave the text bubble on its own, no dead player
+    if (wrap._giveupTimer) clearTimeout(wrap._giveupTimer);
+    if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
+    wrap._audioState = 'none';
+    return;
+  }
+  wrap._audioState = st;
+  wrap.setAttribute('data-audio-state', st);
+  const hasRef = !!wrap._ref;
+  wrap.setAttribute('data-has-audio', hasRef ? 'true' : 'false');
+  wrap._btn.disabled = !hasRef;
+  const labels = {
+    loading: t('ui_chat_audio_loading'),
+    ready: t('ui_chat_audio_ready'),
+    playing: t('ui_chat_audio_playing'),
+    error: t('ui_chat_audio_error'),
+  };
+  wrap._label.textContent = labels[st] || '';
+  const btnLabel = {
+    ready: t('ui_chat_audio_play'),
+    playing: t('ui_chat_audio_pause'),
+    loading: t('ui_chat_audio_pause'),
+    error: t('ui_chat_audio_retry'),
+  };
+  wrap._btn.setAttribute('aria-label', btnLabel[st] || '');
+}
+
+function transitionAudio(wrap, ev) {
+  const next = audioNext(wrap._audioState, ev);
+  if (next !== wrap._audioState) setAudioState(wrap, next);
+}
+
+function getAudioEl(wrap) {
+  if (wrap._audio) return wrap._audio;
+  const a = new Audio();
+  a.preload = state.liteMode ? 'none' : 'metadata';
+  a.src = `/api/audio/${encodeURIComponent(wrap._ref)}.ogg`;
+  a.addEventListener('playing', () => transitionAudio(wrap, 'playing'));
+  a.addEventListener('waiting', () => transitionAudio(wrap, 'waiting'));
+  a.addEventListener('pause', () => {
+    if (!a.ended) transitionAudio(wrap, 'pause');
+  });
+  a.addEventListener('ended', () => transitionAudio(wrap, 'ended'));
+  a.addEventListener('error', () => transitionAudio(wrap, 'error'));
+  wrap._audio = a;
+  return a;
+}
+
+function startAudio(wrap, silentFail) {
+  const a = getAudioEl(wrap);
+  const ev = wrap._audioState === 'error' ? 'retry' : 'play';
+  if (ev === 'retry') a.load();
+  transitionAudio(wrap, ev);
+  a.play().catch(() => transitionAudio(wrap, silentFail ? 'pause' : 'error'));
+}
+
+function onAudioButton(wrap) {
+  const st = wrap._audioState;
+  if (st === 'playing' || st === 'loading') {
+    if (wrap._audio) wrap._audio.pause();
+    return;
+  }
+  if ((st === 'ready' || st === 'error') && wrap._ref) startAudio(wrap, false);
+}
+
+// One builder for every audio bubble: waiting (no file yet), ready, playing, error.
+function buildAudioWrap(audioRef, initialState) {
+  const wrap = document.createElement('div');
+  wrap.className = 'bubble-audio';
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn-play';
+  const bars = document.createElement('span');
+  bars.className = 'bars';
+  bars.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < 3; i++) bars.appendChild(document.createElement('i'));
+  btn.appendChild(bars);
+
+  const label = document.createElement('span');
+  label.className = 'audio-duration';
+
+  wrap.appendChild(btn);
+  wrap.appendChild(label);
+  wrap._btn = btn;
+  wrap._label = label;
+  wrap._ref = audioRef || null;
+  wrap._audio = null;
+  btn.onclick = () => onAudioButton(wrap);
+  setAudioState(wrap, initialState);
+  return wrap;
+}
+
+// The file for a text-first reply has landed: turn the "आवाज़ आ रही है…" placeholder into a player.
+function attachAudioRef(wrap, audioRef, autoplay) {
+  if (wrap._giveupTimer) clearTimeout(wrap._giveupTimer);
+  wrap._ref = audioRef;
+  setAudioState(wrap, 'ready');
+  if (autoplay && !state.liteMode && !state.autoPlayDone) {
+    state.autoPlayDone = true;
+    setTimeout(() => startAudio(wrap, true), 300);
+  }
+}
+
+// Server-rendered history bubbles carry a bare ▶ button: swap in the stateful player.
+function upgradeServerAudio() {
+  document.querySelectorAll('.bubble-audio').forEach((el) => {
+    const btn = el.querySelector('.btn-play[data-audio-ref]');
+    if (!btn || !el.parentNode) return;
+    el.parentNode.replaceChild(buildAudioWrap(btn.getAttribute('data-audio-ref'), 'ready'), el);
+  });
+}
+
 // ── UI Rendering ────────────────────────────────────────────────────────────
 // The optimistic bubble is keyed by client_msg_id; the server copy of the same
 // message (POST response / poll) carries the server id. Re-key the bubble so the
@@ -269,78 +777,58 @@ function adoptServerMessageId(clientMsgId, serverId) {
   if (!clientMsgId || !serverId || clientMsgId === serverId) return;
   if (!state.renderedMsgIds.has(clientMsgId)) return;
   state.renderedMsgIds.add(serverId);
-  const row = document.getElementById(`msg-${clientMsgId}`);
-  if (row) row.id = `msg-${serverId}`;
+  const row = document.getElementById(`msg-${clientMsgId}`) || state.rows.get(clientMsgId);
+  if (row) {
+    row.id = `msg-${serverId}`;
+    state.rows.set(serverId, row);
+  }
 }
 
+// A spoken reply (child / model teacher) whose audio is being synthesised right now.
+function expectsAudio(msg) {
+  if (msg.direction !== 'out' || msg.audio_ref || state.liteMode) return false;
+  if (!isChildSpeaker(msg.speaker) && msg.speaker !== 'model_teacher') return false;
+  const created = Date.parse(msg.created_at);
+  if (Number.isNaN(created)) return false;
+  return Date.now() + state.serverSkewMs - created < AUDIO_WAIT_MS;
+}
+
+// Returns true when a new bubble was added (false for a re-sent copy of an existing one).
 function renderMessage(msg, isLocalOptimistic = false) {
   if (msg.id && msg.client_msg_id && state.renderedMsgIds.has(msg.client_msg_id)) {
     adoptServerMessageId(msg.client_msg_id, msg.id);
-    updateMessageStatus(msg.client_msg_id, '✓');
+    updateMessageStatus(msg.client_msg_id);
   }
   const msgKey = msg.id || msg.client_msg_id;
   if (state.renderedMsgIds.has(msgKey)) {
-    // Text-first delivery support: attach audio to previously rendered text bubble
-    if (msg.audio_ref) {
-      const existingRow = document.getElementById(`msg-${msgKey}`);
-      if (existingRow && !existingRow.querySelector('.bubble-audio')) {
-        const bubble = existingRow.querySelector('.bubble');
-        if (bubble) {
-          const audioWrap = document.createElement('div');
-          audioWrap.className = 'bubble-audio';
-
-          const playBtn = document.createElement('button');
-          playBtn.className = 'btn-play';
-          playBtn.setAttribute('aria-label', 'आवाज़ सुनें');
-          playBtn.innerHTML = '▶';
-
-          const audioEl = document.createElement('audio');
-          audioEl.preload = state.liteMode ? 'none' : 'metadata';
-          audioEl.src = `/api/audio/${encodeURIComponent(msg.audio_ref)}.ogg`;
-
-          playBtn.onclick = () => {
-            if (audioEl.paused) {
-              audioEl.play().catch(console.error);
-              playBtn.innerHTML = '⏸';
-            } else {
-              audioEl.pause();
-              playBtn.innerHTML = '▶';
-            }
-          };
-          audioEl.onended = () => {
-            playBtn.innerHTML = '▶';
-          };
-
-          const label = document.createElement('span');
-          label.className = 'audio-duration';
-          label.textContent = 'ऑडियो संदेश';
-
-          audioWrap.appendChild(playBtn);
-          audioWrap.appendChild(label);
-          audioWrap.appendChild(audioEl);
-
-          const meta = bubble.querySelector('.bubble-meta');
-          if (meta) {
-            bubble.insertBefore(audioWrap, meta);
-          } else {
-            bubble.appendChild(audioWrap);
-          }
-        }
+    const existing = state.rows.get(msgKey) || (msg.client_msg_id && state.rows.get(msg.client_msg_id));
+    if (existing && msg.text) applyTranscript(existing, msg.text);
+    // Text-first delivery support: attach audio to a previously rendered text bubble
+    if (existing && msg.audio_ref && existing._audioWrap) {
+      if (!existing._audioWrap._ref) {
+        attachAudioRef(existing._audioWrap, msg.audio_ref, isChildSpeaker(msg.speaker) && existing._fresh);
       }
+    } else if (existing && msg.audio_ref && !existing._audioWrap && existing._bubble) {
+      const wrap = buildAudioWrap(msg.audio_ref, 'ready');
+      existing._audioWrap = wrap;
+      existing._bubble.insertBefore(wrap, existing._meta);
     }
-    return;
+    return false;
   }
   state.renderedMsgIds.add(msgKey);
 
   const container = document.getElementById('chat-messages');
-  if (!container) return;
+  if (!container) return false;
 
   const row = document.createElement('div');
   row.className = `msg-row ${msg.direction === 'in' ? 'inbound' : 'outbound'}`;
-  row.id = `msg-${msg.id || msg.client_msg_id}`;
+  row.id = `msg-${msgKey}`;
+  state.rows.set(msgKey, row);
+  if (msg.client_msg_id) state.rows.set(msg.client_msg_id, row);
 
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
+  row._bubble = bubble;
 
   // Speaker Tag (bot messages)
   if (msg.direction === 'out' && msg.speaker) {
@@ -351,67 +839,75 @@ function renderMessage(msg, isLocalOptimistic = false) {
   }
 
   // Text Content
-  if (msg.text) {
+  if (msg.text || msg.awaitingTranscript) {
     const textEl = document.createElement('p');
     textEl.className = 'bubble-text';
-    textEl.textContent = msg.text;
+    textEl.textContent = msg.text || '';
     bubble.appendChild(textEl);
+    row._textEl = textEl;
   }
 
-  // Audio Player (if audio_ref exists)
-  if (msg.audio_ref) {
-    const audioWrap = document.createElement('div');
-    audioWrap.className = 'bubble-audio';
+  // Voice note being uploaded / transcribed: one-line Hindi status under the label
+  if (msg.awaitingTranscript) {
+    const phaseEl = document.createElement('p');
+    phaseEl.className = 'bubble-phase';
+    phaseEl.setAttribute('role', 'status');
+    bubble.appendChild(phaseEl);
+    row._phaseEl = phaseEl;
+    row._micPhase = 'uploading';
+    row.setAttribute('data-phase', 'uploading');
+    phaseEl.textContent = t('ui_chat_rec_uploading');
+  } else if (msg.direction === 'in' && msg.kind === 'audio' && !msg.text && !isLocalOptimistic) {
+    // a voice note from history/poll whose transcript has not landed yet
+    const phaseEl = document.createElement('p');
+    phaseEl.className = 'bubble-phase';
+    phaseEl.setAttribute('role', 'status');
+    phaseEl.textContent = t('ui_chat_rec_transcribing');
+    const textEl = document.createElement('p');
+    textEl.className = 'bubble-text';
+    bubble.appendChild(textEl);
+    bubble.appendChild(phaseEl);
+    row._textEl = textEl;
+    row._phaseEl = phaseEl;
+    row._micPhase = 'transcribing';
+    row.setAttribute('data-phase', 'transcribing');
+  }
 
-    const playBtn = document.createElement('button');
-    playBtn.className = 'btn-play';
-    playBtn.setAttribute('aria-label', 'आवाज़ सुनें');
-    playBtn.innerHTML = '▶';
-
-    const audioEl = document.createElement('audio');
-    audioEl.preload = state.liteMode ? 'none' : 'metadata';
-    audioEl.src = `/api/audio/${encodeURIComponent(msg.audio_ref)}.ogg`;
-
-    playBtn.onclick = () => {
-      if (audioEl.paused) {
-        audioEl.play().catch(console.error);
-        playBtn.innerHTML = '⏸';
-      } else {
-        audioEl.pause();
-        playBtn.innerHTML = '▶';
-      }
-    };
-    audioEl.onended = () => {
-      playBtn.innerHTML = '▶';
-    };
-
-    const label = document.createElement('span');
-    label.className = 'audio-duration';
-    label.textContent = 'ऑडियो संदेश';
-
-    audioWrap.appendChild(playBtn);
-    audioWrap.appendChild(label);
-    audioWrap.appendChild(audioEl);
-    bubble.appendChild(audioWrap);
-
-    // Auto-play newest child line once in normal mode if not played
-    if (!state.liteMode && !state.autoPlayDone && isChildSpeaker(msg.speaker)) {
+  // Audio player, or a "voice is coming" placeholder while the reply's audio is synthesised
+  if (msg.audio_ref || expectsAudio(msg)) {
+    const wrap = buildAudioWrap(msg.audio_ref || null, msg.audio_ref ? 'ready' : 'loading');
+    row._audioWrap = wrap;
+    row._fresh = !msg.audio_ref;
+    bubble.appendChild(wrap);
+    if (!msg.audio_ref) {
+      wrap._giveupTimer = setTimeout(() => transitionAudio(wrap, 'giveup'), AUDIO_WAIT_MS);
+    } else if (!state.liteMode && !state.autoPlayDone && isChildSpeaker(msg.speaker)) {
+      // Auto-play newest child line once in normal mode if not played
       state.autoPlayDone = true;
-      setTimeout(() => {
-        audioEl.play().catch(() => {
-          // Browser gesture block, gracefully silent
-        });
-      }, 300);
+      setTimeout(() => startAudio(wrap, true), 300);
     }
   }
 
   // Metadata / Status Tick
   const meta = document.createElement('div');
   meta.className = 'bubble-meta';
-  const timeStr = msg.created_at
+  row._meta = meta;
+  const timeEl = document.createElement('span');
+  timeEl.textContent = msg.created_at
     ? new Date(msg.created_at).toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' })
-    : 'अभी';
-  meta.innerHTML = `<span>${timeStr}</span> <span class="status-icon" id="status-${msg.client_msg_id || msg.id}">${isLocalOptimistic ? '⏱' : (msg.direction === 'in' ? '✓' : '')}</span>`;
+    : t('ui_time_just_now') || 'अभी';
+  meta.appendChild(timeEl);
+  const statusEl = document.createElement('span');
+  const statusKey = msg.client_msg_id || msg.id;
+  statusEl.id = `status-${statusKey}`;
+  if (msg.direction === 'in') {
+    const initial = isLocalOptimistic ? MSG_SENDING : MSG_SENT;
+    state.msgStates.set(statusKey, initial);
+    paintStatus(statusEl, initial, statusKey);
+  } else {
+    statusEl.className = 'status-icon';
+  }
+  meta.appendChild(statusEl);
   bubble.appendChild(meta);
 
   row.appendChild(bubble);
@@ -422,10 +918,12 @@ function renderMessage(msg, isLocalOptimistic = false) {
     qrContainer.className = 'quick-replies';
     msg.buttons.forEach((btn) => {
       const chip = document.createElement('button');
+      chip.type = 'button';
       chip.className = 'reply-chip';
       chip.textContent = btn.title_hi;
       chip.onclick = () => {
-        qrContainer.querySelectorAll('.reply-chip').forEach((c) => (c.disabled = true));
+        if (chip.disabled) return;
+        lockChips(qrContainer, chip);
         handleSendButton(btn.id, btn.title_hi);
       };
       qrContainer.appendChild(chip);
@@ -433,26 +931,14 @@ function renderMessage(msg, isLocalOptimistic = false) {
     row.appendChild(qrContainer);
   }
 
-  container.appendChild(row);
+  const pendingEl = document.getElementById('pending-bubble');
+  if (pendingEl && pendingEl.parentNode === container) {
+    container.insertBefore(row, pendingEl); // new bubbles stay above the typing indicator
+  } else {
+    container.appendChild(row);
+  }
   container.scrollTop = container.scrollHeight;
-}
-
-function updateMessageStatus(clientMsgId, statusIcon) {
-  const el = document.getElementById(`status-${clientMsgId}`);
-  if (el) {
-    el.textContent = statusIcon;
-  }
-}
-
-function updatePendingIndicator(pending) {
-  const bubble = document.getElementById('pending-bubble');
-  if (bubble) {
-    if (pending) {
-      bubble.classList.add('active');
-    } else {
-      bubble.classList.remove('active');
-    }
-  }
+  return true;
 }
 
 function getSpeakerHindiLabel(speaker) {
@@ -467,8 +953,14 @@ function getSpeakerHindiLabel(speaker) {
   return map[speaker] || speaker;
 }
 
-function isChildSpeaker(speaker) {
-  return speaker === 'ravi' || speaker === 'priya' || speaker === 'aman';
+// ── Chips: pressed state, locked while the request runs, inline ✓ ────────────
+function lockChips(container, chip) {
+  container.querySelectorAll('.reply-chip').forEach((c) => {
+    c.disabled = true;
+    c.setAttribute('aria-busy', 'true');
+  });
+  chip.classList.add('pressed');
+  announce(t('ui_chat_chip_done'));
 }
 
 // ── Sending Handlers ────────────────────────────────────────────────────────
@@ -477,7 +969,11 @@ async function handleSendText(text) {
   const clientMsgId = crypto.randomUUID();
   const cleanText = text.trim();
 
-  // 1. Optimistic render in UI
+  // 1. Clear the input first (synchronously): a second tap/Enter cannot resend the same text
+  const input = document.getElementById('chat-input');
+  if (input) input.value = '';
+
+  // 2. Optimistic render in UI (clock until the POST is accepted)
   const optimisticMsg = {
     client_msg_id: clientMsgId,
     direction: 'in',
@@ -487,7 +983,7 @@ async function handleSendText(text) {
   };
   renderMessage(optimisticMsg, true);
 
-  // 2. Save to IndexedDB Outbox
+  // 3. Save to IndexedDB Outbox
   await saveToOutbox({
     client_msg_id: clientMsgId,
     kind: 'text',
@@ -495,10 +991,6 @@ async function handleSendText(text) {
     timestamp: Date.now(),
     retryCount: 0,
   });
-
-  // 3. Clear input
-  const input = document.getElementById('chat-input');
-  if (input) input.value = '';
 
   // 4. Trigger Outbox upload & fast poll
   drainOutbox();
@@ -534,12 +1026,13 @@ async function handleSendButton(buttonId, buttonTitle) {
 async function handleSendAudio(audioBlob, durationSec) {
   const clientMsgId = crypto.randomUUID();
 
-  // Optimistic render
+  // Optimistic render: voice-note label + "uploading…" line (becomes the transcript later)
   const optimisticMsg = {
     client_msg_id: clientMsgId,
     direction: 'in',
     kind: 'audio',
-    text: '🎤 वॉयस नोट (' + Math.round(durationSec) + 's)',
+    text: t('ui_chat_voice_note', { sec: Math.round(durationSec) }),
+    awaitingTranscript: true,
     created_at: new Date().toISOString(),
   };
   renderMessage(optimisticMsg, true);
@@ -560,9 +1053,10 @@ async function handleSendAudio(audioBlob, durationSec) {
 // ── Network & Offline Handling ──────────────────────────────────────────────
 function updateOnlineStatus() {
   const banner = document.getElementById('network-banner');
-  if (!banner) return;
 
   if (!navigator.onLine) {
+    netEvent('offline');
+    if (!banner) return;
     banner.className = 'network-banner offline';
     const offlineMsg = banner.getAttribute('data-offline-text');
     if (offlineMsg) {
@@ -572,9 +1066,16 @@ function updateOnlineStatus() {
       console.warn('Network banner element missing data-offline-text attribute');
     }
   } else {
-    banner.className = 'network-banner';
-    banner.textContent = '';
-    banner.style.display = 'none';
+    netEvent('online'); // offline -> "reconnecting…" until the next request succeeds
+    if (banner) {
+      banner.className = 'network-banner';
+      banner.textContent = '';
+      banner.style.display = 'none';
+    }
+    // Bubbles that gave up for lack of network try again now
+    for (const [id, reason] of [...state.failedIds]) {
+      if (reason === 'network') retryMessage(id);
+    }
     drainOutbox();
     triggerImmediatePoll();
   }
@@ -615,7 +1116,7 @@ async function toggleLiteMode(forceValue = null) {
     if (csrfToken) {
       headers['x-csrf-token'] = csrfToken;
     }
-    await fetch('/api/settings', {
+    await netFetch('/api/settings', {
       method: 'POST',
       headers,
       body: JSON.stringify({ lite_mode: target }),
@@ -632,6 +1133,7 @@ function setupMicEvents() {
   const overlay = document.getElementById('recording-overlay');
   const timerEl = document.getElementById('recording-timer');
   const cancelBtn = document.getElementById('btn-cancel-rec');
+  const recStatus = document.getElementById('rec-status');
   if (!micBtn) return;
 
   let isHeld = false;
@@ -639,24 +1141,27 @@ function setupMicEvents() {
   const startRec = () => {
     if (state.isRecording) return;
     state.isRecording = true;
+    state.mic = micNext(state.mic, 'start');
     micBtn.classList.add('recording');
+    micBtn.setAttribute('aria-pressed', 'true');
+    if (recStatus) recStatus.textContent = t('ui_chat_rec_recording');
     if (overlay) overlay.classList.add('active');
 
     state.recorder.start(
       (sec) => {
-        if (timerEl) {
-          const m = Math.floor(sec / 60);
-          const s = Math.floor(sec % 60);
-          timerEl.textContent = `${m}:${s < 10 ? '0' : ''}${s}`;
-        }
+        if (timerEl) timerEl.textContent = formatTimer(sec);
       },
       (blob, durationSec) => {
+        state.mic = micNext(state.mic, 'stop');
         stopRecUI();
-        handleSendAudio(blob, durationSec);
+        handleSendAudio(blob, durationSec).finally(() => {
+          state.mic = 'idle';
+        });
       },
       (errMsg) => {
+        state.mic = micNext(state.mic, 'denied');
         stopRecUI();
-        alert(errMsg);
+        flashStatus(errMsg);
       }
     );
   };
@@ -664,6 +1169,7 @@ function setupMicEvents() {
   const stopRecUI = () => {
     state.isRecording = false;
     micBtn.classList.remove('recording');
+    micBtn.setAttribute('aria-pressed', 'false');
     if (overlay) overlay.classList.remove('active');
     if (timerEl) timerEl.textContent = '0:00';
   };
@@ -698,77 +1204,97 @@ function setupMicEvents() {
     cancelBtn.onclick = () => {
       isHeld = false;
       state.recorder.cancel();
+      state.mic = micNext(state.mic, 'cancel');
       stopRecUI();
     };
   }
 }
 
+// A short notice in the slim status bar (e.g. microphone denied), replaced by the next net event.
+function flashStatus(text) {
+  const bar = document.getElementById('status-bar');
+  if (!bar || !text) return;
+  bar.textContent = text;
+  bar.className = 'status-bar notice';
+  bar.hidden = false;
+  setTimeout(renderNetStatus, 6000);
+}
+
 // ── Demo Chip Handler ───────────────────────────────────────────────────────
 function setupDemoChips() {
   const chips = document.querySelectorAll('.demo-chip');
+  const setBusy = (busy) =>
+    chips.forEach((c) => {
+      c.disabled = busy;
+      c.setAttribute('aria-busy', busy ? 'true' : 'false');
+    });
+
   chips.forEach((c) => {
     c.onclick = async () => {
-      const id = c.getAttribute('data-id');
-      const audioAvailable = c.getAttribute('data-audio-available') === 'true';
-      const text = c.getAttribute('data-text') || c.textContent.trim();
-      if (audioAvailable && id) {
-        try {
-          const res = await fetch(`/api/demo-sample/${id}.wav`);
-          if (res.ok) {
-            const blob = await res.blob();
-            await handleSendAudio(blob, 4);
-            return;
+      if (c.disabled) return;
+      setBusy(true); // locked while the sample loads: no double sends
+      c.classList.add('pressed');
+      announce(t('ui_chat_chip_done'));
+      try {
+        const id = c.getAttribute('data-id');
+        const audioAvailable = c.getAttribute('data-audio-available') === 'true';
+        const text = c.getAttribute('data-text') || c.textContent.trim();
+        if (audioAvailable && id) {
+          try {
+            const res = await netFetch(`/api/demo-sample/${id}.wav`);
+            if (res.ok) {
+              const blob = await res.blob();
+              await handleSendAudio(blob, 4);
+              return;
+            }
+          } catch (err) {
+            console.warn('Failed to load demo sample audio, falling back to text:', err);
           }
-        } catch (err) {
-          console.warn('Failed to load demo sample audio, falling back to text:', err);
         }
+        await handleSendText(text);
+      } finally {
+        setBusy(false);
+        setTimeout(() => c.classList.remove('pressed'), CHIP_CONFIRM_MS);
       }
-      handleSendText(text);
     };
   });
 }
 
 // ── Delegated Event Handlers for Server-Rendered Buttons ──────────────────
-function playAudioDirect(btn, audioRef) {
-  let audio = btn._audio;
-  if (!audio) {
-    audio = new Audio('/api/audio/' + encodeURIComponent(audioRef) + '.ogg');
-    btn._audio = audio;
-    audio.onended = () => {
-      btn.innerHTML = '▶';
-    };
-  }
-  if (audio.paused) {
-    audio.play().catch(console.error);
-    btn.innerHTML = '⏸';
-  } else {
-    audio.pause();
-    btn.innerHTML = '▶';
-  }
-}
-window.playAudioDirect = playAudioDirect;
-
 document.addEventListener('click', (e) => {
   const target = e.target;
   if (!target || !(target instanceof Element)) return;
 
-  const playBtn = target.closest('.btn-play[data-audio-ref]');
-  if (playBtn) {
-    const audioRef = playBtn.getAttribute('data-audio-ref');
-    if (audioRef) {
-      playAudioDirect(playBtn, audioRef);
-    }
+  const failed = target.closest('.status-icon.failed');
+  if (failed) {
+    const id = failed.getAttribute('data-client-id');
+    if (id) retryMessage(id);
     return;
   }
 
   const replyChip = target.closest('.reply-chip[data-btn-id]');
   if (replyChip) {
+    if (replyChip.disabled) return;
     const btnId = replyChip.getAttribute('data-btn-id');
     const btnTitle = replyChip.getAttribute('data-btn-title') || replyChip.textContent.trim();
     if (btnId) {
+      const group = replyChip.closest('.quick-replies');
+      if (group) lockChips(group, replyChip);
       handleSendButton(btnId, btnTitle);
     }
     return;
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const target = e.target;
+  if (!target || !(target instanceof Element)) return;
+  const failed = target.closest('.status-icon.failed');
+  if (failed) {
+    e.preventDefault();
+    const id = failed.getAttribute('data-client-id');
+    if (id) retryMessage(id);
   }
 });
 
@@ -795,6 +1321,7 @@ function initRenderedMessagesFromDom() {
     if (rawId) {
       state.renderedMsgIds.add(rawId);
       state.lastMessageId = rawId;
+      state.rows.set(rawId, row);
 
       const textEl = row.querySelector('.bubble-text');
       const speakerEl = row.querySelector('.speaker-tag');
@@ -819,6 +1346,8 @@ function initRenderedMessagesFromDom() {
 
 // ── Initialization ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  loadUiStrings();
+
   // 1. Online / Offline listeners
   window.addEventListener('online', updateOnlineStatus);
   window.addEventListener('offline', updateOnlineStatus);
@@ -857,8 +1386,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 5. Register SW
   registerServiceWorker();
 
-  // 6. Seed rendered messages into IndexedDB & state
+  // 6. Seed rendered messages into IndexedDB & state; give history audio the stateful player
   initRenderedMessagesFromDom();
+  upgradeServerAudio();
 
   // 7. Initial poll and outbox drain
   await drainOutbox();

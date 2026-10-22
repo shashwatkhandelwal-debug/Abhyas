@@ -16,7 +16,7 @@ import httpx
 from pydantic import ValidationError
 
 from backend.app.config import settings
-from backend.app.llm.client import LLMUnavailable, call_tool
+from backend.app.llm.client import LLMUnavailable, call_tool, logged_role
 from backend.app.llm.guard_stats import record_guard_event
 from backend.app.llm.guards import guard_guide_answerer
 from backend.app.llm.messages import load_catalog_message
@@ -90,6 +90,7 @@ def compose_guide_reply(
     return unicodedata.normalize("NFC", "\n\n".join(lines))
 
 
+@logged_role("guide_answerer", lambda: settings.CLAUDE_MODEL_SMART)
 async def answer_guide_question(
     question: str,
     category: str,

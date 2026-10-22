@@ -151,6 +151,14 @@ class MessageCatalog:
         """Returns True if the message key exists in the catalog."""
         return key in self._messages
 
+    def texts_with_prefix(self, prefix: str) -> dict[str, str]:
+        """Raw (unformatted, feminine-form) texts of every key starting with `prefix`."""
+        return {
+            key: str(entry.get("text", ""))
+            for key, entry in self._messages.items()
+            if key.startswith(prefix)
+        }
+
 
 # Singleton catalog instance loaded at import time
 _catalog: MessageCatalog | None = None

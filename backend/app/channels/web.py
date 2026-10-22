@@ -231,6 +231,9 @@ async def process_inbound_web(
                     db_msg = await session.get(Message, message_id)
                     if db_msg:
                         db_msg.text = final_text
+                        # Bump updated_at so /api/chat/messages re-sends the row and the PWA
+                        # can swap the "transcribing…" placeholder for the transcript.
+                        db_msg.updated_at = datetime.now(UTC)
                         await session.commit()
 
                 # Step 3: Button payload handling

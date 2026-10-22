@@ -1,11 +1,15 @@
 /**
  * Abhyas Service Worker (spec/09 §9.2).
- * - Cache-first for static assets (/static/*)
+ * - Static cache name carries the build version (the server stamps the BUILD_VERSION constant on
+ *   every GET /sw.js), so each deploy installs a fresh cache and activate drops the old ones.
+ * - Stale-while-revalidate for /static/*.js and *.css; cache-first for other /static/*
  * - LRU cache (max 30 items) for /api/audio/* already played
  * - Network-first for HTML pages with fallback to offline.html
  */
 
-const CACHE_NAME_STATIC = 'abhyas-static-v1';
+const BUILD_VERSION = '__BUILD_VERSION__';
+const STATIC_CACHE_PREFIX = 'abhyas-static-';
+const CACHE_NAME_STATIC = STATIC_CACHE_PREFIX + BUILD_VERSION;
 const CACHE_NAME_AUDIO = 'abhyas-audio-v1';
 const MAX_AUDIO_CACHE_ITEMS = 30;
 
@@ -20,7 +24,8 @@ const STATIC_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME_STATIC).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
+      // cache:'reload' bypasses the HTTP cache so a new build never precaches stale files.
+      return cache.addAll(STATIC_ASSETS.map((url) => new Request(url, { cache: 'reload' })));
     })
   );
   self.skipWaiting();
@@ -31,7 +36,8 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME_STATIC && key !== CACHE_NAME_AUDIO) {
+          const staleStatic = key.startsWith(STATIC_CACHE_PREFIX) && key !== CACHE_NAME_STATIC;
+          if (staleStatic || (key !== CACHE_NAME_AUDIO && key !== CACHE_NAME_STATIC)) {
             return caches.delete(key);
           }
         })
@@ -88,7 +94,28 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Static Assets (/static/*) - Cache-first
+  // 3a. Scripts and styles - stale-while-revalidate: instant from cache, refreshed in background
+  if (url.pathname.startsWith('/static/') && /\.(js|css)$/.test(url.pathname)) {
+    event.respondWith(
+      caches.open(CACHE_NAME_STATIC).then(async (cache) => {
+        const cached = await cache.match(event.request);
+        const refresh = fetch(event.request).then((networkResponse) => {
+          if (networkResponse.status === 200) {
+            cache.put(event.request, networkResponse.clone());
+          }
+          return networkResponse;
+        });
+        if (cached) {
+          refresh.catch(() => {});
+          return cached;
+        }
+        return refresh;
+      })
+    );
+    return;
+  }
+
+  // 3b. Other static assets (/static/*) - Cache-first
   if (url.pathname.startsWith('/static/')) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {

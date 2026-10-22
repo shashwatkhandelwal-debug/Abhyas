@@ -24,6 +24,24 @@ from backend.app.rule_engine.domain import (
 )
 from backend.app.rule_engine.transitions import ADVANCE
 
+# A teacher turn with any of these gets a direct, on-topic reply: a distraction line
+# (OFF_TOPIC / INTERJECT) must never stand in for it. Only OFF_TASK, SCOLD and praise
+# turns leave room for a child to drift.
+_DIRECT_RESPONSE_ACTS: frozenset[TeachingAct] = frozenset(
+    {
+        TeachingAct.ASK_TO_EXPLAIN,
+        TeachingAct.CONCRETE_REPRESENTATION,
+        TeachingAct.PROBE_SIMPLER_CASE,
+        TeachingAct.CONTRAST_TWO_ANSWERS,
+        TeachingAct.MODEL_STEP_ALOUD,
+        TeachingAct.TELL_ANSWER,
+        TeachingAct.REPEAT_QUESTION,
+        TeachingAct.INVOLVE_PEER,
+        TeachingAct.PHONICS_SOUND_OUT,
+        TeachingAct.GIVE_NEW_PROBLEM,
+    }
+)
+
 
 def _check_end_conditions(scene: SceneState) -> None:
     """Evaluates scene end conditions and updates scene.ended and scene.end_reason."""
@@ -311,7 +329,13 @@ class RuleEngine:
             steps = []
             responder.state = prior_state
             new_state = prior_state
-        elif TeachingAct.OFF_TASK in tagged.acts and responder.temperament == "distracted":
+        elif (
+            TeachingAct.OFF_TASK in tagged.acts
+            and responder.temperament == "distracted"
+            and not (set(tagged.acts) & _DIRECT_RESPONSE_ACTS)
+            and scene.distractions_used < scene.max_distractions
+        ):
+            scene.distractions_used += 1
             kind = ResponseKind.OFF_TOPIC
             answer = None
             steps = []
@@ -423,10 +447,12 @@ class RuleEngine:
         # 10. Distracted interjection (max one per turn)
         for c in scene.children:
             if (
-                c.persona_id != responder.persona_id
+                scene.distractions_used < scene.max_distractions
+                and c.persona_id != responder.persona_id
                 and c.temperament == "distracted"
                 and c.turns_since_addressed >= scene.distracted_interject_after
             ):
+                scene.distractions_used += 1
                 interject = ChildResponse(
                     persona_id=c.persona_id,
                     kind=ResponseKind.INTERJECT,

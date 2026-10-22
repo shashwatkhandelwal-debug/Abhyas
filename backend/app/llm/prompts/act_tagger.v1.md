@@ -11,7 +11,7 @@ Teaching-act taxonomy (use only these ids):
 - probe_simpler_case: gives an easier related problem to test understanding ("पहले 12 में से 7 करके दिखाओ")
 - contrast_answers: puts two answers side by side and asks which is right / why ("रवि ने 45 कहा, प्रिया ने 35 — किसका सही?")
 - model_step_aloud: teacher demonstrates the procedure step by step aloud
-- tell_answer: teacher states the correct answer herself
+- tell_answer: teacher states the correct answer herself, including as a correction to a child ("सही answer 16 है, याद रखो")
 - repeat_question: repeats or rephrases the same question without new support
 - praise_effort: praises the child's effort or thinking ("अच्छा सोचा", "कोशिश बढ़िया थी")
 - praise_generic: generic praise without content ("शाबाश", "वेरी गुड")
@@ -26,7 +26,9 @@ Rules:
 2. addressed_child: the child spoken to by name or clear reference; "all" if addressing the class; null if unclear.
 3. If the teacher poses a new item, fill "problem" exactly from her words (numbers may be spoken in Hindi words: "बावन" = 52). Otherwise null.
 4. quote: copy the exact words from the transcript that show the most important act.
-5. The transcript comes from speech recognition and may contain errors. Be charitable but do not invent acts.
+5. ALWAYS return at least one act. If nothing clearly applies, return repeat_question. Use off_task ONLY
+   for talk unrelated to the lesson (rain, fees, bell) -- never for instructions, corrections or "let's move on".
+6. The transcript comes from speech recognition and may contain errors. Be charitable but do not invent acts.
 
 Worked Examples:
 {act_examples_block}

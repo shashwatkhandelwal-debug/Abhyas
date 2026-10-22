@@ -52,6 +52,8 @@
     <!-- Network Alert Banner -->
     <div id="network-banner" class="network-banner" role="status" aria-live="polite" data-offline-text="{{ get_message('ui_offline_banner') }}" data-slow-text="{{ get_message('ui_slow_banner') }}">{% if not is_online and is_online is defined %}{{ get_message('ui_offline_banner') }}{% endif %}</div>
 
+    <div id="sr-live" class="sr-only" role="status" aria-live="polite"></div>
+
     <!-- REHEARSE Strip (Problem & 3 Children) (§9.2) -->
     <div class="rehearse-strip" id="rehearse-strip">
       <span class="board-problem" id="board-problem">{{ board_problem }}</span>
@@ -61,6 +63,9 @@
         <span class="child-pill aman" title="अमन (कक्षा 2)">अमन</span>
       </div>
     </div>
+
+    <!-- Slim status bar (cold start / reconnecting). Zero-height slot, bar overlays: no layout shift. -->
+    <div class="status-slot"><div id="status-bar" class="status-bar" role="status" aria-live="polite" hidden></div></div>
 
     <!-- Message Thread (WhatsApp-like) -->
     <main class="chat-messages" id="chat-messages" role="log" aria-live="polite">
@@ -92,7 +97,7 @@
 
           <div class="bubble-meta">
             <span>{{ msg.time_str or "अभी" }}</span>
-            <span class="status-icon">{{ "✓" if msg.direction == "in" else "" }}</span>
+            {% if msg.direction == "in" %}<span class="status-icon sent" data-state="sent" role="img" aria-label="{{ (ui_strings or {}).get('ui_chat_msg_sent', '') }}">✓</span>{% else %}<span class="status-icon"></span>{% endif %}
           </div>
         </div>
 
@@ -111,7 +116,7 @@
       <!-- Typing / Pending Indicator -->
       <div id="pending-bubble" class="pending-bubble" role="status" aria-label="बच्चे सोच रहे हैं">
         <div class="dot-flashing" aria-hidden="true"><span></span><span></span><span></span></div>
-        <span id="pending-text">रवि सोच रहा है…</span>
+        <span id="pending-text">{{ (ui_strings or {}).get('ui_chat_typing_generic', '') }}</span>
       </div>
     </main>
 
@@ -174,13 +179,14 @@
             <span class="rec-blip"></span>
             <span id="recording-timer">0:00</span>
           </div>
-          <span class="slide-cancel-text">छोड़ने पर भेजा जाएगा</span>
+          <span class="slide-cancel-text" id="rec-status">{{ (ui_strings or {}).get('ui_chat_rec_recording', 'छोड़ने पर भेजा जाएगा') }}</span>
           <button type="button" class="btn-cancel-rec" id="btn-cancel-rec">रद्द करें ✕</button>
         </div>
       </form>
     </footer>
   </div>
 
+  <script type="application/json" id="ui-strings">{{ (ui_strings or {})|tojson }}</script>
   <script src="/static/recorder.js"></script>
   <script src="/static/chat.js"></script>
   <script>
@@ -198,22 +204,6 @@
 
     function openHelpModal() {
       alert('अभ्यास साथी: हर सप्ताह 15 मिनट अभ्यास करें। आप बोलकर या लिखकर बात कर सकती हैं। सहायता के लिए अपने ARP से संपर्क करें।');
-    }
-
-    function playAudioDirect(btn, audioRef) {
-      let audio = btn._audio;
-      if (!audio) {
-        audio = new Audio('/api/audio/' + encodeURIComponent(audioRef) + '.ogg');
-        btn._audio = audio;
-        audio.onended = () => { btn.innerHTML = '▶'; };
-      }
-      if (audio.paused) {
-        audio.play().catch(console.error);
-        btn.innerHTML = '⏸';
-      } else {
-        audio.pause();
-        btn.innerHTML = '▶';
-      }
     }
   </script>
 </body>

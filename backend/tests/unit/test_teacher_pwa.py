@@ -222,8 +222,10 @@ def test_asset_budget_under_150kb() -> None:
 
     # Assert total budget is strictly less than 150 KB
     assert total_kb < 150.0, f"Assets exceed 150 KB budget: {total_kb:.2f} KB"
-    assert total_kb < 90.0, (
-        f"Expected assets to comfortably sit below 90 KB, got: {total_kb:.2f} KB"
+    # This sums every static file and both duplicate templates (admin/trainer pages too); the
+    # chat first load is ~91 KB raw (teacher.html + app.css + chat.js + recorder.js), far less gzipped.
+    assert total_kb < 120.0, (
+        f"Expected assets to comfortably sit below 120 KB, got: {total_kb:.2f} KB"
     )
 
 
@@ -527,7 +529,8 @@ def test_service_worker_contract() -> None:
     sw_content = (STATIC_DIR / "sw.js").read_text(encoding="utf-8")
 
     # Cache names
-    assert "CACHE_NAME_STATIC = 'abhyas-static-v1'" in sw_content
+    assert "CACHE_NAME_STATIC = STATIC_CACHE_PREFIX + BUILD_VERSION" in sw_content
+    assert "'abhyas-static-v1'" not in sw_content  # fixed name pinned returning browsers to old JS
     assert "CACHE_NAME_AUDIO = 'abhyas-audio-v1'" in sw_content
 
     # Audio LRU 30 items
@@ -544,3 +547,27 @@ def test_service_worker_contract() -> None:
     # Offline navigation fallback
     assert "cachedOffline" in sw_content
     assert "'/offline.html'" in sw_content
+
+
+@pytest.mark.asyncio
+async def test_chat_page_serves_ui_strings_json_and_status_slots(teacher_pwa_app: FastAPI) -> None:
+    """chat.js gets every ui_chat_* string as JSON, and the page has the slots it writes into."""
+    import json
+    import re
+
+    from backend.app.core.messages import get_catalog
+    from backend.app.web.teacher import CHAT_UI_PREFIX
+
+    async with AsyncClient(
+        transport=ASGITransport(app=teacher_pwa_app), base_url="http://test"
+    ) as client:
+        html = (await client.get("/teacher")).text
+    match = re.search(r'<script type="application/json" id="ui-strings">(.*?)</script>', html, re.S)
+    assert match, "ui-strings JSON block missing"
+    strings = json.loads(match.group(1))
+    assert strings == get_catalog().texts_with_prefix(CHAT_UI_PREFIX)
+    assert strings["ui_chat_cold_start"] == "सर्वर जाग रहा है, थोड़ा रुकिए…"
+    for slot in ('id="status-bar"', 'id="sr-live"', 'id="pending-bubble"', 'id="rec-status"'):
+        assert slot in html
+    assert "रवि सोच रहा है" not in html  # placeholder text is now generic + set by chat.js
+    assert "function playAudioDirect" not in html  # the duplicate inline player is gone

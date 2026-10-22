@@ -22,6 +22,7 @@ from uuid import UUID
 import yaml
 from pydantic import BaseModel
 
+from backend.app.config import settings
 from backend.app.content_models import PersonaCard
 from backend.app.core.intents import Intent, match_intent
 from backend.app.core.messages import get_message
@@ -174,6 +175,7 @@ class SceneRunner:
             children=children,
             guess_lexicon=move.scenario.guess_lexicon,
             max_turns=max_turns,
+            max_distractions=settings.MAX_DISTRACTIONS_PER_SCENE,
         )
 
         record = SceneRecord(

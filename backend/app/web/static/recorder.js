@@ -14,6 +14,7 @@ class AudioRecorder {
     this.maxDurationSec = 90; // Auto-stop at 90s (§9.2)
     this.minDurationSec = 0.7; // Discard under 0.7s (§9.2)
     this.isRecording = false;
+    this.cancelled = false; // set by cancel(): the recorder's own stop event must not send
   }
 
   isSupported() {
@@ -62,6 +63,7 @@ class AudioRecorder {
 
       this.mediaRecorder = new MediaRecorder(this.stream, options);
       this.audioChunks = [];
+      this.cancelled = false;
       this.startTime = Date.now();
       this.isRecording = true;
 
@@ -73,8 +75,13 @@ class AudioRecorder {
 
       this.mediaRecorder.onstop = () => {
         const durationSec = (Date.now() - this.startTime) / 1000;
+        const wasCancelled = this.cancelled;
+        this.cancelled = false;
         this.cleanup();
 
+        if (wasCancelled) {
+          return; // user pressed cancel: discard, never upload
+        }
         if (durationSec < this.minDurationSec) {
           // Discard under 0.7s (§9.2)
           return;
@@ -119,6 +126,10 @@ class AudioRecorder {
 
   cancel() {
     this.isRecording = false;
+    this.cancelled = true;
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      this.mediaRecorder.stop();
+    }
     this.cleanup();
   }
 
