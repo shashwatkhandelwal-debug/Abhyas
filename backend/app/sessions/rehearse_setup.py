@@ -13,6 +13,7 @@ from __future__ import annotations
 import unicodedata
 from typing import TYPE_CHECKING
 
+from backend.app.class_profile.personalise import FocusChild, focus_child, label_of
 from backend.app.content_models import MoveCard
 from backend.app.core.intents import Intent, match_intent
 from backend.app.core.messages import get_message, get_ui_lang
@@ -62,14 +63,29 @@ def _mode_buttons(af: str) -> list[Button]:
     ]
 
 
-def _child_buttons(move: MoveCard, af: str) -> list[Button]:
-    return [
-        Button(
-            id=f"{BTN_CHILD_PREFIX}{c.persona_id}",
-            title_hi=get_message(f"{BTN_CHILD_PREFIX}{c.persona_id}", af),
-        )
-        for c in move.scenario.children
-    ]
+def _child_buttons(move: MoveCard, af: str, focus: FocusChild | None = None) -> list[Button]:
+    """One button per child; the child who makes the mistake behind her class's struggle is first."""
+    children = sorted(
+        move.scenario.children, key=lambda c: focus is None or c.persona_id != focus.persona_id
+    )
+    buttons: list[Button] = []
+    for c in children:
+        title = get_message(f"{BTN_CHILD_PREFIX}{c.persona_id}", af)
+        if focus is not None and c.persona_id == focus.persona_id:
+            title = f"★ {title}"
+        buttons.append(Button(id=f"{BTN_CHILD_PREFIX}{c.persona_id}", title_hi=title))
+    return buttons
+
+
+def _focus_note(move: MoveCard, ctx: SessionContext, key: str) -> tuple[FocusChild | None, str]:
+    """Her top matching struggle for this move, and the one-line note about it ("" if none)."""
+    focus = focus_child(move, ctx.class_struggles)
+    if focus is None:
+        return None, ""
+    note = get_message(
+        key, ctx.address_form, label=label_of(focus.struggle), child=child_name(focus.persona_id)
+    )
+    return focus, note
 
 
 def supports_one_on_one(move: MoveCard) -> bool:
@@ -169,20 +185,23 @@ async def handle_setup(
             await runner.create_scene(teacher_id=teacher_id, move_id=ctx.current_move_id)
             ctx.rehearse_mode = MODE_GROUP
             ctx.rehearse_stage = STAGE_SCENE
+            _, group_note = _focus_note(move, ctx, "rehearse_group_focus")
+            intro = get_message("rehearse_intro", af, scene_intro=move.scenario.intro_hi)
             return [
                 OutboundMessage(
-                    kind="text",
-                    text_hi=get_message("rehearse_intro", af, scene_intro=move.scenario.intro_hi),
+                    kind="text", text_hi=f"{intro}\n\n{group_note}" if group_note else intro
                 )
             ]
         if mode == MODE_ONE_ON_ONE:
             ctx.rehearse_mode = MODE_ONE_ON_ONE
             ctx.rehearse_stage = STAGE_CHOOSE_CHILD
+            focus, child_note = _focus_note(move, ctx, "rehearse_child_focus")
+            prompt = get_message("rehearse_child_prompt", af)
             return [
                 OutboundMessage(
                     kind="buttons",
-                    text_hi=get_message("rehearse_child_prompt", af),
-                    buttons=_child_buttons(move, af),
+                    text_hi=f"{prompt}\n{child_note}" if child_note else prompt,
+                    buttons=_child_buttons(move, af, focus),
                 )
             ]
         return [
@@ -206,7 +225,7 @@ async def handle_setup(
                 OutboundMessage(
                     kind="buttons",
                     text_hi=get_message("rehearse_child_unclear", af),
-                    buttons=_child_buttons(move, af),
+                    buttons=_child_buttons(move, af, focus_child(move, ctx.class_struggles)),
                 )
             ]
         await _end_active_scene(store, teacher_id)

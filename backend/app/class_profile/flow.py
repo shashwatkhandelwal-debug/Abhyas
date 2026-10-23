@@ -191,6 +191,45 @@ def is_class_command(text: str) -> bool:
     return False
 
 
+HELPED_YES = "yes"
+HELPED_SOME = "some"
+HELPED_NO = "no"
+_HELPED_BUTTONS = {
+    "btn_helped_yes": HELPED_YES,
+    "btn_helped_some": HELPED_SOME,
+    "btn_helped_no": HELPED_NO,
+}
+_HELPED_WORDS: tuple[tuple[str, frozenset[str]], ...] = (
+    (HELPED_SOME, frozenset({"थोड़ी", "थोड़ा", "कुछ", "some", "little", "thodi", "thoda", "partly"})),
+    (HELPED_NO, frozenset({"नहीं", "नही", "ना", "no", "nahi", "not"})),
+    (HELPED_YES, frozenset({"हाँ", "हां", "मदद", "yes", "ha", "haan", "helped", "हुआ"})),
+)
+
+
+def parse_helped(text: str, button_id: str | None) -> str | None:
+    """ "Did it help your class?" -> yes / some / no, from a button or a typed or spoken word."""
+    if button_id in _HELPED_BUTTONS:
+        return _HELPED_BUTTONS[button_id]
+    cleaned = unicodedata.normalize("NFC", text or "").lower()
+    words = {w for w in re.split(r"[\s,.!?।]+", cleaned) if w}
+    for answer, vocabulary in _HELPED_WORDS:
+        if words & vocabulary:
+            return answer
+    return None
+
+
+def helped_message() -> OutboundMessage:
+    return OutboundMessage(
+        kind="buttons",
+        text_hi=get_message("class_helped_ask"),
+        buttons=[
+            Button(id="btn_helped_yes", title_hi=get_message("btn_helped_yes")),
+            Button(id="btn_helped_some", title_hi=get_message("btn_helped_some")),
+            Button(id="btn_helped_no", title_hi=get_message("btn_helped_no")),
+        ],
+    )
+
+
 def ask_message(lib: StruggleLibrary | None = None) -> OutboundMessage:
     return OutboundMessage(
         kind="buttons",

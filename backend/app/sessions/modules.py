@@ -42,6 +42,7 @@ class ModuleView:
     done: dict[str, bool]
     check_passed: bool | None
     diagnose_verdict: str | None
+    because: str = ""  # her class struggle this module practises ("" = none chosen)
 
     @property
     def steps_done(self) -> int:
@@ -68,12 +69,24 @@ def step_flags(row: Any | None) -> dict[str, bool]:
     }
 
 
-def module_views(rows: Mapping[str, Any]) -> list[ModuleView]:
-    """One view per module for the picker, from {module_id: progress row}."""
+def module_views(
+    rows: Mapping[str, Any], struggle_ids: list[str] | None = None
+) -> list[ModuleView]:
+    """One view per module for the picker, from {module_id: progress row}.
+
+    Modules that practise one of her class struggles come first (her order) and carry the reason.
+    """
+    from backend.app.class_profile import personalise
+
+    wanted = [m for m, _ in personalise.struggle_moves(struggle_ids or [])]
+    ordered = [m for m in wanted if m in module_ids()] + [
+        m for m in module_ids() if m not in wanted
+    ]
     views: list[ModuleView] = []
-    for mid in module_ids():
+    for mid in ordered:
         card = module_card(mid)
         row = rows.get(mid)
+        reason = personalise.because(mid, struggle_ids or [])
         views.append(
             ModuleView(
                 module_id=mid,
@@ -82,6 +95,7 @@ def module_views(rows: Mapping[str, Any]) -> list[ModuleView]:
                 done=step_flags(row),
                 check_passed=None if row is None else row.check_passed,
                 diagnose_verdict=None if row is None else row.diagnose_verdict,
+                because=personalise.label_of(reason) if reason is not None else "",
             )
         )
     return views

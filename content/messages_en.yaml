@@ -628,7 +628,7 @@ class_ask_invite: {text: "Optional, about 2 minutes: tell us where the children 
 btn_cls_start: {text: "Tell us"}
 btn_cls_skip: {text: "Not now"}
 class_confirm: {text: "This is what I understood:\n{items}\nIs that right? If not, press 'No' and tell me again."}
-class_saved: {text: "Done. This is saved for your class:\n{items}\nYour practice order has been changed to fit. Write 'My class' any time to change it."}
+class_saved: {text: "Done. This is saved for your class:\n{items}\nPractice for the struggles that have a practice case will come first in your order. Write 'My class' any time to change it."}
 class_item: {text: "{n}. {label}\n   Handbook tip: {tip}\n   {practice}\n   {source}"}
 class_item_short: {text: "{n}. {label}"}
 class_practice_yes: {text: "Practice: {move_title}"}
@@ -669,3 +669,6 @@ btn_helped_yes: {text: "Yes, it helped"}
 btn_helped_some: {text: "A little"}
 btn_helped_no: {text: "It did not"}
 class_helped_thanks: {text: "Thank you, this is saved."}
+rehearse_child_focus: {text: "{child} makes the kind of mistake behind your class's struggle ({label}), so that child is placed first (★)."}
+rehearse_group_focus: {text: "This time {child} makes the kind of mistake behind your class's struggle ({label})."}
+coach_class_link: {text: "Your class's struggle ({label}) is the same as {child}'s mistake in this practice. In class too, ask the child for their way first, then show it with real objects."}

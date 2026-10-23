@@ -1,4 +1,4 @@
-.PHONY: audit eval-cost eval-guards eval-stt help setup dev db-up db-migrate db-seed test test-live eval-latency eval-kappa eval-realism content-validate content-publish content-ingest eval-retrieval samples freeze
+.PHONY: audit eval-cost eval-guards eval-stt help setup dev db-up db-migrate db-seed test test-live eval-latency eval-kappa eval-realism content-validate content-publish content-ingest eval-retrieval eval-class-profile samples freeze
 
 help:
 	@echo "Abhyas Makefile targets:"
@@ -18,6 +18,7 @@ help:
 	@echo "  make content-publish  - publish approved content release"
 	@echo "  make content-ingest   - chunk source PDFs in content/sources/ into content/chunks/"
 	@echo "  make eval-retrieval   - recall@5 on eval/retrieval_questions.yaml"
+	@echo "  make eval-class-profile - My class matcher and classifier on 32 labelled sentences"
 	@echo "  make samples          - render evaluator sample voice notes into eval/samples/audio/"
 	@echo "  make freeze           - run the pre-submission freeze checklist"
 
@@ -82,6 +83,9 @@ content-ingest:
 
 eval-retrieval:
 	python eval/retrieval_recall.py --verify-ground-truth
+
+eval-class-profile:
+	python -m eval.class_profile_eval --live
 
 samples:
 	python scripts/render_samples.py

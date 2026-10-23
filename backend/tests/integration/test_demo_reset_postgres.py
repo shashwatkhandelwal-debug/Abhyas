@@ -26,6 +26,7 @@ from backend.app.auth.session import create_session_token
 from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
+    ClassOutcome,
     Message,
     ModuleProgress,
     MovePath,
@@ -122,6 +123,8 @@ async def _snapshot(session: AsyncSession, teacher_id: UUID) -> dict[str, Any]:
             "preferred_channel",
             "cluster_id",
             "batch_id",
+            "class_struggles",
+            "class_profile_prompted_at",
         )
     }
 
@@ -153,6 +156,7 @@ async def _snapshot(session: AsyncSession, teacher_id: UUID) -> dict[str, Any]:
         "questions": await ids(Question),
         "ratings": await ids(RealismRating),
         "training_ratings": await ids(TrainingRating),
+        "class_outcomes": await ids(ClassOutcome),
         "evidence": await ids(AdoptionEvidence),
         "module_progress": sorted(
             (m.module_id, m.check_passed, m.diagnose_verdict)
@@ -178,6 +182,16 @@ async def _dirty(session: AsyncSession, teacher_id: UUID) -> None:
     teacher.consent_share_scores = not teacher.consent_share_scores
     teacher.consent_research = True
     teacher.lite_mode = True
+    teacher.class_struggles = ["NUM_COUNTING", "LIT_WRITING"]
+    teacher.class_profile_prompted_at = now
+    session.add(
+        ClassOutcome(
+            teacher_id=teacher_id,
+            move_id="NUM_ADD_CARRY_BUNDLES",
+            answer="no",
+            struggle_ids=["NUM_COUNTING"],
+        )
+    )
     session.add(
         Message(
             teacher_id=teacher_id,
@@ -270,6 +284,11 @@ async def test_logout_resets_demo_teacher_to_seed(session: AsyncSession, login: 
         seeded["messages"] if login in ("teacher.demo2", "teacher.demo3") else []
     )
     assert after == seeded
+    # "My class": demo1 and demo2 start without a profile, demo3 has one seeded
+    expected = {"teacher.demo3": ["LIT_MATRA_DROP", "NUM_ADD_CARRY"]}.get(login, [])
+    assert after["profile"]["class_struggles"] == expected
+    assert after["profile"]["class_profile_prompted_at"] is None
+    assert after["class_outcomes"] == []
     if login == "teacher.demo2":
         scene = await session.get(Scene, DEMO2_SCENE_ID)
         assert scene is not None and scene.status == "active"
@@ -396,6 +415,17 @@ async def test_demo3_starts_on_the_learning_step_with_two_buttons_and_logout_res
         ["btn_replay", get_message("btn_replay", lang="hi")],
     ]
     assert seeded["buttons"][0][1] == "समझ गई, आगे" and seeded["buttons"][1][1] == "फिर से सुनें"
+    # demo3 has a class choice, so its learn step says why this move was chosen
+    from backend.app.class_profile.library import load_library
+    from backend.app.db.seed import DEMO3_LEARN_MESSAGE_ID
+
+    learn = await session.get(Message, DEMO3_LEARN_MESSAGE_ID)
+    assert learn is not None
+    reason = load_library().get("LIT_MATRA_DROP")
+    assert reason is not None
+    assert get_message("ui_class_chosen_because", lang="hi", label=reason.label_hi) in (
+        learn.text or ""
+    )
 
     await _dirty(session, demo3)
     assert await _demo3_learn_view(session) != seeded

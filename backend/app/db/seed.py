@@ -23,6 +23,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.passwords import hash_password
+from backend.app.class_profile import personalise
 from backend.app.config import settings
 from backend.app.db.demo_data import (
     FICTIONAL_TEACHER_NAMES,
@@ -33,6 +34,7 @@ from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
     Batch,
+    ClassOutcome,
     Cluster,
     ConsentLog,
     ExplainScore,
@@ -84,6 +86,14 @@ _DEMO_TEACHER_PROFILE: dict[str, tuple[OnboardingStateEnum, list[int], bool]] = 
     "teacher.demo1": (OnboardingStateEnum.NEW, [1, 2], True),
     "teacher.demo2": (OnboardingStateEnum.READY, [2, 3], True),
     "teacher.demo3": (OnboardingStateEnum.READY, [1, 2, 3], False),
+}
+
+# "My class" choice of the demo teachers: demo1 starts with none (the judge sets it), demo3 has one
+# (a literacy and a numeracy struggle: its learn step is the matra move), demo2 has none.
+_DEMO_CLASS_STRUGGLES: dict[str, list[str]] = {
+    "teacher.demo1": [],
+    "teacher.demo2": [],
+    "teacher.demo3": ["LIT_MATRA_DROP", "NUM_ADD_CARRY"],
 }
 
 # demo3's seeded completed moves: (move_id, adoption level, evidence source)
@@ -340,6 +350,12 @@ async def _seed_demo3_learn_step(session: AsyncSession) -> None:
         )
     if await session.get(Message, DEMO3_LEARN_MESSAGE_ID) is None:
         move = load_move_card(_DEMO3_LEARN_MOVE_ID)
+        demo3 = await session.get(Teacher, TEACHER_DEMO3_ID)
+        intro = get_message("learn_intro", lang="hi", move_title=move.title_hi)
+        reason = personalise.because(move.id, list(demo3.class_struggles or []) if demo3 else [])
+        if reason is not None:
+            line = get_message("ui_class_chosen_because", lang="hi", label=reason.label_hi)
+            intro = f"{line}\n\n{intro}"
         buttons = [
             Button(id="btn_understood", title_hi=get_message("btn_understood", lang="hi")),
             Button(id="btn_replay", title_hi=get_message("btn_replay", lang="hi")),
@@ -353,7 +369,7 @@ async def _seed_demo3_learn_step(session: AsyncSession) -> None:
                 channel="web",
                 channel_msg_id="seed-demo3-learn",
                 kind="buttons",
-                text=get_message("learn_intro", lang="hi", move_title=move.title_hi),
+                text=intro,
                 buttons=[b.model_dump() for b in buttons],
                 created_at=stamp,
                 updated_at=stamp,
@@ -428,6 +444,7 @@ async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
     await session.execute(delete(Question).where(Question.teacher_id == teacher_id))
     await session.execute(delete(RealismRating).where(RealismRating.teacher_id == teacher_id))
     await session.execute(delete(TrainingRating).where(TrainingRating.teacher_id == teacher_id))
+    await session.execute(delete(ClassOutcome).where(ClassOutcome.teacher_id == teacher_id))
     await session.execute(
         delete(ConsentLog).where(
             ConsentLog.teacher_id == teacher_id, ConsentLog.created_at > cutoff
@@ -490,6 +507,8 @@ async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
         teacher.consent_research = False
         teacher.address_form = "f"
         teacher.lite_mode = False
+        teacher.class_struggles = list(_DEMO_CLASS_STRUGGLES[login])
+        teacher.class_profile_prompted_at = None
         teacher.phone_hash = None
         teacher.preferred_channel = "web"
         teacher.last_inbound_at = None if onboarding == OnboardingStateEnum.NEW else now
@@ -633,6 +652,8 @@ async def seed_database() -> None:
             session.add(t3)
         else:
             repair_onboarding_state(t3, OnboardingStateEnum.READY)
+        if not t3.class_struggles:
+            t3.class_struggles = list(_DEMO_CLASS_STRUGGLES["teacher.demo3"])
 
         await session.flush()
 
