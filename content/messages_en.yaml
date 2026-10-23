@@ -677,3 +677,9 @@ class_helped_thanks: {text: "Thank you, this is saved."}
 rehearse_child_focus: {text: "{child} makes the kind of mistake behind your class's struggle ({label}), so that child is placed first (★)."}
 rehearse_group_focus: {text: "This time {child} makes the kind of mistake behind your class's struggle ({label})."}
 coach_class_link: {text: "Your class's struggle ({label}) is the same as {child}'s mistake in this practice. In class too, ask the child for their way first, then show it with real objects."}
+learn_tip_focus: {text: "Trying this method in class"}
+learn_handbook_tip: {text: "A tip from the handbook: {tip}\n{citation}"}
+ui_handbook_title: {text: "Ask the handbook"}
+ui_handbook_hint: {text: "Tap a question; the answer comes with its source and page."}
+handbook_source_label: {text: "From the FLN training package"}
+handbook_fallback: {text: "The service that writes answers is not running right now. The handbook passage on this topic (summary): {summary}\n{citation}"}

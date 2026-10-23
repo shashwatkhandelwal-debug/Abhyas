@@ -20,6 +20,7 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
+from zoneinfo import ZoneInfo
 
 import yaml
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -41,7 +42,7 @@ from backend.app.channels.web import WebChannel
 from backend.app.class_profile.views import views_for
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
-from backend.app.core.messages import get_message, texts_for_lang
+from backend.app.core.messages import get_message, get_ui_lang, texts_for_lang
 from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
@@ -55,6 +56,7 @@ from backend.app.db.models import (
     Teacher,
 )
 from backend.app.db.session import get_db_session
+from backend.app.handbook.questions import chip_views, question_by_id
 from backend.app.privacy.purge import purge_teacher_data
 from backend.app.rehearsal.header import scene_header
 from backend.app.sessions.modules import MODULE_STEPS, module_ids, module_views
@@ -63,6 +65,7 @@ from backend.app.sessions.service import SessionService
 from backend.app.web.chat_api import get_teacher_for_user
 from backend.app.web.ui_lang import register_ui_globals
 
+IST = ZoneInfo("Asia/Kolkata")
 logger = logging.getLogger("abhyas.web.teacher")
 
 WEB_DIR = Path(__file__).resolve().parent
@@ -239,6 +242,17 @@ async def teacher_chat_page(
 
     demo_chips = load_demo_chips() if is_demo else []
     demo_banner_text = _demo_banner_text(current_user)
+    # "Ask the handbook": four questions per teacher per day while no scene is running; a link
+    # from the modules page (?ask=hb03) sends that question once the chat opens.
+    handbook_chips = (
+        chip_views(teacher.id, datetime.now(IST).date(), get_ui_lang())
+        if active_scene is None
+        else []
+    )
+    autosend = ""
+    asked = question_by_id(request.query_params.get("ask", ""))
+    if asked is not None:
+        autosend = asked.send_text()
 
     response = templates.TemplateResponse(
         request=request,
@@ -257,6 +271,9 @@ async def teacher_chat_page(
             "demo_mode": is_demo,
             "demo_banner_text": demo_banner_text,
             "demo_chips": demo_chips,
+            "handbook_chips": handbook_chips,
+            "handbook_autosend": autosend,
+            "handbook_prefix": settings.HANDBOOK_ASK_PREFIX,
             "initial_messages": initial_messages,
             "ui_strings": chat_ui_strings(),
             "rec_config": {
@@ -546,6 +563,7 @@ async def teacher_modules_page(
             },
             "demo_mode": bool(current_user.is_demo or teacher.is_demo),
             "demo_banner_text": _demo_banner_text(current_user),
+            "handbook_chips": chip_views(teacher.id, datetime.now(IST).date(), get_ui_lang()),
         },
     )
     if token_to_set:

@@ -335,6 +335,71 @@ test('quick-reply chips lock after one tap: a double tap sends once, chip shows 
   assert.equal(c.byId['sr-live'].textContent, strings.ui_chat_chip_done);
 });
 
+// ── Ask the handbook chips ──────────────────────────────────────────────────
+function addHandbookChips(c, chips) {
+  const body = c.container.parentNode;
+  const section = c.sandbox.document.createElement('section');
+  section.id = 'handbook-chips';
+  section.setAttribute('data-prefix', 'सवाल:');
+  body.appendChild(section);
+  return chips.map(({ label, ask }, i) => {
+    const b = c.sandbox.document.createElement('button');
+    b.className = 'handbook-chip';
+    b.setAttribute('data-id', `hb0${i + 1}`);
+    if (ask) b.setAttribute('data-text', ask);
+    b.textContent = label;
+    body.appendChild(b);
+    return b;
+  });
+}
+
+test('handbook chip tap sends its question as typed text, once, and re-enables afterwards', async () => {
+  const c = load();
+  c.net.handler = async () => ({ status: 202, ok: true, json: async () => ({ message_id: 'srv-1' }) });
+  const chips = addHandbookChips(c, [{ label: 'पहला प्रश्न?' }, { label: 'दूसरा प्रश्न?' }]);
+  c.setupHandbookChips();
+  chips[0].onclick();
+  chips[1].onclick(); // a second tap while the first is sending is ignored
+  assert.ok(chips.every((x) => x.disabled));
+  await c.flush();
+  const posts = c.fetchCalls.filter((f) => f.url === '/api/chat/text');
+  assert.equal(posts.length, 1);
+  assert.equal(JSON.parse(posts[0].opts.body).text, 'सवाल: पहला प्रश्न?');
+  assert.equal(c.rows().length, 1, 'one bubble: the question');
+  assert.ok(chips.every((x) => !x.disabled));
+});
+
+test('English UI chip sends the Hindi question from data-text, not its English label', async () => {
+  const c = load();
+  c.net.handler = async () => ({ status: 202, ok: true, json: async () => ({ message_id: 'srv-1' }) });
+  const [chip] = addHandbookChips(c, [{ label: 'What is reading fluency?', ask: 'सवाल: रवानगी क्या है?' }]);
+  c.setupHandbookChips();
+  chip.onclick();
+  await c.flush();
+  const posts = c.fetchCalls.filter((f) => f.url === '/api/chat/text');
+  assert.equal(posts.length, 1);
+  assert.equal(JSON.parse(posts[0].opts.body).text, 'सवाल: रवानगी क्या है?');
+});
+
+test('arriving with ?ask sends that handbook question once; no autosend section sends nothing', async () => {
+  const none = load();
+  none.setupHandbookChips();
+  await none.flush();
+  assert.equal(none.fetchCalls.filter((f) => f.url === '/api/chat/text').length, 0);
+
+  const c = load();
+  c.net.handler = async () => ({ status: 202, ok: true, json: async () => ({ message_id: 'srv-1' }) });
+  const section = c.sandbox.document.createElement('section');
+  section.id = 'handbook-chips';
+  section.setAttribute('data-autosend', 'सवाल: बच्चों को कहानी कैसे सुनाएँ?');
+  c.container.parentNode.appendChild(section);
+  c.setupHandbookChips();
+  await c.flush();
+  const posts = c.fetchCalls.filter((f) => f.url === '/api/chat/text');
+  assert.equal(posts.length, 1);
+  assert.equal(JSON.parse(posts[0].opts.body).text, 'सवाल: बच्चों को कहानी कैसे सुनाएँ?');
+});
+
 // ── connection status bar ───────────────────────────────────────────────────
 test('net state machine', () => {
   const { netNext: n } = load();

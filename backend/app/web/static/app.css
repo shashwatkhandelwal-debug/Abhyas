@@ -546,7 +546,8 @@ body {
 }
 
 /* Demo Helper Chips */
-.demo-helper-section {
+.demo-helper-section,
+.handbook-section {
   padding: 0.3rem 0.8rem;
   background-color: var(--surface);
   border-top: 1px dashed var(--border);
@@ -559,14 +560,16 @@ body {
   font-weight: 600;
 }
 
-.demo-chips {
+.demo-chips,
+.handbook-chips {
   display: flex;
   overflow-x: auto;
   gap: 0.4rem;
   padding-bottom: 0.25rem;
 }
 
-.demo-chip {
+.demo-chip,
+.handbook-chip {
   background-color: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
@@ -580,9 +583,13 @@ body {
   align-items: center;
 }
 
-.demo-chip:hover {
+.demo-chip:hover,
+.handbook-chip:hover {
   background-color: var(--brand-light);
 }
+
+.handbook-chips { flex-wrap: wrap; overflow-x: visible; }
+.handbook-chip { white-space: normal; text-align: left; line-height: 1.25; text-decoration: none; }
 
 /* Composer Section */
 .composer-wrapper {
@@ -1403,7 +1410,8 @@ body {
   font-weight: 700;
 }
 
-.demo-chip:disabled:not(.pressed) {
+.demo-chip:disabled:not(.pressed),
+.handbook-chip:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }

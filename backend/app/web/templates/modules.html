@@ -49,6 +49,17 @@
         {% endif %}
         <a href="/teacher/class" class="btn-primary reply-chip" style="min-height: 2.75rem; display: inline-block;">{{ get_message('ui_class_btn_change') if class_saved else get_message('ui_class_btn_set') }}</a>
       </section>
+      {% if handbook_chips %}
+      <section class="module-card handbook-card" id="handbook-card" aria-label="{{ get_message('ui_handbook_title') }}">
+        <h2 style="margin: 0 0 0.25rem 0; font-size: 1.05rem;">{{ get_message('ui_handbook_title') }}</h2>
+        <p class="class-k" style="margin: 0 0 0.4rem 0;">{{ get_message('ui_handbook_hint') }}</p>
+        <div class="handbook-chips">
+          {% for chip in handbook_chips %}
+          <a class="handbook-chip handbook-link" href="/teacher?ask={{ chip.id }}" data-id="{{ chip.id }}">{{ chip.label }}</a>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
       <p style="margin: 0.5rem 0 1rem 0;">{{ get_message('ui_modules_intro') }}</p>
       {% for m in modules %}
       <section class="module-card" id="module-{{ m.module_id }}" data-module="{{ m.module_id }}" style="margin: 0 0 1rem 0; padding: 1rem; background: var(--surface, #fff); border: 1px solid var(--border, #ddd); border-radius: 12px;">

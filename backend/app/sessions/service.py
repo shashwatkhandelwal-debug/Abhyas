@@ -25,9 +25,10 @@ from backend.app.core.intents import (
 from backend.app.core.messages import get_message
 from backend.app.core.types import Button, Citation, InboundMessage, OutboundMessage
 from backend.app.db.models import Message
+from backend.app.handbook.fallback import fallback_reply, match_handbook_question
 from backend.app.llm.client import LLMUnavailable
 from backend.app.llm.roles.coach import coach_feedback
-from backend.app.llm.roles.coach_suggestion import suggest_from_sources
+from backend.app.llm.roles.coach_suggestion import SuggestionResult, suggest_from_sources
 from backend.app.llm.roles.fidelity_checker import check_fidelity
 from backend.app.llm.roles.guide_answerer import (
     answer_guide_question,
@@ -108,8 +109,11 @@ class SessionService:
         hits = await self.retriever.retrieve(
             query, top_k=1, min_score=settings.RETRIEVAL_MIN_SCORE, official_only=True
         )
+        tip_text, tip_cites = await self._learn_tip(move, address_form)
+        if tip_text:
+            intro = f"{intro}\n\n{tip_text}"
         if not hits or not hits[0].gloss_hi:
-            return intro, []
+            return intro, tip_cites
         hit = hits[0]
         chunk = RetrievedChunk(
             chunk_id=hit.chunk_id,
@@ -126,7 +130,7 @@ class SessionService:
             summary=hit.gloss_hi,
             citation=cites[0].line_hi if cites else "",
         )
-        return f"{intro}\n\n{ref}", cites
+        return f"{intro}\n\n{ref}", cites + [c for c in tip_cites if c.chunk_id != hit.chunk_id]
 
     async def get_or_create_context(self, teacher_id: UUID) -> SessionContext:
         """Loads or constructs a SessionContext from database state."""
@@ -367,17 +371,19 @@ class SessionService:
             for n in (1, 3, 5)
         ]
 
-    async def _source_suggestion(
-        self, move: MoveCard, change_hi: str, address_form: str
-    ) -> OutboundMessage | None:
-        """One tip from the FLN training package after a scene, with a tappable citation.
+    async def _cited_tip(
+        self, query: str, move_title_hi: str, change_hi: str, *, pool: int, candidates: int
+    ) -> SuggestionResult | None:
+        """One guarded tip from the FLN training package, or None.
 
-        No retrieval support (or a failed guard) means no suggestion: nothing is invented.
+        Official chunks only (`official_only`), the retrieval score and matched-terms gates, then
+        `suggest_from_sources` (schema, cited chunk must be one retrieved, grounded wording, one
+        retry). No support or a failed guard means no tip: nothing is invented.
         """
         try:
             hits = await self.retriever.retrieve(
-                f"{move.title_hi} {change_hi}",
-                top_k=settings.COACH_SUGGESTION_POOL,
+                query,
+                top_k=pool,
                 min_score=settings.RETRIEVAL_MIN_SCORE,
                 official_only=True,
                 min_matched_terms=settings.RETRIEVAL_MIN_MATCHED_TERMS,
@@ -395,12 +401,27 @@ class SessionService:
                 )
                 for c in hits
                 if c.source == settings.COACH_SUGGESTION_SOURCE_ID
-            ][: settings.COACH_SUGGESTION_CANDIDATES]
-            result = await suggest_from_sources(move.title_hi, change_hi, chunks)
+            ][:candidates]
+            result = await suggest_from_sources(move_title_hi, change_hi, chunks)
         except (LLMUnavailable, TimeoutError, ValueError, OSError) as exc:
-            logger.warning("coach source suggestion skipped: %s", exc)
+            logger.warning("source tip skipped: %s", exc)
             return None
         if not result.suggestion_hi or result.chunk is None:
+            return None
+        return result
+
+    async def _source_suggestion(
+        self, move: MoveCard, change_hi: str, address_form: str
+    ) -> OutboundMessage | None:
+        """One tip from the FLN training package after a scene, with a tappable citation."""
+        result = await self._cited_tip(
+            f"{move.title_hi} {change_hi}",
+            move.title_hi,
+            change_hi,
+            pool=settings.COACH_SUGGESTION_POOL,
+            candidates=settings.COACH_SUGGESTION_CANDIDATES,
+        )
+        if result is None or result.chunk is None:
             return None
         cite = format_guide_citation(
             result.chunk.source_short_hi, result.chunk.page, address_form=address_form
@@ -413,6 +434,26 @@ class SessionService:
             ),
             citations=citations_for_chunks([result.chunk], address_form),
         )
+
+    async def _learn_tip(self, move: MoveCard, address_form: str) -> tuple[str, list[Citation]]:
+        """One handbook tip for a module's learning step: text to append and its citation."""
+        query = f"{move.title_hi} {' '.join(t.replace('_', ' ') for t in move.tags)}"
+        result = await self._cited_tip(
+            query,
+            move.title_hi,
+            get_message("learn_tip_focus", address_form),
+            pool=settings.HANDBOOK_TIP_POOL,
+            candidates=settings.HANDBOOK_TIP_CANDIDATES,
+        )
+        if result is None or result.chunk is None:
+            return "", []
+        cite = format_guide_citation(
+            result.chunk.source_short_hi, result.chunk.page, address_form=address_form
+        )
+        text = get_message(
+            "learn_handbook_tip", address_form, tip=result.suggestion_hi, citation=cite
+        )
+        return text, citations_for_chunks([result.chunk], address_form)
 
     async def _begin_rehearse_setup(
         self, ctx: SessionContext, teacher_id: UUID, move: MoveCard
@@ -854,28 +895,34 @@ class SessionService:
                     )
                 ]
 
-            # Execute Question Classifier
-            classify_res = await classify_question(
-                q_text, clarifying_already_asked=ctx.clarifying_already_asked
-            )
-
-            if classify_res.output.needs_clarification and not ctx.clarifying_already_asked:
-                ctx.clarifying_already_asked = True
-                await self._sync_context_to_db(ctx, teacher_id)
-                clarify_msg = classify_res.output.clarifying_question_hi or get_message(
-                    "ask_clarify_generic", address_form
+            # A curated handbook question is known to be a pedagogy question: no classifier call.
+            chip_q = match_handbook_question(q_text)
+            if chip_q is not None:
+                category = "pedagogy"
+                search_query = chip_q.hi
+            else:
+                # Execute Question Classifier
+                classify_res = await classify_question(
+                    q_text, clarifying_already_asked=ctx.clarifying_already_asked
                 )
-                return [
-                    OutboundMessage(
-                        kind="text",
-                        text_hi=clarify_msg,
+
+                if classify_res.output.needs_clarification and not ctx.clarifying_already_asked:
+                    ctx.clarifying_already_asked = True
+                    await self._sync_context_to_db(ctx, teacher_id)
+                    clarify_msg = classify_res.output.clarifying_question_hi or get_message(
+                        "ask_clarify_generic", address_form
                     )
-                ]
+                    return [
+                        OutboundMessage(
+                            kind="text",
+                            text_hi=clarify_msg,
+                        )
+                    ]
+                category = classify_res.output.category
+                search_query = classify_res.output.search_query_hi or q_text
 
             # Retrieval
-            chunks = await self.retriever.retrieve_supported(
-                classify_res.output.search_query_hi or q_text
-            )
+            chunks = await self.retriever.retrieve_supported(search_query)
             schema_chunks = [
                 RetrievedChunk(
                     chunk_id=c.chunk_id,
@@ -893,19 +940,29 @@ class SessionService:
             # Guide Answerer
             answer_res = await answer_guide_question(
                 question=q_text,
-                category=classify_res.output.category,
+                category=category,
                 chunks=schema_chunks,
                 address_form=address_form,
             )
+
+            # A chip question never ends in "not found": if the answerer could not run or failed
+            # its guard, show the question's own chunk summary and source (stored text, no model).
+            chip_fallback = None
+            if chip_q is not None and answer_res.escalated:
+                chip_fallback = fallback_reply(chip_q, self.retriever, address_form)
+                if chip_fallback is not None:
+                    answer_res = answer_res.model_copy(update={"escalated": False})
 
             # Persist question record
             status_val = "escalated" if answer_res.escalated else "answered"
             q_rec = await self.repo.record_question(
                 teacher_id=teacher_id,
                 text=q_text,
-                category=classify_res.output.category,
-                answer_hi=answer_res.output.answer_hi,
-                source_ids=answer_res.output.source_ids,
+                category=category,
+                answer_hi=chip_fallback[0] if chip_fallback else answer_res.output.answer_hi,
+                source_ids=[chip_q.chunk_id]
+                if chip_fallback and chip_q
+                else answer_res.output.source_ids,
                 confidence=answer_res.output.confidence,
                 status=status_val,
             )
@@ -913,24 +970,31 @@ class SessionService:
                 await self.repo.record_review_item(
                     kind="question",
                     ref_id=str(q_rec.id),
-                    reason=f"Question escalated: {classify_res.output.category}",
+                    reason=f"Question escalated: {category}",
                 )
 
             # Compose reply
-            if answer_res.escalated:
-                if classify_res.output.category == "admin":
+            reply_cites: list[Citation] = []
+            if chip_fallback is not None:
+                reply_text, reply_cites = chip_fallback
+            elif answer_res.escalated:
+                if category == "admin":
                     reply_key = "ask_admin"
                 elif answer_res.no_sources:
                     reply_key = "ask_not_in_sources"
                 else:
                     reply_key = "ask_escalated"
                 reply_text = get_message(reply_key, address_form)
-            elif classify_res.output.category == "out_of_scope":
+            elif category == "out_of_scope":
                 reply_text = get_message("ask_out_of_scope", address_form)
-            elif classify_res.output.category == "admin":
+            elif category == "admin":
                 reply_text = get_message("ask_admin", address_form)
             else:
                 reply_text = compose_guide_reply(answer_res.output, schema_chunks, address_form)
+                reply_cites = citations_for_chunks(answer_res.sources_cited, address_form)
+            if chip_q is not None and reply_cites:
+                label = get_message("handbook_source_label", address_form)
+                reply_text = f"{reply_text}\n\n{label}"
 
             # Resume prior state
             prior = ctx.prior_state_before_ask or SessionStateEnum.LEARN
@@ -949,9 +1013,7 @@ class SessionService:
                     # A generated guide answer gets the "guide" speaker (the web UI offers a
                     # translation for it); escalation / canned replies are plain system text.
                     speaker=None if answer_res.escalated else "guide",
-                    citations=[]
-                    if answer_res.escalated
-                    else citations_for_chunks(answer_res.sources_cited, address_form),
+                    citations=reply_cites,
                 ),
                 OutboundMessage(kind="text", text_hi=f"{resume_note}\n\n{prior_prompt}"),
             ]

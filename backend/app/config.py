@@ -190,6 +190,16 @@ class Settings(BaseSettings):
     TRANSLATE_MAX_SOURCE_CHARS: int = 2000
     TRANSLATE_MAX_OUTPUT_TOKENS: int = 1500  # Devanagari-heavy sources cost many tokens
 
+    # ── "Ask the handbook" chips (content/handbook_questions.yaml) ───────────
+    HANDBOOK_QUESTIONS_MIN: int = 8
+    HANDBOOK_QUESTIONS_MAX: int = 12
+    HANDBOOK_CHIPS_SHOWN: int = 4  # chosen per teacher per day, deterministic
+    HANDBOOK_VALIDATION_TOP_K: int = 5  # each question's chunk must be in the BM25 top K
+    HANDBOOK_ASK_PREFIX: str = "सवाल:"  # the ask keyword a chip puts before its question
+    # A tip on each module's learning step uses the same gates as the coach's source suggestion
+    HANDBOOK_TIP_POOL: int = 60
+    HANDBOOK_TIP_CANDIDATES: int = 3
+
     # ── "My class": class-level struggles (content/class_struggles.yaml) ────
     STRUGGLE_MAX_CHOSEN: int = 3  # most struggles a teacher keeps, ordered
     STRUGGLE_LIBRARY_MAX: int = 14  # the library stays small and closed

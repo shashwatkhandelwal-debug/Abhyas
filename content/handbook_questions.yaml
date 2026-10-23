@@ -1,0 +1,45 @@
+# "Ask the handbook" starter questions. Each is tied to one real chunk in content/chunks/ and is
+# checked by backend/tests/unit/test_handbook_questions.py: the BM25 retriever (no LLM) must return
+# that chunk in its top 5 with the production gates. Nothing here is invented: the English line is
+# a plain translation of the Hindi question, and `chunk_id` points to the passage that answers it.
+questions:
+  - id: hb01
+    hi: "गिनती सिखाते समय एक-एक वस्तु से एक संख्या मिलाना (one-to-one correspondence) क्यों ज़रूरी है?"
+    en: "Why does matching one object to one number matter when teaching counting?"
+    chunk_id: "nipun_guidelines_2021:p087:080"
+  - id: hb02
+    hi: "पढ़ने की रवानगी (reading fluency) का मतलब क्या है?"
+    en: "What does reading fluency mean?"
+    chunk_id: "nipun_guidelines_2021:p075:069"
+  - id: hb03
+    hi: "खिलौना आधारित शिक्षण का क्या महत्व है?"
+    en: "Why does toy-based learning matter?"
+    chunk_id: "nishtha_fln:p572:406"
+  - id: hb04
+    hi: "बच्चों की पढ़ाई में माता-पिता को कैसे शामिल करें?"
+    en: "How can I involve parents in children's learning?"
+    chunk_id: "ncert_vidya_pravesh:p021:017"
+  - id: hb05
+    hi: "कहानी के बाद बच्चों से उसका अभिनय (role play) कैसे करवाएँ?"
+    en: "How do I have children act out a story afterwards?"
+    chunk_id: "ncert_vidya_pravesh:p035:035"
+  - id: hb06
+    hi: "बच्चों में पैटर्न की समझ कैसे विकसित करें?"
+    en: "How do I build children's understanding of patterns?"
+    chunk_id: "nipun_guidelines_2021:p093:087"
+  - id: hb07
+    hi: "गणित में हाथ से करके सीखने के लिए खिलौने और ठोस सामग्री का उपयोग कैसे करें?"
+    en: "How do I use toys and hands-on material to teach maths?"
+    chunk_id: "nishtha_fln:p447:324"
+  - id: hb08
+    hi: "दिव्यांग बच्चों की ज़रूरतों के लिए कक्षा में क्या करें?"
+    en: "What can I do in class for children with disabilities?"
+    chunk_id: "ncert_vidya_pravesh:p020:014"
+  - id: hb09
+    hi: "बच्चों को कहानी सुनाने (Story Telling) के लिए क्या सुझाव हैं?"
+    en: "What tips are there for telling stories to children?"
+    chunk_id: "ncert_vidya_pravesh:p034:034"
+  - id: hb10
+    hi: "बच्चों को स्वतंत्र लेखन (independent writing) के लिए कैसे प्रोत्साहित करें?"
+    en: "How do I encourage children to write independently?"
+    chunk_id: "ncert_vidya_pravesh:p038:040"

@@ -11,7 +11,6 @@
 </head>
 <body>
   <div class="app-container">
-    <!-- Header (spec/09 §9.2) -->
     <header class="chat-header">
       <div class="header-left">
         <a href="/teacher" class="brand-badge" aria-label="{{ get_message('ui_chat_home') }}">
@@ -33,7 +32,6 @@
         </button>
       </div>
 
-      <!-- Header Menu Dropdown -->
       <nav class="menu-dropdown" id="menu-dropdown" aria-label="{{ get_message('ui_chat_main_menu') }}">
         <a href="/teacher/progress" class="menu-item">{{ get_message('ui_chat_menu_progress') }}</a>
         <button type="button" class="menu-item" id="lite-mode-menu-btn" onclick="toggleLiteMode()">
@@ -45,17 +43,14 @@
       </nav>
     </header>
 
-    <!-- Demo Banner (spec/03 §3.5) -->
     {% if demo_mode %}
     <div class="demo-banner" role="status" aria-label="{{ get_message('ui_demo_notice_label') }}">{{ demo_banner_text or get_message('ui_demo_banner') }}</div>
     {% endif %}
 
-    <!-- Network Alert Banner -->
     <div id="network-banner" class="network-banner" role="status" aria-live="polite" data-offline-text="{{ get_message('ui_offline_banner') }}" data-slow-text="{{ get_message('ui_slow_banner') }}">{% if not is_online and is_online is defined %}{{ get_message('ui_offline_banner') }}{% endif %}</div>
 
     <div id="sr-live" class="sr-only" role="status" aria-live="polite"></div>
 
-    <!-- REHEARSE Strip (Problem & 3 Children) (§9.2) -->
     <div class="rehearse-strip" id="rehearse-strip">
       <span class="board-problem" id="board-problem">{{ board_problem }}</span>
       <div class="children-pills">
@@ -65,10 +60,8 @@
       </div>
     </div>
 
-    <!-- Slim status bar (cold start / reconnecting). Zero-height slot, bar overlays: no layout shift. -->
     <div class="status-slot"><div id="status-bar" class="status-bar" role="status" aria-live="polite" hidden></div></div>
 
-    <!-- Message Thread (WhatsApp-like) -->
     <main class="chat-messages" id="chat-messages" role="log" aria-live="polite">
       {% for msg in initial_messages %}
       <div class="msg-row {{ 'inbound' if msg.direction == 'in' else 'outbound' }}" id="msg-{{ msg.id }}" data-created-at="{{ msg.created_at or '' }}">
@@ -112,14 +105,12 @@
       </div>
       {% endfor %}
 
-      <!-- Typing / Pending Indicator -->
       <div id="pending-bubble" class="pending-bubble" role="status" aria-label="{{ get_message('ui_chat_children_thinking') }}">
         <div class="dot-flashing" aria-hidden="true"><span></span><span></span><span></span></div>
         <span id="pending-text">{{ (ui_strings or {}).get('ui_chat_typing_generic', '') }}</span>
       </div>
     </main>
 
-    <!-- Demo Sample Chips (Shown in demo mode if demo_chips loaded) (§9.2) -->
     {% if demo_mode and demo_chips %}
     <section class="demo-helper-section" aria-label="{{ get_message('ui_chat_sample_chips') }}">
       <div class="demo-hint">{{ get_message('ui_chat_type_instead_hint') }}</div>
@@ -137,7 +128,6 @@
     </section>
     {% endif %}
 
-    <!-- Composer Section -->
     <footer class="composer-wrapper">
       <form class="composer-form" id="composer-form" autocomplete="off">
         <input
@@ -148,7 +138,6 @@
           aria-label="{{ get_message('ui_chat_write_message') }}"
         >
 
-        <!-- Large Mic Button -->
         <button
           type="button"
           class="btn-mic"
@@ -164,7 +153,6 @@
           </svg>
         </button>
 
-        <!-- Send Button -->
         <button type="submit" class="btn-send" id="btn-send" aria-label="{{ get_message('ui_chat_send') }}">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <line x1="22" y1="2" x2="11" y2="13"/>
@@ -172,7 +160,6 @@
           </svg>
         </button>
 
-        <!-- Live Recording Overlay: timer, Cancel, and a big Stop/Send button -->
         <div class="recording-overlay" id="recording-overlay" role="group" aria-label="{{ get_message('ui_chat_record') }}">
           <div class="recording-timer">
             <span class="rec-blip"></span>
