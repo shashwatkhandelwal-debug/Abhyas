@@ -139,8 +139,6 @@ ui_ladder_level_5: {text: "Children improved"}
 ui_board_prefix: {text: "Board: "}
 ui_time_just_now: {text: "just now"}
 ui_default_teacher_name: {text: "Teacher"}
-ui_default_move_title: {text: "Two-digit subtraction with regrouping"}
-ui_default_step_chip: {text: "Step 4/7 · Practice"}
 ui_chat_msg_sending: {text: "Sending…"}
 ui_chat_msg_sent: {text: "Sent"}
 ui_chat_msg_failed: {text: "Could not send — tap to send again"}
@@ -355,10 +353,7 @@ ui_chat_record: {text: "Record by voice"}
 ui_chat_menu_progress: {text: "Progress"}
 ui_chat_children_thinking: {text: "The children are thinking"}
 ui_chat_sample_chips: {text: "Sample answer chips"}
-ui_chat_child_priya_title: {text: "Priya (Class 2)"}
 ui_chat_menu_help: {text: "Help & instructions"}
-ui_chat_child_ravi_title: {text: "Ravi (Class 2)"}
-ui_chat_child_aman_title: {text: "Aman (Class 2)"}
 ui_chat_write_message: {text: "Write a message"}
 ui_chat_send: {text: "Send message"}
 ui_chat_cancel_rec: {text: "Cancel ✕"}
@@ -556,15 +551,10 @@ rehearse_one_start: {text: "Now talk to {child}. First ask for their method, the
 scene_all_correct_one: {text: "Wow! {child} used the right method on the new problem too."}
 coach_diag_change_wrong: {text: "Next time, ask the child and work out what the confusion was: {label}."}
 coach_diag_change_partly: {text: "Next time, pin the confusion down more exactly: {label}."}
-ui_scene_one_title: {text: "1-1 with {child}"}
-ui_scene_turn: {text: "Turn {turn}/{max}"}
+ui_scene_one_title: {text: "One-on-one with {child}"}
+ui_scene_turn: {text: "Your turn {turn} of {max}"}
 ui_chat_scene_end: {text: "End practice"}
 ui_chat_scene_end_confirm: {text: "End the practice now?"}
-ui_scene_cue_diagnose: {text: "First, spot the confusion"}
-ui_scene_cue_0: {text: "Confused"}
-ui_scene_cue_1: {text: "Explaining their method"}
-ui_scene_cue_2: {text: "Half understood"}
-ui_scene_cue_3: {text: "Understood: give a new problem"}
 coach_quote_suffix: {text: "Your words: «{quote}»"}
 ui_chat_scene_stop_word: {text: "stop"}
 coach_source_suggestion: {text: "A suggestion from the sources: {suggestion}"}
@@ -715,3 +705,22 @@ ui_login_demo_teacher_experienced: {text: "Teacher (experienced): teacher.demo3"
 ui_chat_typing_handbook: {text: "Looking in the handbook…"}
 ask_resume_scene_one: {text: "Back to {child}: say your next line."}
 ask_resume_scene_group: {text: "Back to the children: say your next line."}
+
+# ── Chat clarity part 2: header, step, scene bar ──
+ui_scene_group_title: {text: "With the three children"}
+ui_scene_board: {text: "Board"}
+ui_scene_pick_child: {text: "Tap a name to speak to that child"}
+ui_step_label: {text: "Step {n} of {total}: {name}"}
+ui_step_1: {text: "Learn"}
+ui_step_2: {text: "Say it in your words"}
+ui_step_3: {text: "Hear a model"}
+ui_step_4: {text: "Practice"}
+ui_step_5: {text: "Suggestions"}
+ui_step_6: {text: "Try in class"}
+ui_step_7: {text: "Reflect"}
+ui_step_done: {text: "This week's practice is complete"}
+ui_step_setup: {text: "Getting started"}
+move_title_NUM_SUB_REGROUP_BUNDLES: {text: "Subtraction with regrouping: opening a bundle"}
+move_title_NUM_ADD_CARRY_BUNDLES: {text: "Addition with carrying: making a bundle of 10 sticks"}
+move_title_NUM_PLACE_VALUE_BUNDLES: {text: "Place value: making a number from bundles and loose sticks"}
+move_title_LIT_MATRA_BLENDING: {text: "Words with matras: blending letter sounds to read"}

@@ -330,8 +330,6 @@ ui_ladder_level_5: {text: "बच्चों में सुधार", audio:
 ui_board_prefix: {text: "बोर्ड:", audio: false}
 ui_time_just_now: {text: "अभी", audio: false}
 ui_default_teacher_name: {text: "शिक्षिका", text_m: "शिक्षक", audio: false}
-ui_default_move_title: {text: "दो अंकों की हासिल वाली घटाव", audio: false}
-ui_default_step_chip: {text: "चरण 4/7 · अभ्यास", audio: false}
 
 # ── Chat page: visible acknowledgment states (web/static/chat.js reads ui_chat_* as JSON) ──
 ui_chat_msg_sending: {text: "भेजा जा रहा है…", audio: false}
@@ -610,10 +608,7 @@ ui_chat_record: {text: "बोलकर रिकॉर्ड करें", aud
 ui_chat_menu_progress: {text: "प्रगति (Progress)", audio: false}
 ui_chat_children_thinking: {text: "बच्चे सोच रहे हैं", audio: false}
 ui_chat_sample_chips: {text: "नमूना उत्तर चिप्स", audio: false}
-ui_chat_child_priya_title: {text: "प्रिया (कक्षा 2)", audio: false}
 ui_chat_menu_help: {text: "मदद व निर्देश", audio: false}
-ui_chat_child_ravi_title: {text: "रवि (कक्षा 2)", audio: false}
-ui_chat_child_aman_title: {text: "अमन (कक्षा 2)", audio: false}
 ui_chat_write_message: {text: "संदेश लिखें", audio: false}
 ui_chat_send: {text: "संदेश भेजें", audio: false}
 ui_chat_cancel_rec: {text: "रद्द करें ✕", audio: false}
@@ -811,15 +806,10 @@ rehearse_one_start: {text: "अब {child} से बात कीजिए। �
 scene_all_correct_one: {text: "वाह! {child} ने नए सवाल पर भी खुद सही तरीका लगाया।", audio: true}
 coach_diag_change_wrong: {text: "अगली बार बच्चे से पूछकर पहचानिए कि उलझन यह थी: {label}।", audio: false}
 coach_diag_change_partly: {text: "अगली बार उलझन को और सटीक पहचानिए: {label}।", audio: false}
-ui_scene_one_title: {text: "{child} से 1-1 बात", audio: false}
-ui_scene_turn: {text: "बारी {turn}/{max}", audio: false}
+ui_scene_one_title: {text: "{child} से आमने-सामने बात", audio: false}
+ui_scene_turn: {text: "आपकी बारी {turn}/{max}", audio: false}
 ui_chat_scene_end: {text: "अभ्यास पूरा करें", audio: false}
 ui_chat_scene_end_confirm: {text: "अभ्यास अभी पूरा करें?", audio: false}
-ui_scene_cue_diagnose: {text: "पहले उलझन पहचानिए", audio: false}
-ui_scene_cue_0: {text: "उलझन में है", audio: false}
-ui_scene_cue_1: {text: "अपना तरीका बता रहा है", audio: false}
-ui_scene_cue_2: {text: "आधा समझ आया", audio: false}
-ui_scene_cue_3: {text: "समझ आ गया, नया सवाल दें", audio: false}
 coach_quote_suffix: {text: "आपके शब्द: «{quote}»", audio: false}
 ui_chat_scene_stop_word: {text: "बस", audio: false}
 coach_source_suggestion: {text: "स्रोत से एक सुझाव: {suggestion}", audio: false}
@@ -1034,3 +1024,22 @@ ui_login_demo_teacher_experienced:
 ui_chat_typing_handbook: {text: "हैंडबुक में देखा जा रहा है…", audio: false}
 ask_resume_scene_one: {text: "अब वापस {child} के पास: अपनी अगली बात कहिए।", audio: false}
 ask_resume_scene_group: {text: "अब वापस बच्चों के पास: अपनी अगली बात कहिए।", audio: false}
+
+# ── Chat clarity part 2: header, step, scene bar ──
+ui_scene_group_title: {text: "तीनों बच्चों के साथ", audio: false}
+ui_scene_board: {text: "बोर्ड", audio: false}
+ui_scene_pick_child: {text: "किसी बच्चे से बात करने के लिए उसका नाम दबाएँ", audio: false}
+ui_step_label: {text: "चरण {n} / {total}: {name}", audio: false}
+ui_step_1: {text: "सीखना", audio: false}
+ui_step_2: {text: "अपने शब्दों में बताना", audio: false}
+ui_step_3: {text: "नमूना सुनना", audio: false}
+ui_step_4: {text: "अभ्यास", audio: false}
+ui_step_5: {text: "सुझाव", audio: false}
+ui_step_6: {text: "कक्षा में आज़माना", audio: false}
+ui_step_7: {text: "सोच-विचार", audio: false}
+ui_step_done: {text: "इस हफ्ते का अभ्यास पूरा", audio: false}
+ui_step_setup: {text: "शुरुआत", audio: false}
+move_title_NUM_SUB_REGROUP_BUNDLES: {text: "हासिल वाला घटाव: बंडल खोलकर", audio: false}
+move_title_NUM_ADD_CARRY_BUNDLES: {text: "हासिल वाला जोड़: 10 तीलियों का बंडल बनाकर", audio: false}
+move_title_NUM_PLACE_VALUE_BUNDLES: {text: "स्थानीय मान: बंडल और खुली तीलियों से संख्या", audio: false}
+move_title_LIT_MATRA_BLENDING: {text: "मात्रा वाले शब्द: अक्षर की ध्वनि मिलाकर पढ़ना", audio: false}

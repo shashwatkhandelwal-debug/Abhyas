@@ -1,6 +1,7 @@
 """Unit tests for Teacher Chat PWA, templates, service worker, and asset budgets (spec/09 §9.2, T27)."""
 
 import os
+import re
 import unicodedata
 import uuid
 from datetime import UTC, datetime
@@ -120,14 +121,12 @@ async def test_get_teacher_chat_page(teacher_pwa_app: FastAPI) -> None:
 
         # Core header & branding elements (§9.2)
         assert "अभ्यास" in html
-        assert "दो अंकों की हासिल वाली घटाव" in html
-        assert "चरण 4/7 · अभ्यास" in html
+        assert 'id="header-move-title"' in html  # the move title and step follow her session
+        assert 'id="header-step"' in html
 
-        # Rehearse child strip
-        assert 'id="board-problem"' in html
-        assert "रवि" in html
-        assert "प्रिया" in html
-        assert "अमन" in html
+        # The scene bar exists but is hidden, and no children are listed, outside a scene
+        assert re.search(r'<section class="scene-bar" id="scene-bar"[^>]* hidden>', html)
+        assert 'class="child-pill' not in html
 
         # Initial messages rendered server-side
         assert "नमस्ते! अभ्यास शुरू करें?" in html
@@ -247,6 +246,28 @@ def test_nfc_normalization_for_pwa_assets() -> None:
 # ── Review Item 5 Tests ──────────────────────────────────────────────────────
 
 
+def _scene_state_json() -> dict[str, Any]:
+    """A one-on-one scene on 43 - 27 with Ravi, as the page reads it from the scene row."""
+    from backend.app.rule_engine.domain import ChildRuntime, Domain, Problem, SceneState
+
+    problem = Problem(type="sub", a=43, b=27)
+    return SceneState(
+        move_id="NUM_SUB_REGROUP_BUNDLES",
+        domain=Domain.NUMERACY,
+        effective_acts=[],
+        target_causes=[],
+        items=[problem],
+        current_item=problem,
+        children=[
+            ChildRuntime(
+                persona_id="ravi", misconception="SUB_SMALLER_FROM_LARGER", temperament="confident"
+            )
+        ],
+        one_on_one=True,
+        max_turns=10,
+    ).model_dump(mode="json")
+
+
 @pytest.mark.asyncio
 async def test_teacher_chat_page_board_empty_without_scene(
     teacher_pwa_app: FastAPI,
@@ -257,10 +278,11 @@ async def test_teacher_chat_page_board_empty_without_scene(
     ) as client:
         res = await client.get("/teacher")
         assert res.status_code == 200
-        # Board problem element exists but contains no text
-        assert '<span class="board-problem" id="board-problem"></span>' in res.text
+        # The scene bar is hidden and its board card is empty
+        assert re.search(r'<section class="scene-bar" id="scene-bar"[^>]* hidden>', res.text)
+        assert 'id="sb-board"></span>' in res.text
         # Hard-coded '52 − 17' or '52 - 17' must NOT appear on the board
-        assert "बोर्ड: 52" not in res.text
+        assert "52 − 17" not in res.text
 
 
 @pytest.mark.asyncio
@@ -272,7 +294,7 @@ async def test_teacher_chat_page_board_shows_active_problem(
         id=uuid.uuid4(),
         teacher_id=mock_teacher_id,
         status="active",
-        engine_state={"board_problem": "बोर्ड: 43 − 27"},
+        engine_state=_scene_state_json(),
     )
 
     async def mock_db_with_scene() -> AsyncSession:
@@ -305,7 +327,11 @@ async def test_teacher_chat_page_board_shows_active_problem(
     ) as client:
         res = await client.get("/teacher")
         assert res.status_code == 200
-        assert '<span class="board-problem" id="board-problem">बोर्ड: 43 − 27</span>' in res.text
+        assert 'id="sb-board">43 − 27</span>' in res.text
+        assert not re.search(r'<section class="scene-bar" id="scene-bar"[^>]* hidden>', res.text)
+        assert get_message("ui_scene_one_title", child=get_message("speaker_ravi")) in res.text
+        assert get_message("ui_scene_turn", turn=0, max=10) in res.text
+        assert 'class="child-pill' not in res.text  # one-on-one: only that child, no switcher
 
 
 @pytest.mark.asyncio
@@ -389,14 +415,12 @@ async def test_get_chat_alias_page(teacher_pwa_app: FastAPI) -> None:
 
         # Core header & branding elements
         assert "अभ्यास" in html
-        assert "दो अंकों की हासिल वाली घटाव" in html
-        assert "चरण 4/7 · अभ्यास" in html
+        assert 'id="header-move-title"' in html  # the move title and step follow her session
+        assert 'id="header-step"' in html
 
-        # Rehearse child strip with 3 children
-        assert 'id="board-problem"' in html
-        assert "रवि" in html
-        assert "प्रिया" in html
-        assert "अमन" in html
+        # The scene bar exists but is hidden, and no children are listed, outside a scene
+        assert re.search(r'<section class="scene-bar" id="scene-bar"[^>]* hidden>', html)
+        assert 'class="child-pill' not in html
 
         # Composer controls
         assert 'id="chat-input"' in html

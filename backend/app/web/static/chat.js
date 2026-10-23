@@ -671,36 +671,52 @@ function scrollChatToNew(firstRow) {
 }
 
 // ── Polling Loop (§7.3) ─────────────────────────────────────────────────────
-// One-on-one header: every field comes from the server (the child state is the rule engine's)
+// Scene bar: every field comes from the server (title, turn, board, who can be addressed)
+function addressChild(name) {
+  const input = document.getElementById('chat-input');
+  if (!input || !name) return;
+  if (!input.value.startsWith(name)) input.value = `${name}, ${input.value}`;
+  if (input.focus) input.focus();
+}
+
 function renderSceneHeader(sc) {
-  const header = document.getElementById('scene-header');
-  const strip = document.getElementById('rehearse-strip');
-  if (!header) return;
-  if (!sc) {
-    header.hidden = true;
-    if (strip) strip.hidden = false;
-    return;
-  }
-  header.hidden = false;
-  if (strip) strip.hidden = true;
-  const childEl = document.getElementById('sh-child');
-  if (childEl) {
-    childEl.textContent = sc.child_name;
-    childEl.className = `child-pill active ${sc.child_id}`;
-  }
+  const bar = document.getElementById('scene-bar');
+  if (!bar) return;
+  bar.hidden = !sc;
+  if (!sc) return;
   const set = (id, text) => {
     const el = document.getElementById(id);
     if (el && el.textContent !== text) el.textContent = text;
   };
-  set('sh-board', sc.board);
-  set('sh-turn', sc.turn_label);
-  const cueEl = document.getElementById('sh-cue-text');
-  if (cueEl && cueEl.textContent !== sc.cue) {
-    cueEl.textContent = sc.cue;
-    announce(sc.cue);
+  set('sb-title', sc.title);
+  set('sb-turn', sc.turn_label);
+  set('sb-board', sc.board);
+  const kids = document.getElementById('sb-children');
+  if (!kids) return;
+  const list = sc.children || [];
+  const ids = list.map((c) => c.id).join(',');
+  if (kids.dataset.ids !== ids) {
+    kids.dataset.ids = ids;
+    while (kids.children.length) kids.removeChild(kids.children[0]);
+    list.forEach((c) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `child-pill ${c.id}`;
+      b.setAttribute('data-name', c.name);
+      b.textContent = c.name;
+      kids.appendChild(b);
+    });
   }
-  const steps = document.getElementById('sh-steps');
-  if (steps) steps.dataset.filled = String(sc.cue_state >= 0 ? sc.cue_state + 1 : 0);
+  kids.hidden = list.length === 0;
+}
+
+// Header: the move title and "Step 4 of 7: Practice" follow the weekly loop
+function applyView(view) {
+  if (!view) return;
+  const title = document.getElementById('header-move-title');
+  if (title && title.textContent !== view.move_title) title.textContent = view.move_title;
+  const step = document.getElementById('header-step');
+  if (step && step.textContent !== view.step_label) step.textContent = view.step_label;
 }
 
 function setupSceneEnd() {
@@ -769,6 +785,7 @@ async function pollMessages() {
       }
       if (!stale) typingEvent({ type: data.pending ? 'pending' : 'idle' });
       renderSceneHeader(data.scene || null);
+      applyView(data.view);
     }
   } catch (err) {
     console.warn('Poll error:', err);
@@ -1684,6 +1701,12 @@ document.addEventListener('click', (e) => {
   if (failed) {
     const id = failed.getAttribute('data-client-id');
     if (id) retryMessage(id);
+    return;
+  }
+
+  const childPill = target.closest('.child-pill[data-name]');
+  if (childPill) {
+    addressChild(childPill.getAttribute('data-name'));
     return;
   }
 

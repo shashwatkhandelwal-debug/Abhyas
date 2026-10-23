@@ -1,16 +1,16 @@
 # First-Load Transfer Size Audit Report
 
 **Environment**: `local, mock providers, mock DB, empty chat history`  
-**Timestamp**: 2026-10-23 12:35:10 UTC  
+**Timestamp**: 2026-10-23 12:58:44 UTC  
 **Status**: ✅ PASSED (Budget: < 150.0 KB)  
 
 > Note: In the local test run, `/teacher` HTML is measured with mock providers, a mock DB, and an empty chat history, which represents a lower bound for the page size.
 
 ## 1. Executive Summary
 
-- **Teacher Chat First-Load (HTML + CSS + JS)**: **31.25 KB** gzip (121.25 KB raw)
-- **Total Asset Payload (All Offline Assets)**: **39.1 KB** gzip (144.55 KB raw)
-- **Budget Headroom**: **28.75 KB** under the 150 KB ceiling (80.8% of budget)
+- **Teacher Chat First-Load (HTML + CSS + JS)**: **31.29 KB** gzip (121.1 KB raw)
+- **Total Asset Payload (All Offline Assets)**: **39.14 KB** gzip (144.4 KB raw)
+- **Budget Headroom**: **28.9 KB** under the 150 KB ceiling (80.7% of budget)
 - **Target Constraint**: Spec 09 §9.2 requires first-load payload < 150 KB excluding audio to ensure accessibility on low-cost Android smartphones over 2G/3G connections.
 
 ## 2. Asset Breakdown
@@ -18,12 +18,12 @@
 | Asset Name | Path | Kind | Status | Raw Size (KB) | Gzip Size (KB) |
 |---|---|---|---|---|---|
 | `Login Page (HTML)` | `/login` | HTML | 200 | 7.15 KB | 2.19 KB |
-| `Teacher Chat PWA (HTML)` | `/teacher` | HTML | 200 | 20.49 KB | 5.34 KB |
+| `Teacher Chat PWA (HTML)` | `/teacher` | HTML | 200 | 20.01 KB | 5.25 KB |
 | `manifest.json` | `/manifest.json` | JSON | 200 | 0.5 KB | 0.29 KB |
 | `ack.js` | `/static/ack.js` | JS | 200 | 1.07 KB | 0.56 KB |
-| `app.css?v=dev-f77c80d7` | `/static/app.css?v=dev-f77c80d7` | CSS | 200 | 30.89 KB | 7.0 KB |
-| `chat.js?v=dev-f77c80d7` | `/static/chat.js?v=dev-f77c80d7` | JS | 200 | 62.83 KB | 16.51 KB |
-| `recorder.js?v=dev-f77c80d7` | `/static/recorder.js?v=dev-f77c80d7` | JS | 200 | 6.54 KB | 2.1 KB |
+| `app.css?v=dev-2d0dc942` | `/static/app.css?v=dev-2d0dc942` | CSS | 200 | 30.45 KB | 6.91 KB |
+| `chat.js?v=dev-2d0dc942` | `/static/chat.js?v=dev-2d0dc942` | JS | 200 | 63.6 KB | 16.73 KB |
+| `recorder.js?v=dev-2d0dc942` | `/static/recorder.js?v=dev-2d0dc942` | JS | 200 | 6.54 KB | 2.1 KB |
 | `sw.js` | `/sw.js` | JS | 200 | 5.27 KB | 1.71 KB |
 | `offline.html` | `/offline.html` | HTML | 200 | 9.8 KB | 3.38 KB |
 
@@ -43,4 +43,4 @@
 ## 4. Assertion
 
 Assertion `total_first_load < 150 KB`: **✅ PASSED**
-- Measured: 121.25 KB raw < 150.00 KB
+- Measured: 121.1 KB raw < 150.00 KB

@@ -54,6 +54,7 @@ from backend.app.rehearsal.header import scene_header
 from backend.app.rehearsal.scene_store import scene_store
 from backend.app.retrieval.search import get_guide_retriever
 from backend.app.speech.cache import tts_cache
+from backend.app.web.chat_view import load_chat_view
 
 logger = logging.getLogger("abhyas.web.chat")
 
@@ -445,10 +446,12 @@ async def get_chat_messages(
     scene_record = await scene_store.get_active_for_teacher(teacher.id)
     header = scene_header(scene_record.scene_state, scene_record.active) if scene_record else None
 
+    view = await load_chat_view(db, teacher)
     return {
         "messages": messages_data,
         "pending": pending,
-        "scene": header,
+        "scene": header or view.get("scene_preview"),
+        "view": view,
         "server_time": server_time.isoformat(),
     }
 

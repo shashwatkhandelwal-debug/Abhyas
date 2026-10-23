@@ -63,6 +63,7 @@ from backend.app.sessions.repository import SessionRepository
 from backend.app.sessions.service import SessionService
 from backend.app.web.assets import STATIC_DIR, sw_build_version
 from backend.app.web.chat_api import get_teacher_for_user
+from backend.app.web.chat_view import load_chat_view
 from backend.app.web.ui_lang import register_ui_globals
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -195,49 +196,14 @@ async def teacher_chat_page(
     except Exception:
         active_scene = None
 
-    board_problem = ""
-    if active_scene and active_scene.engine_state:
-        state = active_scene.engine_state
-        board_prefix = get_message("ui_board_prefix")
-        if state.get("board_problem"):
-            board_problem = str(state["board_problem"])
-        elif state.get("board_text"):
-            board_problem = str(state["board_text"])
-        elif state.get("board"):
-            board_problem = str(state["board"])
-        elif state.get("current_item_text"):
-            board_problem = f"{board_prefix} {state['current_item_text']}"
-        elif current_item := state.get("current_item"):
-            if isinstance(current_item, dict):
-                if current_item.get("text"):
-                    board_problem = f"{board_prefix} {current_item['text']}"
-                elif (
-                    current_item.get("type") == "sub"
-                    and "a" in current_item
-                    and "b" in current_item
-                ):
-                    board_problem = f"{board_prefix} {current_item['a']} − {current_item['b']}"
-                elif (
-                    current_item.get("type") == "add"
-                    and "a" in current_item
-                    and "b" in current_item
-                ):
-                    board_problem = f"{board_prefix} {current_item['a']} + {current_item['b']}"
-                elif current_item.get("word"):
-                    board_problem = f"{board_prefix} {current_item['word']}"
-            elif isinstance(current_item, str):
-                board_problem = (
-                    current_item
-                    if current_item.startswith(board_prefix)
-                    else f"{board_prefix} {current_item}"
-                )
-
     header: dict[str, Any] | None = None
     if active_scene is not None and active_scene.engine_state:
         try:
             header = scene_header(active_scene.engine_state)
         except ValueError:
             header = None
+    view = await load_chat_view(db, teacher)
+    header = header or view.get("scene_preview")
 
     demo_chips = load_demo_chips() if is_demo else []
     demo_banner_text = _demo_banner_text(current_user)
@@ -259,9 +225,7 @@ async def teacher_chat_page(
             "teacher_name": (
                 teacher.name or current_user.display_name or get_message("ui_default_teacher_name")
             ),
-            "move_title": get_message("ui_default_move_title"),
-            "step_chip": get_message("ui_default_step_chip"),
-            "board_problem": board_problem,
+            "view": view,
             "scene_header": header,
             "lite_mode": teacher.lite_mode,
             "demo_mode": is_demo,

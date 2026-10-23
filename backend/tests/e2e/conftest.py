@@ -117,8 +117,10 @@ def server() -> Iterator[str]:
         admin.dispose()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def browser() -> Iterator[Any]:
+    """Headless Chromium for one test. Not wider than that: a started sync Playwright leaves an
+    event loop running in the thread, which breaks every async test that runs after it."""
     pw = playwright_sync.sync_playwright().start()
     try:
         chromium = pw.chromium.launch()
@@ -185,3 +187,21 @@ def open_chat(browser: Any, server: str) -> Iterator[Any]:
     yield make
     for teacher in opened:
         teacher.close()
+
+
+def tap_reply(page: Any, text: str, timeout: int = 20_000) -> None:
+    """Taps the newest enabled quick-reply chip whose label contains `text`."""
+    chip = page.locator(".reply-chip:not([disabled])", has_text=text).last
+    chip.wait_for(timeout=timeout)
+    chip.click()
+    page.wait_for_function(
+        "() => !document.querySelector('#pending-bubble.active')", timeout=timeout
+    )
+    page.wait_for_timeout(1500)  # the reply bubble is rendered by the next poll
+
+
+# Elements in `selector` whose text is cut off (clipped horizontally or vertically)
+CLIPPED = """(selector) => [...document.querySelectorAll(selector)]
+  .filter((el) => el.offsetParent !== null
+    && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1))
+  .map((el) => (el.id || el.className || el.tagName) + ': ' + el.textContent.trim().slice(0, 40))"""
