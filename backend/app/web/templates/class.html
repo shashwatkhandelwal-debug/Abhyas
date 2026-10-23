@@ -116,6 +116,42 @@
         <button type="submit" class="reply-chip">{{ get_message('ui_class_btn_speak') }}</button>
       </form>
 
+      <section class="class-skills" id="class-skills" aria-label="{{ get_message('ui_skills_title') }}">
+        <h2 class="section-heading">{{ get_message('ui_skills_title') }}</h2>
+        <p class="class-intro">{{ get_message('ui_skills_intro', max=skill_max) }}</p>
+        {% if skills_saved %}
+        <p class="class-k">{{ get_message('ui_skills_saved_label') }}</p>
+        <ol class="class-list" id="skills-saved">
+          {% for s in skills_saved %}<li class="class-item" data-skill="{{ s.id }}"><strong>{{ s.label }}</strong>{% if s.source %} <span class="class-src">{{ s.source }}{{ ' (OCR)' if s.ocr else '' }}</span>{% endif %}</li>{% endfor %}
+        </ol>
+        {% else %}
+        <p class="class-empty">{{ get_message('ui_skills_none') }}</p>
+        {% endif %}
+        <form method="post" action="/teacher/class/skills/save" class="class-chips" id="skills-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <fieldset>
+            <legend>{{ get_message('ui_class_pick_label', max=skill_max) }}</legend>
+            {% for s in skills_all %}
+            <label class="class-chip">
+              <input type="checkbox" name="skill" value="{{ s.id }}"{{ ' checked' if s.id in skills_saved_ids else '' }}>
+              <span>{{ s.label }}</span>
+            </label>
+            {% endfor %}
+          </fieldset>
+          <button type="submit" class="btn-primary reply-chip">{{ get_message('ui_skills_btn_save') }}</button>
+        </form>
+        <form method="post" action="/teacher/class/skills/start">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="reply-chip">{{ get_message('ui_skills_btn_voice') }}</button>
+        </form>
+        {% if skills_saved %}
+        <form method="post" action="/teacher/class/skills/clear">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="reply-chip">{{ get_message('ui_skills_btn_clear') }}</button>
+        </form>
+        {% endif %}
+      </section>
+
       <p class="class-privacy">{{ get_message('ui_class_privacy') }}</p>
     </main>
   </div>
@@ -144,6 +180,20 @@
         sync();
       });
       sync();
+    })();
+  </script>
+  <script>
+    // At most {{ skill_max }} skills can be ticked.
+    (function () {
+      var form = document.getElementById('skills-form');
+      if (!form) return;
+      var max = {{ skill_max }};
+      form.addEventListener('change', function (e) {
+        var box = e.target;
+        if (!box || box.name !== 'skill' || !box.checked) return;
+        var ticked = form.querySelectorAll('input[name=skill]:checked');
+        if (ticked.length > max) box.checked = false;
+      });
     })();
   </script>
   {% include "_ack.html" %}

@@ -81,6 +81,20 @@ def focus_child(
     return None
 
 
+def rubric_scores_skill(move_id: str, skill_ids: list[str]) -> bool:
+    """Does this move's one-on-one rubric have a criterion for one of the skills she chose?"""
+    from backend.app.rehearsal.scene_runner import load_move_card
+
+    try:
+        move = load_move_card(move_id)
+    except (FileNotFoundError, KeyError, ValueError):
+        return False
+    if move.rubric_one_on_one is None:
+        return False
+    criteria = {c.id for c in move.rubric_one_on_one.criteria}
+    return any(sid in criteria for sid in skill_ids)
+
+
 def _base_pos(entry: MovePathEntry) -> int:
     m = _BASE_POS.search(entry.reason)
     return int(m.group(1)) if m else entry.position
@@ -101,10 +115,13 @@ def order_path(
     *,
     done_moves: frozenset[str] = frozenset(),
     lib: StruggleLibrary | None = None,
+    skill_ids: list[str] | None = None,
 ) -> list[MovePathEntry]:
     """Struggle moves first (her order, skipping moves she has already completed), then the rest.
 
-    With no struggles the original order is restored from `base_pos`. Positions are renumbered.
+    Among the rest, moves whose one-on-one rubric scores a skill she chose to improve come before
+    the others (each group keeps its earlier order). With no struggles and no skills the original
+    order is restored from `base_pos`. Positions are renumbered.
     """
     lib = lib or load_library()
     base = sorted(entries, key=lambda e: (_base_pos(e), e.position))
@@ -113,6 +130,10 @@ def order_path(
     why = dict(wanted)
     front = [next(e for e in base if e.move_id == m) for m in front_ids]
     rest = [e for e in base if e.move_id not in set(front_ids)]
+    if skill_ids:
+        rest = [e for e in rest if rubric_scores_skill(e.move_id, skill_ids)] + [
+            e for e in rest if not rubric_scores_skill(e.move_id, skill_ids)
+        ]
     out: list[MovePathEntry] = []
     for pos, e in enumerate(front + rest, start=1):
         core = _strip_class_tags(e.reason)
@@ -129,5 +150,6 @@ __all__ = [
     "focus_child",
     "label_of",
     "order_path",
+    "rubric_scores_skill",
     "struggle_moves",
 ]

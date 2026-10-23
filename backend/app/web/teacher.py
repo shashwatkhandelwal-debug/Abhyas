@@ -39,6 +39,7 @@ from backend.app.auth.csrf import (
 from backend.app.auth.guards import get_current_user, require_role
 from backend.app.auth.session import clear_session_cookie
 from backend.app.channels.web import WebChannel
+from backend.app.class_profile.skills import skill_progress
 from backend.app.class_profile.views import views_for
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
@@ -395,6 +396,7 @@ async def teacher_progress_page(
             move_ids = ["NUM_SUB_REGROUP_BUNDLES"]
 
     move_cards: list[dict[str, Any]] = []
+    all_scored: list[tuple[datetime, str, dict[str, Any]]] = []
 
     for m_id in move_ids:
         card = all_moves.get(m_id)
@@ -427,6 +429,13 @@ async def teacher_progress_page(
         rscores = (await db.execute(stmt_scores)).scalars().all()
         score_history: list[dict[str, Any]] = []
         for s_idx, rs in enumerate(rscores):
+            all_scored.append(
+                (
+                    rs.created_at or datetime.min.replace(tzinfo=UTC),
+                    m_id,
+                    rs.scores if isinstance(rs.scores, dict) else {},
+                )
+            )
             num_vals: list[float] = []
             if isinstance(rs.scores, dict):
                 for v in rs.scores.values():
@@ -505,6 +514,12 @@ async def teacher_progress_page(
             }
         )
 
+    # What she chose to get better at: first and latest level on that rubric criterion
+    skill_cards = skill_progress(
+        [(m, sc) for _, m, sc in sorted(all_scored, key=lambda row: row[0])],
+        [str(i) for i in teacher.teaching_skills or []],
+    )
+
     demo_banner_text = _demo_banner_text(current_user)
 
     response = templates.TemplateResponse(
@@ -522,6 +537,9 @@ async def teacher_progress_page(
             "consent_share_scores": teacher.consent_share_scores,
             "consent_research": teacher.consent_research,
             "move_cards": move_cards,
+            "skill_cards": skill_cards,
+            "skill_min_scenes": settings.SKILL_PROGRESS_MIN_SCENES,
+            "skill_max_level": settings.SKILL_LEVEL_MAX,
         },
     )
     if token_to_set:

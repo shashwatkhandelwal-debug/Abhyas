@@ -6,6 +6,9 @@ Routes (teacher role):
 - POST /teacher/class/describe   her words -> what we understood (shown to confirm, nothing saved)
 - POST /teacher/class/save       save the confirmed or ticked ids (closed list, at most 3, ordered)
 - POST /teacher/class/clear      remove her choice
+- POST /teacher/class/skills/save   save what she wants to get better at (closed list, at most 2)
+- POST /teacher/class/skills/clear  remove that choice
+- POST /teacher/class/skills/start  open the chat on the question, to answer by voice or text
 
 Chips and typed words go through the same `resolve_struggles` as the chat; saving filters every id
 through the closed library.
@@ -33,6 +36,7 @@ from backend.app.auth.guards import require_role
 from backend.app.channels.web import WebChannel
 from backend.app.class_profile.flow import clean_ids, resolve_struggles
 from backend.app.class_profile.library import load_library
+from backend.app.class_profile.skills import clean_skill_ids, load_skills, skill_views
 from backend.app.class_profile.views import StruggleView, chip_views, views_for
 from backend.app.config import settings
 from backend.app.core.messages import get_message
@@ -93,6 +97,10 @@ async def _render(
             "notice": notice,
             "no_match": no_match,
             "other_tip": lib.other.tip_hi,
+            "skills_all": skill_views(load_skills().ids()),
+            "skills_saved": skill_views([str(i) for i in teacher.teaching_skills or []]),
+            "skills_saved_ids": [str(i) for i in teacher.teaching_skills or []],
+            "skill_max": settings.TEACHING_SKILLS_MAX,
             "demo_mode": bool(current_user.is_demo or teacher.is_demo),
             "demo_banner_text": get_message("ui_demo_banner"),
         },
@@ -113,6 +121,10 @@ async def class_page(
         notice = get_message("ui_class_saved")
     elif request.query_params.get("cleared") == "1":
         notice = get_message("ui_class_cleared")
+    elif request.query_params.get("skills_saved") == "1":
+        notice = get_message("ui_skills_notice_saved")
+    elif request.query_params.get("skills_cleared") == "1":
+        notice = get_message("ui_skills_notice_cleared")
     return await _render(request, db, current_user, notice=notice)
 
 
@@ -184,3 +196,50 @@ async def class_clear(
     await SessionService(db_session=db).set_class_struggles(teacher.id, [])
     await db.commit()
     return RedirectResponse(url="/teacher/class?cleared=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/teacher/class/skills/save")
+async def skills_save(
+    request: Request,
+    current_user: Annotated[AppUser, Depends(require_role("teacher"))],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> Response:
+    await verify_csrf_token(request)
+    form = await request.form()
+    ids = clean_skill_ids([str(v) for v in form.getlist("skill")])
+    teacher = await get_teacher_for_user(current_user, db, request=request)
+    await SessionService(db_session=db).set_teaching_skills(teacher.id, ids)
+    await db.commit()
+    return RedirectResponse(
+        url="/teacher/class?skills_saved=1", status_code=status.HTTP_303_SEE_OTHER
+    )
+
+
+@router.post("/teacher/class/skills/clear")
+async def skills_clear(
+    request: Request,
+    current_user: Annotated[AppUser, Depends(require_role("teacher"))],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> Response:
+    await verify_csrf_token(request)
+    teacher = await get_teacher_for_user(current_user, db, request=request)
+    await SessionService(db_session=db).set_teaching_skills(teacher.id, [])
+    await db.commit()
+    return RedirectResponse(
+        url="/teacher/class?skills_cleared=1", status_code=status.HTTP_303_SEE_OTHER
+    )
+
+
+@router.post("/teacher/class/skills/start")
+async def skills_start(
+    request: Request,
+    current_user: Annotated[AppUser, Depends(require_role("teacher"))],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> Response:
+    """Open the chat on the question, so she can answer by voice or text."""
+    await verify_csrf_token(request)
+    teacher = await get_teacher_for_user(current_user, db, request=request)
+    outbound = await SessionService(db_session=db).start_teaching_skills(teacher.id)
+    await WebChannel().send(teacher, outbound, session=db)
+    await db.commit()
+    return RedirectResponse(url="/teacher", status_code=status.HTTP_303_SEE_OTHER)

@@ -6,6 +6,7 @@ import logging
 import unicodedata
 import uuid
 from datetime import UTC, date, datetime, timedelta
+from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
@@ -13,7 +14,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.class_profile import flow as class_flow
-from backend.app.class_profile import personalise
+from backend.app.class_profile import personalise, skills_flow
+from backend.app.class_profile.skills import clean_skill_ids, load_skills, skill_levels
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
 from backend.app.core.intents import (
@@ -188,6 +190,9 @@ class SessionService:
             class_stage=str(ctx_data.get("class_stage", "")),
             class_pending=[str(i) for i in ctx_data.get("class_pending") or []],
             class_struggles=[str(i) for i in teacher.class_struggles or []],
+            skill_stage=str(ctx_data.get("skill_stage", "")),
+            skill_pending=[str(i) for i in ctx_data.get("skill_pending") or []],
+            teaching_skills=[str(i) for i in teacher.teaching_skills or []],
             name=teacher.name,
             address_form=teacher.address_form or "f",
             cluster_id=teacher.cluster_id,
@@ -220,6 +225,7 @@ class SessionService:
         teacher.last_inbound_at = ctx.last_inbound_at
         teacher.lite_mode = ctx.lite_mode
         teacher.class_struggles = list(ctx.class_struggles)
+        teacher.teaching_skills = list(ctx.teaching_skills)
         await self.repo.save_teacher(teacher)
 
         week_d = date.fromisoformat(ctx.week_start)
@@ -257,6 +263,8 @@ class SessionService:
             "diagnosis": ctx.diagnosis,
             "class_stage": ctx.class_stage,
             "class_pending": ctx.class_pending,
+            "skill_stage": ctx.skill_stage,
+            "skill_pending": ctx.skill_pending,
         }
         await self.repo.save_session_state(db_state)
         if (
@@ -473,6 +481,29 @@ class SessionService:
             )
         return get_message("realism_prompt", address_form)
 
+    @staticmethod
+    def _skill_lead(
+        move: MoveCard, scores: dict[str, Any], ctx: SessionContext, address_form: str
+    ) -> str:
+        """ "You chose to improve at X; in this practice: ..." from the rubric's own level wording."""
+        lib = load_skills()
+        lines: list[str] = []
+        for item in skill_levels(move, scores, ctx.teaching_skills):
+            skill = lib.get(item.skill_id)
+            if skill is None or not item.level_text_hi:
+                continue
+            lines.append(
+                get_message(
+                    "coach_skill_lead",
+                    address_form,
+                    label=skill.label,
+                    level_text=item.level_text_hi,
+                    level=item.level,
+                    max=settings.SKILL_LEVEL_MAX,
+                )
+            )
+        return "\n".join(lines)
+
     async def _resume_scene(self, ctx: SessionContext, teacher_id: UUID) -> bool:
         """Reopens the scene that ended too early; False if it is gone."""
         try:
@@ -578,7 +609,12 @@ class SessionService:
         if not entries:
             return
         done = await self.repo.done_move_ids(teacher_id, DONE_MIN_EVIDENCE)
-        ordered = personalise.order_path(entries, ctx.class_struggles, done_moves=frozenset(done))
+        ordered = personalise.order_path(
+            entries,
+            ctx.class_struggles,
+            done_moves=frozenset(done),
+            skill_ids=ctx.teaching_skills,
+        )
         if [(e.move_id, e.reason) for e in ordered] != [(e.move_id, e.reason) for e in entries]:
             await self.repo.replace_move_path(teacher_id, ordered)
 
@@ -591,6 +627,23 @@ class SessionService:
         await self._after_class_saved(ctx, teacher_id)
         await self._sync_context_to_db(ctx, teacher_id)
         return list(ctx.class_struggles)
+
+    async def set_teaching_skills(self, teacher_id: UUID, ids: list[str]) -> list[str]:
+        """The My class page saved (or cleared) what she wants to get better at: closed list, max 2."""
+        ctx = await self.get_or_create_context(teacher_id)
+        ctx.teaching_skills = clean_skill_ids(ids)
+        ctx.skill_stage = skills_flow.STAGE_NONE
+        ctx.skill_pending = []
+        await self._after_class_saved(ctx, teacher_id)
+        await self._sync_context_to_db(ctx, teacher_id)
+        return list(ctx.teaching_skills)
+
+    async def start_teaching_skills(self, teacher_id: UUID) -> list[OutboundMessage]:
+        """My class page -> chat: ask what she wants to get better at (voice, text or a number)."""
+        ctx = await self.get_or_create_context(teacher_id)
+        result = skills_flow.start(ctx)
+        await self._sync_context_to_db(ctx, teacher_id)
+        return result.messages
 
     async def start_class_profile(self, teacher_id: UUID) -> list[OutboundMessage]:
         """Teacher home -> chat: ask where her class is struggling (voice, text or a number)."""
@@ -770,13 +823,25 @@ class SessionService:
             and text_content != "delete"
             and not ctx.awaiting_delete_confirm
         ):
+            # "What do you want to get better at?" is asked right after the class choice is saved
+            skill_stage_before = ctx.skill_stage
+            skill_res = await skills_flow.handle(ctx, text_content, btn_id, matched_intent)
+            if skill_res.handled:
+                if skill_res.saved:
+                    await self._after_class_saved(ctx, teacher_id)
+                await self._sync_context_to_db(ctx, teacher_id)
+                return skill_res.messages
+            if ctx.skill_stage != skill_stage_before:
+                await self._sync_context_to_db(ctx, teacher_id)
             stage_before = ctx.class_stage
             class_res = await class_flow.handle(ctx, text_content, btn_id, matched_intent)
             if class_res.handled:
+                messages = class_res.messages
                 if class_res.saved:
                     await self._after_class_saved(ctx, teacher_id)
+                    messages = [*messages, *skills_flow.start(ctx).messages]
                 await self._sync_context_to_db(ctx, teacher_id)
-                return class_res.messages
+                return messages
             if ctx.class_stage != stage_before:
                 await self._sync_context_to_db(ctx, teacher_id)
 
@@ -1732,6 +1797,10 @@ class SessionService:
                     change=coach_res.feedback.change_hi,
                     exact_words=coach_res.feedback.exact_words_hi,
                 )
+
+                skill_lead = self._skill_lead(move, coach_res.feedback.scores, ctx, address_form)
+                if skill_lead:
+                    feedback_body = f"{skill_lead}\n\n{feedback_body}"
 
                 ctx.rehearse_stage = rehearse_setup.STAGE_NONE
                 await self._sync_context_to_db(ctx, teacher_id)

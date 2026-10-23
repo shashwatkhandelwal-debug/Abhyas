@@ -127,6 +127,8 @@ class Teacher(Base):
     onboarding_state: Mapped[str] = mapped_column(Text, default="NEW", nullable=False)
     # "My class": ids from content/class_struggles.yaml, ordered, at most STRUGGLE_MAX_CHOSEN
     class_struggles: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
+    # "What do you want to get better at?": ids from content/teaching_skills.yaml, at most 2
+    teaching_skills: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
     class_profile_prompted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

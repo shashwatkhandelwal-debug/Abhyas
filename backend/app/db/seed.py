@@ -96,6 +96,14 @@ _DEMO_CLASS_STRUGGLES: dict[str, list[str]] = {
     "teacher.demo3": ["LIT_MATRA_DROP", "NUM_ADD_CARRY"],
 }
 
+# "What do you want to get better at?" of the demo teachers: only demo3 has one (a one-on-one
+# rubric skill, so the coach leads with it and the progress page can show before and after).
+_DEMO_TEACHING_SKILLS: dict[str, list[str]] = {
+    "teacher.demo1": [],
+    "teacher.demo2": [],
+    "teacher.demo3": ["asks_to_explain"],
+}
+
 # demo3's seeded completed moves: (move_id, adoption level, evidence source)
 _DEMO3_COMPLETED_MOVES: list[tuple[str, int, str]] = [
     ("NUM_SUB_REGROUP_BUNDLES", 5, "child_check"),
@@ -537,6 +545,7 @@ async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
         teacher.address_form = "f"
         teacher.lite_mode = False
         teacher.class_struggles = list(_DEMO_CLASS_STRUGGLES[login])
+        teacher.teaching_skills = list(_DEMO_TEACHING_SKILLS[login])
         teacher.class_profile_prompted_at = None
         teacher.phone_hash = None
         teacher.preferred_channel = "web"
@@ -683,6 +692,8 @@ async def seed_database() -> None:
             repair_onboarding_state(t3, OnboardingStateEnum.READY)
         if not t3.class_struggles:
             t3.class_struggles = list(_DEMO_CLASS_STRUGGLES["teacher.demo3"])
+        if not t3.teaching_skills:
+            t3.teaching_skills = list(_DEMO_TEACHING_SKILLS["teacher.demo3"])
 
         await session.flush()
 

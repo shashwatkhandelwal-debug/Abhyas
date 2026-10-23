@@ -46,6 +46,23 @@
     {% endif %}
 
     <main class="progress-main">
+      {% if skill_cards %}
+      <section class="skill-progress" id="skill-progress" aria-label="{{ get_message('ui_skill_progress_title') }}">
+        <h2 class="section-heading">{{ get_message('ui_skill_progress_title') }}</h2>
+        {% for sk in skill_cards %}
+        <article class="move-card skill-card" data-skill="{{ sk.skill_id }}">
+          <h3 class="move-card-title">{{ sk.label }}</h3>
+          {% if sk.ready %}
+          <p class="skill-before"><span class="class-k">{{ get_message('ui_skill_progress_before') }}:</span> {{ sk.first_text_hi }} ({{ sk.first_level }}/{{ skill_max_level }})</p>
+          <p class="skill-now"><span class="class-k">{{ get_message('ui_skill_progress_now') }}:</span> {{ sk.last_text_hi }} ({{ sk.last_level }}/{{ skill_max_level }})</p>
+          {% else %}
+          <p class="skill-wait">{{ get_message('ui_skill_progress_wait', n=skill_min_scenes) }}</p>
+          {% endif %}
+        </article>
+        {% endfor %}
+      </section>
+      {% endif %}
+
       <!-- Section: Move Cards (spec/09 §9.2 line 32) -->
       <section class="moves-section" aria-label="{{ get_message('ui_progress_moves_label') }}">
         <h2 class="section-heading">{{ get_message('ui_progress_moves_heading') }}</h2>

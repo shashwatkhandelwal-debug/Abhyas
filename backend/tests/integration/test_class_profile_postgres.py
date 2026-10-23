@@ -359,3 +359,142 @@ async def test_saving_and_clearing_reorders_the_stored_path_and_helped_is_stored
             await session.rollback()
             await session.execute(delete(Teacher).where(Teacher.id == teacher_id))
             await session.commit()
+
+
+async def _skill_teacher(
+    session_factory: async_sessionmaker[AsyncSession], *, consent: bool, skills: list[str]
+) -> UUID:
+    async with session_factory() as session:
+        teacher = Teacher(
+            id=uuid4(),
+            name="कौशल",
+            phone_hash=f"ph_{uuid4().hex}",
+            district="SKILL_TEST_DISTRICT",
+            consent_share_scores=consent,
+            teaching_skills=skills,
+        )
+        session.add(teacher)
+        await session.commit()
+        return teacher.id
+
+
+@pytest.mark.asyncio
+async def test_skills_page_saves_a_closed_list_of_at_most_two_and_can_clear(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    async with session_factory() as session:
+        teacher = Teacher(id=uuid4(), name="पृष्ठ", phone_hash=f"ph_{uuid4().hex}")
+        session.add(teacher)
+        await session.flush()
+        user = AppUser(
+            id=uuid4(),
+            username=f"teacher.skill.{uuid4().hex[:6]}",
+            password_hash="h",
+            role="teacher",
+            teacher_id=teacher.id,
+        )
+        session.add(user)
+        await SessionService(db_session=session).get_or_create_context(teacher.id)
+        await session.commit()
+        teacher_id, user_id = teacher.id, user.id
+
+    async def real_db() -> AsyncGenerator[AsyncSession, None]:
+        async with session_factory() as s:
+            yield s
+
+    async def fake_user() -> AppUser:
+        async with session_factory() as s:
+            return (await s.execute(select(AppUser).where(AppUser.id == user_id))).scalar_one()
+
+    async def stored() -> list[str]:
+        async with session_factory() as s:
+            row = (await s.execute(select(Teacher).where(Teacher.id == teacher_id))).scalar_one()
+            await s.refresh(row)
+            return list(row.teaching_skills)
+
+    app.dependency_overrides[get_db_session] = real_db
+    app.dependency_overrides[get_current_user] = fake_user
+    csrf = {"headers": {"X-CSRF-Token": "t"}, "cookies": {"abhyas_csrf": "t"}}
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            page = await client.get("/teacher/class")
+            assert page.status_code == 200
+            assert page.text.count('name="skill"') == 6  # five skills and "something else"
+            saved = await client.post(
+                "/teacher/class/skills/save",
+                data={"skill": ["BOGUS", "asks_to_explain", "probes_with_followup", "other"]},
+                follow_redirects=False,
+                **csrf,
+            )
+            assert saved.status_code == 303
+            # closed list: the made-up id is dropped; two kept, "other" cannot sit next to a skill
+            assert await stored() == ["asks_to_explain", "probes_with_followup"]
+            shown = await client.get("/teacher/class?skills_saved=1")
+            assert 'data-skill="asks_to_explain"' in shown.text
+            assert shown.text.count("class-src") >= 2  # each skill shows its handbook page
+            changed = await client.post(
+                "/teacher/class/skills/save",
+                data={"skill": ["other"]},
+                follow_redirects=False,
+                **csrf,
+            )
+            assert changed.status_code == 303 and await stored() == ["other"]
+            cleared = await client.post(
+                "/teacher/class/skills/clear", follow_redirects=False, **csrf
+            )
+            assert cleared.status_code == 303 and await stored() == []
+            started = await client.post(
+                "/teacher/class/skills/start", follow_redirects=False, **csrf
+            )
+            assert started.status_code == 303
+            async with session_factory() as s:
+                ctx = await SessionService(db_session=s).get_or_create_context(teacher_id)
+                assert ctx.skill_stage == "asking"
+    finally:
+        app.dependency_overrides.clear()
+        async with session_factory() as s:
+            await s.execute(delete(AppUser).where(AppUser.id == user_id))
+            await s.execute(delete(Teacher).where(Teacher.id == teacher_id))
+            await s.commit()
+
+
+@pytest.mark.asyncio
+async def test_trainer_skill_aggregate_hides_below_ten_and_counts_only_consenting_teachers(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    from backend.app.reports.teaching_skills import teaching_skill_summary
+
+    ids: list[UUID] = []
+    try:
+        for _ in range(9):
+            ids.append(
+                await _skill_teacher(session_factory, consent=True, skills=["asks_to_explain"])
+            )
+        ids.append(await _skill_teacher(session_factory, consent=False, skills=["other"]))
+        ids.append(await _skill_teacher(session_factory, consent=True, skills=[]))
+        async with session_factory() as s:
+            few = await teaching_skill_summary(
+                s, district="SKILL_TEST_DISTRICT", suppress_below=settings.AGGREGATION_SUPPRESSION_N
+            )
+        assert few.n_teachers == 9 and few.suppressed and few.rows == []  # nothing at 9
+        ids.append(
+            await _skill_teacher(
+                session_factory, consent=True, skills=["asks_to_explain", "probes_with_followup"]
+            )
+        )
+        async with session_factory() as s:
+            many = await teaching_skill_summary(
+                s, district="SKILL_TEST_DISTRICT", suppress_below=settings.AGGREGATION_SUPPRESSION_N
+            )
+            other_district = await teaching_skill_summary(
+                s, district="NOWHERE", suppress_below=settings.AGGREGATION_SUPPRESSION_N
+            )
+        assert many.n_teachers == 10 and not many.suppressed
+        counts = {r.skill_id: r.teachers for r in many.rows}
+        assert counts == {"asks_to_explain": 10, "probes_with_followup": 1}  # "other" not counted
+        assert other_district.n_teachers == 0
+    finally:
+        async with session_factory() as s:
+            await s.execute(delete(Teacher).where(Teacher.id.in_(ids)))
+            await s.commit()

@@ -1,0 +1,37 @@
+# "What do you want to get better at?" - the closed list a teacher picks from (at most 2).
+# The ids are the one-on-one rubric criteria (backend/app/content_models.py ONE_ON_ONE_CRITERIA),
+# so the coach can lead with the skill she chose and the progress page can show before / after on it.
+# `chunk_id` is the handbook passage cited when we explain the skill and `evidence` a phrase that
+# must occur in that passage's text; both are checked by
+# backend/tests/unit/test_teaching_skills.py. `other` has no fixed passage: it only points the
+# teacher to the "Ask the handbook" questions.
+skills:
+  - id: asks_to_explain
+    label_hi: "बच्चे से पूछना कि उसने कैसे किया"
+    label_en: "Asking the child how they did it"
+    chunk_id: "up_ganit_sandarshika_c1:p052:082"
+    evidence: "आपने कैसे किया"
+  - id: does_not_tell_answer
+    label_hi: "उत्तर बताने के बजाय बच्चे को खुद सोचने देना"
+    label_en: "Letting the child think instead of telling the answer"
+    chunk_id: "nishtha_fln:p447:324"
+    evidence: "facilitator"
+  - id: uses_concrete_representation
+    label_hi: "चीज़ों (तीली, कंकड़, ब्लॉक) से समझाना"
+    label_en: "Explaining with objects (sticks, pebbles, blocks)"
+    chunk_id: "up_ganit_sandarshika_c1:p041:061"
+    evidence: "ठोस वस्तुओं"
+  - id: probes_with_followup
+    label_hi: "बच्चे के जवाब के बाद एक और सवाल पूछना"
+    label_en: "Asking one more question after the child answers"
+    chunk_id: "up_ganit_sandarshika_c1:p024:028"
+    evidence: "बच्चों से पूछते भी रहें"
+  - id: checks_on_new_problem
+    label_hi: "नया सवाल देकर देखना कि बच्चा सीखा या नहीं"
+    label_en: "Giving a new problem to see if the child has learned"
+    chunk_id: "up_ganit_sandarshika_c1:p050:079"
+    evidence: "सही उत्तर दिया"
+  - id: other
+    label_hi: "कुछ और"
+    label_en: "Something else"
+    chunk_id: null

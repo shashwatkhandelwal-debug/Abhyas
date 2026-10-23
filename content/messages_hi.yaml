@@ -15,7 +15,7 @@ consent_service:
   text: "शुरू करने से पहले: आपकी आवाज़ को लिखित रूप में बदलकर आवाज़ तुरंत मिटा दी जाती है। आपके अंक केवल आपको दिखेंगे, जब तक आप स्वयं ARP के साथ साझा करने की अनुमति न दें। 'मेरा डेटा हटाएँ' लिखकर कभी भी सब कुछ मिटाया जा सकता है। क्या आप सहमत हैं?"
   audio: true
 consent_details:
-  text: "हम क्या रखते हैं: आपका नाम, कक्षा, अनुभव, आपकी बातों का लिखित रूप और अभ्यास के अंक, और अगर आप बताएँ तो 'मेरी कक्षा' में आपकी चुनी हुई दिक्कतें (सूची से, अधिकतम 3)। हम क्या नहीं रखते: आपकी आवाज़ की रिकॉर्डिंग, बच्चों की कोई जानकारी। ट्रेनर (DIET/SCERT) को केवल 10 या उससे ज़्यादा शिक्षकों के समूह के कुल आँकड़े दिखते हैं, किसी का नाम नहीं; ARP को कक्षा की दिक्कतें नहीं दिखतीं।"
+  text: "हम क्या रखते हैं: आपका नाम, कक्षा, अनुभव, आपकी बातों का लिखित रूप और अभ्यास के अंक, और अगर आप बताएँ तो 'मेरी कक्षा' में आपकी चुनी हुई दिक्कतें (सूची से, अधिकतम 3) और पढ़ाने का वह तरीका जिसमें आप आगे बढ़ना चाहें (सूची से, अधिकतम 2)। हम क्या नहीं रखते: आपकी आवाज़ की रिकॉर्डिंग, बच्चों की कोई जानकारी। ट्रेनर (DIET/SCERT) को केवल 10 या उससे ज़्यादा शिक्षकों के समूह के कुल आँकड़े दिखते हैं, किसी का नाम नहीं; ARP को कक्षा की दिक्कतें और यह चुनाव नहीं दिखते।"
   audio: false
 consent_declined:
   text: "कोई बात नहीं। जब भी आप शुरू करना चाहें, 'नमस्ते' लिखकर भेजें।"
@@ -977,3 +977,43 @@ handbook_source_label:
 handbook_fallback:
   text: "इस सवाल का जवाब बनाने वाली सेवा अभी नहीं चल रही। हैंडबुक में इस विषय का अंश (सार): {summary}\n{citation}"
   audio: false
+skill_ask:
+  text: "आप पढ़ाने में किसमें और बेहतर होना चाहेंगे? बोलकर या लिखकर बताइए, या नीचे से नंबर बताइए (यह वैकल्पिक है, अधिकतम {max}):\n{list}"
+  audio: false
+skill_confirm:
+  text: "मैंने यह समझा:\n{items}\nक्या यह सही है?"
+  audio: false
+skill_saved:
+  text: "नोट कर लिया। कोच अपनी प्रतिक्रिया में इन्हें सबसे पहले रखेगा:\n{items}\nआप इसे 'मेरी कक्षा' पन्ने पर कभी भी बदल सकते हैं।"
+  audio: false
+skill_item:
+  text: "{n}. {label}\n   {source}"
+  audio: false
+skill_item_other:
+  text: "{n}. {label}\n   इसके लिए 'हैंडबुक से पूछें' के सवाल देखिए।"
+  audio: false
+skill_no_match:
+  text: "यह मैं सूची से मिला नहीं पाया। नीचे से नंबर बताइए, या छोड़ दीजिए:\n{list}"
+  audio: false
+skill_skipped:
+  text: "ठीक है। इसे आप बाद में 'मेरी कक्षा' पन्ने पर चुन सकते हैं।"
+  audio: false
+btn_skill_skip: {text: "अभी नहीं", audio: false}
+coach_skill_lead:
+  text: "आपने '{label}' में आगे बढ़ना चुना था। इस अभ्यास में: {level_text} ({level}/{max})"
+  audio: false
+ui_skills_title: {text: "आप किसमें बेहतर होना चाहेंगे?", audio: false}
+ui_skills_intro: {text: "सूची से अधिकतम {max} चुनिए। कोच अपनी प्रतिक्रिया में इन्हें सबसे पहले रखेगा, और प्रगति पन्ने पर पहले-बाद की तुलना दिखेगी।", audio: false}
+ui_skills_saved_label: {text: "आपका चुनाव", audio: false}
+ui_skills_none: {text: "अभी कुछ नहीं चुना।", audio: false}
+ui_skills_btn_save: {text: "सहेजें", audio: false}
+ui_skills_btn_clear: {text: "चुनाव हटाएँ", audio: false}
+ui_skills_btn_voice: {text: "बोलकर बताइए", audio: false}
+ui_skills_notice_saved: {text: "आपका चुनाव सहेज लिया गया।", audio: false}
+ui_skills_notice_cleared: {text: "आपका चुनाव हटा दिया गया।", audio: false}
+ui_skill_progress_title: {text: "आपका चुना हुआ कौशल", audio: false}
+ui_skill_progress_before: {text: "पहला अभ्यास", audio: false}
+ui_skill_progress_now: {text: "सबसे ताज़ा", audio: false}
+ui_skill_progress_wait: {text: "{n} अभ्यास होने के बाद यहाँ पहले और अब की तुलना दिखेगी।", audio: false}
+ui_trainer_skills_title: {text: "शिक्षक किसमें बेहतर होना चाहते हैं", audio: false}
+ui_trainer_skills_desc: {text: "शिक्षकों का चुना हुआ कौशल (केवल सहमति देने वाले शिक्षक; 10 से कम पर छिपा)।", audio: false}

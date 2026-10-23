@@ -520,6 +520,13 @@ class SessionContext(BaseModel):
     class_struggles: list[str] = Field(
         default_factory=list
     )  # saved choice, mirrors the teacher row
+    # "What do you want to get better at?" (class_profile/skills_flow.py): "" (not asking),
+    # "asking" (waiting for her words, a chip or a number), "confirm" (yes / change on `skill_pending`)
+    skill_stage: str = ""
+    skill_pending: list[str] = Field(default_factory=list)
+    teaching_skills: list[str] = Field(
+        default_factory=list
+    )  # saved choice, mirrors the teacher row
     rating_unclear: int = 0  # unclear replies to the 1-5 prompt so far
     rating_level: int = 0  # evidence level reached, kept for the week_done message afterwards
     resume_scene_id: str = (

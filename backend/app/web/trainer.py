@@ -28,6 +28,7 @@ from backend.app.db.models import AppUser
 from backend.app.db.session import get_db_session
 from backend.app.reports.class_struggles import class_struggle_summary
 from backend.app.reports.module_progress import module_progress_summary
+from backend.app.reports.teaching_skills import teaching_skill_summary
 from backend.app.reports.trainer_aggregates import (
     build_trainer_report,
     generate_trainer_csv,
@@ -91,6 +92,12 @@ async def get_trainer_dashboard(
         suppress_below=settings.AGGREGATION_SUPPRESSION_N,
     )
 
+    teaching_skills = await teaching_skill_summary(
+        db,
+        district=current_user.district if current_user.role != "admin" else None,
+        suppress_below=settings.AGGREGATION_SUPPRESSION_N,
+    )
+
     csrf_token = generate_csrf_token()
     demo_banner_text = get_message("ui_demo_banner")
 
@@ -103,6 +110,7 @@ async def get_trainer_dashboard(
             "ratings": ratings,
             "modules": modules,
             "class_struggles": class_struggles,
+            "teaching_skills": teaching_skills,
             "suppression_message": SUPPRESSION_MESSAGE,
             "user": current_user,
             "csrf_token": csrf_token,

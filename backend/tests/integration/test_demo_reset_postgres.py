@@ -126,6 +126,7 @@ async def _snapshot(session: AsyncSession, teacher_id: UUID) -> dict[str, Any]:
             "cluster_id",
             "batch_id",
             "class_struggles",
+            "teaching_skills",
             "class_profile_prompted_at",
         )
     }
@@ -185,6 +186,7 @@ async def _dirty(session: AsyncSession, teacher_id: UUID) -> None:
     teacher.consent_research = True
     teacher.lite_mode = True
     teacher.class_struggles = ["NUM_COUNTING", "LIT_WRITING"]
+    teacher.teaching_skills = ["probes_with_followup", "checks_on_new_problem"]
     teacher.class_profile_prompted_at = now
     session.add(
         ClassOutcome(
@@ -289,6 +291,10 @@ async def test_logout_resets_demo_teacher_to_seed(session: AsyncSession, login: 
     # "My class": demo1 and demo2 start without a profile, demo3 has one seeded
     expected = {"teacher.demo3": ["LIT_MATRA_DROP", "NUM_ADD_CARRY"]}.get(login, [])
     assert after["profile"]["class_struggles"] == expected
+    # "What do you want to get better at?": only demo3 starts with one
+    assert after["profile"]["teaching_skills"] == (
+        ["asks_to_explain"] if login == "teacher.demo3" else []
+    )
     assert after["profile"]["class_profile_prompted_at"] is None
     assert after["class_outcomes"] == []
     if login == "teacher.demo2":
@@ -550,6 +556,15 @@ async def test_login_logout_cycle_keeps_demo3_class_profile_and_demo1_demo2_have
     ]
     assert await _class_struggles(session, ids["teacher.demo1"]) == []
     assert await _class_struggles(session, ids["teacher.demo2"]) == []
+    for name, expected in (
+        ("teacher.demo1", []),
+        ("teacher.demo2", []),
+        ("teacher.demo3", ["asks_to_explain"]),
+    ):
+        teacher = await session.get(Teacher, ids[name])
+        assert teacher is not None
+        await session.refresh(teacher)
+        assert list(teacher.teaching_skills) == expected, name
 
 
 async def test_too_short_scene_continue_and_skip_for_a_teacher_with_a_class_profile(

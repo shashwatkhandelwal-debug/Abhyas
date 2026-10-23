@@ -27,6 +27,7 @@ from backend.app.llm.schemas import (
     PageOCROutput,
     QuestionClassifierOutput,
     RetrievedChunk,
+    TeachingSkillClassifierOutput,
 )
 from backend.app.rule_engine.domain import (
     ChildResponse,
@@ -449,6 +450,20 @@ def guard_class_struggle_classifier(
     for sid in output.struggle_ids:
         if sid not in candidate_ids:
             return False, f"struggle id {sid!r} is not one of {candidate_ids}"
+    return True, "Valid"
+
+
+def guard_teaching_skill_classifier(
+    output: TeachingSkillClassifierOutput, candidate_ids: list[str]
+) -> tuple[bool, str]:
+    """Only offered ids, no repeats, at most TEACHING_SKILLS_MAX of them."""
+    if len(output.skill_ids) > settings.TEACHING_SKILLS_MAX:
+        return False, f"more than {settings.TEACHING_SKILLS_MAX} skill ids"
+    if len(set(output.skill_ids)) != len(output.skill_ids):
+        return False, "repeated skill id"
+    for sid in output.skill_ids:
+        if sid not in candidate_ids:
+            return False, f"skill id {sid!r} is not one of {candidate_ids}"
     return True, "Valid"
 
 

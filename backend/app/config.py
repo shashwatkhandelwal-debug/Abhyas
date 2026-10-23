@@ -217,6 +217,12 @@ class Settings(BaseSettings):
     STRUGGLE_MATCH_MIN_SCORE: int = 2  # below this the keyword matcher says "no match"
     STRUGGLE_CLASSIFIER_MIN_CONFIDENCE: float = 0.50
     STRUGGLE_CLASSIFIER_MAX_TOKENS: int = 256
+    # "What do you want to get better at?" (content/teaching_skills.yaml)
+    TEACHING_SKILLS_MAX: int = 2  # most skills a teacher keeps
+    TEACHING_SKILL_CLASSIFIER_MIN_CONFIDENCE: float = 0.50
+    TEACHING_SKILL_CLASSIFIER_MAX_TOKENS: int = 192
+    SKILL_PROGRESS_MIN_SCENES: int = 2  # scenes scored on a skill before before/after is shown
+    SKILL_LEVEL_MAX: int = 2  # rubric levels run 0..2
     CLASS_HELPED_MAX_UNCLEAR: int = (
         1  # unclear replies to "did it help your class?" before moving on
     )
