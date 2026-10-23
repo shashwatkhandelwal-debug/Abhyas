@@ -109,6 +109,13 @@ def load_demo_chips() -> list[dict[str, Any]]:
     return []
 
 
+def _demo_banner_text(current_user: AppUser) -> str:
+    """Shared demo logins are reset on login/logout; other demo views only show synthetic data."""
+    if current_user.is_demo and current_user.role == "teacher":
+        return get_message("ui_demo_account_banner")
+    return get_message("ui_demo_banner")
+
+
 @router.get("/chat", response_class=HTMLResponse)
 @router.get("/teacher", response_class=HTMLResponse)
 async def teacher_chat_page(
@@ -230,7 +237,7 @@ async def teacher_chat_page(
             header = None
 
     demo_chips = load_demo_chips() if is_demo else []
-    demo_banner_text = get_message("ui_demo_banner")
+    demo_banner_text = _demo_banner_text(current_user)
 
     response = templates.TemplateResponse(
         request=request,
@@ -480,7 +487,7 @@ async def teacher_progress_page(
             }
         )
 
-    demo_banner_text = get_message("ui_demo_banner")
+    demo_banner_text = _demo_banner_text(current_user)
 
     response = templates.TemplateResponse(
         request=request,
@@ -534,7 +541,7 @@ async def teacher_modules_page(
                 "check": get_message("ui_modules_step_check"),
             },
             "demo_mode": bool(current_user.is_demo or teacher.is_demo),
-            "demo_banner_text": get_message("ui_demo_banner"),
+            "demo_banner_text": _demo_banner_text(current_user),
         },
     )
     if token_to_set:

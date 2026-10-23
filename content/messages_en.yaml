@@ -625,3 +625,4 @@ realism_prompt_one_on_one: {text: "Did {child} feel like a real classroom child?
 scene_too_short: {text: "So far you have spoken {done} time(s). I need at least {needed} to give useful advice, so {more} more. Continue the scene, or skip?"}
 scene_resumed: {text: "Okay, the scene continues from where you stopped. Say your next line."}
 btn_scene_continue: {text: "Continue the scene"}
+ui_demo_account_banner: {text: "Demo account - chat resets when you log in or out"}

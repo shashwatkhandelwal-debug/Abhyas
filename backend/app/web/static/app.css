@@ -219,6 +219,10 @@ body {
   text-align: center;
 }
 
+.demo-banner:empty {
+  display: none;
+}
+
 /* Network Banners */
 .network-banner {
   padding: 0.5rem 1rem;

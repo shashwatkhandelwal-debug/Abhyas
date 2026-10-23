@@ -494,8 +494,27 @@ async def test_demo_banner_displayed_on_web_page() -> None:
     ) as client:
         resp = await client.get("/teacher")
         assert resp.status_code == 200
-        assert "डेमो डेटा — वास्तविक शिक्षक नहीं" in resp.text
+        assert "डेमो खाता — लॉगिन या लॉगआउट करने पर चैट रीसेट हो जाती है" in resp.text
         assert "demo-banner" in resp.text
+
+
+def test_demo_banner_text_says_the_chat_resets_in_both_languages() -> None:
+    from backend.app.core.messages import get_message, set_ui_lang
+    from backend.app.web.teacher import _demo_banner_text
+
+    demo = AppUser(username="teacher.demo1", role="teacher", password_hash="x", is_demo=True)
+    other = AppUser(username="arp.demo", role="arp", password_hash="x", is_demo=True)
+    for lang, expected in (("en", "Demo account - chat resets when you log in or out"),):
+        set_ui_lang(lang)
+        try:
+            assert _demo_banner_text(demo) == expected
+            assert _demo_banner_text(other) == get_message("ui_demo_banner")
+        finally:
+            set_ui_lang("hi")
+    assert "रीसेट" in _demo_banner_text(demo)
+    assert "demo-banner:empty" in (STATIC_DIR / "app.css").read_text(encoding="utf-8").replace(
+        ".demo-banner:empty", "demo-banner:empty"
+    )
 
 
 @pytest.mark.asyncio

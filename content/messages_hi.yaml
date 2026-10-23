@@ -879,3 +879,4 @@ realism_prompt_one_on_one: {text: "{child} असली कक्षा के �
 scene_too_short: {text: "अभी तक आपने {done} बार बात की है। काम की सलाह देने के लिए कम से कम {needed} बार चाहिए, यानी {more} बार और। सीन जारी रखें, या छोड़ दें?", audio: false}
 scene_resumed: {text: "ठीक है, सीन वहीं से जारी है। अपनी अगली बात कहिए।", audio: false}
 btn_scene_continue: {text: "सीन जारी रखें", audio: false}
+ui_demo_account_banner: {text: "डेमो खाता — लॉगिन या लॉगआउट करने पर चैट रीसेट हो जाती है", audio: false}
