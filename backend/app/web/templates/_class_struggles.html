@@ -1,0 +1,15 @@
+{# "My class" aggregate. Context: class_struggles (ClassStruggleSummary), suppression_message, get_message. Counts only, no teacher identity. #}
+<section class="card table-card" id="class-struggles" style="margin: 1rem 0; padding: 1rem 1.25rem; background: var(--surface, #fff); border: 1px solid var(--border, #ddd); border-radius: 12px;">
+  <h2 style="margin: 0 0 0.25rem 0; font-size: 1.1rem;">{{ get_message("ui_trainer_class_title") }}</h2>
+  <p style="margin: 0 0 0.75rem 0; color: var(--muted, #5E6662); font-size: 0.9rem;">{{ get_message("ui_trainer_class_desc") }}</p>
+  {% if class_struggles.n_teachers == 0 %}
+    <p style="margin: 0; color: var(--muted, #5E6662);">&mdash;</p>
+  {% elif class_struggles.suppressed %}
+    <p style="margin: 0;">{{ suppression_message }}</p>
+  {% else %}
+    <p style="margin: 0 0 0.5rem 0;"><strong>{{ get_message("ui_trainer_class_teachers") }}:</strong> <span id="class-struggles-n">{{ class_struggles.n_teachers }}</span></p>
+    <ul id="class-struggles-rows" style="margin: 0; padding-left: 1.2rem;">
+      {% for r in class_struggles.rows %}<li data-struggle="{{ r.struggle_id }}">{{ r.label }} &mdash; {{ r.teachers }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+</section>

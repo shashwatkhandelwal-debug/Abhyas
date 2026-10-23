@@ -125,6 +125,11 @@ class Teacher(Base):
     consent_research: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     onboarding_state: Mapped[str] = mapped_column(Text, default="NEW", nullable=False)
+    # "My class": ids from content/class_struggles.yaml, ordered, at most STRUGGLE_MAX_CHOSEN
+    class_struggles: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
+    class_profile_prompted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     last_inbound_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
@@ -472,6 +477,29 @@ class AdoptionEvidence(Base):
     source: Mapped[str] = mapped_column(Text, nullable=False)
     detail: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
+class ClassOutcome(Base):
+    """The teacher's own answer to "Did it help your class?" after trying a move in class."""
+
+    __tablename__ = "class_outcome"
+    __table_args__ = (
+        CheckConstraint("answer IN ('yes', 'some', 'no')", name="check_class_outcome_answer"),
+        Index("idx_class_outcome_teacher", "teacher_id", "move_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    teacher_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("teacher.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    move_id: Mapped[str] = mapped_column(Text, nullable=False)
+    answer: Mapped[str] = mapped_column(Text, nullable=False)
+    struggle_ids: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )

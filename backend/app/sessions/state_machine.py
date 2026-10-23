@@ -513,6 +513,13 @@ class SessionContext(BaseModel):
     diagnosis: dict[str, Any] = Field(default_factory=dict)  # DiagnosisResult + "skipped"
     module_mode: bool = False  # the week was started from the module picker
     module_check_stage: str = ""  # "", asking, done (the closing check question)
+    # "My class" (class_profile/flow.py): "" (not asking), "asking" (waiting for her words or a chip),
+    # "confirm" (waiting for yes / change on `class_pending`)
+    class_stage: str = ""
+    class_pending: list[str] = Field(default_factory=list)
+    class_struggles: list[str] = Field(
+        default_factory=list
+    )  # saved choice, mirrors the teacher row
     rating_unclear: int = 0  # unclear replies to the 1-5 prompt so far
     rating_level: int = 0  # evidence level reached, kept for the week_done message afterwards
     resume_scene_id: str = (

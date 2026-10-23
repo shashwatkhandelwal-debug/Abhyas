@@ -16,6 +16,7 @@ from backend.app.config import settings
 from backend.app.llm.hindi_numbers import DEVANAGARI_DIGITS, extract_numbers
 from backend.app.llm.schemas import (
     ActTaggerOutput,
+    ClassStruggleClassifierOutput,
     CoachFeedbackOutput,
     CoachSuggestionOutput,
     DiagnosisClassifierOutput,
@@ -434,6 +435,20 @@ def guard_diagnosis_classifier(
     """The classified id must be one of the offered misconception ids (or "none")."""
     if output.misconception_id != "none" and output.misconception_id not in candidate_ids:
         return False, f"misconception_id {output.misconception_id!r} is not one of {candidate_ids}"
+    return True, "Valid"
+
+
+def guard_class_struggle_classifier(
+    output: ClassStruggleClassifierOutput, candidate_ids: list[str]
+) -> tuple[bool, str]:
+    """Only offered ids, no repeats, at most STRUGGLE_MAX_CHOSEN of them."""
+    if len(output.struggle_ids) > settings.STRUGGLE_MAX_CHOSEN:
+        return False, f"more than {settings.STRUGGLE_MAX_CHOSEN} struggle ids"
+    if len(set(output.struggle_ids)) != len(output.struggle_ids):
+        return False, "repeated struggle id"
+    for sid in output.struggle_ids:
+        if sid not in candidate_ids:
+            return False, f"struggle id {sid!r} is not one of {candidate_ids}"
     return True, "Valid"
 
 

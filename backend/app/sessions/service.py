@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.class_profile import flow as class_flow
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
 from backend.app.core.intents import (
@@ -170,6 +171,9 @@ class SessionService:
             rehearse_child=str(ctx_data.get("rehearse_child", "")),
             resume_scene_id=str(ctx_data.get("resume_scene_id", "")),
             diagnosis=dict(ctx_data.get("diagnosis") or {}),
+            class_stage=str(ctx_data.get("class_stage", "")),
+            class_pending=[str(i) for i in ctx_data.get("class_pending") or []],
+            class_struggles=[str(i) for i in teacher.class_struggles or []],
             name=teacher.name,
             address_form=teacher.address_form or "f",
             cluster_id=teacher.cluster_id,
@@ -201,6 +205,7 @@ class SessionService:
         teacher.onboarding_state = ctx.onboarding_state.value
         teacher.last_inbound_at = ctx.last_inbound_at
         teacher.lite_mode = ctx.lite_mode
+        teacher.class_struggles = list(ctx.class_struggles)
         await self.repo.save_teacher(teacher)
 
         week_d = date.fromisoformat(ctx.week_start)
@@ -236,6 +241,8 @@ class SessionService:
             "rehearse_child": ctx.rehearse_child,
             "resume_scene_id": ctx.resume_scene_id,
             "diagnosis": ctx.diagnosis,
+            "class_stage": ctx.class_stage,
+            "class_pending": ctx.class_pending,
         }
         await self.repo.save_session_state(db_state)
         if (
@@ -485,6 +492,27 @@ class SessionService:
         )
         return [thanks, *await self._week_done_messages(ctx, teacher_id, level)]
 
+    async def _after_class_saved(self, ctx: SessionContext, teacher_id: UUID) -> None:
+        """Hook after her class choice is saved (the path is reordered here in Part 4)."""
+        return None
+
+    async def set_class_struggles(self, teacher_id: UUID, ids: list[str]) -> list[str]:
+        """The "My class" page saved (or cleared) her choice: closed list, ordered, at most 3."""
+        ctx = await self.get_or_create_context(teacher_id)
+        ctx.class_struggles = class_flow.clean_ids(ids)
+        ctx.class_stage = class_flow.STAGE_NONE
+        ctx.class_pending = []
+        await self._after_class_saved(ctx, teacher_id)
+        await self._sync_context_to_db(ctx, teacher_id)
+        return list(ctx.class_struggles)
+
+    async def start_class_profile(self, teacher_id: UUID) -> list[OutboundMessage]:
+        """Teacher home -> chat: ask where her class is struggling (voice, text or a number)."""
+        ctx = await self.get_or_create_context(teacher_id)
+        result = class_flow.start(ctx)
+        await self._sync_context_to_db(ctx, teacher_id)
+        return result.messages
+
     async def handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
         """Handles one teacher message, then records which module steps it completed."""
         out = await self._handle_inbound(inbound)
@@ -646,6 +674,23 @@ class SessionService:
                 await self._clear_rating_stage(ctx, teacher_id)
             else:
                 return await self._handle_training_rating(ctx, teacher_id, text_content, btn_id)
+
+        # 1c. "My class" (optional): her words about where the class struggles, or a chip number
+        if (
+            ctx.onboarding_state == OnboardingStateEnum.READY
+            and matched_intent != Intent.DELETE
+            and text_content != "delete"
+            and not ctx.awaiting_delete_confirm
+        ):
+            stage_before = ctx.class_stage
+            class_res = await class_flow.handle(ctx, text_content, btn_id, matched_intent)
+            if class_res.handled:
+                if class_res.saved:
+                    await self._after_class_saved(ctx, teacher_id)
+                await self._sync_context_to_db(ctx, teacher_id)
+                return class_res.messages
+            if ctx.class_stage != stage_before:
+                await self._sync_context_to_db(ctx, teacher_id)
 
         # 2. Delete confirmation flow (§8.3 step 7)
         if ctx.awaiting_delete_confirm:
@@ -1137,6 +1182,10 @@ class SessionService:
                             ),
                         ]
                     )
+                    if not ctx.class_struggles:
+                        ready_outbounds.append(class_flow.invite_message())
+                        teacher_row = await self.repo.get_or_create_teacher(teacher_id)
+                        teacher_row.class_profile_prompted_at = now
                     return ready_outbounds
 
                 await self._sync_context_to_db(ctx, teacher_id)

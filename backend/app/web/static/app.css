@@ -1441,3 +1441,18 @@ body {
 }
 
 .nav-ack{position:fixed;top:0;left:0;right:0;z-index:1000;padding:.5rem .75rem;background:#1f2937;color:#fff;text-align:center}.nav-ack[hidden]{display:none}
+
+/* My class (page, card) */
+.class-page { gap: 1rem; }
+.class-card { margin: 0 0 1rem 0; padding: 1rem; background: var(--surface, #fff); border: 1px solid var(--border, #ddd); border-radius: 12px; }
+.class-list { margin: 0.25rem 0 0.75rem 1.25rem; padding: 0; }
+.class-item { margin-bottom: 0.75rem; }
+.class-tip, .class-practice { margin: 0.25rem 0; font-size: 0.9rem; }
+.class-k { font-weight: 600; }
+.class-src, .class-none, .class-empty, .class-privacy { color: var(--muted, #5E6662); font-size: 0.85rem; }
+.class-chips fieldset { border: 0; padding: 0; margin: 0 0 0.75rem 0; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.class-chips legend { font-weight: 600; margin-bottom: 0.5rem; }
+.class-chip { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 2.75rem; padding: 0.25rem 0.8rem; border: 1px solid var(--border, #ddd); border-radius: 999px; background: var(--surface, #fff); }
+.class-chip input { width: 1.1rem; height: 1.1rem; }
+.class-text textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 0.5rem; border: 1px solid var(--border, #ddd); border-radius: 8px; margin: 0.4rem 0; }
+.class-nomatch { padding: 0.75rem 1rem; border-left: 4px solid var(--border, #ddd); background: var(--surface, #fff); }
