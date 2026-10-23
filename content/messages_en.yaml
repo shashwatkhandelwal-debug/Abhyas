@@ -724,3 +724,51 @@ move_title_NUM_SUB_REGROUP_BUNDLES: {text: "Subtraction with regrouping: opening
 move_title_NUM_ADD_CARRY_BUNDLES: {text: "Addition with carrying: making a bundle of 10 sticks"}
 move_title_NUM_PLACE_VALUE_BUNDLES: {text: "Place value: making a number from bundles and loose sticks"}
 move_title_LIT_MATRA_BLENDING: {text: "Words with matras: blending letter sounds to read"}
+
+# ── Chat clarity part 3: what to do now ──
+hint_start: {text: "Say or type hello to begin."}
+hint_consent: {text: "Tap '{agree}' to continue, or '{more}' to read what we keep."}
+hint_join_code: {text: "Type the code your ARP gave you, or type 'no' if you do not have one."}
+hint_name: {text: "Tell me your name, by voice or by typing."}
+hint_address: {text: "Tap a button below to choose how you would like to be addressed."}
+hint_experience: {text: "How many years have you been teaching? Choose below."}
+hint_classes: {text: "Which class do you teach: 1, 2 or 3? Type it."}
+hint_share: {text: "Tap '{yes}' or '{no}'. You can change this any time."}
+hint_placement: {text: "Talk to Ravi as you would in class, by voice or typing. It is not a test."}
+hint_learn: {text: "Read this, then tap '{understood}'."}
+hint_explain: {text: "Say the most important point of this move in your own words, or tap '{skip}'."}
+hint_model: {text: "Tap '{listen}' to hear another teacher do this move, or '{skip}'."}
+hint_choose_mode: {text: "Choose who to practise with: one child (best) or all three."}
+hint_choose_child: {text: "Pick the child you want to talk to."}
+hint_diagnose: {text: "First say, in your own words, what mistake {child} made. Or tap '{skip}'."}
+hint_scene_one: {text: "Ask {child} how they did it. Tap the example or say your own."}
+hint_scene_group: {text: "Say a child's name, then your question. Tap a name above to start."}
+hint_retry_one: {text: "Try again. This time ask {child} to explain first, then use something concrete."}
+hint_retry_group: {text: "Try again. This time ask a child to explain first."}
+hint_feedback: {text: "Read the suggestions. Tap '{retry}' to practise again, or '{continue}' to go on."}
+hint_too_short: {text: "Tap '{scene_continue}' to carry on with the scene, or '{skip}'."}
+hint_module_check: {text: "Answer the last question in your own words, or tap '{continue}'."}
+hint_try: {text: "Try this in class, then tap '{peer}' or '{myself}'. Not yet? Tap '{later}'."}
+hint_peer: {text: "Tap '{yes}' or '{no}' for each point on the checklist."}
+hint_self: {text: "Answer the question in a sentence or two, by voice or typing."}
+hint_done: {text: "This week's practice is done. Tap '{next}' for the next move, or '{progress}' for your progress."}
+hint_rating: {text: "Tap a number to say how useful this training was, or tap '{skip}'."}
+hint_rating_comment: {text: "Write one line about it, or tap '{skip}'."}
+hint_class_ask: {text: "Say where the children in your class get stuck, or send a number from the list. Optional."}
+hint_skill_ask: {text: "Say what you want to get better at, or send a number from the list. Optional."}
+hint_confirm: {text: "Tap '{yes}' if that is right, or '{no}' to tell me again."}
+hint_delete: {text: "Tap '{yes}' to delete all your data, or '{no}' to keep it."}
+hint_ask_more: {text: "Say a little more about your question so the right page can be found."}
+hint_start_suggest: {text: "Namaste"}
+hint_join_code_suggest: {text: "no"}
+hint_classes_suggest: {text: "2"}
+hint_placement_suggest: {text: "Ravi, how did you get 45?"}
+hint_example_sub: {text: "{child}, how did you take {b} from {a}?"}
+hint_example_add: {text: "{child}, how did you add {a} and {b}?"}
+hint_example_place_value: {text: "{child}, how did you make this number?"}
+hint_example_read: {text: "{child}, how did you read this word?"}
+
+# ── Chat clarity part 3 (cont.): the scene line after her first turn ──
+hint_scene_one_next: {text: "Keep going with {child}: explain with something concrete, then give a new problem."}
+hint_scene_group_next: {text: "Keep going: ask the children to explain, then use something concrete."}
+hint_example_concrete: {text: "{child}, let us make {a} with bundles of ten and loose sticks."}

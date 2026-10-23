@@ -41,7 +41,12 @@ from backend.app.class_profile.skills import skill_progress
 from backend.app.class_profile.views import views_for
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
-from backend.app.core.messages import get_message, get_ui_lang, texts_for_lang
+from backend.app.core.messages import (
+    get_message,
+    get_ui_lang,
+    localize_buttons,
+    texts_for_lang,
+)
 from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
@@ -162,7 +167,7 @@ async def teacher_chat_page(
             "text": m.text,
             "speaker": m.speaker,
             "audio_ref": m.audio_ref,
-            "buttons": m.buttons,
+            "buttons": localize_buttons(m.buttons, teacher.address_form),
             "citations": m.citations,
             "created_at": m.created_at.isoformat() if m.created_at else "",
             "time_str": (
@@ -202,7 +207,7 @@ async def teacher_chat_page(
             header = scene_header(active_scene.engine_state)
         except ValueError:
             header = None
-    view = await load_chat_view(db, teacher)
+    view = await load_chat_view(db, teacher, header)
     header = header or view.get("scene_preview")
 
     demo_chips = load_demo_chips() if is_demo else []

@@ -1043,3 +1043,51 @@ move_title_NUM_SUB_REGROUP_BUNDLES: {text: "हासिल वाला घट�
 move_title_NUM_ADD_CARRY_BUNDLES: {text: "हासिल वाला जोड़: 10 तीलियों का बंडल बनाकर", audio: false}
 move_title_NUM_PLACE_VALUE_BUNDLES: {text: "स्थानीय मान: बंडल और खुली तीलियों से संख्या", audio: false}
 move_title_LIT_MATRA_BLENDING: {text: "मात्रा वाले शब्द: अक्षर की ध्वनि मिलाकर पढ़ना", audio: false}
+
+# ── Chat clarity part 3: what to do now ──
+hint_start: {text: "शुरू करने के लिए 'नमस्ते' बोलें या लिखें।", audio: false}
+hint_consent: {text: "आगे बढ़ने के लिए '{agree}' दबाएँ, या '{more}' दबाकर पढ़ें कि हम क्या रखते हैं।", audio: false}
+hint_join_code: {text: "अपने ARP का दिया कोड लिखें; कोड न हो तो 'नहीं' लिखें।", audio: false}
+hint_name: {text: "अपना नाम बोलकर या लिखकर बताएँ।", audio: false}
+hint_address: {text: "नीचे दिए बटन से चुनें कि आपको कैसे संबोधित करें।", audio: false}
+hint_experience: {text: "आपका शिक्षण अनुभव कितने साल का है? नीचे से चुनें।", audio: false}
+hint_classes: {text: "आपकी कक्षा कौन-सी है: 1, 2 या 3? लिखकर बताएँ।", audio: false}
+hint_share: {text: "'{yes}' या '{no}' दबाएँ। इसे आप कभी भी बदल सकते हैं।", audio: false}
+hint_placement: {text: "रवि से कक्षा की तरह बात कीजिए, बोलकर या लिखकर। यह परीक्षा नहीं है।", audio: false}
+hint_learn: {text: "इसे पढ़ें, फिर '{understood}' दबाएँ।", audio: false}
+hint_explain: {text: "इस तरीके की सबसे ज़रूरी बात अपने शब्दों में बोलें या लिखें, या '{skip}' दबाएँ।", audio: false}
+hint_model: {text: "'{listen}' दबाकर सुनें कि दूसरी शिक्षिका यह कैसे करती हैं, या '{skip}' दबाएँ।", audio: false}
+hint_choose_mode: {text: "चुनें कि किसके साथ अभ्यास करना है: एक बच्चा (सबसे अच्छा) या तीनों।", audio: false}
+hint_choose_child: {text: "जिस बच्चे से बात करनी है, उसे चुनें।", audio: false}
+hint_diagnose: {text: "पहले अपने शब्दों में बताएँ कि {child} ने क्या गलती की, या '{skip}' दबाएँ।", audio: false}
+hint_scene_one: {text: "{child} से पूछें कि उसने यह कैसे किया। उदाहरण दबाएँ या अपनी बात कहें।", audio: false}
+hint_scene_group: {text: "किसी बच्चे का नाम लें, फिर अपना सवाल पूछें। ऊपर नाम दबाकर शुरू करें।", audio: false}
+hint_retry_one: {text: "फिर कोशिश करें। इस बार {child} से पहले समझाने को कहें, फिर कोई ठोस चीज़ इस्तेमाल करें।", audio: false}
+hint_retry_group: {text: "फिर कोशिश करें। इस बार पहले किसी बच्चे से समझाने को कहें।", audio: false}
+hint_feedback: {text: "सुझाव पढ़ें। दोबारा अभ्यास के लिए '{retry}' दबाएँ, या आगे बढ़ने के लिए '{continue}'।", audio: false}
+hint_too_short: {text: "'{scene_continue}' दबाकर दृश्य आगे बढ़ाएँ, या '{skip}' दबाएँ।", audio: false}
+hint_module_check: {text: "अंतिम सवाल का जवाब अपने शब्दों में दें, या '{continue}' दबाएँ।", audio: false}
+hint_try: {text: "इसे कक्षा में आज़माएँ, फिर '{peer}' या '{myself}' दबाएँ। अभी नहीं? '{later}' दबाएँ।", audio: false}
+hint_peer: {text: "चेकलिस्ट के हर बिंदु पर '{yes}' या '{no}' दबाएँ।", audio: false}
+hint_self: {text: "सवाल का जवाब एक-दो वाक्य में बोलकर या लिखकर दें।", audio: false}
+hint_done: {text: "इस हफ्ते का अभ्यास पूरा। अगले तरीके के लिए '{next}' दबाएँ, या प्रगति देखने के लिए '{progress}'।", audio: false}
+hint_rating: {text: "एक संख्या दबाकर बताएँ कि यह प्रशिक्षण कितना उपयोगी रहा, या '{skip}' दबाएँ।", audio: false}
+hint_rating_comment: {text: "इसके बारे में एक पंक्ति लिखें, या '{skip}' दबाएँ।", audio: false}
+hint_class_ask: {text: "बताएँ कि आपकी कक्षा में बच्चे कहाँ अटकते हैं, या सूची से संख्या भेजें। यह वैकल्पिक है।", audio: false}
+hint_skill_ask: {text: "बताएँ कि पढ़ाने में आप क्या बेहतर करना चाहते हैं, या सूची से संख्या भेजें। यह वैकल्पिक है।", audio: false}
+hint_confirm: {text: "सही हो तो '{yes}' दबाएँ, वरना '{no}' दबाकर फिर बताएँ।", audio: false}
+hint_delete: {text: "सारा डेटा मिटाने के लिए '{yes}' दबाएँ, या रखने के लिए '{no}' दबाएँ।", audio: false}
+hint_ask_more: {text: "अपने सवाल के बारे में थोड़ा और बताएँ, ताकि सही पन्ना ढूँढा जा सके।", audio: false}
+hint_start_suggest: {text: "नमस्ते", audio: false}
+hint_join_code_suggest: {text: "नहीं", audio: false}
+hint_classes_suggest: {text: "2", audio: false}
+hint_placement_suggest: {text: "रवि, तुमने 45 कैसे निकाला?", audio: false}
+hint_example_sub: {text: "{child}, तुमने {a} में से {b} कैसे घटाया?", audio: false}
+hint_example_add: {text: "{child}, तुमने {a} और {b} कैसे जोड़े?", audio: false}
+hint_example_place_value: {text: "{child}, तुमने यह संख्या कैसे बनाई?", audio: false}
+hint_example_read: {text: "{child}, तुमने यह शब्द कैसे पढ़ा?", audio: false}
+
+# ── Chat clarity part 3 (cont.): the scene line after her first turn ──
+hint_scene_one_next: {text: "{child} के साथ आगे बढ़ें: कोई ठोस चीज़ से समझाएँ, फिर एक नया सवाल दें।", audio: false}
+hint_scene_group_next: {text: "आगे बढ़ें: बच्चों से समझाने को कहें, फिर कोई ठोस चीज़ इस्तेमाल करें।", audio: false}
+hint_example_concrete: {text: "{child}, चलो {a} को दस के बंडल और खुली तीलियों से बनाते हैं।", audio: false}

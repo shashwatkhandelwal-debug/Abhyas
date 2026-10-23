@@ -9,15 +9,16 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.messages import get_message, has_message
-from backend.app.db.models import SessionState, Teacher
+from backend.app.db.models import Message, SessionState, Teacher
 from backend.app.rehearsal.header import preview_header
 from backend.app.rehearsal.scene_runner import load_move_card
 from backend.app.sessions.path import load_induction_order
 from backend.app.sessions.state_machine import OnboardingStateEnum, SessionStateEnum
+from backend.app.web.next_action import next_action
 
 TOTAL_STEPS = 7
 PRE_SCENE_STATES = (SessionStateEnum.REHEARSE_INTRO.value, SessionStateEnum.REHEARSE.value)
@@ -62,15 +63,33 @@ def build_view(
     move_id: str,
     state: str,
     prior_state: str | None = None,
-    rehearse_stage: str = "",
+    context: dict[str, Any] | None = None,
+    retries: int = 0,
+    address_form: str = "f",
+    started: bool = True,
+    live_scene: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Header texts for one teacher state. Before onboarding is finished there is no move yet."""
+    """Header texts and the what-to-do-now line for one teacher state.
+
+    Before onboarding is finished there is no move yet. `live_scene` is the scene bar data of a
+    running scene (None when there is none); `started` says whether she has had a first reply.
+    """
+    ctx = context or {}
     if onboarding != OnboardingStateEnum.READY.value:
         return {
             "move_title": get_message("ui_step_setup"),
             "step_label": "",
             "step": 0,
             "scene_preview": None,
+            "hint": next_action(
+                onboarding=onboarding,
+                state=state,
+                context=ctx,
+                retries=retries,
+                address_form=address_form,
+                started=started,
+                scene=None,
+            ),
         }
     step = step_of(state, prior_state)
     if state == SessionStateEnum.DONE.value:
@@ -85,7 +104,7 @@ def build_view(
     # A move with no one-on-one option (literacy) starts its group scene on her first line; until
     # then the bar shows the board and the children. Numeracy creates the scene when she picks a mode.
     preview = None
-    if state in PRE_SCENE_STATES and rehearse_stage == "":
+    if live_scene is None and state in PRE_SCENE_STATES and ctx.get("rehearse_stage", "") == "":
         try:
             preview = preview_header(load_move_card(move_id))
         except (FileNotFoundError, ValueError):
@@ -95,11 +114,22 @@ def build_view(
         "step_label": label,
         "step": step,
         "scene_preview": preview,
+        "hint": next_action(
+            onboarding=onboarding,
+            state=state,
+            context=ctx,
+            retries=retries,
+            address_form=address_form,
+            started=started,
+            scene=live_scene or preview,
+        ),
     }
 
 
-async def load_chat_view(db: AsyncSession, teacher: Teacher) -> dict[str, Any]:
-    """Header data for this teacher from her newest session_state row."""
+async def load_chat_view(
+    db: AsyncSession, teacher: Teacher, live_scene: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """Header data and the what-to-do-now line from her newest session_state row."""
     found = (
         await db.execute(
             select(SessionState)
@@ -109,10 +139,24 @@ async def load_chat_view(db: AsyncSession, teacher: Teacher) -> dict[str, Any]:
         )
     ).scalar_one_or_none()
     row = found if isinstance(found, SessionState) else None
+    onboarding = str(teacher.onboarding_state)
+    started = True
+    if onboarding == OnboardingStateEnum.NEW.value:
+        # Her first words bring the welcome and the consent question: before that, "say hello"
+        sent = await db.scalar(
+            select(func.count())
+            .select_from(Message)
+            .where(Message.teacher_id == uuid.UUID(str(teacher.id)), Message.direction == "out")
+        )
+        started = isinstance(sent, int) and sent > 0
     return build_view(
-        onboarding=str(teacher.onboarding_state),
+        onboarding=onboarding,
         move_id=row.move_id if row else load_induction_order()[0],
         state=row.state if row else SessionStateEnum.LEARN.value,
         prior_state=row.prior_state if row else None,
-        rehearse_stage=str((row.context or {}).get("rehearse_stage", "")) if row else "",
+        context=dict(row.context or {}) if row else {},
+        retries=row.rehearse_attempts if row else 0,
+        address_form=str(getattr(teacher, "address_form", "f") or "f"),
+        started=started,
+        live_scene=live_scene,
     )

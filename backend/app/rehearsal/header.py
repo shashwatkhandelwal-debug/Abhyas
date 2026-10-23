@@ -15,6 +15,18 @@ from backend.app.core.messages import get_message
 from backend.app.rule_engine.domain import Problem, SceneState
 
 
+def item_dict(item: Problem) -> dict[str, Any]:
+    """The board item's numbers or word, for the example line she can tap."""
+    return {
+        "type": item.type,
+        "a": item.a,
+        "b": item.b,
+        "tens": item.tens,
+        "ones": item.ones,
+        "word": item.word,
+    }
+
+
 def board_text(item: Problem) -> str:
     if item.type == "sub":
         return f"{item.a} − {item.b}"
@@ -42,6 +54,7 @@ def scene_header(
         "max_turns": state.max_turns,
         "turn_label": get_message("ui_scene_turn", turn=turn, max=state.max_turns),
         "board": board_text(state.current_item),
+        "item": item_dict(state.current_item),
     }
     if state.one_on_one or len(state.children) == 1:
         child = state.children[0]
@@ -82,6 +95,7 @@ def preview_header(move: MoveCard) -> dict[str, Any]:
         "max_turns": settings.MAX_TURNS_PER_REHEARSAL,
         "turn_label": get_message("ui_scene_turn", turn=0, max=settings.MAX_TURNS_PER_REHEARSAL),
         "board": board_text(item),
+        "item": item_dict(item),
         "title": get_message("ui_scene_group_title"),
         "children": [
             {"id": c.persona_id, "name": get_message(f"speaker_{c.persona_id}")}

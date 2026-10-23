@@ -707,6 +707,86 @@ test('end-practice button asks for confirmation, then sends the stop word as a m
   assert.equal(JSON.parse(textPosts[0].opts.body).text, c.t('ui_chat_scene_stop_word'));
 });
 
+// ── what to do now ──────────────────────────────────────────────────────────
+function withNextCard(c) {
+  const mk = (id, tag = 'div') => {
+    const el = new El(tag);
+    el.id = id;
+    c.sandbox.document.getElementById('chat-input').parentNode.appendChild(el);
+    c.byId[id] = el;
+    return el;
+  };
+  const els = { card: mk('next-card'), text: mk('next-text', 'span'), suggest: mk('next-suggest', 'button') };
+  els.card.hidden = true;
+  c.sandbox.document.getElementById('chat-input').value = '';
+  return els;
+}
+
+const HINT = { key: 'hint_scene_one', text: 'रवि से पूछें कि उसने यह कैसे किया।', suggest: 'रवि, तुमने 43 में से 27 कैसे घटाया?' };
+
+test('the what-to-do line shows its text and a suggested line', () => {
+  const c = load();
+  const n = withNextCard(c);
+  c.renderHint(HINT);
+  assert.equal(n.card.hidden, false);
+  assert.equal(n.text.textContent, HINT.text);
+  assert.equal(n.suggest.hidden, false);
+  assert.equal(n.suggest.textContent, HINT.suggest);
+  c.renderHint({ key: 'hint_learn', text: 'इसे पढ़ें', suggest: null });
+  assert.equal(n.suggest.hidden, true);
+  c.renderHint(null);
+  assert.equal(n.card.hidden, true);
+});
+
+test('tapping the suggested line fills the input and sends nothing', async () => {
+  const c = load();
+  const n = withNextCard(c);
+  c.renderHint(HINT);
+  c.documentListeners.click({ target: n.suggest });
+  assert.equal(c.sandbox.document.getElementById('chat-input').value, HINT.suggest);
+  await c.flush();
+  assert.equal(c.fetchCalls.filter((f) => f.url === '/api/chat/text').length, 0);
+});
+
+test('once she has sent something the line stays hidden until the guidance changes', async () => {
+  const c = load();
+  const n = withNextCard(c);
+  c.net.handler = async () => ({ status: 202, ok: true, json: async () => ({ message_id: 'srv' }) });
+  c.renderHint(HINT);
+  await c.handleSendText('रवि, तुमने कैसे किया?');
+  assert.equal(n.card.hidden, true, 'hidden at once on send');
+  c.renderHint(HINT); // the next poll still says the same thing
+  assert.equal(n.card.hidden, true, 'stays hidden for the same key');
+  c.renderHint({ key: 'hint_feedback', text: 'सुझाव पढ़ें।', suggest: null });
+  assert.equal(n.card.hidden, false, 'a new step shows its own line');
+});
+
+test('a button tap or a voice note also counts as sending', async () => {
+  const c = load();
+  const n = withNextCard(c);
+  c.net.handler = async () => ({ status: 202, ok: true, json: async () => ({ message_id: 'srv' }) });
+  c.renderHint({ key: 'hint_learn', text: 'इसे पढ़ें', suggest: null });
+  c.hintSent();
+  assert.equal(n.card.hidden, true);
+  c.renderHint({ key: 'hint_learn', text: 'इसे पढ़ें', suggest: null });
+  assert.equal(n.card.hidden, true);
+});
+
+test('the poll carries the line: shown, then replaced by the next step\'s', async () => {
+  const c = load();
+  const n = withNextCard(c);
+  const reply = (hint) => async () => ({
+    status: 200, ok: true,
+    json: async () => ({ messages: [], pending: false, scene: null, view: { move_title: 'x', step_label: 'y', hint } }),
+  });
+  c.net.handler = reply(HINT);
+  await c.pollMessages();
+  assert.equal(n.text.textContent, HINT.text);
+  c.net.handler = reply(null);
+  await c.pollMessages();
+  assert.equal(n.card.hidden, true);
+});
+
 // ── failure paths: each gives a specific message with a next step ───────────
 test('every recorder failure code has its own Hindi message and none is empty', () => {
   const c = load();

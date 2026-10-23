@@ -357,6 +357,7 @@ const state = {
   lastAudioPollAt: null,
   lastMessageCreated: null,
   msgStates: new Map(), // client_msg_id -> sending | sent | failed
+  hintDone: null, // key of the what-to-do line she has already acted on
   failedIds: new Map(), // client_msg_id -> 'network' | 'rejected'
   rows: new Map(), // client_msg_id | server id -> bubble row element
   typing: TYPING_OFF,
@@ -710,9 +711,36 @@ function renderSceneHeader(sc) {
   kids.hidden = list.length === 0;
 }
 
+// What to do now: hidden once she has sent something in this step (until the guidance changes)
+function renderHint(h) {
+  const card = document.getElementById('next-card');
+  if (!card) return;
+  if (!h || state.hintDone === h.key) {
+    card.hidden = true;
+    return;
+  }
+  card.hidden = false;
+  card.setAttribute('data-key', h.key);
+  const text = document.getElementById('next-text');
+  if (text && text.textContent !== h.text) text.textContent = h.text;
+  const suggest = document.getElementById('next-suggest');
+  if (suggest) {
+    suggest.hidden = !h.suggest;
+    if (suggest.textContent !== (h.suggest || '')) suggest.textContent = h.suggest || '';
+  }
+}
+
+function hintSent() {
+  const card = document.getElementById('next-card');
+  if (!card || card.hidden) return;
+  state.hintDone = card.getAttribute('data-key');
+  card.hidden = true;
+}
+
 // Header: the move title and "Step 4 of 7: Practice" follow the weekly loop
 function applyView(view) {
   if (!view) return;
+  renderHint(view.hint);
   const title = document.getElementById('header-move-title');
   if (title && title.textContent !== view.move_title) title.textContent = view.move_title;
   const step = document.getElementById('header-step');
@@ -1297,6 +1325,7 @@ function lockChips(container, chip) {
 // `typingLabel` (optional): what the typing bubble says at once, before the server has answered.
 async function handleSendText(text, typingLabel = null) {
   if (!text || !text.trim()) return null;
+  hintSent();
   const clientMsgId = crypto.randomUUID();
   const cleanText = text.trim();
 
@@ -1331,6 +1360,7 @@ async function handleSendText(text, typingLabel = null) {
 }
 
 async function handleSendButton(buttonId, buttonTitle) {
+  hintSent();
   const clientMsgId = crypto.randomUUID();
 
   // Optimistic render
@@ -1357,6 +1387,7 @@ async function handleSendButton(buttonId, buttonTitle) {
 }
 
 async function handleSendAudio(audioBlob, durationSec) {
+  hintSent();
   const clientMsgId = crypto.randomUUID();
 
   // Optimistic render: voice-note label + "uploading…" line (becomes the transcript later)
@@ -1701,6 +1732,15 @@ document.addEventListener('click', (e) => {
   if (failed) {
     const id = failed.getAttribute('data-client-id');
     if (id) retryMessage(id);
+    return;
+  }
+
+  if (target.closest('#next-suggest')) {
+    const input = document.getElementById('chat-input');
+    if (input) {
+      input.value = target.closest('#next-suggest').textContent.trim();
+      if (input.focus) input.focus();
+    }
     return;
   }
 

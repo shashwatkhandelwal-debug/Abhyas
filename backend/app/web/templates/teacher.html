@@ -151,6 +151,11 @@
     {% endif %}
     </div>
 
+    <div class="next-card" id="next-card" role="status" data-key="{{ view.hint.key if view.hint else '' }}"{% if not view.hint %} hidden{% endif %}>
+      <span class="next-text" id="next-text">{{ view.hint.text if view.hint else '' }}</span>
+      <button type="button" class="next-suggest" id="next-suggest"{% if not (view.hint and view.hint.suggest) %} hidden{% endif %}>{{ view.hint.suggest if view.hint and view.hint.suggest else '' }}</button>
+    </div>
+
     <footer class="composer-wrapper">
       <form class="composer-form" id="composer-form" autocomplete="off">
         <input

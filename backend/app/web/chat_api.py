@@ -40,6 +40,7 @@ from backend.app.auth.guards import get_current_user
 from backend.app.auth.rate_limit import check_chat_rate_limit, check_translate_rate_limit
 from backend.app.channels.web import is_teacher_pending, mark_teacher_pending, process_inbound_web
 from backend.app.config import settings
+from backend.app.core.messages import localize_buttons
 from backend.app.db.models import (
     AppUser,
     Message,
@@ -431,7 +432,7 @@ async def get_chat_messages(
             "kind": m.kind,
             "text": m.text,
             "audio_ref": m.audio_ref,
-            "buttons": m.buttons,
+            "buttons": localize_buttons(m.buttons, teacher.address_form),
             "citations": m.citations,
             "speaker": m.speaker,
             "template_name": m.template_name,
@@ -446,7 +447,7 @@ async def get_chat_messages(
     scene_record = await scene_store.get_active_for_teacher(teacher.id)
     header = scene_header(scene_record.scene_state, scene_record.active) if scene_record else None
 
-    view = await load_chat_view(db, teacher)
+    view = await load_chat_view(db, teacher, header)
     return {
         "messages": messages_data,
         "pending": pending,

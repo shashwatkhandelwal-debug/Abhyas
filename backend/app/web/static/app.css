@@ -1436,5 +1436,33 @@ body {
 .helper-tray .demo-helper-section, .helper-tray .handbook-section { border-top: 0; }
 .handbook-chip.sending, .handbook-chip.sent { border-color: var(--brand); color: var(--brand); opacity: 1; }
 .handbook-chip.sent { background-color: var(--bubble-in); color: var(--ink); }
+/* What to do now: one highlighted sentence and, where it helps, a line she can tap */
+.next-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  padding: 0.45rem 0.8rem;
+  background-color: var(--bubble-in);
+  border-top: 1px solid var(--border);
+  border-left: 4px solid var(--brand);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+.next-text { display: block; }
+.next-card[hidden], .next-suggest[hidden] { display: none; }
+.next-suggest {
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  min-height: 2.5rem;
+  max-width: 100%;
+  padding: 0.25rem 0.8rem;
+  border: 1.5px solid var(--brand);
+  border-radius: var(--radius-full);
+  background-color: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
 @media (prefers-color-scheme: dark) { .brand-badge { color: #7FD0B9; } .brand-logo-icon { stroke: #7FD0B9; } }
 @media (max-height: 560px) { .chat-page .helper-tray, .chat-page .demo-banner { display: none; } }

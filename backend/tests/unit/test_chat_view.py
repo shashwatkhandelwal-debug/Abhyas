@@ -71,7 +71,7 @@ def test_a_literacy_group_scene_shows_its_bar_before_her_first_line() -> None:
     """Literacy has no one-on-one option: its scene is created on her first line, so the view
     carries the board and the three children until then."""
     view = build_view(
-        onboarding=READY, move_id="LIT_MATRA_BLENDING", state="REHEARSE_INTRO", rehearse_stage=""
+        onboarding=READY, move_id="LIT_MATRA_BLENDING", state="REHEARSE_INTRO", context={}
     )
     preview = view["scene_preview"]
     assert preview["mode"] == "group" and preview["turn"] == 0
@@ -81,7 +81,9 @@ def test_a_literacy_group_scene_shows_its_bar_before_her_first_line() -> None:
 
 @pytest.mark.parametrize("stage", ["choose_mode", "choose_child", "diagnose", "scene"])
 def test_no_preview_while_numeracy_is_choosing_or_a_scene_record_exists(stage: str) -> None:
-    view = build_view(onboarding=READY, move_id=MOVE, state="REHEARSE_INTRO", rehearse_stage=stage)
+    view = build_view(
+        onboarding=READY, move_id=MOVE, state="REHEARSE_INTRO", context={"rehearse_stage": stage}
+    )
     assert view["scene_preview"] is None
 
 
