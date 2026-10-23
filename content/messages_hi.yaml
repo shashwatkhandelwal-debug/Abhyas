@@ -15,7 +15,7 @@ consent_service:
   text: "शुरू करने से पहले: आपकी आवाज़ को लिखित रूप में बदलकर आवाज़ तुरंत मिटा दी जाती है। आपके अंक केवल आपको दिखेंगे, जब तक आप स्वयं ARP के साथ साझा करने की अनुमति न दें। 'मेरा डेटा हटाएँ' लिखकर कभी भी सब कुछ मिटाया जा सकता है। क्या आप सहमत हैं?"
   audio: true
 consent_details:
-  text: "हम क्या रखते हैं: आपका नाम, कक्षा, अनुभव, आपकी बातों का लिखित रूप और अभ्यास के अंक। हम क्या नहीं रखते: आपकी आवाज़ की रिकॉर्डिंग, बच्चों की कोई जानकारी। ट्रेनर (DIET/SCERT) को केवल 10 या उससे ज़्यादा शिक्षकों के समूह के कुल आँकड़े दिखते हैं, किसी का नाम नहीं।"
+  text: "हम क्या रखते हैं: आपका नाम, कक्षा, अनुभव, आपकी बातों का लिखित रूप और अभ्यास के अंक, और अगर आप बताएँ तो 'मेरी कक्षा' में आपकी चुनी हुई दिक्कतें (सूची से, अधिकतम 3)। हम क्या नहीं रखते: आपकी आवाज़ की रिकॉर्डिंग, बच्चों की कोई जानकारी। ट्रेनर (DIET/SCERT) को केवल 10 या उससे ज़्यादा शिक्षकों के समूह के कुल आँकड़े दिखते हैं, किसी का नाम नहीं; ARP को कक्षा की दिक्कतें नहीं दिखतीं।"
   audio: false
 consent_declined:
   text: "कोई बात नहीं। जब भी आप शुरू करना चाहें, 'नमस्ते' लिखकर भेजें।"
@@ -875,3 +875,73 @@ ui_waking_title: {text: "अभ्यास जाग रहा है…", audi
 ui_waking_body: {text: "मुफ़्त सर्वर कुछ देर सोने के बाद जागता है। इसमें करीब एक मिनट लगता है। इस पेज को खुला रखें — तैयार होते ही आप अपने आप पहुँच जाएँगे।", audio: false}
 ui_waking_still: {text: "अभी भी जाग रहा है… कृपया थोड़ा और रुकें।", audio: false}
 learn_buttons_reminder: {text: "इस चरण में नीचे दिए दो बटनों में से एक दबाइए: “{next}” या “{replay}”। लिखा हुआ जवाब यहाँ आगे नहीं बढ़ाता।", audio: false}
+
+# ── "My class": where is your class struggling (class_profile/flow.py) ─────────────
+class_ask:
+  text: "आपकी कक्षा के बच्चे कहाँ अटक रहे हैं? बोलकर या लिखकर बताइए, या नीचे से नंबर बताइए (यह वैकल्पिक है):\n{list}"
+  audio: false
+class_ask_invite:
+  text: "वैकल्पिक, लगभग 2 मिनट: बताइए कि आपकी कक्षा के बच्चे कहाँ अटकते हैं। उसके हिसाब से आपके अभ्यास का क्रम चुना जाएगा। इसके लिए बच्चों की कोई जानकारी नहीं ली जाती।"
+  audio: false
+btn_cls_start: {text: "बताइए", audio: false}
+btn_cls_skip: {text: "अभी नहीं", audio: false}
+class_confirm:
+  text: "मैंने ऐसा समझा:\n{items}\nक्या यह सही है? सही न हो तो 'नहीं' दबाकर दोबारा बताइए।"
+  audio: false
+class_saved:
+  text: "ठीक है, आपकी कक्षा के लिए यह दर्ज हो गया:\n{items}\nइसके हिसाब से आपके अभ्यास का क्रम बदला गया है। 'मेरी कक्षा' लिखकर इसे कभी भी बदल सकते हैं।"
+  audio: false
+class_item:
+  text: "{n}. {label}\n   पुस्तिका का सुझाव: {tip}\n   {practice}\n   {source}"
+  audio: false
+class_item_short:
+  text: "{n}. {label}"
+  audio: false
+class_practice_yes: {text: "अभ्यास: {move_title}", audio: false}
+class_practice_none: {text: "इसके लिए अभी अभ्यास का केस नहीं है; सिर्फ़ यह सुझाव है।", audio: false}
+class_no_match:
+  text: "यह बात मेरी सूची की किसी चीज़ से मेल नहीं खाई, इसलिए कुछ दर्ज नहीं किया। एक सामान्य सुझाव: {tip}\n{source}\nइसके लिए अभी अभ्यास का केस नहीं है। सूची से नंबर बताएँ, फिर से बताएँ, या 'अभी नहीं' दबाइए।"
+  audio: false
+class_skipped:
+  text: "ठीक है। जब चाहें 'मेरी कक्षा' लिखकर बताइए।"
+  audio: false
+class_command_words:
+  text: "मेरी कक्षा, मेरी क्लास, मेरी कक्षा बदलें, my class, meri kaksha, meri class"
+  audio: false
+class_other_item: {text: "कुछ और", audio: false}
+ui_menu_my_class: {text: "मेरी कक्षा", audio: false}
+ui_class_title: {text: "मेरी कक्षा", audio: false}
+ui_class_intro: {text: "बताइए कि आपकी कक्षा के बच्चे कहाँ अटकते हैं। हम इसे पुस्तिकाओं के सुझाव से जोड़ते हैं और आपके अभ्यास चुनते हैं। बच्चों की कोई जानकारी नहीं ली जाती, सिर्फ़ आपका चुनाव।", audio: false}
+ui_class_card_empty: {text: "अभी नहीं बताया। 2 मिनट में बताइए, ताकि अभ्यास आपकी कक्षा के हिसाब से चुने जाएँ।", audio: false}
+ui_class_card_set: {text: "आपकी कक्षा:", audio: false}
+ui_class_btn_set: {text: "अपनी कक्षा बताइए", audio: false}
+ui_class_btn_change: {text: "बदलें", audio: false}
+ui_class_pick_label: {text: "सूची से चुनिए (ज़्यादा से ज़्यादा {max}; पहला चुनाव सबसे ज़रूरी माना जाएगा):", audio: false}
+ui_class_text_label: {text: "या अपने शब्दों में लिखिए:", audio: false}
+ui_class_btn_describe: {text: "समझें", audio: false}
+ui_class_btn_save: {text: "यही दर्ज करें", audio: false}
+ui_class_btn_clear: {text: "सब हटाएँ", audio: false}
+ui_class_btn_speak: {text: "बोलकर बताएँ", audio: false}
+ui_class_btn_back: {text: "वापस", audio: false}
+ui_class_pending_title: {text: "मैंने ऐसा समझा। क्या यह सही है?", audio: false}
+ui_class_privacy: {text: "यह सिर्फ़ आपका चुनाव है। ट्रेनर को केवल 10 या अधिक शिक्षकों के कुल आँकड़े दिखते हैं, और तभी जब आपने स्कोर साझा करने की अनुमति दी हो।", audio: false}
+ui_class_no_practice: {text: "इसके लिए अभी अभ्यास का केस नहीं है; सिर्फ़ पुस्तिका का सुझाव है।", audio: false}
+ui_class_practice_label: {text: "अभ्यास:", audio: false}
+ui_class_tip_label: {text: "पुस्तिका का सुझाव:", audio: false}
+ui_class_no_match: {text: "यह बात सूची की किसी चीज़ से मेल नहीं खाई, इसलिए कुछ दर्ज नहीं किया।", audio: false}
+ui_class_saved: {text: "आपकी कक्षा का चुनाव सुरक्षित है।", audio: false}
+ui_class_cleared: {text: "आपकी कक्षा का चुनाव हटा दिया गया।", audio: false}
+ui_class_too_many: {text: "ज़्यादा से ज़्यादा {max} चुनिए; पहले {max} रखे गए हैं।", audio: false}
+ui_class_chosen_because: {text: "आपकी कक्षा के लिए चुना गया: बच्चे यहाँ अटकते हैं — {label}", audio: false}
+ui_trainer_class_title: {text: "कक्षाओं की आम दिक्कतें", audio: false}
+ui_trainer_class_desc: {text: "शिक्षकों ने अपनी कक्षा के बारे में जो बताया (केवल सहमति देने वाले शिक्षक; 10 से कम पर छिपा)।", audio: false}
+ui_trainer_class_teachers: {text: "बताने वाले शिक्षक", audio: false}
+class_helped_ask:
+  text: "कक्षा में आज़माने के बाद एक सवाल: क्या इससे आपकी कक्षा को मदद मिली?"
+  audio: false
+btn_helped_yes: {text: "हाँ, मदद मिली", audio: false}
+btn_helped_some: {text: "थोड़ी मिली", audio: false}
+btn_helped_no: {text: "नहीं मिली", audio: false}
+class_helped_thanks:
+  text: "धन्यवाद, यह दर्ज हो गया।"
+  audio: false

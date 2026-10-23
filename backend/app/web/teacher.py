@@ -38,6 +38,7 @@ from backend.app.auth.csrf import (
 from backend.app.auth.guards import get_current_user, require_role
 from backend.app.auth.session import clear_session_cookie
 from backend.app.channels.web import WebChannel
+from backend.app.class_profile.views import views_for
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
 from backend.app.core.messages import get_message, texts_for_lang
@@ -526,6 +527,7 @@ async def teacher_modules_page(
             "csrf_token": csrf_token,
             "teacher_name": teacher.name or get_message("ui_default_teacher_name"),
             "modules": module_views({r.module_id: r for r in rows}),
+            "class_saved": views_for([str(i) for i in teacher.class_struggles or []]),
             "steps": MODULE_STEPS,
             "step_labels": {
                 "learn": get_message("ui_modules_step_learn"),

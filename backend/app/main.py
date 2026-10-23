@@ -19,6 +19,7 @@ from backend.app.web import (
     admin_router,
     arp_router,
     chat_router,
+    class_router,
     review_router,
     teacher_router,
     trainer_router,
@@ -101,6 +102,7 @@ app.include_router(auth_router)
 app.include_router(lang_router)
 app.include_router(chat_router)
 app.include_router(teacher_router)
+app.include_router(class_router)
 app.include_router(arp_router)
 app.include_router(review_router)
 app.include_router(trainer_router)

@@ -5,7 +5,7 @@
 # ingest time stay Hindi on purpose (see KEEP_HINDI in that test).
 welcome: {text: "Hello! I am Abhyas — your practice partner. Each week, in about 15 minutes, we will learn one classroom move and practise it by voice with three children."}
 consent_service: {text: "Before we start: your voice is turned into text and the audio is deleted straight away. Your scores are visible only to you unless you yourself allow sharing with your ARP. You can erase everything at any time by writing 'delete my data'. Do you agree?"}
-consent_details: {text: "What we keep: your name, class, experience, the text of what you say and your practice scores. What we do not keep: recordings of your voice, any information about children. Trainers (DIET/SCERT) only see totals for groups of 10 or more teachers, never anyone's name."}
+consent_details: {text: "What we keep: your name, class, experience, the text of what you say, your practice scores and, if you tell us, the struggles you pick in 'My class' (from a fixed list, at most 3). What we do not keep: recordings of your voice, any information about children. Trainers (DIET/SCERT) only see totals for groups of 10 or more teachers, never anyone's name; your ARP does not see your class struggles."}
 consent_declined: {text: "No problem. Whenever you want to start, send 'hello'."}
 ask_join_code: {text: "Send the code your ARP gave you. If you do not have a code, write 'no'."}
 join_code_invalid: {text: "That code was not found. Please send it again, or write 'no'."}
@@ -621,3 +621,51 @@ ui_waking_title: {text: "Abhyas is waking up…"}
 ui_waking_body: {text: "The free server sleeps when idle and wakes up again; this takes about a minute. Keep this page open — you will be taken in automatically as soon as it is ready."}
 ui_waking_still: {text: "Still waking up… please wait a little longer."}
 learn_buttons_reminder: {text: "At this step, tap one of the two buttons below: “{next}” or “{replay}”. Typed text does not move it forward here."}
+
+# ── "My class" ──────────────────────────────────────────────────────────────────
+class_ask: {text: "Where is your class struggling? Say it or type it, or send a number from the list below (optional):\n{list}"}
+class_ask_invite: {text: "Optional, about 2 minutes: tell us where the children in your class get stuck. Your practice will be chosen to fit. No information about children is collected."}
+btn_cls_start: {text: "Tell us"}
+btn_cls_skip: {text: "Not now"}
+class_confirm: {text: "This is what I understood:\n{items}\nIs that right? If not, press 'No' and tell me again."}
+class_saved: {text: "Done. This is saved for your class:\n{items}\nYour practice order has been changed to fit. Write 'My class' any time to change it."}
+class_item: {text: "{n}. {label}\n   Handbook tip: {tip}\n   {practice}\n   {source}"}
+class_item_short: {text: "{n}. {label}"}
+class_practice_yes: {text: "Practice: {move_title}"}
+class_practice_none: {text: "There is no practice case for this yet; only this tip."}
+class_no_match: {text: "That did not match anything on my list, so nothing was saved. A general tip: {tip}\n{source}\nThere is no practice case for this yet. Send a number from the list, tell me again, or press 'Not now'."}
+class_skipped: {text: "Okay. Write 'My class' whenever you want to tell us."}
+class_command_words: {text: "my class, meri kaksha, meri class, change my class"}
+class_other_item: {text: "Something else"}
+ui_menu_my_class: {text: "My class"}
+ui_class_title: {text: "My class"}
+ui_class_intro: {text: "Tell us where the children in your class get stuck. We link it to what the handbooks say and choose your practice. No information about children is collected, only your choice."}
+ui_class_card_empty: {text: "Not told yet. Take 2 minutes so that practice is chosen to fit your class."}
+ui_class_card_set: {text: "Your class:"}
+ui_class_btn_set: {text: "Tell us about your class"}
+ui_class_btn_change: {text: "Change"}
+ui_class_pick_label: {text: "Choose from the list (at most {max}; your first choice counts as the most important):"}
+ui_class_text_label: {text: "Or write it in your own words:"}
+ui_class_btn_describe: {text: "Understand"}
+ui_class_btn_save: {text: "Save this"}
+ui_class_btn_clear: {text: "Remove all"}
+ui_class_btn_speak: {text: "Say it by voice"}
+ui_class_btn_back: {text: "Back"}
+ui_class_pending_title: {text: "This is what I understood. Is that right?"}
+ui_class_privacy: {text: "This is only your choice. Trainers see only totals for 10 or more teachers, and only for teachers who agreed to share scores."}
+ui_class_no_practice: {text: "There is no practice case for this yet; only the handbook tip."}
+ui_class_practice_label: {text: "Practice:"}
+ui_class_tip_label: {text: "Handbook tip:"}
+ui_class_no_match: {text: "That did not match anything on the list, so nothing was saved."}
+ui_class_saved: {text: "Your class is saved."}
+ui_class_cleared: {text: "Your class choice was removed."}
+ui_class_too_many: {text: "Choose at most {max}; the first {max} were kept."}
+ui_class_chosen_because: {text: "Chosen for your class: children get stuck here — {label}"}
+ui_trainer_class_title: {text: "Common class struggles"}
+ui_trainer_class_desc: {text: "What teachers said about their class (consenting teachers only; hidden below 10)."}
+ui_trainer_class_teachers: {text: "Teachers who answered"}
+class_helped_ask: {text: "One question after trying it in class: did this help your class?"}
+btn_helped_yes: {text: "Yes, it helped"}
+btn_helped_some: {text: "A little"}
+btn_helped_no: {text: "It did not"}
+class_helped_thanks: {text: "Thank you, this is saved."}

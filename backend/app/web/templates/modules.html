@@ -39,6 +39,16 @@
     {% endif %}
 
     <main class="progress-main">
+      <section class="module-card class-card" id="my-class-card" aria-label="{{ get_message('ui_class_title') }}">
+        <h2 style="margin: 0 0 0.25rem 0; font-size: 1.05rem;">{{ get_message('ui_class_title') }}</h2>
+        {% if class_saved %}
+        <p class="class-k">{{ get_message('ui_class_card_set') }}</p>
+        <ol class="class-list">{% for s in class_saved %}<li data-struggle="{{ s.id }}">{{ s.label }}</li>{% endfor %}</ol>
+        {% else %}
+        <p class="class-empty">{{ get_message('ui_class_card_empty') }}</p>
+        {% endif %}
+        <a href="/teacher/class" class="btn-primary reply-chip" style="min-height: 2.75rem; display: inline-block;">{{ get_message('ui_class_btn_change') if class_saved else get_message('ui_class_btn_set') }}</a>
+      </section>
       <p style="margin: 0.5rem 0 1rem 0;">{{ get_message('ui_modules_intro') }}</p>
       {% for m in modules %}
       <section class="module-card" id="module-{{ m.module_id }}" data-module="{{ m.module_id }}" style="margin: 0 0 1rem 0; padding: 1rem; background: var(--surface, #fff); border: 1px solid var(--border, #ddd); border-radius: 12px;">
