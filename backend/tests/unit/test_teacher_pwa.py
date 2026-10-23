@@ -335,42 +335,23 @@ async def test_teacher_chat_page_board_shows_active_problem(
 
 
 @pytest.mark.asyncio
-async def test_teacher_chat_page_chips_load_when_demo_mode_true(
-    teacher_pwa_app: FastAPI, monkeypatch: pytest.MonkeyPatch, tmp_path: Any
+async def test_sample_lines_show_in_demo_mode_only_folded_under_a_plain_title(
+    teacher_pwa_app: FastAPI, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Item 5: Chips load from demo_chips.json only when DEMO_MODE=True."""
-    sample_chips = [
-        {
-            "id": "c1",
-            "chip_label": "रवि से पूछें",
-            "text_hi": "रवि, तुमने 43 में से 27 कैसे घटाया?",
-            "audio_available": False,
-        },
-        {
-            "id": "c2",
-            "chip_label": "बंडल दिखाएँ",
-            "text_hi": "ये 4 बंडल हैं।",
-            "audio_available": True,
-        },
-    ]
-
-    from backend.app.web import teacher as teacher_mod
-
-    monkeypatch.setattr(teacher_mod, "load_demo_chips", lambda: sample_chips)
-
-    # Case 1: DEMO_MODE=True -> chips rendered
+    """The sample lines are a judge's helper: demo mode only, a plain title, a note on each line."""
     monkeypatch.setattr(settings, "DEMO_MODE", True)
     async with AsyncClient(
         transport=ASGITransport(app=teacher_pwa_app), base_url="http://test"
     ) as client:
         res = await client.get("/teacher?demo=1")
         assert res.status_code == 200
-        assert "रवि से पूछें" in res.text
-        assert 'data-audio-available="false"' in res.text
-        # Hard-coded chips must not be present
-        assert "रवि, 52 में 2 में से 7 क्यों नहीं घट सकता?" not in res.text
+        assert '<details class="sample-tray" id="sample-tray">' in res.text  # closed until opened
+        assert "नमूना पंक्ति आज़माएँ: दबाकर भेजें" in res.text
+        assert 'class="demo-chip"' in res.text and 'class="sample-note"' in res.text
+        assert "ऐसा सवाल जो हैंडबुक में नहीं है" in res.text
+        assert "हिंग्लिश" not in res.text and "Explain-back" not in res.text  # no jargon labels
 
-    # Case 2: DEMO_MODE=False -> no chips rendered
+    # DEMO_MODE off and a real speech provider: no sample lines at all
     monkeypatch.setattr(settings, "DEMO_MODE", False)
     monkeypatch.setattr(settings, "STT_PROVIDER", "sarvam")
     async with AsyncClient(
@@ -378,26 +359,7 @@ async def test_teacher_chat_page_chips_load_when_demo_mode_true(
     ) as client:
         res_no_demo = await client.get("/teacher")
         assert res_no_demo.status_code == 200
-        assert "रवि से पूछें" not in res_no_demo.text
-
-
-@pytest.mark.asyncio
-async def test_teacher_chat_page_no_chips_when_json_missing(
-    teacher_pwa_app: FastAPI, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Item 5: Render no chips if demo_chips.json is missing even if DEMO_MODE=True."""
-    monkeypatch.setattr(settings, "DEMO_MODE", True)
-    # Point load_demo_chips to a non-existent file
-    from backend.app.web import teacher as teacher_mod
-
-    monkeypatch.setattr(teacher_mod, "load_demo_chips", lambda: [])
-
-    async with AsyncClient(
-        transport=ASGITransport(app=teacher_pwa_app), base_url="http://test"
-    ) as client:
-        res = await client.get("/teacher?demo=1")
-        assert res.status_code == 200
-        assert "demo-chip" not in res.text
+        assert "sample-tray" not in res_no_demo.text and "demo-chip" not in res_no_demo.text
 
 
 # ── T27 PWA, Offline & Template Tests ────────────────────────────────────────

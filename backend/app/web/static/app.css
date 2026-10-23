@@ -506,42 +506,50 @@ body {
   100% { opacity: 1; transform: scale(1.1); }
 }
 
-/* Demo Helper Chips */
-.demo-helper-section,
-.handbook-section {
+/* Helper tray: the handbook questions, and (demo only) sample lines */
+.handbook-section,
+.sample-tray {
   padding: 0.3rem 0.8rem;
   background-color: var(--surface);
   border-top: 1px dashed var(--border);
   font-size: 0.8rem;
 }
 
-.demo-hint {
+.demo-hint,
+.sample-tray summary {
   color: var(--muted);
   margin-bottom: 0.25rem;
   font-weight: 600;
 }
+.sample-tray summary { cursor: pointer; margin-bottom: 0; min-height: 2rem; display: flex; align-items: center; }
+.sample-tray[open] summary { margin-bottom: 0.25rem; }
 
-.demo-chips,
+.sample-list,
 .handbook-chips {
   display: flex;
   overflow-x: auto;
   gap: 0.4rem;
   padding-bottom: 0.25rem;
 }
+.sample-item { flex: 0 0 15rem; display: flex; flex-direction: column; gap: 0.2rem; }
+.sample-note { font-size: 0.75rem; line-height: 1.3; color: var(--muted); padding: 0 0.3rem; }
 
 .demo-chip,
 .handbook-chip {
   background-color: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
-  padding: 0.25rem 0.6rem;
+  padding: 0.25rem 0.8rem;
+  font: inherit;
   font-size: 0.8rem;
-  white-space: nowrap;
+  line-height: 1.25;
   color: var(--ink);
   cursor: pointer;
   min-height: 48px;
   display: inline-flex;
   align-items: center;
+  text-align: left;
+  text-decoration: none;
 }
 
 /* Hover only where a pointer exists: on a phone the last tapped chip would stay "hovered" (a
@@ -553,7 +561,7 @@ body {
   }
 }
 
-.handbook-chip { white-space: normal; text-align: left; line-height: 1.25; text-decoration: none; flex: 0 0 15rem; min-width: 0; }
+.handbook-chip { flex: 0 0 15rem; min-width: 0; }
 .handbook-card .handbook-chips { flex-wrap: wrap; overflow-x: visible; }
 .handbook-card .handbook-chip { flex: 1 1 15rem; }
 
@@ -1433,7 +1441,7 @@ body {
 .chat-page .app-container > .chat-messages { flex: 1 1 auto; min-height: 0; overscroll-behavior: contain; }
 .chat-page .chat-header, .chat-page .composer-wrapper { position: static; }
 .helper-tray { max-height: 34vh; overflow-y: auto; border-top: 1px solid var(--border); background-color: var(--surface); }
-.helper-tray .demo-helper-section, .helper-tray .handbook-section { border-top: 0; }
+.helper-tray .handbook-section { border-top: 0; }
 .handbook-chip.sending, .handbook-chip.sent { border-color: var(--brand); color: var(--brand); opacity: 1; }
 .handbook-chip.sent { background-color: var(--bubble-in); color: var(--ink); }
 /* What to do now: one highlighted sentence and, where it helps, a line she can tap */
@@ -1466,3 +1474,10 @@ body {
 }
 @media (prefers-color-scheme: dark) { .brand-badge { color: #7FD0B9; } .brand-logo-icon { stroke: #7FD0B9; } }
 @media (max-height: 560px) { .chat-page .helper-tray, .chat-page .demo-banner { display: none; } }
+.demo-banner { display: flex; align-items: center; justify-content: center; gap: 0.6rem; font-size: 0.75rem; padding: 0 0.8rem; }
+.demo-banner[hidden] { display: none; }
+.demo-logout { color: inherit; font-weight: 700; text-decoration: underline; white-space: nowrap; }
+.demo-dismiss { border: 0; background: transparent; color: inherit; font-size: 1.1rem; line-height: 1; min-width: 2rem; min-height: 2rem; cursor: pointer; }
+.header-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 0.1rem 0.5rem; }
+.header-logout { color: var(--muted); font-size: 0.75rem; text-decoration: underline; padding: 0.35rem 0.2rem; white-space: nowrap; }
+.demo-divider { align-self: stretch; text-align: center; font-size: 0.75rem; color: var(--muted); padding: 0.3rem 0.5rem; border: 1px dashed var(--border); border-radius: var(--radius-sm); background: var(--surface); }

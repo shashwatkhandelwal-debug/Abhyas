@@ -346,13 +346,11 @@ ui_arp_move_colon: {text: "Move:"}
 ui_arp_level: {text: "Level"}
 ui_arp_score_colon: {text: "Score:"}
 ui_arp_score: {text: "Score"}
-ui_chat_type_instead_hint: {text: "Type instead of speaking (sample questions):"}
 ui_chat_input_placeholder: {text: "Type here or hold the mic and speak…"}
 ui_chat_record_hold: {text: "Record by voice (hold)"}
 ui_chat_record: {text: "Record by voice"}
 ui_chat_menu_progress: {text: "Progress"}
 ui_chat_children_thinking: {text: "The children are thinking"}
-ui_chat_sample_chips: {text: "Sample answer chips"}
 ui_chat_menu_help: {text: "Help & instructions"}
 ui_chat_write_message: {text: "Write a message"}
 ui_chat_send: {text: "Send message"}
@@ -615,7 +613,7 @@ realism_prompt_one_on_one: {text: "Did {child} feel like a real classroom child?
 scene_too_short: {text: "So far you have spoken {done} time(s). I need at least {needed} to give useful advice, so {more} more. Continue the scene, or skip?"}
 scene_resumed: {text: "Okay, the scene continues from where you stopped. Say your next line."}
 btn_scene_continue: {text: "Continue the scene"}
-ui_demo_account_banner: {text: "Demo account - chat resets when you log in or out"}
+ui_demo_account_banner: {text: "Demo: chat resets on log in/out"}
 
 # ── "My class" ──────────────────────────────────────────────────────────────────
 class_ask: {text: "Where is your class struggling? Say it or type it, or send a number from the list below (optional):\n{list}"}
@@ -772,3 +770,8 @@ hint_example_read: {text: "{child}, how did you read this word?"}
 hint_scene_one_next: {text: "Keep going with {child}: explain with something concrete, then give a new problem."}
 hint_scene_group_next: {text: "Keep going: ask the children to explain, then use something concrete."}
 hint_example_concrete: {text: "{child}, let us make {a} with bundles of ten and loose sticks."}
+
+# ── Chat clarity part 4: demo helpers ──
+ui_sample_title: {text: "Try a sample line: tap to send"}
+ui_demo_dismiss: {text: "Dismiss"}
+ui_demo_divider: {text: "Demo starts here: this chat was prepared so you can continue from here."}

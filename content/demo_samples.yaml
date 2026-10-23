@@ -1,0 +1,75 @@
+# Sample lines the demo shows under "Try a sample line: tap to send" (demo mode only).
+#
+# A sample is offered only where it makes sense (`scope`): in a scene, at the one-on-one diagnose
+# step, at the say-it-back step, or anywhere. Texts that depend on the scene are built from the
+# board's own item and the move card (never invented): see backend/app/web/demo_samples.py.
+# `note` is the one-line "what this shows". What each sample should do is in eval/samples/samples.yaml.
+#
+# text_kind: ask_how    - "<child>, how did you take 27 from 43?" (the catalogue's hint_example_* line)
+#            tell_answer - the answer is told: the child repeats it without understanding (Hinglish)
+#            new_problem - the next problem on the move card that needs regrouping
+#            static      - text_hi as written
+samples:
+  - id: s1_ask_ravi
+    scope: scene
+    text_kind: ask_how
+    text_suffix_hi: " मुझे एक-एक कदम बताओ।"
+    label:
+      hi: "{child} से पूछें: कैसे किया?"
+      en: "Ask {child} how they did it"
+    note:
+      hi: "इससे बच्चे का अपना तरीका सामने आता है।"
+      en: "{child} explains their own method."
+  - id: s3_tell_answer_hinglish
+    scope: scene
+    text_kind: tell_answer
+    text_tpl: "Sahi answer {answer} hai, yaad rakho."
+    text_tpl_read_word: "Sahi shabd '{word}' hai, yaad rakho."
+    label:
+      hi: "उत्तर बता दें (गलती आज़माने के लिए)"
+      en: "Say the answer (a mistake to try)"
+    note:
+      hi: "बच्चा बस उत्तर दोहराता है, समझता नहीं।"
+      en: "{child} repeats the answer without understanding it."
+  - id: s6_new_problem
+    scope: scene
+    text_kind: new_problem
+    text_tpl_sub: "अब {new_a} में से {new_b} करो।"
+    text_tpl_add: "अब {new_a} और {new_b} जोड़ो।"
+    text_tpl_read_word: "अब यह शब्द पढ़ो: {new_word}"
+    label:
+      hi: "जाँचने के लिए नया सवाल दें"
+      en: "Give a new problem to check"
+    note:
+      hi: "देखें कि बात टिकी या नहीं: सिर्फ़ उत्तर बताया हो तो बच्चा फिर वही गलती करता है।"
+      en: "Shows whether it stuck: a child who was only told the answer slips back."
+  - id: s2_diagnose_one_on_one
+    scope: diagnose
+    text_kind: static
+    text_hi: "इसने 3 में से 7 नहीं घटा पाया, तो उल्टा करके 7 में से 3 घटा दिया।"
+    label:
+      hi: "बताएँ कि गलती क्या है"
+      en: "Say what the mistake is"
+    note:
+      hi: "आपकी बात की तुलना बच्चे की असली गलती से होती है, फिर अभ्यास शुरू होता है।"
+      en: "Your words are compared with the child's real mistake, then the scene starts."
+  - id: s4_explain_back
+    scope: explain_back
+    text_kind: static
+    text_hi: "इस तरीके में सबसे पहले बच्चे से पूछना है कि उसने कैसे घटाया। फिर दस-दस तीलियों के बंडल से संख्या बनवानी है, और जब इकाई में कम हो तो एक बंडल खोलना है। उत्तर खुद नहीं बताना।"
+    label:
+      hi: "तरीका अपने शब्दों में समझाएँ"
+      en: "Explain the move in your words"
+    note:
+      hi: "जवाब बताता है कि आपने कौन-से मुख्य बिंदु कहे और कौन-सा छूट गया।"
+      en: "The reply names the key points you covered and the one you missed."
+  - id: s5_question_multigrade
+    scope: any
+    text_kind: static
+    text_hi: "मेरी कक्षा में पहली और दूसरी कक्षा के बच्चे साथ बैठते हैं। हासिल वाला घटाव दोनों को एक साथ कैसे कराऊँ?"
+    label:
+      hi: "ऐसा सवाल जो हैंडबुक में नहीं है"
+      en: "A question the handbook does not cover"
+    note:
+      hi: "यह बताएगा कि जवाब नहीं मिला, और सवाल आपके ARP को भेज देगा।"
+      en: "It will say so and pass it to your ARP."

@@ -18,6 +18,7 @@ from backend.app.rehearsal.header import preview_header
 from backend.app.rehearsal.scene_runner import load_move_card
 from backend.app.sessions.path import load_induction_order
 from backend.app.sessions.state_machine import OnboardingStateEnum, SessionStateEnum
+from backend.app.web.demo_samples import build_samples
 from backend.app.web.next_action import next_action
 
 TOTAL_STEPS = 7
@@ -68,15 +69,19 @@ def build_view(
     address_form: str = "f",
     started: bool = True,
     live_scene: dict[str, Any] | None = None,
+    with_samples: bool = False,
+    sample_audio: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Header texts and the what-to-do-now line for one teacher state.
 
     Before onboarding is finished there is no move yet. `live_scene` is the scene bar data of a
     running scene (None when there is none); `started` says whether she has had a first reply.
+    `with_samples` (demo mode) adds the sample lines that make sense for this moment;
+    `sample_audio` maps a sample id to the Hindi text of its rendered voice note.
     """
     ctx = context or {}
     if onboarding != OnboardingStateEnum.READY.value:
-        return {
+        result: dict[str, Any] = {
             "move_title": get_message("ui_step_setup"),
             "step_label": "",
             "step": 0,
@@ -91,6 +96,11 @@ def build_view(
                 scene=None,
             ),
         }
+        if with_samples:
+            result["samples"] = build_samples(
+                state=state, stage="", scene=None, move_id=move_id, audio=sample_audio
+            )
+        return result
     step = step_of(state, prior_state)
     if state == SessionStateEnum.DONE.value:
         label = get_message("ui_step_done")
@@ -109,7 +119,8 @@ def build_view(
             preview = preview_header(load_move_card(move_id))
         except (FileNotFoundError, ValueError):
             preview = None
-    return {
+    scene = live_scene or preview
+    result = {
         "move_title": move_title(move_id),
         "step_label": label,
         "step": step,
@@ -121,13 +132,27 @@ def build_view(
             retries=retries,
             address_form=address_form,
             started=started,
-            scene=live_scene or preview,
+            scene=scene,
         ),
     }
+    if with_samples:
+        result["samples"] = build_samples(
+            state=state,
+            stage=str(ctx.get("rehearse_stage", "")),
+            scene=scene,
+            move_id=move_id,
+            audio=sample_audio,
+        )
+    return result
 
 
 async def load_chat_view(
-    db: AsyncSession, teacher: Teacher, live_scene: dict[str, Any] | None = None
+    db: AsyncSession,
+    teacher: Teacher,
+    live_scene: dict[str, Any] | None = None,
+    *,
+    with_samples: bool = False,
+    sample_audio: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Header data and the what-to-do-now line from her newest session_state row."""
     found = (
@@ -159,4 +184,6 @@ async def load_chat_view(
         address_form=str(getattr(teacher, "address_form", "f") or "f"),
         started=started,
         live_scene=live_scene,
+        with_samples=with_samples,
+        sample_audio=sample_audio,
     )

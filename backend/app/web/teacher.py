@@ -12,7 +12,6 @@ Routes:
 - GET /offline.html     Offline fallback page with cached checklist & history
 """
 
-import json
 import logging
 import uuid
 from datetime import UTC, datetime
@@ -69,6 +68,7 @@ from backend.app.sessions.service import SessionService
 from backend.app.web.assets import STATIC_DIR, sw_build_version
 from backend.app.web.chat_api import get_teacher_for_user
 from backend.app.web.chat_view import load_chat_view
+from backend.app.web.demo_samples import demo_sample_audio
 from backend.app.web.ui_lang import register_ui_globals
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -82,40 +82,8 @@ register_ui_globals(templates.env)
 
 router = APIRouter(tags=["Teacher Web PWA"])
 
-
-def load_demo_chips() -> list[dict[str, Any]]:
-    """Loads demo chips from eval/samples/demo_chips.json only when DEMO_MODE is True (§9.2)."""
-    if not settings.DEMO_MODE:
-        return []
-
-    candidates = [
-        Path("eval/samples/demo_chips.json"),
-        WEB_DIR.parents[1] / "eval" / "samples" / "demo_chips.json",
-    ]
-    for p in candidates:
-        if p.is_file():
-            try:
-                content = p.read_text(encoding="utf-8")
-                data = json.loads(content)
-                if isinstance(data, list):
-                    from backend.app.speech.audio import is_wav_non_silent
-
-                    audio_dir = p.parent / "audio"
-                    for item in data:
-                        if isinstance(item, dict):
-                            sid = item.get("id")
-                            wav_path = audio_dir / f"{sid}.wav" if sid else None
-                            is_avail = bool(
-                                wav_path and wav_path.is_file() and is_wav_non_silent(wav_path)
-                            )
-                            item["audio_available"] = is_avail
-                            if not is_avail:
-                                item["audio_url"] = None
-                    return data
-            except Exception as e:
-                logger.warning("Failed to load demo_chips.json from %s: %s", p, e)
-                return []
-    return []
+# Demo logins that open on a prepared chat (seeded messages); demo1 starts empty
+PREPARED_DEMO_LOGINS = frozenset({"teacher.demo2", "teacher.demo3"})
 
 
 def _demo_banner_text(current_user: AppUser) -> str:
@@ -207,10 +175,11 @@ async def teacher_chat_page(
             header = scene_header(active_scene.engine_state)
         except ValueError:
             header = None
-    view = await load_chat_view(db, teacher, header)
+    view = await load_chat_view(
+        db, teacher, header, with_samples=is_demo, sample_audio=demo_sample_audio()
+    )
     header = header or view.get("scene_preview")
 
-    demo_chips = load_demo_chips() if is_demo else []
     demo_banner_text = _demo_banner_text(current_user)
     # "Ask the handbook": four questions per teacher per day, in a scene too (a question there is
     # answered and the teacher is told how to go back); a link from the modules page
@@ -235,7 +204,9 @@ async def teacher_chat_page(
             "lite_mode": teacher.lite_mode,
             "demo_mode": is_demo,
             "demo_banner_text": demo_banner_text,
-            "demo_chips": demo_chips,
+            "show_demo_divider": bool(
+                current_user.username in PREPARED_DEMO_LOGINS and initial_messages
+            ),
             "handbook_chips": handbook_chips,
             "handbook_autosend": autosend,
             "handbook_prefix": settings.HANDBOOK_ASK_PREFIX,

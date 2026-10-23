@@ -741,6 +741,7 @@ function hintSent() {
 function applyView(view) {
   if (!view) return;
   renderHint(view.hint);
+  renderSamples(view.samples);
   const title = document.getElementById('header-move-title');
   if (title && title.textContent !== view.move_title) title.textContent = view.move_title;
   const step = document.getElementById('header-step');
@@ -1626,44 +1627,88 @@ function flashStatus(text) {
   setTimeout(renderNetStatus, 6000);
 }
 
-// ── Demo Chip Handler ───────────────────────────────────────────────────────
-function setupDemoChips() {
-  const chips = document.querySelectorAll('.demo-chip');
-  const setBusy = (busy) =>
-    chips.forEach((c) => {
-      c.disabled = busy;
-      c.setAttribute('aria-busy', busy ? 'true' : 'false');
-    });
+// ── Sample lines (demo): one delegated handler, the list follows the step she is on ──
+const SAMPLE_BOX_ID = 'sample-list';
 
-  chips.forEach((c) => {
-    c.onclick = async () => {
-      if (c.disabled) return;
-      setBusy(true); // locked while the sample loads: no double sends
-      c.classList.add('pressed');
-      announce(t('ui_chat_chip_done'));
-      try {
-        const id = c.getAttribute('data-id');
-        const audioAvailable = c.getAttribute('data-audio-available') === 'true';
-        const text = c.getAttribute('data-text') || c.textContent.trim();
-        if (audioAvailable && id) {
-          try {
-            const res = await netFetch(`/api/demo-sample/${id}.wav`);
-            if (res.ok) {
-              const blob = await res.blob();
-              await handleSendAudio(blob, 4);
-              return;
-            }
-          } catch (err) {
-            console.warn('Failed to load demo sample audio, falling back to text:', err);
+function setupDemoChips() {
+  const box = document.getElementById(SAMPLE_BOX_ID);
+  const tray = document.getElementById('sample-tray');
+  // Open on a wide screen, folded on a phone (the sample lines are a judge's helper)
+  if (tray && window.matchMedia && window.matchMedia('(min-width: 641px)').matches) tray.open = true;
+  if (!box) return;
+  let busy = false;
+  box.addEventListener('click', async (e) => {
+    const c = e.target && e.target.closest ? e.target.closest('.demo-chip') : null;
+    if (!c || busy) return;
+    busy = true; // locked while the sample loads: no double sends
+    c.classList.add('pressed');
+    announce(t('ui_chat_chip_done'));
+    try {
+      const id = c.getAttribute('data-id');
+      const text = c.getAttribute('data-text') || c.textContent.trim();
+      if (c.getAttribute('data-audio-available') === 'true' && id) {
+        try {
+          const res = await netFetch(`/api/demo-sample/${id}.wav`);
+          if (res.ok) {
+            await handleSendAudio(await res.blob(), 4);
+            return;
           }
+        } catch (err) {
+          console.warn('Failed to load demo sample audio, falling back to text:', err);
         }
-        await handleSendText(text);
-      } finally {
-        setBusy(false);
-        setTimeout(() => c.classList.remove('pressed'), CHIP_CONFIRM_MS);
       }
-    };
+      await handleSendText(text);
+    } finally {
+      busy = false;
+      setTimeout(() => c.classList.remove('pressed'), CHIP_CONFIRM_MS);
+    }
   });
+}
+
+// The poll carries the samples that make sense now (null outside demo mode: leave the list alone)
+function renderSamples(list) {
+  const box = document.getElementById(SAMPLE_BOX_ID);
+  if (!box || !Array.isArray(list)) return;
+  const sig = list.map((c) => `${c.id}|${c.text}|${c.label}`).join('\n');
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  while (box.children.length) box.removeChild(box.children[0]);
+  list.forEach((c) => {
+    const item = document.createElement('div');
+    item.className = 'sample-item';
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'demo-chip';
+    b.setAttribute('data-id', c.id);
+    b.setAttribute('data-text', c.text);
+    b.setAttribute('data-audio-available', c.audio ? 'true' : 'false');
+    b.textContent = c.label;
+    const note = document.createElement('span');
+    note.className = 'sample-note';
+    note.textContent = c.note;
+    item.appendChild(b);
+    item.appendChild(note);
+    box.appendChild(item);
+  });
+}
+
+// ── Demo banner: one small line, dismissed for the session ──────────────────
+function setupDemoBanner() {
+  const banner = document.getElementById('demo-banner');
+  if (!banner) return;
+  let gone = false;
+  try {
+    gone = sessionStorage.getItem('abhyas_demo_banner') === 'off';
+  } catch (e) {}
+  banner.hidden = gone;
+  const btn = document.getElementById('demo-dismiss');
+  if (btn)
+    btn.addEventListener('click', () => {
+      banner.hidden = true;
+      try {
+        sessionStorage.setItem('abhyas_demo_banner', 'off');
+      } catch (e) {}
+    });
 }
 
 // ── Ask the handbook chips: a tap sends the question through the normal text path ──
@@ -1860,6 +1905,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 4. Setup Mic & Demo Chips
   setupMicEvents();
   setupDemoChips();
+  setupDemoBanner();
   setupHandbookChips();
   setupSceneEnd();
 

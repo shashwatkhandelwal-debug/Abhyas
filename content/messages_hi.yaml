@@ -601,13 +601,11 @@ ui_arp_move_colon: {text: "तरीका:", audio: false}
 ui_arp_level: {text: "स्तर", audio: false}
 ui_arp_score_colon: {text: "अंक:", audio: false}
 ui_arp_score: {text: "अंक", audio: false}
-ui_chat_type_instead_hint: {text: "बोलने की जगह लिखें (नमूना प्रश्न):", audio: false}
 ui_chat_input_placeholder: {text: "यहाँ लिखें या माइक दबाकर बोलें…", audio: false}
 ui_chat_record_hold: {text: "बोलकर रिकॉर्ड करें (दबाकर रखें)", audio: false}
 ui_chat_record: {text: "बोलकर रिकॉर्ड करें", audio: false}
 ui_chat_menu_progress: {text: "प्रगति (Progress)", audio: false}
 ui_chat_children_thinking: {text: "बच्चे सोच रहे हैं", audio: false}
-ui_chat_sample_chips: {text: "नमूना उत्तर चिप्स", audio: false}
 ui_chat_menu_help: {text: "मदद व निर्देश", audio: false}
 ui_chat_write_message: {text: "संदेश लिखें", audio: false}
 ui_chat_send: {text: "संदेश भेजें", audio: false}
@@ -872,7 +870,7 @@ realism_prompt_one_on_one: {text: "{child} असली कक्षा के �
 scene_too_short: {text: "अभी तक आपने {done} बार बात की है। काम की सलाह देने के लिए कम से कम {needed} बार चाहिए, यानी {more} बार और। सीन जारी रखें, या छोड़ दें?", audio: false}
 scene_resumed: {text: "ठीक है, सीन वहीं से जारी है। अपनी अगली बात कहिए।", audio: false}
 btn_scene_continue: {text: "सीन जारी रखें", audio: false}
-ui_demo_account_banner: {text: "डेमो खाता — लॉगिन या लॉगआउट करने पर चैट रीसेट हो जाती है", audio: false}
+ui_demo_account_banner: {text: "डेमो: लॉगिन/लॉगआउट पर चैट रीसेट", audio: false}
 
 # ── "My class": where is your class struggling (class_profile/flow.py) ─────────────
 class_ask:
@@ -1091,3 +1089,8 @@ hint_example_read: {text: "{child}, तुमने यह शब्द कै�
 hint_scene_one_next: {text: "{child} के साथ आगे बढ़ें: कोई ठोस चीज़ से समझाएँ, फिर एक नया सवाल दें।", audio: false}
 hint_scene_group_next: {text: "आगे बढ़ें: बच्चों से समझाने को कहें, फिर कोई ठोस चीज़ इस्तेमाल करें।", audio: false}
 hint_example_concrete: {text: "{child}, चलो {a} को दस के बंडल और खुली तीलियों से बनाते हैं।", audio: false}
+
+# ── Chat clarity part 4: demo helpers ──
+ui_sample_title: {text: "नमूना पंक्ति आज़माएँ: दबाकर भेजें", audio: false}
+ui_demo_dismiss: {text: "बंद करें", audio: false}
+ui_demo_divider: {text: "डेमो यहाँ से शुरू होता है: यह चैट पहले से तैयार है, ताकि आप यहीं से आगे बढ़ सकें।", audio: false}

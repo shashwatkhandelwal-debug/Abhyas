@@ -21,7 +21,7 @@
         </a>
         <div class="header-titles">
           <span class="header-move-title" id="header-move-title">{{ view.move_title }}</span>
-          <span class="header-step-chip" id="header-step">{{ view.step_label }}</span>
+          <span class="header-sub"><span class="header-step-chip" id="header-step">{{ view.step_label }}</span><a href="/logout" class="header-logout">{{ get_message('ui_logout') }}</a></span>
         </div>
       </div>
       <div class="header-right">
@@ -46,7 +46,7 @@
     </header>
 
     {% if demo_mode %}
-    <div class="demo-banner" role="status" aria-label="{{ get_message('ui_demo_notice_label') }}">{{ demo_banner_text or get_message('ui_demo_banner') }}</div>
+    <div class="demo-banner" id="demo-banner" role="status" aria-label="{{ get_message('ui_demo_notice_label') }}"><span>{{ demo_banner_text or get_message('ui_demo_banner') }}</span><a href="/logout" class="demo-logout">{{ get_message('ui_logout') }}</a><button type="button" class="demo-dismiss" id="demo-dismiss" aria-label="{{ get_message('ui_demo_dismiss') }}">&times;</button></div>
     {% endif %}
 
     <div id="network-banner" class="network-banner" role="status" aria-live="polite" data-offline-text="{{ get_message('ui_offline_banner') }}" data-slow-text="{{ get_message('ui_slow_banner') }}">{% if not is_online and is_online is defined %}{{ get_message('ui_offline_banner') }}{% endif %}</div>
@@ -68,6 +68,7 @@
     <div class="status-slot"><div id="status-bar" class="status-bar" role="status" aria-live="polite" hidden></div></div>
 
     <main class="chat-messages" id="chat-messages" role="log" aria-live="polite">
+      {% if show_demo_divider %}<div class="demo-divider" role="separator">{{ get_message('ui_demo_divider') }}</div>{% endif %}
       {% for msg in initial_messages %}
       <div class="msg-row {{ 'inbound' if msg.direction == 'in' else 'outbound' }}" id="msg-{{ msg.id }}" data-created-at="{{ msg.created_at or '' }}">
         <div class="bubble">
@@ -123,23 +124,6 @@
     </main>
 
     <div class="helper-tray" id="helper-tray">
-    {% if demo_mode and demo_chips %}
-    <section class="demo-helper-section" aria-label="{{ get_message('ui_chat_sample_chips') }}">
-      <div class="demo-hint">{{ get_message('ui_chat_type_instead_hint') }}</div>
-      <div class="demo-chips">
-        {% for chip in demo_chips %}
-        <button
-          type="button"
-          class="demo-chip"
-          data-id="{{ chip.id }}"
-          data-text="{{ chip.text_hi or chip.text }}"
-          data-audio-available="{{ 'true' if chip.audio_available else 'false' }}"
-        >{{ (chip.chip_label_en if ui_lang() == 'en' and chip.chip_label_en else chip.chip_label) or chip.text_hi or chip.text }}</button>
-        {% endfor %}
-      </div>
-    </section>
-    {% endif %}
-
     {% if handbook_chips %}
     <section class="handbook-section" id="handbook-chips" {% if ui_lang() != 'en' %}data-prefix="{{ handbook_prefix }}" {% endif %}data-autosend="{{ handbook_autosend }}">
       <div class="demo-hint">{{ get_message('ui_handbook_title') }}</div>
@@ -148,6 +132,12 @@
         {% endfor %}
       </div>
     </section>
+    {% endif %}
+    {% if demo_mode and view.samples %}
+    <details class="sample-tray" id="sample-tray">
+      <summary>{{ get_message('ui_sample_title') }}</summary>
+      <div class="sample-list" id="sample-list">{% for chip in view.samples %}<div class="sample-item"><button type="button" class="demo-chip" data-id="{{ chip.id }}" data-text="{{ chip.text }}" data-audio-available="{{ 'true' if chip.audio else 'false' }}">{{ chip.label }}</button><span class="sample-note">{{ chip.note }}</span></div>{% endfor %}</div>
+    </details>
     {% endif %}
     </div>
 

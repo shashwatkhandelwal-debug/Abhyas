@@ -56,6 +56,7 @@ from backend.app.rehearsal.scene_store import scene_store
 from backend.app.retrieval.search import get_guide_retriever
 from backend.app.speech.cache import tts_cache
 from backend.app.web.chat_view import load_chat_view
+from backend.app.web.demo_samples import demo_sample_audio
 
 logger = logging.getLogger("abhyas.web.chat")
 
@@ -447,7 +448,14 @@ async def get_chat_messages(
     scene_record = await scene_store.get_active_for_teacher(teacher.id)
     header = scene_header(scene_record.scene_state, scene_record.active) if scene_record else None
 
-    view = await load_chat_view(db, teacher, header)
+    # The sample lines only exist in demo mode (null elsewhere: the page leaves its list alone)
+    view = await load_chat_view(
+        db,
+        teacher,
+        header,
+        with_samples=bool(settings.DEMO_MODE and (current_user.is_demo or teacher.is_demo)),
+        sample_audio=demo_sample_audio(),
+    )
     return {
         "messages": messages_data,
         "pending": pending,
