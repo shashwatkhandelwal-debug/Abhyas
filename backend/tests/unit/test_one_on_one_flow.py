@@ -336,3 +336,95 @@ async def test_header_state_comes_from_the_engine(harness: Callable[[], Harness]
     assert header["turn_label"] == get_message("ui_scene_turn", "f", turn=1, max=10)
     # no header for an ended scene
     assert scene_header(scene.scene_state, active=False) is None
+
+
+async def _turns_then_stop(h: Harness, n_turns: int) -> list[OutboundMessage]:
+    h.script += [([A.ASK_TO_EXPLAIN], None, None)] * n_turns + [([], None, None)]
+    for _ in range(n_turns):
+        await h.say("तुमने कैसे किया? एक-एक कदम बताओ।")
+    return await h.say("बस")
+
+
+@pytest.mark.asyncio
+async def test_one_on_one_below_threshold_offers_continue_or_skip_then_gives_feedback(
+    harness: Callable[[], Harness],
+) -> None:
+    h = harness()
+    await h.setup("NUM_SUB_REGROUP_BUNDLES", "ravi", "उल्टा घटा दिया, छोटी में से बड़ी")
+    out = await _turns_then_stop(h, 1)  # settings.MIN_TURNS_FOR_COACH_ONE_ON_ONE is 2
+
+    assert out[-1].text_hi == get_message("scene_too_short", "f", done=1, needed=2, more=1)
+    assert [b.id for b in out[-1].buttons or []] == ["btn_scene_continue", "btn_skip"]
+    assert get_message("feedback_header", "f") not in texts(out)
+    assert get_message("realism_prompt", "f") not in texts(out)
+    assert not h.service.repo._rehearsal_scores
+
+    # continue: the scene is open again and the next reply counts
+    out = await h.say(button="btn_scene_continue")
+    assert out[0].text_hi == get_message("scene_resumed", "f")
+    assert (await h.ctx()).current_state == SessionStateEnum.REHEARSE
+    assert await h.scene() is not None
+
+    h.script += [([A.CONCRETE_REPRESENTATION], None, None), ([], None, None)]
+    await h.say("देखो, ये बंडल और तीलियाँ हैं। इन्हें गिनकर दिखाओ।")
+    out = await h.say("बस")
+    assert get_message("feedback_header", "f") in texts(out)
+    feedback = next(m for m in out if m.text_hi and "👍" in m.text_hi)
+    assert feedback.text_hi
+    (score,) = h.service.repo._rehearsal_scores
+    assert score.strength_hi
+    # the realism question names the child
+    assert out[-1].text_hi == get_message(
+        "realism_prompt_one_on_one", "f", child=get_message("speaker_ravi")
+    )
+
+
+@pytest.mark.asyncio
+async def test_one_on_one_with_enough_turns_goes_straight_to_feedback(
+    harness: Callable[[], Harness],
+) -> None:
+    h = harness()
+    await h.setup("NUM_SUB_REGROUP_BUNDLES", "ravi", "उल्टा घटा दिया, छोटी में से बड़ी")
+    out = await _turns_then_stop(h, 2)
+    assert get_message("feedback_header", "f") in texts(out)
+    assert get_message("scene_too_short", "f", done=2, needed=2, more=1) not in texts(out)
+
+
+@pytest.mark.asyncio
+async def test_skip_after_a_too_short_scene_moves_on_without_feedback(
+    harness: Callable[[], Harness],
+) -> None:
+    h = harness()
+    await h.setup("NUM_SUB_REGROUP_BUNDLES", "ravi", "उल्टा घटा दिया, छोटी में से बड़ी")
+    await _turns_then_stop(h, 1)
+    out = await h.say(button="btn_skip")
+    assert (await h.ctx()).current_state == SessionStateEnum.TRY_IN_CLASS
+    assert out[-1].text_hi == get_message("try_in_class", "f")
+    assert not h.service.repo._rehearsal_scores
+
+
+@pytest.mark.asyncio
+async def test_group_scene_with_two_turns_offers_continue_or_skip_not_realism(
+    harness: Callable[[], Harness],
+) -> None:
+    h = harness()
+    await h.start("NUM_SUB_REGROUP_BUNDLES")
+    await h.say(button="btn_listen")
+    await h.say(button="btn_rehearse_group")
+    out = await _turns_then_stop(h, 2)  # group needs 3
+    assert out[-1].text_hi == get_message("scene_too_short", "f", done=2, needed=3, more=1)
+    assert [b.id for b in out[-1].buttons or []] == ["btn_scene_continue", "btn_skip"]
+    assert get_message("realism_prompt", "f") not in texts(out)
+
+
+def test_realism_wording_for_one_on_one_and_group() -> None:
+    from backend.app.core.messages import set_ui_lang
+
+    for lang in ("hi", "en"):
+        set_ui_lang(lang)
+        try:
+            one = get_message("realism_prompt_one_on_one", "f", child="Ravi")
+            assert "Ravi" in one and "{" not in one
+            assert one != get_message("realism_prompt", "f")
+        finally:
+            set_ui_lang("hi")

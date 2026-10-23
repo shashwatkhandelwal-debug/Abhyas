@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: str = "abhyas-admin-2026"
     # Logout resets the shared demo teachers; rows younger than this are session-made, older are seed
     DEMO_RESET_SEED_MIN_AGE_HOURS: int = 24
+    # Teacher turns a scene needs before the coach gives feedback (shorter scenes offer continue/skip)
+    MIN_TURNS_FOR_COACH_GROUP: int = 3
+    MIN_TURNS_FOR_COACH_ONE_ON_ONE: int = 2
     # Login skips a demo reset done this recently when nothing was written since (double login)
     DEMO_RESET_DEBOUNCE_SECONDS: int = 60
     TRUSTED_PROXY_IPS: str = "127.0.0.1"

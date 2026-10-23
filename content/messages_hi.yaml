@@ -875,3 +875,7 @@ ui_waking_title: {text: "अभ्यास जाग रहा है…", audi
 ui_waking_body: {text: "मुफ़्त सर्वर कुछ देर सोने के बाद जागता है। इसमें करीब एक मिनट लगता है। इस पेज को खुला रखें — तैयार होते ही आप अपने आप पहुँच जाएँगे।", audio: false}
 ui_waking_still: {text: "अभी भी जाग रहा है… कृपया थोड़ा और रुकें।", audio: false}
 learn_buttons_reminder: {text: "इस चरण में नीचे दिए दो बटनों में से एक दबाइए: “{next}” या “{replay}”। लिखा हुआ जवाब यहाँ आगे नहीं बढ़ाता।", audio: false}
+realism_prompt_one_on_one: {text: "{child} असली कक्षा के बच्चे जैसा लगा? 1 (बिल्कुल नहीं) से 5 (बिल्कुल वैसा ही) चुनें।", audio: false}
+scene_too_short: {text: "अभी तक आपने {done} बार बात की है। काम की सलाह देने के लिए कम से कम {needed} बार चाहिए, यानी {more} बार और। सीन जारी रखें, या छोड़ दें?", audio: false}
+scene_resumed: {text: "ठीक है, सीन वहीं से जारी है। अपनी अगली बात कहिए।", audio: false}
+btn_scene_continue: {text: "सीन जारी रखें", audio: false}

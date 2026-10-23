@@ -621,3 +621,7 @@ ui_waking_title: {text: "Abhyas is waking up…"}
 ui_waking_body: {text: "The free server sleeps when idle and wakes up again; this takes about a minute. Keep this page open — you will be taken in automatically as soon as it is ready."}
 ui_waking_still: {text: "Still waking up… please wait a little longer."}
 learn_buttons_reminder: {text: "At this step, tap one of the two buttons below: “{next}” or “{replay}”. Typed text does not move it forward here."}
+realism_prompt_one_on_one: {text: "Did {child} feel like a real classroom child? Choose from 1 (not at all) to 5 (exactly like them)."}
+scene_too_short: {text: "So far you have spoken {done} time(s). I need at least {needed} to give useful advice, so {more} more. Continue the scene, or skip?"}
+scene_resumed: {text: "Okay, the scene continues from where you stopped. Say your next line."}
+btn_scene_continue: {text: "Continue the scene"}

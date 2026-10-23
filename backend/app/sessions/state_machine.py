@@ -515,6 +515,9 @@ class SessionContext(BaseModel):
     module_check_stage: str = ""  # "", asking, done (the closing check question)
     rating_unclear: int = 0  # unclear replies to the 1-5 prompt so far
     rating_level: int = 0  # evidence level reached, kept for the week_done message afterwards
+    resume_scene_id: str = (
+        ""  # a scene ended too early for feedback; "Continue the scene" reopens it
+    )
 
 
 class WeeklyStateMachine:

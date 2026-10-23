@@ -168,6 +168,7 @@ class SessionService:
             rehearse_stage=str(ctx_data.get("rehearse_stage", "")),
             rehearse_mode=str(ctx_data.get("rehearse_mode", "")),
             rehearse_child=str(ctx_data.get("rehearse_child", "")),
+            resume_scene_id=str(ctx_data.get("resume_scene_id", "")),
             diagnosis=dict(ctx_data.get("diagnosis") or {}),
             name=teacher.name,
             address_form=teacher.address_form or "f",
@@ -233,6 +234,7 @@ class SessionService:
             "rehearse_stage": ctx.rehearse_stage,
             "rehearse_mode": ctx.rehearse_mode,
             "rehearse_child": ctx.rehearse_child,
+            "resume_scene_id": ctx.resume_scene_id,
             "diagnosis": ctx.diagnosis,
         }
         await self.repo.save_session_state(db_state)
@@ -397,6 +399,34 @@ class SessionService:
         messages = rehearse_setup.begin_setup(ctx, move)
         await self._sync_context_to_db(ctx, teacher_id)
         return messages
+
+    def _realism_prompt(self, ctx: SessionContext, address_form: str) -> str:
+        """The realism question names the child in a 1-1 scene, otherwise 'these children'."""
+        if ctx.rehearse_mode == rehearse_setup.MODE_ONE_ON_ONE and ctx.rehearse_child:
+            return get_message(
+                "realism_prompt_one_on_one",
+                address_form,
+                child=rehearse_setup.child_name(ctx.rehearse_child),
+            )
+        return get_message("realism_prompt", address_form)
+
+    async def _resume_scene(self, ctx: SessionContext, teacher_id: UUID) -> bool:
+        """Reopens the scene that ended too early; False if it is gone."""
+        try:
+            scene_id = UUID(ctx.resume_scene_id)
+        except ValueError:
+            return False
+        scene = await scene_store.get(scene_id)
+        if scene is None or scene.teacher_id != teacher_id:
+            return False
+        scene.active = True
+        scene.scene_state.ended = False
+        scene.scene_state.end_reason = None
+        await scene_store.save(scene)
+        ctx.current_state = SessionStateEnum.REHEARSE
+        ctx.resume_scene_id = ""
+        await self._sync_context_to_db(ctx, teacher_id)
+        return True
 
     async def _clear_rating_stage(self, ctx: SessionContext, teacher_id: UUID) -> None:
         ctx.rating_stage = ""
@@ -1375,39 +1405,40 @@ class SessionService:
                     else:
                         trajectories[child.persona_id] = [child.state]
 
-                # Empty scene or missing trajectories, or < 3 teacher turns -> skip coach entirely
-                if not scene.turns or teacher_turns_count < 3 or not trajectories:
+                min_turns = (
+                    settings.MIN_TURNS_FOR_COACH_ONE_ON_ONE
+                    if scene.scene_state.one_on_one
+                    else settings.MIN_TURNS_FOR_COACH_GROUP
+                )
+                # Too short for useful feedback: say so and let the teacher continue or skip
+                if not scene.turns or teacher_turns_count < min_turns or not trajectories:
+                    ctx.resume_scene_id = str(scene.scene_id)
                     await self._sync_context_to_db(ctx, teacher_id)
-                    outbounds: list[OutboundMessage] = []
-                    has_neutral = any(
-                        m.text_hi == get_message("scene_ended_neutral", address_form)
-                        for m in turn_res.outbound
-                    )
-                    outbounds.extend(turn_res.outbound)
-                    if not has_neutral:
-                        outbounds.append(
-                            OutboundMessage(
-                                kind="text",
-                                text_hi=get_message("scene_ended_neutral", address_form),
-                            )
-                        )
-                    outbounds.append(
+                    needed_more = max(1, min_turns - teacher_turns_count)
+                    neutral = get_message("scene_ended_neutral", address_form)
+                    return [
+                        *[m for m in turn_res.outbound if m.text_hi != neutral],
                         OutboundMessage(
                             kind="buttons",
-                            text_hi=get_message("realism_prompt", address_form),
+                            text_hi=get_message(
+                                "scene_too_short",
+                                address_form,
+                                done=teacher_turns_count,
+                                needed=min_turns,
+                                more=needed_more,
+                            ),
                             buttons=[
                                 Button(
-                                    id="btn_retry",
-                                    title_hi=get_message("btn_retry", address_form),
+                                    id="btn_scene_continue",
+                                    title_hi=get_message("btn_scene_continue", address_form),
                                 ),
                                 Button(
-                                    id="btn_continue",
-                                    title_hi=get_message("btn_continue", address_form),
+                                    id="btn_skip",
+                                    title_hi=get_message("btn_skip", address_form),
                                 ),
                             ],
-                        )
-                    )
-                    return outbounds
+                        ),
+                    ]
 
                 # Generate coach feedback (one-on-one: its own rubric, plus the diagnosis result)
                 move = load_move_card(ctx.current_move_id)
@@ -1556,7 +1587,7 @@ class SessionService:
                         *suggestion_msgs,
                         OutboundMessage(
                             kind="buttons",
-                            text_hi=get_message("realism_prompt", address_form),
+                            text_hi=self._realism_prompt(ctx, address_form),
                             buttons=[
                                 Button(
                                     id="btn_retry", title_hi=get_message("btn_retry", address_form)
@@ -1577,6 +1608,21 @@ class SessionService:
 
         elif curr == SessionStateEnum.FEEDBACK:
             move = load_move_card(ctx.current_move_id)
+            if ctx.resume_scene_id and (btn_id == "btn_scene_continue"):
+                resumed = await self._resume_scene(ctx, teacher_id)
+                if resumed:
+                    return [
+                        OutboundMessage(
+                            kind="text", text_hi=get_message("scene_resumed", address_form)
+                        )
+                    ]
+                ctx.current_state = SessionStateEnum.REHEARSE_INTRO
+                ctx.resume_scene_id = ""
+                return await self._begin_rehearse_setup(ctx, teacher_id, move)
+            if ctx.resume_scene_id and (btn_id == "btn_skip" or matched_intent == Intent.SKIP):
+                btn_id = "btn_continue"  # skipping the too-short scene's feedback moves on
+                matched_intent = Intent.NEXT
+            ctx.resume_scene_id = ""
             if ctx.module_mode and ctx.module_check_stage == modules.CHECK_ASKING:
                 if matched_intent == Intent.NEXT or btn_id == "btn_continue":
                     ctx.module_check_stage = modules.CHECK_DONE  # skipped: the module stays open
@@ -1710,7 +1756,7 @@ class SessionService:
                 return [
                     OutboundMessage(
                         kind="buttons",
-                        text_hi=get_message("realism_prompt", address_form),
+                        text_hi=self._realism_prompt(ctx, address_form),
                         buttons=[
                             Button(id="btn_retry", title_hi=get_message("btn_retry", address_form)),
                             Button(

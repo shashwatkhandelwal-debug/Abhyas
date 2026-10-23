@@ -974,7 +974,7 @@ async def test_admin_escalation_creates_review_item() -> None:
 
 @pytest.mark.asyncio
 async def test_coach_skipped_when_under_three_teacher_turns() -> None:
-    """Verifies scene with < 3 teacher turns skips coach, records no score, and sends scene_ended_neutral."""
+    """A scene with < 3 teacher turns skips the coach, records no score, offers continue/skip."""
     repo = FakeSessionRepository()
     service = SessionService(repository=repo)
     t_id = uuid4()
@@ -996,8 +996,11 @@ async def test_coach_skipped_when_under_three_teacher_turns() -> None:
     scores = [s for s in repo._rehearsal_scores if s.teacher_id == t_id]
     assert len(scores) == 0
 
-    # Output contains scene_ended_neutral
-    assert any("फीडबैक देखते हैं" in str(m.text_hi or "") for m in out)
+    # No feedback-less realism question: the teacher is told and offered continue / skip
+    assert not any("फीडबैक देखते हैं" in str(m.text_hi or "") for m in out)
+    assert not any(get_message("realism_prompt", "f") == m.text_hi for m in out)
+    assert [b.id for b in (out[-1].buttons or [])] == ["btn_scene_continue", "btn_skip"]
+    assert out[-1].text_hi == get_message("scene_too_short", "f", done=1, needed=3, more=2)
 
 
 @pytest.mark.asyncio
