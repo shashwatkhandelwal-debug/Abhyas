@@ -185,6 +185,24 @@ class Settings(BaseSettings):
     TRANSLATE_MAX_SOURCE_CHARS: int = 2000
     TRANSLATE_MAX_OUTPUT_TOKENS: int = 1500  # Devanagari-heavy sources cost many tokens
 
+    # ── "My class": class-level struggles (content/class_struggles.yaml) ────
+    STRUGGLE_MAX_CHOSEN: int = 3  # most struggles a teacher keeps, ordered
+    STRUGGLE_LIBRARY_MAX: int = 14  # the library stays small and closed
+    STRUGGLE_CHIPS_MIN: int = 8
+    STRUGGLE_CHIPS_MAX: int = 10
+    STRUGGLE_PHRASE_TOKEN_COVERAGE: float = (
+        0.66  # share of a trigger phrase's words that must appear
+    )
+    STRUGGLE_INPUT_MAX_CHARS: int = 400  # longer free text is cut before matching or classifying
+    STRUGGLE_PHRASE_WEIGHT: int = 3  # a whole trigger phrase found in her words
+    STRUGGLE_PARTIAL_PHRASE_WEIGHT: int = (
+        1  # most of a trigger phrase's words found (not the phrase)
+    )
+    STRUGGLE_KEYWORD_WEIGHT: int = 2  # a keyword / stem found in her words
+    STRUGGLE_MATCH_MIN_SCORE: int = 2  # below this the keyword matcher says "no match"
+    STRUGGLE_CLASSIFIER_MIN_CONFIDENCE: float = 0.50
+    STRUGGLE_CLASSIFIER_MAX_TOKENS: int = 256
+
     # ── Pedagogical & Rule Engine Thresholds ──────────────────────────────
     MAX_TURNS_PER_REHEARSAL: int = 8
     MAX_TURNS_ONE_ON_ONE: int = 10  # one child, teacher-led diagnose / teach / check
