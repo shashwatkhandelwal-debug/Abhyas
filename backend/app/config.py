@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: str = "abhyas-admin-2026"
     # Logout resets the shared demo teachers; rows younger than this are session-made, older are seed
     DEMO_RESET_SEED_MIN_AGE_HOURS: int = 24
+    # Login skips a demo reset done this recently when nothing was written since (double login)
+    DEMO_RESET_DEBOUNCE_SECONDS: int = 60
     TRUSTED_PROXY_IPS: str = "127.0.0.1"
     MAX_LOGIN_ATTEMPTS_PER_MINUTE: int = 5  # failed attempts per (IP, username) per window
     MAX_LOGIN_FAILURES_PER_IP_PER_MINUTE: int = 30  # failed attempts per IP across usernames

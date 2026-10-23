@@ -405,6 +405,30 @@ async def _seed_demo2_session_state(session: AsyncSession) -> None:
     )
 
 
+# Per-process record of when each demo teacher was last reset (login debounce only)
+_LAST_DEMO_RESET: dict[uuid.UUID, datetime] = {}
+
+
+async def reset_demo_teacher_unless_fresh(session: AsyncSession, login: str) -> bool:
+    """Login-time reset: skipped if reset within DEMO_RESET_DEBOUNCE_SECONDS and nothing written since."""
+    entry = DEMO_TEACHER_LOGINS.get(login)
+    if entry is None:
+        return False
+    teacher_id = entry[0]
+    last = _LAST_DEMO_RESET.get(teacher_id)
+    if last is not None and datetime.now(UTC) - last < timedelta(
+        seconds=settings.DEMO_RESET_DEBOUNCE_SECONDS
+    ):
+        newer = await session.execute(
+            select(Message.id)
+            .where(Message.teacher_id == teacher_id, Message.created_at > last)
+            .limit(1)
+        )
+        if newer.first() is None:
+            return True
+    return await reset_demo_teacher(session, login)
+
+
 async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
     """Restores one shared demo teacher to the seeded state; False for any non-demo login.
 
@@ -419,6 +443,7 @@ async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
     teacher_id, position = entry
     onboarding, classes, share_scores = _DEMO_TEACHER_PROFILE[login]
     now = datetime.now(UTC)
+    _LAST_DEMO_RESET[teacher_id] = now
     cutoff = now - timedelta(hours=settings.DEMO_RESET_SEED_MIN_AGE_HOURS)
 
     await session.execute(delete(Message).where(Message.teacher_id == teacher_id))
@@ -796,6 +821,10 @@ async def seed_database() -> None:
         # 9. Synthetic demo cohort (db/demo_data.py)
         await dedupe_adoption_evidence(session)
         await populate_demo_cohort(session)
+
+        # 9b. Shared demo teachers always start from the seeded state, even on a redeploy
+        for demo_login in sorted(DEMO_TEACHER_LOGINS):
+            await reset_demo_teacher(session, demo_login)
 
         # 10. Document chunks into doc_chunk table (spec/10 §10.4)
         await load_chunks_to_db(session)

@@ -665,7 +665,12 @@ async def test_reseed_repairs_legacy_complete_onboarding_state(
     ]
     for teacher_id in legacy_ids:
         session.add(Teacher(id=teacher_id, is_demo=True, onboarding_state="COMPLETE"))
-    progressed = Teacher(id=SEED_TEACHER_IDS[0], is_demo=True, onboarding_state="PLACEMENT")
+    # demo1 is a shared login: the seed now resets it to NEW. Other cohort teachers keep progress.
+    progressed = Teacher(
+        id=uuid.UUID(f"00000000-0000-0000-0002-{8:012x}"),
+        is_demo=True,
+        onboarding_state="PLACEMENT",
+    )
     session.add(progressed)
 
     await _run_seed_with(session, monkeypatch)

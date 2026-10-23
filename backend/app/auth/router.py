@@ -346,6 +346,7 @@ async def login(
         return resp
 
     clear_login_failures(request, user_val)
+    await _reset_demo_teacher(db, user, on_login=True)
 
     # 4. Create session token
     session_payload: dict[str, Any] = {
@@ -391,15 +392,18 @@ async def login(
     return redir_resp
 
 
-async def _reset_demo_teacher_on_logout(db: AsyncSession, user: AppUser | None) -> None:
-    """Resets a shared demo teacher login to the seeded state. Never blocks the logout."""
+async def _reset_demo_teacher(db: AsyncSession, user: AppUser | None, *, on_login: bool) -> None:
+    """Resets a shared demo teacher login to the seeded state. Never blocks login or logout."""
     if user is None or not user.is_demo or user.role != "teacher":
         return
-    from backend.app.db.seed import reset_demo_teacher
+    from backend.app.db.seed import reset_demo_teacher, reset_demo_teacher_unless_fresh
 
     try:
         async with db.begin_nested():
-            await reset_demo_teacher(db, user.username)
+            if on_login:
+                await reset_demo_teacher_unless_fresh(db, user.username)
+            else:
+                await reset_demo_teacher(db, user.username)
     except Exception:
         logger.exception("demo_reset_failed username=%s", user.username)
 
@@ -416,7 +420,7 @@ async def logout(
     except Exception:
         logger.exception("logout_user_lookup_failed")
         user = None
-    await _reset_demo_teacher_on_logout(db, user)
+    await _reset_demo_teacher(db, user, on_login=False)
 
     accept = request.headers.get("accept", "")
     if "application/json" in accept and "text/html" not in accept:

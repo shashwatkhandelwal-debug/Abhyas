@@ -20,9 +20,11 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 from starlette.requests import Request
+from starlette.responses import Response
 
 from backend.app.auth.router import logout
 from backend.app.auth.session import create_session_token
+from backend.app.config import settings
 from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
@@ -405,3 +407,89 @@ async def test_demo3_starts_on_the_learning_step_with_two_buttons_and_logout_res
     await _dirty(session, demo3)
     await reset_demo_data(session)
     assert await _demo3_learn_view(session) == seeded
+
+
+async def _login(session: AsyncSession, username: str) -> None:
+    from backend.app.auth.router import login
+
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "headers": [(b"content-type", b"application/json")],
+            "query_string": b"",
+            "client": ("203.0.113.9", 1234),
+        }
+    )
+
+    async def _json() -> dict[str, str]:
+        return {"username": username, "password": settings.DEMO_PASSWORD}
+
+    request.json = _json  # type: ignore[method-assign]
+    resp = await login(request, Response(), session)
+    assert resp.status_code == 200
+    await session.commit()
+
+
+@pytest.mark.parametrize("login_name", sorted(DEMO_TEACHER_LOGINS))
+async def test_login_resets_dirty_demo_teacher_to_seed(
+    session: AsyncSession, login_name: str
+) -> None:
+    from backend.app.db import seed
+
+    teacher_id = DEMO_TEACHER_LOGINS[login_name][0]
+    seeded = await _snapshot(session, teacher_id)
+    await _dirty(session, teacher_id)
+    assert await _snapshot(session, teacher_id) != seeded
+
+    seed._LAST_DEMO_RESET.clear()  # earlier tests' resets must not trigger the debounce
+    await _login(session, login_name)
+    assert await _snapshot(session, teacher_id) == seeded
+
+
+async def test_quick_second_login_does_not_wipe_again_but_new_messages_force_reset(
+    session: AsyncSession,
+) -> None:
+    from backend.app.db import seed
+
+    teacher_id = DEMO_TEACHER_LOGINS["teacher.demo1"][0]
+    seed._LAST_DEMO_RESET.clear()
+    await _login(session, "teacher.demo1")
+    first = seed._LAST_DEMO_RESET[teacher_id]
+    await _login(session, "teacher.demo1")
+    assert seed._LAST_DEMO_RESET[teacher_id] == first  # skipped
+
+    await _dirty(session, teacher_id)  # writes a message newer than the reset
+    await _login(session, "teacher.demo1")
+    assert seed._LAST_DEMO_RESET[teacher_id] > first
+
+
+async def test_stale_scene_save_after_reset_is_silent(
+    session: AsyncSession, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import logging
+
+    from backend.app.rehearsal.scene_store import PostgresSceneStore, SceneRecord
+    from backend.app.rule_engine.domain import SceneState
+
+    teacher_id = DEMO_TEACHER_LOGINS["teacher.demo1"][0]
+    scene_id = uuid4()
+    session.add(Scene(id=scene_id, teacher_id=teacher_id, move_id="NUM_SUB_REGROUP_BUNDLES",
+                      engine_state={}))  # fmt: skip
+    await session.commit()
+    await _logout(session, "teacher.demo1")  # reset deletes the scene
+
+    from backend.app.rehearsal import scene_store as ss
+
+    monkeypatch.setattr(
+        ss, "async_session_factory", async_sessionmaker(session.bind, expire_on_commit=False)
+    )  # type: ignore[arg-type]
+    store = PostgresSceneStore()
+    record = SceneRecord.model_construct(  # type: ignore[call-arg]
+        scene_id=scene_id, teacher_id=teacher_id, move_id="X", turns=[], active=True,
+        scene_state=SceneState.model_construct(), created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )  # fmt: skip
+    with caplog.at_level(logging.DEBUG, logger="abhyas.rehearsal.scene_store"):
+        await store.save(record)
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING]

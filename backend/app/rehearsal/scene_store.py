@@ -13,6 +13,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.orm.exc import StaleDataError
 
 from backend.app.config import settings
 from backend.app.db.models import Scene, Turn
@@ -181,6 +182,9 @@ class PostgresSceneStore:
                         )
                         session.add(db_turn)
                 await session.commit()
+        except StaleDataError:
+            # A demo reset deleted the scene while this save was in flight: nothing left to save
+            logger.debug("Scene %s no longer exists; skipping its save", scene.scene_id)
         except Exception as exc:
             logger.warning("Failed persisting scene/turns to Postgres: %s", exc)
 
