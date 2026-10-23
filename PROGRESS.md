@@ -224,6 +224,7 @@ All items from `spec/15_human_inputs.md` are currently open:
 
 1. **Evaluator Sample Voice Notes (T39, H15)**: Human must run `make samples` locally with a real `SARVAM_API_KEY` in `.env` (or record human voice notes in `eval/samples/recorded/`), listen to all 5 rendered audio files to confirm speech clarity and non-silence, and commit the valid WAVs to `eval/samples/audio/`. In the interim, demo chips in the chat PWA dynamically fall back to sending reference Hindi text.
 2. **Hosted Latency Benchmark (T41 re-run)**: Authoritative latency benchmark against the live hosted deployment with real API keys scheduled for the pre-submission feature freeze on 30 Oct.
+3. **"My class" content review (feat/class-profile)**: a Hindi-speaking FLN coach should read `content/class_struggles.yaml` (14 labels, trigger phrases, tips) and the new catalog lines, check each tip against its cited chunk page, and add sentences from real teachers (with consent) to `eval/class_profile/sentences.yaml`; re-run `make eval-class-profile`. The two UP guides cited there are OCR.
 
 ---
 
@@ -573,7 +574,7 @@ All items from `spec/15_human_inputs.md` are currently open:
 ## feat/class-profile
 
 ### Part 1 - FLN training map (2026-10-23)
-- Built `docs/FLN_TRAINING_MAP.md`: 5 training sources + our move seeds (1,157 chunks) summarised; 14 class-level struggles mapped to training topic, chunk ids (all 72 cited ids checked against the chunk files) and move card. 6 of 14 have a practice scene, 7 are handbook-tip only, 1 is partial.
+- Built `docs/FLN_TRAINING_MAP.md`: 5 training sources + our move seeds (1,157 chunks) summarised; 14 class-level struggles mapped to training topic, chunk ids (all 72 cited ids checked against the chunk files) and move card. 7 of 14 have a practice scene (4 move cards; reading and writing numbers only partly), 7 are handbook-tip only.
 - Gaps recorded in the doc: only Class 1 UP guides ingested (no carry/borrow wording anywhere in the chunks), UP guides are OCR.
 - Decision: branched from `main` (5cd0398). The `fix/demo-reset-and-1on1-feedback` branch (4 commits) is not merged and no handbook-chips branch exists locally or on origin, so nothing was merged first.
 
@@ -601,3 +602,8 @@ All items from `spec/15_human_inputs.md` are currently open:
 - "Did it help your class?": after the reflection, only when she named a struggle this move practises, three buttons (or a typed or spoken answer); stored in new table `class_outcome` (yes / some / no, move, her struggle ids). One re-ask, then it moves on and stores nothing (never traps her), then the usual 1-5 rating. Decision: separate table, not `adoption_evidence`, so her own report does not move the evidence ladder.
 - Demo accounts: demo1 and demo2 start with no class choice; demo3 has `LIT_MATRA_DROP, NUM_ADD_CARRY` (its learn step is the matra move). `reset_demo_teacher` restores the choice, clears `class_profile_prompted_at` and deletes `class_outcome` rows (tested in `test_demo_reset_postgres.py`).
 - `make content-validate` also validates `class_struggles.yaml`; `make eval-class-profile` runs `eval/class_profile_eval.py` (32 labelled sentences).
+
+### Part 5 - docs and evaluation (2026-10-23)
+- Updated `docs/JUDGE_QUICKSTART.md` (step 5, per-role rows, honest coverage), `docs/SAMPLE_INPUTS.md` (inputs 6 and 7: two real sentences with the real classifier's output, tips, sources and the effect on the path), `docs/QA_SHEET.md` (question 16), `docs/HOW_ARE_WE_DIFFERENT.md` (new row and two limits), `README.md` (feature bullet, AI-services row).
+- `eval/class_profile_eval.py` + `eval/class_profile/sentences.yaml` (committed with part 4) (32 labelled sentences: 27 on-list incl. 3 with two struggles, 5 off-list) + `eval/class_profile/REPORT.md`. Live run 2026-10-23, real Haiku 5.5, US$0.0041 of the US$1.00 cap: keyword matcher 31/32 top-1 (24/32 on its first run, before six keyword lists were extended; the set was used for that tuning, so the 31 is optimistic), real classifier 31/32 (it returned nothing for "बच्चे 10 के बंडल को एक ही गिनते हैं"), classifier-then-keywords (the product path) 32/32, and 5/5 off-list sentences stored nothing in every system.
+- Not verified: real teachers' sentences (all labels are ours); the WhatsApp channel for this flow (needs Meta credentials; chips there are a numbered list because buttons are capped at 3); Hindi wording of the new messages and tips by a Hindi-speaking FLN coach (every tip is a paraphrase of the cited chunk, but a human should read them); that personalising improves learning.

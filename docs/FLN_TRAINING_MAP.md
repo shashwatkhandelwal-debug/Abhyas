@@ -81,6 +81,6 @@ Literacy struggles 9 to 11 are all covered by one move card because the move's o
 ## 3. Coverage summary
 
 - **14 struggles**, mapped to training topics with chunk citations. Every one has at least one NIPUN, NISHTHA or UP chunk.
-- **Has a practice scene (6 of 14):** place value (3), addition with carry (5), subtraction with regrouping (6), and the three matra/blending causes (9, 10, 11). Struggle 2 (reading and writing numbers) is only partly covered, through the writing and reversal mistakes in the place-value move.
+- **Has a practice scene (7 of 14, served by 4 move cards):** place value (3), addition with carry (5), subtraction with regrouping (6), the three matra/blending causes (9, 10, 11), and reading and writing numbers (2), which is only partly covered: the place-value move practises the reversal (74 for 47) and the spoken-number (407) mistakes, not Hindi number names.
 - **Handbook tip only, "no practice case yet" (7 of 14):** counting (1), comparing numbers (4), word problems (7), small facts (8), letters and sounds (12), comprehension (13), writing and spelling (14).
 - Practice scenes exist for 4 moves, so numeracy is covered for the two-digit work of Class 2 and literacy only for matra blending. Counting, letters and comprehension are the biggest missing practice cases, and the Class 1 UP guides give the strongest text for them.
