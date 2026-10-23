@@ -894,7 +894,7 @@ class_confirm:
   text: "मैंने ऐसा समझा:\n{items}\nक्या यह सही है? सही न हो तो 'नहीं' दबाकर दोबारा बताइए।"
   audio: false
 class_saved:
-  text: "ठीक है, आपकी कक्षा के लिए यह दर्ज हो गया:\n{items}\nइसके हिसाब से आपके अभ्यास का क्रम बदला गया है। 'मेरी कक्षा' लिखकर इसे कभी भी बदल सकते हैं।"
+  text: "ठीक है, आपकी कक्षा के लिए यह दर्ज हो गया:\n{items}\nजिन दिक्कतों के लिए अभ्यास का केस है, वे अभ्यास आपके क्रम में पहले आएँगे। 'मेरी कक्षा' लिखकर इसे कभी भी बदल सकते हैं।"
   audio: false
 class_item:
   text: "{n}. {label}\n   पुस्तिका का सुझाव: {tip}\n   {practice}\n   {source}"
@@ -949,4 +949,13 @@ btn_helped_some: {text: "थोड़ी मिली", audio: false}
 btn_helped_no: {text: "नहीं मिली", audio: false}
 class_helped_thanks:
   text: "धन्यवाद, यह दर्ज हो गया।"
+  audio: false
+rehearse_child_focus:
+  text: "आपकी कक्षा की दिक्कत ({label}) जैसी गलती {child} करता है, इसलिए उसे सबसे ऊपर रखा है (★)।"
+  audio: false
+rehearse_group_focus:
+  text: "आपकी कक्षा की दिक्कत ({label}) जैसी गलती इस बार {child} करता है।"
+  audio: false
+coach_class_link:
+  text: "आपकी कक्षा की दिक्कत ({label}) इस अभ्यास में {child} की गलती से जुड़ी है। कक्षा में भी इसी तरह पहले बच्चे से उसका तरीका पूछिए, फिर ठोस चीज़ों से दिखाइए।"
   audio: false

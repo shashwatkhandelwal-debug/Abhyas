@@ -1,0 +1,43 @@
+# Labelled sentences for "My class": what a teacher might say -> the ids the closed library should return.
+#
+# Written and labelled by the build team (not by teachers), so this measures the matcher and the
+# classifier against our own reading of the library, not against real classroom speech. Replace or add
+# lines from real teachers (with consent) when user testing produces them.
+#
+# expect: ordered ids (the first is the one she stresses first). [] = nothing on the list fits and
+# the right behaviour is to store nothing ("something else").
+#   kind: hi = Hindi, hinglish = Latin script Hindi, en = English, two = two struggles in one sentence,
+#         none = out of scope for the closed list
+
+- {id: s01, kind: hi, text: "बच्चे गिनती में बार-बार गलती करते हैं, कोई संख्या छोड़ देते हैं", expect: [NUM_COUNTING]}
+- {id: s02, kind: hi, text: "मेरी कक्षा में बच्चे उल्टी गिनती नहीं कर पाते", expect: [NUM_COUNTING]}
+- {id: s03, kind: hi, text: "बच्चे 47 को 74 लिख देते हैं", expect: [NUM_NUMBER_WRITING]}
+- {id: s04, kind: hi, text: "चालीस सात सुनकर 407 लिख देते हैं", expect: [NUM_NUMBER_WRITING]}
+- {id: s05, kind: hi, text: "दहाई और इकाई में बहुत उलझते हैं बच्चे", expect: [NUM_PLACE_VALUE]}
+- {id: s06, kind: hi, text: "बच्चे 10 के बंडल को एक ही गिनते हैं", expect: [NUM_PLACE_VALUE]}
+- {id: s07, kind: hi, text: "कौन सी संख्या बड़ी है यह नहीं बता पाते", expect: [NUM_COMPARE]}
+- {id: s08, kind: hi, text: "हासिल वाले जोड़ में बच्चे हासिल भूल जाते हैं", expect: [NUM_ADD_CARRY]}
+- {id: s09, kind: hi, text: "दो अंकों के जोड़ में इकाई का हासिल दहाई में नहीं जोड़ते", expect: [NUM_ADD_CARRY]}
+- {id: s10, kind: hinglish, text: "carry wale sawal mein bachche galti karte hain", expect: [NUM_ADD_CARRY]}
+- {id: s11, kind: hi, text: "घटाव में ऊपर का अंक छोटा हो तो नीचे वाला ऊपर से घटा देते हैं", expect: [NUM_SUB_REGROUP]}
+- {id: s12, kind: hinglish, text: "ghatav mein bundle kholna nahi aata", expect: [NUM_SUB_REGROUP]}
+- {id: s13, kind: hi, text: "कहानी वाले सवाल में समझ नहीं पाते कि जोड़ना है या घटाना", expect: [NUM_WORD_PROBLEM]}
+- {id: s14, kind: hi, text: "20 तक के जोड़ भी उँगलियों से करते हैं, धीरे हैं", expect: [NUM_SMALL_FACTS]}
+- {id: s15, kind: hi, text: "बच्चे मात्रा छोड़कर पढ़ते हैं, मेला को मल पढ़ देते हैं", expect: [LIT_MATRA_DROP]}
+- {id: s16, kind: hi, text: "मात्रा वाले शब्द नहीं पढ़ पाते", expect: [LIT_MATRA_DROP]}
+- {id: s17, kind: hi, text: "एक-एक अक्षर जोड़कर बहुत धीरे पढ़ते हैं", expect: [LIT_AKSHAR_BY_AKSHAR]}
+- {id: s18, kind: hi, text: "पहला अक्षर देखकर अंदाज़े से कोई भी शब्द बोल देते हैं", expect: [LIT_FIRST_AKSHAR_GUESS]}
+- {id: s19, kind: hi, text: "बच्चों को अक्षर और उनकी आवाज़ पहचानने में दिक्कत है", expect: [LIT_LETTER_SOUND]}
+- {id: s20, kind: hi, text: "वर्ण नहीं पहचानते कई बच्चे", expect: [LIT_LETTER_SOUND]}
+- {id: s21, kind: hi, text: "पढ़ तो लेते हैं पर क्या पढ़ा यह नहीं बता पाते", expect: [LIT_COMPREHENSION]}
+- {id: s22, kind: hi, text: "कहानी पढ़कर उससे जुड़े सवाल का जवाब नहीं दे पाते", expect: [LIT_COMPREHENSION]}
+- {id: s23, kind: hi, text: "सुनकर शब्द लिखने में बच्चे गलती करते हैं, वर्तनी कमज़ोर है", expect: [LIT_WRITING]}
+- {id: s24, kind: en, text: "My children cannot count in order and skip numbers", expect: [NUM_COUNTING]}
+- {id: s25, kind: two, text: "बच्चे गिनती में भी कमज़ोर हैं और हासिल वाला जोड़ भी नहीं आता", expect: [NUM_COUNTING, NUM_ADD_CARRY]}
+- {id: s26, kind: two, text: "मात्रा की गलती होती है और पढ़ने के बाद अर्थ नहीं समझते", expect: [LIT_MATRA_DROP, LIT_COMPREHENSION]}
+- {id: s27, kind: two, text: "पहले तो दहाई इकाई समझ नहीं आता, फिर घटाव में बंडल खोलना भी", expect: [NUM_PLACE_VALUE, NUM_SUB_REGROUP]}
+- {id: s28, kind: none, text: "बच्चे स्कूल देर से आते हैं", expect: []}
+- {id: s29, kind: none, text: "कक्षा में बैठने की जगह बहुत कम है", expect: []}
+- {id: s30, kind: none, text: "बच्चे शरारत बहुत करते हैं", expect: []}
+- {id: s31, kind: none, text: "बच्चे गुणा नहीं कर पाते", expect: []}
+- {id: s32, kind: none, text: "बच्चे घड़ी में समय नहीं देख पाते", expect: []}

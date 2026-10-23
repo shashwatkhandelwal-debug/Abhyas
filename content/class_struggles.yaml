@@ -28,7 +28,7 @@ struggles:
       - "गिनती में गलती करते हैं"
       - "गिनते समय संख्या छोड़ देते हैं"
       - "उल्टी गिनती नहीं आती"
-    keywords: [गिनती, गिनना, गिनते, गिन नहीं, counting, ginti]
+    keywords: [गिनती, गिनना, गिन नहीं, counting, count, ginti]
     misconception_ids: []
     move_id: null
     chunk_ids: ["nipun_guidelines_2021:p087:080", "up_ganit_sandarshika_c1:p026:031"]
@@ -43,7 +43,7 @@ struggles:
       - "संख्या उल्टी लिख देते हैं"
       - "संख्या का नाम सुनकर गलत लिखते हैं"
       - "संख्या पढ़ना-लिखना नहीं आता"
-    keywords: [उल्टी लिख, उल्टा लिख, संख्या लिख, संख्या पढ़, संख्या नाम, "407", write numbers, number likhna]
+    keywords: [उल्टी लिख, उल्टा लिख, संख्या लिख, संख्या पढ़, संख्या नाम, "407", write numbers, number likhna, "74 लिख", उल्टे अंक]
     misconception_ids: [PV_CONCAT_SPOKEN, PV_REVERSAL]
     move_id: NUM_PLACE_VALUE_BUNDLES
     chunk_ids: ["nipun_guidelines_2021:p282:283", "up_ganit_sandarshika_c1:p063:102"]
@@ -60,7 +60,7 @@ struggles:
       - "दहाई और इकाई में उलझते हैं"
       - "स्थानीय मान समझ नहीं आता"
       - "बंडल को एक गिनते हैं"
-    keywords: [दहाई, इकाई, स्थानीय मान, place value, tens]
+    keywords: [दहाई, इकाई, स्थानीय मान, place value, tens, बंडल को एक]
     misconception_ids: [PV_BUNDLE_AS_ONE, PV_REVERSAL]
     move_id: NUM_PLACE_VALUE_BUNDLES
     chunk_ids: ["nipun_guidelines_2021:p088:082", "nishtha_fln:p439:316"]
@@ -75,7 +75,7 @@ struggles:
       - "कौन सी संख्या बड़ी है नहीं बता पाते"
       - "बड़ी-छोटी संख्या में गलती करते हैं"
       - "ज़्यादा-कम में उलझते हैं"
-    keywords: [तुलना, बड़ी संख्या, छोटी संख्या, ज़्यादा-कम, ज्यादा-कम, compare, bigger number]
+    keywords: [तुलना, बड़ी संख्या, छोटी संख्या, संख्या बड़ी, संख्या छोटी, बड़ा-छोटा, ज़्यादा-कम, ज्यादा-कम, compare, bigger number]
     misconception_ids: []
     move_id: null
     chunk_ids: ["nipun_guidelines_2021:p283:284", "up_ganit_sandarshika_c1:p030:039"]
@@ -109,7 +109,7 @@ struggles:
       - "घटाव में बंडल खोलना नहीं आता"
       - "ऊपर का अंक छोटा हो तो उल्टा घटा देते हैं"
       - "घटाव में हासिल लेना भूल जाते हैं"
-    keywords: [घटाव, घटाना, subtraction, borrow, regroup, उधार]
+    keywords: [घटाव, घटाना, ghatav, subtraction, borrow, regroup, उधार, बंडल खोल, bundle khol]
     misconception_ids: [SUB_SMALLER_FROM_LARGER, SUB_BORROW_NO_DECREMENT, SUB_WRITE_ZERO_WHEN_STUCK]
     move_id: NUM_SUB_REGROUP_BUNDLES
     chunk_ids: ["nipun_guidelines_2021:p283:284", "nishtha_fln:p439:316"]
@@ -224,7 +224,7 @@ struggles:
       - "पढ़ तो लेते हैं पर अर्थ नहीं समझते"
       - "कहानी पढ़कर सवाल का जवाब नहीं दे पाते"
       - "पढ़ा हुआ बता नहीं पाते"
-    keywords: [अर्थ नहीं, समझते नहीं, समझ नहीं पाते, comprehension, पढ़ा हुआ]
+    keywords: [अर्थ नहीं, समझते नहीं, समझ नहीं पाते, comprehension, पढ़ा हुआ, क्या पढ़ा, पढ़कर सवाल, सवाल का जवाब नहीं]
     misconception_ids: []
     move_id: null
     chunk_ids: ["nipun_guidelines_2021:p073:066", "nishtha_fln:p292:201"]

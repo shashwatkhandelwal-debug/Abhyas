@@ -202,6 +202,13 @@ async def test_class_page_describe_save_clear_and_closed_list(
                 'id="my-class-card"' in home.text and 'data-struggle="NUM_SUB_REGROUP"' in home.text
             )
 
+            # the module cards say why they were chosen, and her modules come first
+            assert 'data-because="NUM_SUB_REGROUP_BUNDLES"' in home.text
+            assert 'data-because="NUM_ADD_CARRY_BUNDLES"' not in home.text
+            assert home.text.index('id="module-NUM_PLACE_VALUE_BUNDLES"') < home.text.index(
+                'id="module-NUM_ADD_CARRY_BUNDLES"'
+            )
+
             await client.post("/teacher/class/clear", follow_redirects=False, **csrf)
             async with session_factory() as s:
                 assert await _stored(s, teacher_id) == []
@@ -278,3 +285,77 @@ async def test_purge_removes_the_class_choice(
             await session.execute(select(Teacher).where(Teacher.id == tid))
         ).scalar_one_or_none()
         assert gone is None
+
+
+@pytest.mark.asyncio
+async def test_saving_and_clearing_reorders_the_stored_path_and_helped_is_stored(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    from backend.app.db.models import ClassOutcome, MovePath
+    from backend.app.sessions.path import MovePathEntry
+    from backend.app.sessions.repository import SessionRepository
+
+    teacher_id = uuid4()
+    original = [
+        "NUM_PLACE_VALUE_BUNDLES",
+        "NUM_SUB_REGROUP_BUNDLES",
+        "NUM_ADD_CARRY_BUNDLES",
+        "LIT_MATRA_BLENDING",
+    ]
+    async with session_factory() as session:
+        service = SessionService(db_session=session)
+        await _ready_teacher(service, teacher_id)
+        await SessionRepository(session).record_move_path(
+            teacher_id,
+            [MovePathEntry(i, m, f"month_rank={i}") for i, m in enumerate(original, start=1)],
+        )
+
+        async def stored_path() -> list[str]:
+            rows = (
+                (
+                    await session.execute(
+                        select(MovePath)
+                        .where(MovePath.teacher_id == teacher_id)
+                        .order_by(MovePath.position)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            return [str(r.move_id) for r in rows]
+
+        try:
+            await service.set_class_struggles(teacher_id, ["NUM_ADD_CARRY", "LIT_MATRA_DROP"])
+            await session.commit()
+            assert (await stored_path())[:2] == [
+                "NUM_ADD_CARRY_BUNDLES",
+                "LIT_MATRA_BLENDING",
+            ]
+            assert len(await stored_path()) == 4
+
+            await service.set_class_struggles(teacher_id, [])
+            await session.commit()
+            assert await stored_path() == original
+
+            # "did it help your class?" lands in class_outcome (constraint: yes / some / no)
+            await SessionRepository(session).record_class_outcome(
+                teacher_id, "NUM_ADD_CARRY_BUNDLES", "some", ["NUM_ADD_CARRY"]
+            )
+            rows = (
+                (
+                    await session.execute(
+                        select(ClassOutcome).where(ClassOutcome.teacher_id == teacher_id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            assert [(r.answer, r.struggle_ids) for r in rows] == [("some", ["NUM_ADD_CARRY"])]
+            with pytest.raises(Exception, match="check_class_outcome_answer"):
+                await SessionRepository(session).record_class_outcome(
+                    teacher_id, "NUM_ADD_CARRY_BUNDLES", "maybe", []
+                )
+        finally:
+            await session.rollback()
+            await session.execute(delete(Teacher).where(Teacher.id == teacher_id))
+            await session.commit()

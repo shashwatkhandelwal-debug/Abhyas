@@ -533,7 +533,9 @@ async def teacher_modules_page(
             "request": request,
             "csrf_token": csrf_token,
             "teacher_name": teacher.name or get_message("ui_default_teacher_name"),
-            "modules": module_views({r.module_id: r for r in rows}),
+            "modules": module_views(
+                {r.module_id: r for r in rows}, [str(i) for i in teacher.class_struggles or []]
+            ),
             "class_saved": views_for([str(i) for i in teacher.class_struggles or []]),
             "steps": MODULE_STEPS,
             "step_labels": {

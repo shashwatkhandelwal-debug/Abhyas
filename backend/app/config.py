@@ -207,6 +207,9 @@ class Settings(BaseSettings):
     STRUGGLE_MATCH_MIN_SCORE: int = 2  # below this the keyword matcher says "no match"
     STRUGGLE_CLASSIFIER_MIN_CONFIDENCE: float = 0.50
     STRUGGLE_CLASSIFIER_MAX_TOKENS: int = 256
+    CLASS_HELPED_MAX_UNCLEAR: int = (
+        1  # unclear replies to "did it help your class?" before moving on
+    )
 
     # ── Pedagogical & Rule Engine Thresholds ──────────────────────────────
     MAX_TURNS_PER_REHEARSAL: int = 8
