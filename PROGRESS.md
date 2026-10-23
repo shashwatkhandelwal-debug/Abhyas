@@ -562,3 +562,10 @@ All items from `spec/15_human_inputs.md` are currently open:
 - **Blocked on humans (added)**: FLN coach review of the 1-1 content (see 6 above); a real-device pass of the 1-1 header, the picker and the voice flow; real STT of a teacher's spoken diagnosis with the child-name hints (no speech key here).
 - **Decisions taken without asking**: base branch `origin/main` (it already contains `02c6b69`); only the three numeracy moves are modules and 1-1 rubric cards (the literacy card stays group-only); five evaluator chips because a test enforces 3-5 (the bundles chip became the diagnosis chip); the original eval labels were not edited, a documented `also:` list was added instead; no source ranking weight for NISHTHA; module steps are derived from the loop state rather than hooked into each transition.
 - **Skipped / not done**: nothing from the brief was skipped; not verified items are listed per part. Pre-existing and untouched: `test_admin_dashboard_postgres_end_to_end` (UTC/IST), the group-scene `scene_store.get` that rebuilds turns from the database without the child lines (so coach input after a restart lacks child lines), the placement flow.
+
+## feat/class-profile
+
+### Part 1 - FLN training map (2026-10-23)
+- Built `docs/FLN_TRAINING_MAP.md`: 5 training sources + our move seeds (1,157 chunks) summarised; 14 class-level struggles mapped to training topic, chunk ids (all 72 cited ids checked against the chunk files) and move card. 6 of 14 have a practice scene, 7 are handbook-tip only, 1 is partial.
+- Gaps recorded in the doc: only Class 1 UP guides ingested (no carry/borrow wording anywhere in the chunks), UP guides are OCR.
+- Decision: branched from `main` (5cd0398). The `fix/demo-reset-and-1on1-feedback` branch (4 commits) is not merged and no handbook-chips branch exists locally or on origin, so nothing was merged first.
