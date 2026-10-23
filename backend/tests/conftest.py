@@ -26,6 +26,18 @@ async def async_client():
 
 
 @pytest.fixture(autouse=True)
+def _reset_speech_rate_limits():
+    """A 429 in one test starts a cool-down for that provider; it must not outlive the test."""
+    from backend.app.speech import stt, tts
+
+    stt.reset_rate_limits()
+    tts.reset_rate_limits()
+    yield
+    stt.reset_rate_limits()
+    tts.reset_rate_limits()
+
+
+@pytest.fixture(autouse=True)
 def _reset_chat_rate_limits():
     from backend.app.auth.rate_limit import reset_chat_rate_limits
 

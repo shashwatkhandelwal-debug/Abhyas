@@ -27,7 +27,7 @@ from backend.app.rehearsal.stt_hints import scene_child_name_hints
 from backend.app.sessions.service import SessionService
 from backend.app.speech.audio import AudioProcessingError, to_wav16k
 from backend.app.speech.spend import SpeechBudgetExceededError
-from backend.app.speech.stt import get_stt_provider
+from backend.app.speech.stt import STTUnavailable, get_stt_provider
 
 logger = logging.getLogger("abhyas.channels.web")
 
@@ -247,6 +247,9 @@ async def process_inbound_web(
                             failure_key = "stt_failed"
                     except SpeechBudgetExceededError:
                         failure_key = "stt_budget_type_please"
+                    except STTUnavailable as exc:  # every provider down or rate limited
+                        logger.warning("STT unavailable for web voice note %s: %s", message_id, exc)
+                        failure_key = "stt_unavailable_type_please"
                     except Exception as exc:  # provider down, timeout, bad audio...
                         logger.warning("STT failed for web voice note %s: %s", message_id, exc)
                         failure_key = "stt_failed"

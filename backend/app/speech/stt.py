@@ -41,6 +41,12 @@ class STTUnavailable(STTError):
     pass
 
 
+class STTRateLimited(STTUnavailable):
+    """The provider answered 429 / quota exceeded: skip it for a while, use the fallback."""
+
+    pass
+
+
 class ProviderNotConfigured(STTError):
     """Raised when an optional STT provider (Bhashini, Google) lacks API credentials."""
 
@@ -485,6 +491,7 @@ class GeminiSTT:
             label="Gemini STT",
             error_cls=STTUnavailable,
             max_retries=self.max_retries,
+            rate_limit_cls=STTRateLimited,
         )
         if not isinstance(body.get("steps"), list):
             raise STTUnavailable("Gemini STT response has no steps")
@@ -501,8 +508,25 @@ class GeminiSTT:
         )
 
 
+# provider name -> time.monotonic() until which it is skipped after a rate-limit answer
+_RATE_LIMITED_UNTIL: dict[str, float] = {}
+
+
+def _now() -> float:
+    return time.monotonic()  # a function so tests can move the clock without touching asyncio's
+
+
+def reset_rate_limits() -> None:
+    _RATE_LIMITED_UNTIL.clear()
+
+
 class FallbackSTT:
-    """Tries the primary STT provider, then the fallback on STTUnavailable (spec/06 §6.2)."""
+    """Tries the primary STT provider, then the fallback on STTUnavailable (spec/06 §6.2).
+
+    A rate-limited primary (429 / quota) is skipped for SPEECH_RATE_LIMIT_COOLDOWN_S, so
+    the next voice notes go straight to the fallback. Both failing raises STTUnavailable,
+    which the channels turn into "please type instead".
+    """
 
     def __init__(
         self,
@@ -522,14 +546,25 @@ class FallbackSTT:
         lang: str = "hi-IN",
         keyterms: list[str] | None = None,
     ) -> Transcript:
-        try:
-            return await self.primary.transcribe(wav16k, lang=lang, keyterms=keyterms)
-        except STTUnavailable:
-            logger.warning(
-                "STT provider %s unavailable, falling back to %s",
-                self.primary_name,
-                self.fallback_name,
-            )
+        if _now() >= _RATE_LIMITED_UNTIL.get(self.primary_name, 0.0):
+            try:
+                return await self.primary.transcribe(wav16k, lang=lang, keyterms=keyterms)
+            except STTRateLimited:
+                _RATE_LIMITED_UNTIL[self.primary_name] = (
+                    _now() + settings.SPEECH_RATE_LIMIT_COOLDOWN_S
+                )
+                logger.warning(
+                    "STT provider %s rate limited, using %s for %ds",
+                    self.primary_name,
+                    self.fallback_name,
+                    settings.SPEECH_RATE_LIMIT_COOLDOWN_S,
+                )
+            except STTUnavailable:
+                logger.warning(
+                    "STT provider %s unavailable, falling back to %s",
+                    self.primary_name,
+                    self.fallback_name,
+                )
         try:
             return await self.fallback.transcribe(wav16k, lang=lang, keyterms=keyterms)
         except STTUnavailable as exc:

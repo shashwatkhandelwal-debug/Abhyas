@@ -15,7 +15,8 @@ whose answers come from a rule engine, never from the language model, and gets c
   (chat history, step in the weekly loop, scores and your answers are removed; demo2 returns to its one-on-one
   scene with Ravi and demo3 to its three completed modules; the PWA also clears its local message cache). The
   admin **Reset demo** button restores all three the same way. Use **Log out** between experiments. Other judges share these logins, so do not rely on
-  anything surviving a logout.
+  anything surviving a logout. The login page carries the same warning ("Demo accounts are shared: pick one not in
+  use; chats reset on login and logout"), and offers `teacher.demo1`, `teacher.demo2` and `teacher.demo3`, so two judges can each take a different one.
 
 ## The seven logins
 

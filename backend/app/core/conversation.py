@@ -19,7 +19,12 @@ from backend.app.rehearsal.scene_store import scene_store
 from backend.app.rehearsal.stt_hints import scene_child_name_hints
 from backend.app.speech.audio import to_wav16k
 from backend.app.speech.spend import SpeechBudgetExceededError
-from backend.app.speech.stt import STTProvider, get_stt_provider, normalize_transcript_text
+from backend.app.speech.stt import (
+    STTProvider,
+    STTUnavailable,
+    get_stt_provider,
+    normalize_transcript_text,
+)
 from backend.app.speech.tts import TTSProvider, get_tts_provider
 
 logger = logging.getLogger("abhyas.core.conversation")
@@ -94,6 +99,14 @@ class ConversationService:
                     OutboundMessage(
                         kind="text",
                         text_hi=get_message("stt_budget_type_please", address_form),
+                    )
+                ]
+            except STTUnavailable as exc:  # every provider down or rate limited
+                logger.warning("STT unavailable for inbound audio: %s", exc)
+                return [
+                    OutboundMessage(
+                        kind="text",
+                        text_hi=get_message("stt_unavailable_type_please", address_form),
                     )
                 ]
             except Exception as exc:

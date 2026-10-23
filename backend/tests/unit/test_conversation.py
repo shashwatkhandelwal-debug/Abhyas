@@ -129,7 +129,7 @@ async def test_conversation_service_audio_success(wav_5s: bytes) -> None:
 async def test_conversation_service_audio_failure_graceful_degradation(wav_5s: bytes) -> None:
     """When STT raises an error, ConversationService replies with graceful degradation message."""
     failing_stt = AsyncMock()
-    failing_stt.transcribe.side_effect = STTUnavailable("STT timeout")
+    failing_stt.transcribe.side_effect = RuntimeError("unreadable audio")
 
     service = ConversationService(stt_provider=failing_stt)
     inbound = InboundMessage(
@@ -144,6 +144,27 @@ async def test_conversation_service_audio_failure_graceful_degradation(wav_5s: b
     outbound = await service.handle(inbound)
     assert len(outbound) == 1
     assert "आवाज़ साफ़ नहीं आई" in (outbound[0].text_hi or "")
+
+
+@pytest.mark.asyncio
+async def test_conversation_service_every_stt_provider_down_asks_to_type(wav_5s: bytes) -> None:
+    """Every provider unavailable or rate limited: the teacher is told to type, not to speak again."""
+    from backend.app.core.messages import get_message
+
+    failing_stt = AsyncMock()
+    failing_stt.transcribe.side_effect = STTUnavailable("both providers down")
+    service = ConversationService(stt_provider=failing_stt)
+    inbound = InboundMessage(
+        channel="whatsapp",
+        channel_msg_id="msg-3b",
+        teacher_id=uuid4(),
+        kind="audio",
+        audio_bytes=wav_5s,
+        received_at=datetime.now(UTC),
+    )
+
+    outbound = await service.handle(inbound)
+    assert [m.text_hi for m in outbound] == [get_message("stt_unavailable_type_please", "f")]
 
 
 @pytest.mark.asyncio

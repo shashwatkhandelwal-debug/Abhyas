@@ -25,7 +25,7 @@
 | FLN coach | `coach.demo` | in the submission form | Review queue, calibration labelling, move-card review (the four cards are still `in_review`) |
 | Admin | `admin` | in the submission form | Latency, guardrail stats, fast-forward timers, reset demo |
 
-The three shared teacher logins are reset to their starting state when you log out (the admin *Reset demo* button does the same). The free hosting plan sleeps when idle: the first request can take about a minute, and the pages say so.
+Demo accounts are shared by everyone testing at the same time: the login page says "pick one not in use; chats reset on login and logout". The three shared teacher logins are reset to their starting state when you log out (the admin *Reset demo* button does the same). The free hosting plan sleeps when idle: the first request can take about a minute, and the pages say so.
 
 WhatsApp: TODO(human): number and join instructions (needs the team's Meta test number). Meta test numbers only accept pre-registered recipients, so evaluators who want WhatsApp should send their phone number through the submission form; everyone else can use the web chat, which runs the identical conversation engine and audio pipeline.
 

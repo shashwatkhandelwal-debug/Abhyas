@@ -213,6 +213,7 @@ ask_not_in_sources:
   audio: true
 ask_out_of_scope:
   text: "माफ़ कीजिए, मैं कक्षा 1-3 की पढ़ाई और कक्षा से जुड़े सवालों में ही मदद कर सकती हूँ।"
+  text_m: "माफ़ कीजिए, मैं कक्षा 1-3 की पढ़ाई और कक्षा से जुड़े सवालों में ही मदद कर सकता हूँ।"
   audio: false
 ask_admin:
   text: "यह जानकारी आपके BEO या ARP कार्यालय से मिलेगी। मैंने आपका सवाल ARP तक पहुँचा दिया है।"
@@ -248,9 +249,11 @@ audio_too_long:
   audio: false
 unsupported_type:
   text: "मैं अभी केवल आवाज़ और लिखे संदेश समझ सकती हूँ।"
+  text_m: "मैं अभी केवल आवाज़ और लिखे संदेश समझ सकता हूँ।"
   audio: false
 unclear:
   text: "माफ़ कीजिए, मैं समझ नहीं पाई। 'मदद' लिखकर विकल्प देखें।"
+  text_m: "माफ़ कीजिए, मैं समझ नहीं पाया। 'मदद' लिखकर विकल्प देखें।"
   audio: false
 system_error_retry:
   text: "माफ़ कीजिए, अभी कुछ तकनीकी दिक्कत है। कृपया अपना संदेश फिर से भेजें।"
@@ -356,7 +359,7 @@ ui_chat_source_page: {text: "पृष्ठ {page}", audio: false}
 ui_chat_source_printed: {text: "मुद्रित पृष्ठ {page}", audio: false}
 ui_chat_source_summary: {text: "हिंदी सार", audio: false}
 ui_chat_source_original_en: {text: "यह अंश मूल दस्तावेज़ से अंग्रेज़ी में है।", audio: false}
-ui_chat_source_ocr: {text: "यह अंश स्कैन किए गए पन्ने से मशीन द्वारा पढ़ा गया है, इसमें छोटी-मोटी गलतियाँ हो सकती हैं।", audio: false}
+ui_chat_source_ocr: {text: "यह अंश स्कैन किए गए पन्ने से मशीन द्वारा पढ़ा गया है, इसमें छोटी-मोटी गलतियाँ हो सकती हैं।", text_m: "यह अंश स्कैन किए गए पन्ने से मशीन द्वारा पढ़ा गया है, इसमें छोटी-मोटी गलतियाँ हो सकती हैं।", audio: false}
 ui_chat_source_error: {text: "स्रोत नहीं खुल सका — दोबारा छुएँ", audio: false}
 ui_chat_reconnecting: {text: "इंटरनेट लौट आया — दोबारा जुड़ रहे हैं…", audio: false}
 
@@ -619,13 +622,13 @@ ui_chat_open_menu: {text: "मेनू खोलें", audio: false}
 ui_chat_main_menu: {text: "मुख्य मेनू", audio: false}
 ui_delete_effects: {text: "पुष्टि करने पर आपका खाता, सभी अभ्यास अंक, प्रमाण सीढ़ी की प्रगति, चैट संदेश और ऑडियो रिकॉर्ड डेटाबेस से हमेशा के लिए मिटा दिए जाएँगे।", audio: false}
 ui_delete_irreversible_html: {text: "यह प्रक्रिया <strong>स्थायी और अपरिवर्तनीय</strong> है।", audio: false}
-ui_delete_question: {text: "क्या आप वाकई अपना सारा डेटा हटाना चाहती हैं?", audio: false}
+ui_delete_question: {text: "क्या आप वाकई अपना सारा डेटा हटाना चाहती हैं?", text_m: "क्या आप वाकई अपना सारा डेटा हटाना चाहते हैं?", audio: false}
 ui_delete_title: {text: "मेरा डेटा हटाएँ — पुष्टि", audio: false}
 ui_delete_back_progress: {text: "प्रगति पर वापस जाएँ", audio: false}
 ui_delete_confirm_no: {text: "नहीं, वापस जाएँ", audio: false}
 ui_delete_confirm_yes: {text: "हाँ, मिटाएँ", audio: false}
 ui_progress_research_desc: {text: "अभ्यास प्रणाली व शिक्षण सामग्री को बेहतर बनाने हेतु अनाम डेटा उपयोग।", audio: false}
-ui_progress_data_desc: {text: "आप किसी भी समय अपना सारा डेटा और खाता हमेशा के लिए मिटा सकती हैं।", audio: false}
+ui_progress_data_desc: {text: "आप किसी भी समय अपना सारा डेटा और खाता हमेशा के लिए मिटा सकती हैं।", text_m: "आप किसी भी समय अपना सारा डेटा और खाता हमेशा के लिए मिटा सकते हैं।", audio: false}
 ui_progress_share_scores_desc: {text: "आपके संकुल ARP को आपकी अभ्यास प्रगति और अंक देखने की अनुमति।", audio: false}
 ui_progress_consent_saved: {text: "आपकी सहमति प्राथमिकताएँ सुरक्षित कर ली गई हैं।", text_m: "आपकी सहमति प्राथमिकताएँ सुरक्षित कर ली गई हैं।", audio: false}
 ui_progress_explain_back: {text: "अपने शब्दों में समझाना (Key Points Covered)", audio: false}
@@ -781,7 +784,7 @@ ui_admin_default_demo_teacher: {text: "डेमो शिक्षक", audio: 
 ui_trainer_rubric_svg_none: {text: "रुब्रिक वितरण", audio: false}
 ui_trainer_rubric_svg_title: {text: "0 अंक: {n0} ({p0}%) | 1 अंक: {n1} ({p1}%) | 2 अंक: {n2} ({p2}%)", audio: false}
 ui_arp_anonymous_teacher: {text: "शिक्षक #{code}", audio: false}
-ui_chat_help_text: {text: "अभ्यास साथी: हर सप्ताह 15 मिनट अभ्यास करें। आप बोलकर या लिखकर बात कर सकती हैं। सहायता के लिए अपने ARP से संपर्क करें।", audio: false}
+ui_chat_help_text: {text: "अभ्यास साथी: हर सप्ताह 15 मिनट अभ्यास करें। आप बोलकर या लिखकर बात कर सकती हैं। सहायता के लिए अपने ARP से संपर्क करें।", text_m: "अभ्यास साथी: हर सप्ताह 15 मिनट अभ्यास करें। आप बोलकर या लिखकर बात कर सकते हैं। सहायता के लिए अपने ARP से संपर्क करें।", audio: false}
 ui_ratings_title: {text: "प्रशिक्षण कितना काम का रहा (शिक्षकों की रेटिंग)", audio: false}
 ui_ratings_avg: {text: "औसत रेटिंग (5 में से)", audio: false}
 ui_ratings_count: {text: "रेटिंग की संख्या", audio: false}
@@ -1017,3 +1020,12 @@ ui_skill_progress_now: {text: "सबसे ताज़ा", audio: false}
 ui_skill_progress_wait: {text: "{n} अभ्यास होने के बाद यहाँ पहले और अब की तुलना दिखेगी।", audio: false}
 ui_trainer_skills_title: {text: "शिक्षक किसमें बेहतर होना चाहते हैं", audio: false}
 ui_trainer_skills_desc: {text: "शिक्षकों का चुना हुआ कौशल (केवल सहमति देने वाले शिक्षक; 10 से कम पर छिपा)।", audio: false}
+stt_unavailable_type_please:
+  text: "आवाज़ समझने की सेवा अभी चल नहीं रही। कृपया अपना संदेश लिखकर भेजें।"
+  audio: false
+ui_login_shared_note:
+  text: "डेमो खाते साझा हैं: जो खाता उपयोग में न हो वही चुनें। लॉगिन और लॉगआउट पर चैट रीसेट हो जाती है।"
+  audio: false
+ui_login_demo_teacher_experienced:
+  text: "शिक्षिका (अनुभवी): teacher.demo3"
+  audio: false

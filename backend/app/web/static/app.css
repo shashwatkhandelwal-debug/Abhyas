@@ -1,7 +1,4 @@
-/* ==========================================================================
-   Abhyas (अभ्यास) Main Stylesheet - Single CSS File (spec/09 §9.1, §9.2)
-   Asset Budget: < 150 KB total uncompressed first load
-   ========================================================================== */
+/* Abhyas (अभ्यास) main stylesheet, the single CSS file (spec/09). Budget: < 150 KB first load */
 
 :root {
   /* Color Tokens (spec/09 §9.1) */
@@ -739,9 +736,7 @@ body {
   gap: 0.4rem;
 }
 
-/* ==========================================================================
-   Progress & Deletion Pages (spec/09 §9.1, §9.2)
-   ========================================================================== */
+/* Progress & deletion pages (spec/09) */
 
 .progress-main {
   flex: 1;
@@ -1095,11 +1090,8 @@ body {
 }
 
 
-/* ==========================================================================
-   Visible acknowledgment states (chat.js): bubble ticks, typing, audio, mic,
-   chips, status bar. Motion: one-off transitions <= 200 ms; looped indicators
-   stop under prefers-reduced-motion. Status text >= 4.5:1 (tests/unit/test_chat_ux_assets.py).
-   ========================================================================== */
+/* Visible acknowledgment states (chat.js): ticks, typing, audio, mic, chips, status bar. Motion <= 200 ms,
+   loops stop under prefers-reduced-motion; status text >= 4.5:1 (test_chat_ux_assets.py) */
 
 :root {
   --status-meta: #4B5450;

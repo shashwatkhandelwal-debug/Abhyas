@@ -68,7 +68,11 @@ def _render_login_page(
         else ""
     )
     demo_creds_html = ""
+    shared_note_html = ""
     if settings.DEMO_MODE:
+        shared_note_html = (
+            f'<p class="shared-note" role="note">{html.escape(m("ui_login_shared_note"))}</p>'
+        )
         demo_title = html.escape(m("ui_login_demo_title", password="@@PW@@")).replace(
             "@@PW@@", f"<code>{html.escape(settings.DEMO_PASSWORD)}</code>"
         )
@@ -78,6 +82,7 @@ def _render_login_page(
             <div class="demo-chips">
                 <button type="button" onclick="fillCreds('teacher.demo1')">{html.escape(m("ui_login_demo_teacher_new"))}</button>
                 <button type="button" onclick="fillCreds('teacher.demo2')">{html.escape(m("ui_login_demo_teacher_practiced"))}</button>
+                <button type="button" onclick="fillCreds('teacher.demo3')">{html.escape(m("ui_login_demo_teacher_experienced"))}</button>
                 <button type="button" onclick="fillCreds('arp.demo')">{html.escape(m("ui_login_demo_arp"))}</button>
                 <button type="button" onclick="fillCreds('trainer.demo')">{html.escape(m("ui_login_demo_trainer"))}</button>
                 <button type="button" onclick="fillCreds('coach.demo')">{html.escape(m("ui_login_demo_coach"))}</button>
@@ -190,6 +195,7 @@ def _render_login_page(
         .lang-row {{ margin: 0.5rem 0 0; font-size: 0.9rem; }}
         .lang-link {{ color: var(--brand); text-decoration: none; padding: 0.4rem 0.5rem; display: inline-block; }}
         .lang-link.active {{ font-weight: 700; text-decoration: underline; }}
+        .shared-note {{ background: #FFF7DD; border: 1px solid var(--accent); border-radius: 8px; padding: 0.6rem 0.9rem; margin: 0 0 1.25rem; font-size: 0.9rem; }}
         .demo-card {{
             margin-top: 1.75rem;
             padding-top: 1.25rem;
@@ -228,6 +234,8 @@ def _render_login_page(
         </header>
 
         {error_html}
+
+        {shared_note_html}
 
         <form method="POST" action="/login">
             <input type="hidden" name="csrf_token" value="{csrf_token}">

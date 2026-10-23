@@ -117,6 +117,9 @@ class Settings(BaseSettings):
     STT_TIMEOUT_S: float = 8.0
     # Retries per speech provider call; a primary with a fallback configured gets 0
     SPEECH_MAX_RETRIES: int = 1
+    # After a provider answers 429 / quota exceeded, calls skip it for this long and go
+    # straight to the fallback (no failed call and no wasted seconds per voice note)
+    SPEECH_RATE_LIMIT_COOLDOWN_S: int = 60
     STT_MIN_CONFIDENCE: float = 0.50
     # Web voice recorder (static/recorder.js reads these through #rec-config)
     REC_MAX_SECONDS: int = 60  # auto-stop and send

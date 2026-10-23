@@ -8,6 +8,7 @@ classify, coach and answer from cited documents.**
 - **Logins:** `teacher.demo1`, `teacher.demo2`, `teacher.demo3`, `arp.demo`, `trainer.demo`, `coach.demo` use
   `<DEMO_PASSWORD>`; `admin` uses `<ADMIN_PASSWORD>`. Both are in the submission form, not in the repository. With `DEMO_MODE` on (the default) the
   login page also shows the demo password and buttons that fill in the usernames (not the admin password).
+- **Shared accounts:** the demo logins are shared by everyone who tests at the same time. The login page says so: **pick an account that is not in use; chats reset on login and logout.** If a chat looks as though someone else is in it, log out and pick another account (`teacher.demo1`, `teacher.demo2` and `teacher.demo3` are all offered on the login page).
 - **Language:** Hindi by default; the **हिंदी / English** switch on the login page and in the chat menu (☰)
   turns the interface into English. The children and the coach always speak Hindi.
 - **Sample inputs to paste or speak:** `docs/SAMPLE_INPUTS.md`. **Full walkthrough:** `docs/EVALUATOR_GUIDE.md`.

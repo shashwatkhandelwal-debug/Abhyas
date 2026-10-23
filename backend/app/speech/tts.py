@@ -11,6 +11,7 @@ import base64
 import io
 import logging
 import re
+import time
 import wave
 from typing import Literal, Protocol
 
@@ -41,6 +42,12 @@ class TTSError(Exception):
 
 class TTSUnavailable(TTSError):
     """Raised when TTS provider is unavailable or exhausted retries (spec/06 §6.3)."""
+
+    pass
+
+
+class TTSRateLimited(TTSUnavailable):
+    """The provider answered 429 / quota exceeded: skip it for a while, use the fallback."""
 
     pass
 
@@ -419,6 +426,7 @@ class GeminiTTS(_ChunkedTTS):
             label=self.label,
             error_cls=TTSUnavailable,
             max_retries=self.max_retries,
+            rate_limit_cls=TTSRateLimited,
         )
         audio_items = model_output_items(body, "audio")
         if not audio_items:
@@ -432,8 +440,24 @@ class GeminiTTS(_ChunkedTTS):
         return wav
 
 
+# provider name -> time.monotonic() until which it is skipped after a rate-limit answer
+_RATE_LIMITED_UNTIL: dict[str, float] = {}
+
+
+def _now() -> float:
+    return time.monotonic()  # a function so tests can move the clock without touching asyncio's
+
+
+def reset_rate_limits() -> None:
+    _RATE_LIMITED_UNTIL.clear()
+
+
 class FallbackTTS:
-    """Tries the primary TTS provider, then the fallback on TTSUnavailable (spec/06 §6.3)."""
+    """Tries the primary TTS provider, then the fallback on TTSUnavailable (spec/06 §6.3).
+
+    A rate-limited primary is skipped for SPEECH_RATE_LIMIT_COOLDOWN_S. Both failing raises
+    TTSUnavailable; callers then send the text without audio.
+    """
 
     def __init__(
         self,
@@ -453,14 +477,25 @@ class FallbackTTS:
         return self.primary.provider_name
 
     async def synthesize(self, text_hi: str, voice: VoiceSpec) -> SynthResult:
-        try:
-            return await self.primary.synthesize(text_hi, voice)
-        except TTSUnavailable:
-            logger.warning(
-                "TTS provider %s unavailable, falling back to %s",
-                self.primary_name,
-                self.fallback_name,
-            )
+        if _now() >= _RATE_LIMITED_UNTIL.get(self.primary_name, 0.0):
+            try:
+                return await self.primary.synthesize(text_hi, voice)
+            except TTSRateLimited:
+                _RATE_LIMITED_UNTIL[self.primary_name] = (
+                    _now() + settings.SPEECH_RATE_LIMIT_COOLDOWN_S
+                )
+                logger.warning(
+                    "TTS provider %s rate limited, using %s for %ds",
+                    self.primary_name,
+                    self.fallback_name,
+                    settings.SPEECH_RATE_LIMIT_COOLDOWN_S,
+                )
+            except TTSUnavailable:
+                logger.warning(
+                    "TTS provider %s unavailable, falling back to %s",
+                    self.primary_name,
+                    self.fallback_name,
+                )
         try:
             return await self.fallback.synthesize(text_hi, voice)
         except TTSUnavailable as exc:
