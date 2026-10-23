@@ -265,7 +265,12 @@ async def test_mode_group_keeps_the_three_children_scene(harness: Callable[[], H
     assert "बच्चों" in texts(out)
     scene = await h.scene()
     assert not scene.scene_state.one_on_one and len(scene.scene_state.children) == 3
-    assert scene_header(scene.scene_state) is None
+    header = scene_header(scene.scene_state)
+    assert header is not None and header["mode"] == "group"
+    assert [c["id"] for c in header["children"]] == [
+        c.persona_id for c in scene.scene_state.children
+    ]
+    assert header["title"] == get_message("ui_scene_group_title", "f")
 
 
 @pytest.mark.asyncio
@@ -326,13 +331,16 @@ async def test_header_state_comes_from_the_engine(harness: Callable[[], Harness]
     header = scene_header(scene.scene_state)
     assert header is not None
     assert header["child_id"] == "ravi" and header["child_name"] == get_message("speaker_ravi")
-    assert header["cue_state"] == 0 and header["turn"] == 0 and header["max_turns"] == 10
+    assert header["turn"] == 0 and header["max_turns"] == 10
+    assert header["children"] == [], "a one-on-one scene shows only that child"
+    assert header["title"] == get_message("ui_scene_one_title", "f", child=header["child_name"])
+    assert not {"cue", "cue_state"} & set(header), "a child's internal state is never sent"
     h.script.append(([A.ASK_TO_EXPLAIN], None, None))
     await h.say("तुमने कैसे किया?")
     scene = await h.scene()
     header = scene_header(scene.scene_state)
     assert header is not None
-    assert header["cue_state"] == int(ChildState.CAN_EXPLAIN) and header["turn"] == 1
+    assert header["turn"] == 1
     assert header["turn_label"] == get_message("ui_scene_turn", "f", turn=1, max=10)
     # no header for an ended scene
     assert scene_header(scene.scene_state, active=False) is None

@@ -7,9 +7,9 @@
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>{{ get_message('ui_app_name') }} — {{ teacher_name or get_message('ui_default_teacher_name') }}</title>
   <link rel="manifest" href="/manifest.json">
-  <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/app.css?v={{ asset_v() }}">
 </head>
-<body>
+<body class="chat-page">
   <div class="app-container">
     <header class="chat-header">
       <div class="header-left">
@@ -20,8 +20,8 @@
           <span>{{ get_message('ui_app_name') }}</span>
         </a>
         <div class="header-titles">
-          <span class="header-move-title">{{ move_title or get_message('ui_default_move_title') }}</span>
-          <span class="header-step-chip">{{ step_chip or get_message('ui_default_step_chip') }}</span>
+          <span class="header-move-title" id="header-move-title">{{ view.move_title }}</span>
+          <span class="header-sub"><span class="header-step-chip" id="header-step">{{ view.step_label }}</span><a href="/logout" class="header-logout">{{ get_message('ui_logout') }}</a></span>
         </div>
       </div>
       <div class="header-right">
@@ -46,38 +46,29 @@
     </header>
 
     {% if demo_mode %}
-    <div class="demo-banner" role="status" aria-label="{{ get_message('ui_demo_notice_label') }}">{{ demo_banner_text or get_message('ui_demo_banner') }}</div>
+    <div class="demo-banner" id="demo-banner" role="status" aria-label="{{ get_message('ui_demo_notice_label') }}"><span>{{ demo_banner_text or get_message('ui_demo_banner') }}</span><a href="/logout" class="demo-logout">{{ get_message('ui_logout') }}</a><button type="button" class="demo-dismiss" id="demo-dismiss" aria-label="{{ get_message('ui_demo_dismiss') }}">&times;</button></div>
     {% endif %}
 
     <div id="network-banner" class="network-banner" role="status" aria-live="polite" data-offline-text="{{ get_message('ui_offline_banner') }}" data-slow-text="{{ get_message('ui_slow_banner') }}">{% if not is_online and is_online is defined %}{{ get_message('ui_offline_banner') }}{% endif %}</div>
 
     <div id="sr-live" class="sr-only" role="status" aria-live="polite"></div>
 
-    <div class="scene-header" id="scene-header" role="region" aria-label="{{ get_message('ui_chat_scene_end') }}"{% if not scene_header %} hidden{% endif %}>
-      <div class="sh-top">
-        <span class="child-pill active {{ scene_header.child_id if scene_header else '' }}" id="sh-child">{{ scene_header.child_name if scene_header else '' }}</span>
-        <span class="board-problem" id="sh-board">{{ scene_header.board if scene_header else '' }}</span>
-        <span class="sh-turn" id="sh-turn">{{ scene_header.turn_label if scene_header else '' }}</span>
+    <section class="scene-bar" id="scene-bar" role="region" aria-labelledby="sb-title"{% if not scene_header %} hidden{% endif %}>
+      <div class="sb-row">
+        <span class="sb-title" id="sb-title">{{ scene_header.title if scene_header else '' }}</span>
+        <span class="sb-turn" id="sb-turn">{{ scene_header.turn_label if scene_header else '' }}</span>
+      </div>
+      <div class="sb-row">
+        <span class="board-problem"><span class="sb-board-label">{{ get_message('ui_scene_board') }}</span> <span id="sb-board">{{ scene_header.board if scene_header else '' }}</span></span>
+        <span class="sb-children" id="sb-children" title="{{ get_message('ui_scene_pick_child') }}"{% if not (scene_header and scene_header.children) %} hidden{% endif %}>{% if scene_header %}{% for c in scene_header.children %}<button type="button" class="child-pill {{ c.id }}" data-name="{{ c.name }}">{{ c.name }}</button>{% endfor %}{% endif %}</span>
         <button type="button" class="sh-end" id="sh-end">{{ get_message('ui_chat_scene_end') }}</button>
       </div>
-      <div class="sh-cue">
-        <span class="sh-steps" id="sh-steps" data-filled="{{ (scene_header.cue_state + 1) if scene_header and scene_header.cue_state >= 0 else 0 }}" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-        <span class="sh-cue-text" id="sh-cue-text">{{ scene_header.cue if scene_header else '' }}</span>
-      </div>
-    </div>
-
-    <div class="rehearse-strip" id="rehearse-strip"{% if scene_header %} hidden{% endif %}>
-      <span class="board-problem" id="board-problem">{{ board_problem }}</span>
-      <div class="children-pills">
-        <span class="child-pill ravi active" title="{{ get_message('ui_chat_child_ravi_title') }}">{{ get_message('speaker_ravi') }}</span>
-        <span class="child-pill priya" title="{{ get_message('ui_chat_child_priya_title') }}">{{ get_message('speaker_priya') }}</span>
-        <span class="child-pill aman" title="{{ get_message('ui_chat_child_aman_title') }}">{{ get_message('speaker_aman') }}</span>
-      </div>
-    </div>
+    </section>
 
     <div class="status-slot"><div id="status-bar" class="status-bar" role="status" aria-live="polite" hidden></div></div>
 
     <main class="chat-messages" id="chat-messages" role="log" aria-live="polite">
+      {% if show_demo_divider %}<div class="demo-divider" role="separator">{{ get_message('ui_demo_divider') }}</div>{% endif %}
       {% for msg in initial_messages %}
       <div class="msg-row {{ 'inbound' if msg.direction == 'in' else 'outbound' }}" id="msg-{{ msg.id }}" data-created-at="{{ msg.created_at or '' }}">
         <div class="bubble">
@@ -132,23 +123,7 @@
       </div>
     </main>
 
-    {% if demo_mode and demo_chips %}
-    <section class="demo-helper-section" aria-label="{{ get_message('ui_chat_sample_chips') }}">
-      <div class="demo-hint">{{ get_message('ui_chat_type_instead_hint') }}</div>
-      <div class="demo-chips">
-        {% for chip in demo_chips %}
-        <button
-          type="button"
-          class="demo-chip"
-          data-id="{{ chip.id }}"
-          data-text="{{ chip.text_hi or chip.text }}"
-          data-audio-available="{{ 'true' if chip.audio_available else 'false' }}"
-        >{{ (chip.chip_label_en if ui_lang() == 'en' and chip.chip_label_en else chip.chip_label) or chip.text_hi or chip.text }}</button>
-        {% endfor %}
-      </div>
-    </section>
-    {% endif %}
-
+    <div class="helper-tray" id="helper-tray">
     {% if handbook_chips %}
     <section class="handbook-section" id="handbook-chips" {% if ui_lang() != 'en' %}data-prefix="{{ handbook_prefix }}" {% endif %}data-autosend="{{ handbook_autosend }}">
       <div class="demo-hint">{{ get_message('ui_handbook_title') }}</div>
@@ -158,6 +133,18 @@
       </div>
     </section>
     {% endif %}
+    {% if demo_mode and view.samples %}
+    <details class="sample-tray" id="sample-tray">
+      <summary>{{ get_message('ui_sample_title') }}</summary>
+      <div class="sample-list" id="sample-list">{% for chip in view.samples %}<div class="sample-item"><button type="button" class="demo-chip" data-id="{{ chip.id }}" data-text="{{ chip.text }}" data-audio-available="{{ 'true' if chip.audio else 'false' }}">{{ chip.label }}</button><span class="sample-note">{{ chip.note }}</span></div>{% endfor %}</div>
+    </details>
+    {% endif %}
+    </div>
+
+    <div class="next-card" id="next-card" role="status" data-key="{{ view.hint.key if view.hint else '' }}"{% if not view.hint %} hidden{% endif %}>
+      <span class="next-text" id="next-text">{{ view.hint.text if view.hint else '' }}</span>
+      <button type="button" class="next-suggest" id="next-suggest"{% if not (view.hint and view.hint.suggest) %} hidden{% endif %}>{{ view.hint.suggest if view.hint and view.hint.suggest else '' }}</button>
+    </div>
 
     <footer class="composer-wrapper">
       <form class="composer-form" id="composer-form" autocomplete="off">
@@ -209,8 +196,8 @@
 
   <script type="application/json" id="ui-strings">{{ (ui_strings or {})|tojson }}</script>
   <script type="application/json" id="rec-config">{{ (rec_config or {})|tojson }}</script>
-  <script src="/static/recorder.js"></script>
-  <script src="/static/chat.js"></script>
+  <script src="/static/recorder.js?v={{ asset_v() }}"></script>
+  <script src="/static/chat.js?v={{ asset_v() }}"></script>
   <script>
     function toggleMenu() {
       const m = document.getElementById('menu-dropdown');

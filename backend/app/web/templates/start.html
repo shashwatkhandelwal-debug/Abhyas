@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="{{ ui_lang() }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1F6F5C">
+  <title>{{ get_message('ui_app_name') }}</title>
+  <link rel="stylesheet" href="/static/app.css?v={{ asset_v() }}">
+</head>
+<body>
+  <div class="app-container">
+    <main class="start-main">
+      <h1 class="start-title">{{ get_message('ui_app_name') }}</h1>
+      <ul class="start-lines">
+        <li>{{ get_message('ui_start_what') }}</li>
+        <li>{{ get_message('ui_start_do') }}</li>
+        <li>{{ get_message('ui_start_get') }}</li>
+      </ul>
+      <form method="POST" action="/teacher/start" class="start-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="start-button" id="start-go">{{ get_message('ui_start_button') }}</button>
+        <button type="submit" name="skip" value="1" class="start-skip" id="start-skip">{{ get_message('ui_start_skip') }}</button>
+      </form>
+      <div class="start-lang">{{ lang_switch() }}</div>
+    </main>
+  </div>
+  {% include "_ack.html" %}
+</body>
+</html>

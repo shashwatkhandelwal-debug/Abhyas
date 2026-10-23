@@ -94,7 +94,7 @@ def test_real_app_registers_error_pages() -> None:
 
 def test_every_page_template_loads_the_ack_script() -> None:
     templates = REPO / "backend/app/web/templates"
-    for name in ("chat.html", "teacher.html", "admin.html", "arp.html", "trainer.html"):
+    for name in ("teacher.html", "admin.html", "arp.html", "trainer.html"):
         assert "_ack.html" in (templates / name).read_text("utf-8"), name
     assert "ack.js" in (REPO / "backend/app/auth/router.py").read_text("utf-8")
 

@@ -283,3 +283,29 @@ async def test_second_instance_continuity_mid_scene_real_db(
         async with session_factory() as session_clean:
             repo_clean = SessionRepository(session_clean)
             await repo_clean.purge_teacher_data(teacher_id)
+
+
+@pytest.mark.asyncio
+async def test_a_teacher_without_a_join_code_gets_the_name_question_not_a_server_error(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """ "I have no code" used to store the marker "UNASSIGNED" in teacher.cluster_id, a foreign key
+    to `cluster`: a first-time teacher got "a technical problem" and was stuck on the code step."""
+    from backend.app.core.messages import get_message
+
+    teacher_id = uuid4()
+    try:
+        async with session_factory() as session:
+            service = SessionService(repository=SessionRepository(session))
+            await service.handle_inbound(make_inbound(teacher_id, text="नमस्ते"))
+            await service.handle_inbound(make_inbound(teacher_id, button_id="btn_agree"))
+            out = await service.handle_inbound(make_inbound(teacher_id, text="नहीं"))
+        assert [m.text_hi for m in out] == [get_message("ask_name", "f")]
+        async with session_factory() as session:
+            teacher = await session.get(Teacher, teacher_id)
+            assert teacher is not None
+            assert teacher.onboarding_state == OnboardingStateEnum.PROFILE_NAME.value
+            assert teacher.cluster_id is None
+    finally:
+        async with session_factory() as session_clean:
+            await SessionRepository(session_clean).purge_teacher_data(teacher_id)

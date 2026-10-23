@@ -112,6 +112,26 @@ test('install precaches bypassing the HTTP cache', async () => {
   assert.match(SW_SOURCE, /cache:\s*'reload'/);
 });
 
+test('install precaches the build-stamped asset URLs that pages of this build ask for', async () => {
+  const { caches, dispatch } = loadSw({ version: 'v9-cafe0001' });
+  await dispatch('install');
+  const urls = (await (await caches.open('abhyas-static-v9-cafe0001')).keys()).map((k) => k.url);
+  for (const name of ['chat.js', 'app.css', 'recorder.js']) {
+    assert.ok(urls.includes(`https://abhyas.test/static/${name}?v=v9-cafe0001`), name);
+  }
+});
+
+test('a page of a new build never gets an older chat.js, even from the old cache', async () => {
+  // Yesterday's worker cached chat.js by its bare URL. Today's page asks for ?v=<today>, a URL
+  // that cache has never seen, so stale-while-revalidate has nothing stale to serve.
+  let network = 'chat.js TODAY';
+  const { caches, dispatch } = loadSw({ version: 'today-1', fetchImpl: async () => new FakeResponse(network) });
+  const old = await caches.open('abhyas-static-yesterday-0');
+  await old.put('/static/chat.js', new FakeResponse('chat.js YESTERDAY'));
+  const served = await dispatch('fetch', fetchEvent('/static/chat.js?v=today-1'));
+  assert.equal(served.body, 'chat.js TODAY');
+});
+
 test('activate deletes old static caches (including the legacy fixed name) but keeps audio', async () => {
   const { caches, dispatch } = loadSw({ version: 'new-1' });
   for (const n of ['abhyas-static-v1', 'abhyas-static-old-2', 'abhyas-static-new-1', 'abhyas-audio-v1', 'other-app']) {

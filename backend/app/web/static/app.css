@@ -90,6 +90,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  min-width: 0;
 }
 
 .brand-badge {
@@ -113,17 +114,16 @@ body {
 .header-titles {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
 }
 
 .header-move-title {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  line-height: 1.25;
+  line-height: 1.3;
   color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 240px;
+  overflow-wrap: anywhere;
 }
 
 .header-step-chip {
@@ -136,6 +136,7 @@ body {
   font-weight: 600;
   margin-top: 0.15rem;
 }
+.header-step-chip:empty { display: none; }
 
 .header-right {
   display: flex;
@@ -243,67 +244,21 @@ body {
   border-bottom: 1px solid var(--accent);
 }
 
-/* Children Scene Strip (during REHEARSE) */
-.rehearse-strip {
+/* Scene bar: who she is talking to, her turn, and one board card */
+.scene-bar {
   background-color: var(--surface);
   border-bottom: 1px solid var(--border);
-  padding: 0.5rem 0.8rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 0.85rem;
-  gap: 0.5rem;
-}
-
-.board-problem {
-  background-color: #24352D;
-  color: #FFFFFF;
-  padding: 0.25rem 0.6rem;
-  border-radius: var(--radius-sm);
-  font-family: monospace;
-  font-weight: 700;
-  font-size: 0.95rem;
-}
-
-.children-pills {
-  display: flex;
-  gap: 0.35rem;
-}
-
-.child-pill {
-  padding: 0.2rem 0.5rem;
-  border-radius: var(--radius-full);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #FFFFFF;
-  opacity: 0.6;
-}
-
-.child-pill.active {
-  opacity: 1;
-  outline: 2px solid var(--ink);
-}
-
-.child-pill.ravi { background-color: var(--child-ravi); }
-.child-pill.priya { background-color: var(--child-priya); }
-.child-pill.aman { background-color: var(--child-aman); }
-
-/* One-on-one header */
-.scene-header {
-  background-color: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 0.45rem 0.8rem;
+  padding: 0.4rem 0.8rem;
   font-size: 0.85rem;
 }
-.scene-header[hidden] { display: none; }
-.sh-top {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-.sh-turn { margin-left: auto; font-weight: 600; color: var(--ink-soft, var(--ink)); }
+.scene-bar[hidden] { display: none; }
+.sb-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.sb-row + .sb-row { margin-top: 0.3rem; }
+.sb-title { font-weight: 700; }
+.sb-title { flex: 1; }
+.sb-turn { font-weight: 600; white-space: nowrap; }
 .sh-end {
+  margin-left: auto;
   border: 1px solid var(--border);
   background: transparent;
   color: var(--ink);
@@ -312,23 +267,32 @@ body {
   font-size: 0.8rem;
   min-height: 2.2rem;
 }
-.sh-cue { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.3rem; }
-.sh-steps { display: inline-flex; gap: 0.2rem; }
-.sh-steps i {
-  width: 0.7rem;
-  height: 0.7rem;
-  border-radius: 50%;
-  border: 2px solid var(--border);
-  display: inline-block;
+.board-problem {
+  background-color: #24352D;
+  color: #FFFFFF;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 0.95rem;
+  white-space: nowrap;
 }
-.sh-steps[data-filled="1"] i:nth-child(-n+1),
-.sh-steps[data-filled="2"] i:nth-child(-n+2),
-.sh-steps[data-filled="3"] i:nth-child(-n+3),
-.sh-steps[data-filled="4"] i:nth-child(-n+4) {
-  background-color: #1F6F5C;
-  border-color: #1F6F5C;
+.sb-board-label { font-weight: 500; font-size: 0.8rem; opacity: 0.8; margin-right: 0.3rem; }
+.sb-children { display: inline-flex; gap: 0.35rem; }
+.sb-children[hidden] { display: none; }
+.child-pill {
+  padding: 0.2rem 0.7rem;
+  min-height: 2.2rem;
+  border: 0;
+  border-radius: var(--radius-full);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #FFFFFF;
+  cursor: pointer;
 }
-.sh-cue-text { font-weight: 600; }
+.child-pill.ravi { background-color: var(--child-ravi); }
+.child-pill.priya { background-color: var(--child-priya); }
+.child-pill.aman { background-color: var(--child-aman); }
 
 /* Chat Message Thread */
 .chat-messages {
@@ -542,51 +506,63 @@ body {
   100% { opacity: 1; transform: scale(1.1); }
 }
 
-/* Demo Helper Chips */
-.demo-helper-section,
-.handbook-section {
+/* Helper tray: the handbook questions, and (demo only) sample lines */
+.handbook-section,
+.sample-tray {
   padding: 0.3rem 0.8rem;
   background-color: var(--surface);
   border-top: 1px dashed var(--border);
   font-size: 0.8rem;
 }
 
-.demo-hint {
+.demo-hint,
+.sample-tray summary {
   color: var(--muted);
   margin-bottom: 0.25rem;
   font-weight: 600;
 }
+.sample-tray summary { cursor: pointer; margin-bottom: 0; min-height: 2rem; display: flex; align-items: center; }
+.sample-tray[open] summary { margin-bottom: 0.25rem; }
 
-.demo-chips,
+.sample-list,
 .handbook-chips {
   display: flex;
   overflow-x: auto;
   gap: 0.4rem;
   padding-bottom: 0.25rem;
 }
+.sample-item { flex: 0 0 15rem; display: flex; flex-direction: column; gap: 0.2rem; }
+.sample-note { font-size: 0.75rem; line-height: 1.3; color: var(--muted); padding: 0 0.3rem; }
 
 .demo-chip,
 .handbook-chip {
   background-color: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
-  padding: 0.25rem 0.6rem;
+  padding: 0.25rem 0.8rem;
+  font: inherit;
   font-size: 0.8rem;
-  white-space: nowrap;
+  line-height: 1.25;
   color: var(--ink);
   cursor: pointer;
   min-height: 48px;
   display: inline-flex;
   align-items: center;
+  text-align: left;
+  text-decoration: none;
 }
 
-.demo-chip:hover,
-.handbook-chip:hover {
-  background-color: var(--brand-light);
+/* Hover only where a pointer exists: on a phone the last tapped chip would stay "hovered" (a */
+@media (hover: hover) {
+  .demo-chip:hover,
+  .handbook-chip:hover {
+    border-color: var(--brand);
+  }
 }
 
-.handbook-chips { flex-wrap: wrap; overflow-x: visible; }
-.handbook-chip { white-space: normal; text-align: left; line-height: 1.25; text-decoration: none; }
+.handbook-chip { flex: 0 0 15rem; min-width: 0; }
+.handbook-card .handbook-chips { flex-wrap: wrap; overflow-x: visible; }
+.handbook-card .handbook-chip { flex: 1 1 15rem; }
 
 /* Composer Section */
 .composer-wrapper {
@@ -1090,8 +1066,7 @@ body {
 }
 
 
-/* Visible acknowledgment states (chat.js): ticks, typing, audio, mic, chips, status bar. Motion <= 200 ms,
-   loops stop under prefers-reduced-motion; status text >= 4.5:1 (test_chat_ux_assets.py) */
+/* Visible acknowledgment states (chat.js): ticks, typing, audio, mic, chips, status bar. Motion <= 200 ms, */
 
 :root {
   --status-meta: #4B5450;
@@ -1310,8 +1285,7 @@ body {
   animation: audio-spin 0.8s linear infinite;
 }
 
-/* Waiting for the file to exist: spinner sits in the (hidden) button's slot, so nothing shifts
-   when the player appears and there is never a dead play button */
+/* Waiting for the file to exist: spinner sits in the (hidden) button's slot, so nothing shifts */
 .bubble-audio[data-has-audio="false"] .btn-play {
   visibility: hidden;
 }
@@ -1456,3 +1430,59 @@ body {
 .class-chip input { width: 1.1rem; height: 1.1rem; }
 .class-text textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 0.5rem; border: 1px solid var(--border, #ddd); border-radius: 8px; margin: 0.4rem 0; }
 .class-nomatch { padding: 0.75rem 1rem; border-left: 4px solid var(--border, #ddd); background: var(--surface, #fff); }
+
+/* Chat shell: the thread is the one scrolling part, so a new bubble can be scrolled into view */
+.chat-page { height: 100vh; height: 100dvh; overflow: hidden; }
+.chat-page .app-container { height: 100%; min-height: 0; }
+.chat-page .app-container > * { flex: none; }
+.chat-page .app-container > .chat-messages { flex: 1 1 auto; min-height: 0; overscroll-behavior: contain; }
+.chat-page .chat-header, .chat-page .composer-wrapper { position: static; }
+.helper-tray { max-height: 34vh; overflow-y: auto; border-top: 1px solid var(--border); background-color: var(--surface); }
+.helper-tray .handbook-section { border-top: 0; }
+.handbook-chip.sending, .handbook-chip.sent { border-color: var(--brand); color: var(--brand); opacity: 1; }
+.handbook-chip.sent { background-color: var(--bubble-in); color: var(--ink); }
+/* What to do now: one highlighted sentence and, where it helps, a line she can tap */
+.next-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  padding: 0.45rem 0.8rem;
+  background-color: var(--bubble-in);
+  border-top: 1px solid var(--border);
+  border-left: 4px solid var(--brand);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+.next-text { display: block; }
+.next-card[hidden], .next-suggest[hidden] { display: none; }
+.next-suggest {
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  min-height: 2.5rem;
+  max-width: 100%;
+  padding: 0.25rem 0.8rem;
+  border: 1.5px solid var(--brand);
+  border-radius: var(--radius-full);
+  background-color: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+@media (prefers-color-scheme: dark) { .brand-badge { color: #7FD0B9; } .brand-logo-icon { stroke: #7FD0B9; } }
+@media (max-height: 560px) { .chat-page .helper-tray, .chat-page .demo-banner { display: none; } }
+.demo-banner { display: flex; align-items: center; justify-content: center; gap: 0.6rem; font-size: 0.75rem; padding: 0 0.8rem; }
+.demo-banner[hidden] { display: none; }
+.demo-logout { color: inherit; font-weight: 700; text-decoration: underline; white-space: nowrap; }
+.demo-dismiss { border: 0; background: transparent; color: inherit; font-size: 1.1rem; line-height: 1; min-width: 2rem; min-height: 2rem; cursor: pointer; }
+.header-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 0.1rem 0.5rem; }
+.header-logout { color: var(--muted); font-size: 0.75rem; text-decoration: underline; padding: 0.35rem 0.2rem; white-space: nowrap; }
+.demo-divider { align-self: stretch; text-align: center; font-size: 0.75rem; color: var(--muted); padding: 0.3rem 0.5rem; border: 1px dashed var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+/* Start here: three lines and one large button */
+.start-main { display: flex; flex-direction: column; gap: 1.2rem; padding: 2rem 1.2rem; min-height: 100vh; justify-content: center; }
+.start-title { margin: 0; color: var(--brand); font-size: 1.6rem; }
+.start-lines { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.7rem; font-size: 1.05rem; }
+.start-form { display: flex; flex-direction: column; align-items: center; gap: 0.8rem; }
+.start-button { width: 100%; min-height: 3.6rem; font: inherit; font-size: 1.15rem; font-weight: 700; border: 0; border-radius: var(--radius-lg); background: var(--brand); color: var(--brand-ink); cursor: pointer; }
+.start-skip { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 0.85rem; text-decoration: underline; min-height: 2.5rem; cursor: pointer; }
+.start-lang { text-align: center; font-size: 0.85rem; }

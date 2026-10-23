@@ -129,6 +129,8 @@ class Teacher(Base):
     class_struggles: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
     # "What do you want to get better at?": ids from content/teaching_skills.yaml, at most 2
     teaching_skills: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
+    # The one-time "Start here" screen was shown or skipped (the demo reset clears it)
+    start_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     class_profile_prompted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

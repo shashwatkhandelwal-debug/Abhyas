@@ -34,6 +34,7 @@ from backend.app.core.messages import (
 )
 from backend.app.db.models import AppUser
 from backend.app.db.session import get_db_session
+from backend.app.web.assets import sw_build_version
 
 LANG_COOKIE_MAX_AGE = 365 * 24 * 3600
 
@@ -151,3 +152,7 @@ def register_ui_globals(env: Any) -> None:
     env.globals["speaker_label"] = speaker_label
     env.globals["lang_switch"] = lang_switch
     env.globals["ui_lang"] = get_ui_lang
+    env.globals["asset_v"] = sw_build_version
+    # Hindi stays Hindi inside the JSON blobs a page embeds (the default escapes every letter to
+    # \uXXXX, which doubles their size on the wire); `<`, `>`, `&` and `'` are still escaped
+    env.policies["json.dumps_kwargs"] = {"sort_keys": True, "ensure_ascii": False}

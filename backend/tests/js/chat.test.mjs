@@ -171,6 +171,31 @@ test('a poll that left before the POST was accepted cannot hide the typing indic
   assert.equal(c.state.isPending, true, 'keeps the fast poll cadence');
 });
 
+test('a poll that comes back while the message is still on its way cannot hide the typing label', async () => {
+  const c = load({ strings: { ui_chat_typing_handbook: 'Looking in the handbook…' } });
+  let acceptPost;
+  const posted = new Promise((r) => (acceptPost = r));
+  c.net.handler = (url) =>
+    url.startsWith('/api/chat/messages')
+      ? Promise.resolve({ status: 200, ok: true, json: async () => ({ messages: [], pending: false }) })
+      : posted.then(() => ({ status: 202, ok: true, json: async () => ({ message_id: 'srv' }) }));
+  await c.handleSendText('सवाल: कुछ', 'Looking in the handbook…');
+  await c.flush(); // the immediate poll answers "nothing pending" before the POST is accepted
+  assert.equal(c.state.typing.visible, true);
+  assert.equal(c.byId['pending-text'].textContent, 'Looking in the handbook…');
+  acceptPost();
+  await c.flush();
+  assert.equal(c.state.typing.label, 'Looking in the handbook…', 'label kept through the accept');
+});
+
+test('a message that fails to send clears the typing label it started', async () => {
+  const c = load({ strings: { ui_chat_typing_handbook: 'Looking in the handbook…' } });
+  c.net.handler = async () => ({ status: 403, ok: false, json: async () => ({}) });
+  await c.handleSendText('सवाल: कुछ', 'Looking in the handbook…');
+  await c.flush();
+  assert.equal(c.state.typing.visible, false);
+});
+
 // ── audio bubble ────────────────────────────────────────────────────────────
 test('audio state machine', () => {
   const { audioNext: n } = load();
@@ -353,20 +378,50 @@ function addHandbookChips(c, chips) {
   });
 }
 
-test('handbook chip tap sends its question as typed text, once, and re-enables afterwards', async () => {
-  const c = load();
-  c.net.handler = async () => ({ status: 202, ok: true, json: async () => ({ message_id: 'srv-1' }) });
+const CHIP_STRINGS = {
+  ui_chat_msg_sending: 'Sending…',
+  ui_chat_msg_sent: 'Sent',
+  ui_chat_typing_handbook: 'Looking in the handbook…',
+};
+
+test('handbook chip tap: question bubble and typing label at once, Sending… then a tick, then back', async () => {
+  const c = load({ strings: CHIP_STRINGS });
+  c.net.handler = async (url) =>
+    url.startsWith('/api/chat/messages')
+      ? { status: 200, ok: true, json: async () => ({ pending: true, messages: [] }) }
+      : { status: 202, ok: true, json: async () => ({ message_id: 'srv-1' }) };
   const chips = addHandbookChips(c, [{ label: 'पहला प्रश्न?' }, { label: 'दूसरा प्रश्न?' }]);
   c.setupHandbookChips();
   chips[0].onclick();
   chips[1].onclick(); // a second tap while the first is sending is ignored
   assert.ok(chips.every((x) => x.disabled));
+  // before any network answer: the question bubble, the chip's "Sending…" and the typing label
+  assert.equal(chips[0].textContent, 'Sending…');
+  assert.equal(c.rows().length, 1, 'one bubble: the question');
+  assert.equal(c.byId['pending-text'].textContent, 'Looking in the handbook…');
+  assert.ok(c.byId['pending-bubble'].classList.contains('active'));
   await c.flush();
   const posts = c.fetchCalls.filter((f) => f.url === '/api/chat/text');
   assert.equal(posts.length, 1);
   assert.equal(JSON.parse(posts[0].opts.body).text, 'सवाल: पहला प्रश्न?');
-  assert.equal(c.rows().length, 1, 'one bubble: the question');
+  await c.advance(300); // accepted: a tick on the chip
+  assert.equal(chips[0].textContent, '✓ Sent');
+  assert.ok(chips[0].classList.contains('sent'));
+  assert.equal(c.byId['pending-text'].textContent, 'Looking in the handbook…', 'label survives the accept');
+  await c.advance(2000);
+  assert.equal(chips[0].textContent, 'पहला प्रश्न?');
   assert.ok(chips.every((x) => !x.disabled));
+});
+
+test('handbook chip: a send that never leaves the phone re-enables the chip and clears nothing wrongly', async () => {
+  const c = load({ strings: CHIP_STRINGS, online: false });
+  const chips = addHandbookChips(c, [{ label: 'पहला प्रश्न?' }]);
+  c.setupHandbookChips();
+  chips[0].onclick();
+  await c.advance(9000); // offline: the settle wait gives up after CHIP_SETTLE_MAX_MS
+  assert.equal(chips[0].textContent, 'पहला प्रश्न?');
+  assert.ok(!chips[0].disabled);
+  assert.equal(c.rows().length, 1, 'the question stays as a bubble with its clock');
 });
 
 test('English UI chip sends the Hindi question from data-text, not its English label', async () => {
@@ -537,79 +592,103 @@ test('translate: a rate-limit response gets its own message', async () => {
   assert.equal(c.container.querySelector('.translate-error').textContent, strings.ui_chat_translate_limit);
 });
 
-// ── one-on-one header ───────────────────────────────────────────────────────
-function withSceneHeader(c) {
-  const mk = (id, parent) => {
-    const el = new El('div');
+// ── scene bar ───────────────────────────────────────────────────────────────
+function withSceneBar(c) {
+  const mk = (id, tag = 'div') => {
+    const el = new El(tag);
     el.id = id;
-    (parent || c.sandbox.document.getElementById('chat-input').parentNode).appendChild(el);
+    c.sandbox.document.getElementById('chat-input').parentNode.appendChild(el);
     c.byId[id] = el;
     return el;
   };
   const els = {
-    header: mk('scene-header'),
-    strip: mk('rehearse-strip'),
-    child: mk('sh-child'),
-    board: mk('sh-board'),
-    turn: mk('sh-turn'),
-    steps: mk('sh-steps'),
-    cue: mk('sh-cue-text'),
+    bar: mk('scene-bar'),
+    title: mk('sb-title'),
+    turn: mk('sb-turn'),
+    board: mk('sb-board'),
+    kids: mk('sb-children'),
     end: mk('sh-end'),
+    input: c.sandbox.document.getElementById('chat-input'),
   };
-  els.header.hidden = true;
+  els.bar.hidden = true;
+  els.input.value = '';
   return els;
 }
 
 const SCENE = {
-  mode: 'one_on_one', child_id: 'ravi', child_name: 'रवि', board: '43 − 27',
-  turn_label: 'बारी 2/10', cue: 'अपना तरीका बता रहा है', cue_state: 1, turn: 2, max_turns: 10,
+  mode: 'one_on_one', child_id: 'ravi', child_name: 'रवि', title: 'रवि से आमने-सामने बात',
+  board: '43 − 27', turn_label: 'आपकी बारी 2/10', turn: 2, max_turns: 10, children: [],
+};
+const GROUP = {
+  mode: 'group', title: 'तीनों बच्चों के साथ', board: '52 − 17', turn_label: 'आपकी बारी 1/8', turn: 1, max_turns: 8,
+  children: [{ id: 'ravi', name: 'रवि' }, { id: 'priya', name: 'प्रिया' }, { id: 'aman', name: 'अमन' }],
 };
 
-test('one-on-one header: child, board, turn and engine cue are shown; the group strip is hidden', () => {
+test('one-on-one scene bar: title, board and turn; no children to switch to, nothing about the child inside', () => {
   const c = load();
-  const h = withSceneHeader(c);
+  const h = withSceneBar(c);
   c.renderSceneHeader(SCENE);
-  assert.equal(h.header.hidden, false);
-  assert.equal(h.strip.hidden, true);
-  assert.equal(h.child.textContent, 'रवि');
-  assert.ok(h.child.className.includes('ravi'));
+  assert.equal(h.bar.hidden, false);
+  assert.equal(h.title.textContent, 'रवि से आमने-सामने बात');
   assert.equal(h.board.textContent, '43 − 27');
-  assert.equal(h.turn.textContent, 'बारी 2/10');
-  assert.equal(h.cue.textContent, 'अपना तरीका बता रहा है');
-  assert.equal(h.steps.dataset.filled, '2'); // cue_state 1 -> two of four steps
-  c.renderSceneHeader({ ...SCENE, cue_state: -1, cue: 'पहले उलझन पहचानिए' });
-  assert.equal(h.steps.dataset.filled, '0'); // diagnosing: nothing filled yet
-  c.renderSceneHeader({ ...SCENE, cue_state: 3 });
-  assert.equal(h.steps.dataset.filled, '4');
+  assert.equal(h.turn.textContent, 'आपकी बारी 2/10');
+  assert.equal(h.kids.hidden, true);
+  assert.equal(h.kids.children.length, 0);
 });
 
-test('one-on-one header disappears when there is no one-on-one scene', () => {
+test('group scene bar lists the three children; a name tap puts the name in the input', () => {
   const c = load();
-  const h = withSceneHeader(c);
+  const h = withSceneBar(c);
+  c.renderSceneHeader(GROUP);
+  assert.equal(h.kids.hidden, false);
+  assert.deepEqual(h.kids.children.map((k) => k.textContent), ['रवि', 'प्रिया', 'अमन']);
+  c.addressChild('प्रिया');
+  assert.equal(h.input.value, 'प्रिया, ');
+  c.addressChild('प्रिया'); // already addressed: not doubled
+  assert.equal(h.input.value, 'प्रिया, ');
+  h.input.value = 'तुमने कैसे किया?';
+  c.addressChild('अमन');
+  assert.equal(h.input.value, 'अमन, तुमने कैसे किया?');
+  c.renderSceneHeader(SCENE); // a one-on-one scene follows: the children go away
+  assert.equal(h.kids.hidden, true);
+  assert.equal(h.kids.children.length, 0);
+});
+
+test('scene bar disappears when no scene is running', () => {
+  const c = load();
+  const h = withSceneBar(c);
   c.renderSceneHeader(SCENE);
   c.renderSceneHeader(null);
-  assert.equal(h.header.hidden, true);
-  assert.equal(h.strip.hidden, false);
+  assert.equal(h.bar.hidden, true);
 });
 
-test('the poll drives the header; typing and message handling are untouched', async () => {
+test('the poll drives the scene bar and the step header; typing and message handling are untouched', async () => {
   const c = load();
-  const h = withSceneHeader(c);
+  const h = withSceneBar(c);
+  const title = c.sandbox.document.createElement('span');
+  title.id = 'header-move-title';
+  c.container.parentNode.appendChild(title);
+  const step = c.sandbox.document.createElement('span');
+  step.id = 'header-step';
+  c.container.parentNode.appendChild(step);
+  const view = { move_title: 'हासिल वाला घटाव: बंडल खोलकर', step_label: 'चरण 4 / 7: अभ्यास' };
   c.net.handler = async () => ({
     status: 200, ok: true,
-    json: async () => ({ messages: [], pending: false, scene: SCENE, server_time: new Date(c.clock.now).toISOString() }),
+    json: async () => ({ messages: [], pending: false, scene: SCENE, view, server_time: new Date(c.clock.now).toISOString() }),
   });
   await c.pollMessages();
-  assert.equal(h.header.hidden, false);
-  assert.equal(h.cue.textContent, SCENE.cue);
+  assert.equal(h.bar.hidden, false);
+  assert.equal(h.title.textContent, SCENE.title);
+  assert.equal(title.textContent, view.move_title);
+  assert.equal(step.textContent, view.step_label);
   c.net.handler = async () => ({ status: 200, ok: true, json: async () => ({ messages: [], pending: false, scene: null }) });
   await c.pollMessages();
-  assert.equal(h.header.hidden, true);
+  assert.equal(h.bar.hidden, true);
 });
 
 test('end-practice button asks for confirmation, then sends the stop word as a message', async () => {
   const c = load();
-  const h = withSceneHeader(c);
+  const h = withSceneBar(c);
   c.setupSceneEnd();
   const sent = [];
   c.net.handler = async (url, opts) => {
@@ -626,6 +705,86 @@ test('end-practice button asks for confirmation, then sends the stop word as a m
   const textPosts = c.fetchCalls.filter((f) => String(f.url).includes('/chat/text'));
   assert.equal(textPosts.length, 1);
   assert.equal(JSON.parse(textPosts[0].opts.body).text, c.t('ui_chat_scene_stop_word'));
+});
+
+// ── what to do now ──────────────────────────────────────────────────────────
+function withNextCard(c) {
+  const mk = (id, tag = 'div') => {
+    const el = new El(tag);
+    el.id = id;
+    c.sandbox.document.getElementById('chat-input').parentNode.appendChild(el);
+    c.byId[id] = el;
+    return el;
+  };
+  const els = { card: mk('next-card'), text: mk('next-text', 'span'), suggest: mk('next-suggest', 'button') };
+  els.card.hidden = true;
+  c.sandbox.document.getElementById('chat-input').value = '';
+  return els;
+}
+
+const HINT = { key: 'hint_scene_one', text: 'रवि से पूछें कि उसने यह कैसे किया।', suggest: 'रवि, तुमने 43 में से 27 कैसे घटाया?' };
+
+test('the what-to-do line shows its text and a suggested line', () => {
+  const c = load();
+  const n = withNextCard(c);
+  c.renderHint(HINT);
+  assert.equal(n.card.hidden, false);
+  assert.equal(n.text.textContent, HINT.text);
+  assert.equal(n.suggest.hidden, false);
+  assert.equal(n.suggest.textContent, HINT.suggest);
+  c.renderHint({ key: 'hint_learn', text: 'इसे पढ़ें', suggest: null });
+  assert.equal(n.suggest.hidden, true);
+  c.renderHint(null);
+  assert.equal(n.card.hidden, true);
+});
+
+test('tapping the suggested line fills the input and sends nothing', async () => {
+  const c = load();
+  const n = withNextCard(c);
+  c.renderHint(HINT);
+  c.documentListeners.click({ target: n.suggest });
+  assert.equal(c.sandbox.document.getElementById('chat-input').value, HINT.suggest);
+  await c.flush();
+  assert.equal(c.fetchCalls.filter((f) => f.url === '/api/chat/text').length, 0);
+});
+
+test('once she has sent something the line stays hidden until the guidance changes', async () => {
+  const c = load();
+  const n = withNextCard(c);
+  c.net.handler = async () => ({ status: 202, ok: true, json: async () => ({ message_id: 'srv' }) });
+  c.renderHint(HINT);
+  await c.handleSendText('रवि, तुमने कैसे किया?');
+  assert.equal(n.card.hidden, true, 'hidden at once on send');
+  c.renderHint(HINT); // the next poll still says the same thing
+  assert.equal(n.card.hidden, true, 'stays hidden for the same key');
+  c.renderHint({ key: 'hint_feedback', text: 'सुझाव पढ़ें।', suggest: null });
+  assert.equal(n.card.hidden, false, 'a new step shows its own line');
+});
+
+test('a button tap or a voice note also counts as sending', async () => {
+  const c = load();
+  const n = withNextCard(c);
+  c.net.handler = async () => ({ status: 202, ok: true, json: async () => ({ message_id: 'srv' }) });
+  c.renderHint({ key: 'hint_learn', text: 'इसे पढ़ें', suggest: null });
+  c.hintSent();
+  assert.equal(n.card.hidden, true);
+  c.renderHint({ key: 'hint_learn', text: 'इसे पढ़ें', suggest: null });
+  assert.equal(n.card.hidden, true);
+});
+
+test('the poll carries the line: shown, then replaced by the next step\'s', async () => {
+  const c = load();
+  const n = withNextCard(c);
+  const reply = (hint) => async () => ({
+    status: 200, ok: true,
+    json: async () => ({ messages: [], pending: false, scene: null, view: { move_title: 'x', step_label: 'y', hint } }),
+  });
+  c.net.handler = reply(HINT);
+  await c.pollMessages();
+  assert.equal(n.text.textContent, HINT.text);
+  c.net.handler = reply(null);
+  await c.pollMessages();
+  assert.equal(n.card.hidden, true);
 });
 
 // ── failure paths: each gives a specific message with a next step ───────────

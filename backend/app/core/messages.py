@@ -224,6 +224,21 @@ def get_message(key: str, address_form: str = "f", lang: str | None = None, **kw
     return get_catalog(lang=DEFAULT_LANG).get(key, address_form=address_form, **kwargs)
 
 
+def localize_buttons(buttons: Any, address_form: str = "f") -> Any:
+    """Button titles in the UI language. A button's id is its catalog key, so a message stored in
+    Hindi shows English buttons once she switches (the stored text is left as it is)."""
+    code = get_ui_lang()
+    if not isinstance(buttons, list) or code == DEFAULT_LANG:
+        return buttons
+    catalog = get_catalog(lang=code)
+    return [
+        {**b, "title_hi": get_message(b["id"], address_form)}
+        if isinstance(b, dict) and isinstance(b.get("id"), str) and catalog.has(b["id"])
+        else b
+        for b in buttons
+    ]
+
+
 def texts_for_lang(prefix: str, lang: str | None = None) -> dict[str, str]:
     """`prefix` texts for the UI strings JSON: Hindi base overlaid with the requested language."""
     code = get_ui_lang() if lang is None else normalize_lang(lang)
@@ -251,6 +266,7 @@ __all__ = [
     "normalize_lang",
     "reset_ui_lang",
     "set_ui_lang",
+    "localize_buttons",
     "texts_for_lang",
     "MessageCatalogError",
     "MessageCatalog",

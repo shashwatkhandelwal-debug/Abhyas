@@ -22,22 +22,22 @@ ready_first_move: {text: "Your first move is: {move_title}. Let's begin!"}
 learn_intro: {text: "This week's move: {move_title}. First listen to this 2-minute voice note. The key points are written below:"}
 explain_back_prompt: {text: "Now, in 1 minute, tell me in your own words: what is the most important thing in this move? Send it by voice or by typing."}
 explain_back_reply: {text: "Thank you! You mentioned {covered} of {total} key points."}
-explain_back_missing: {text: "One more thing to remember: {point}"}
-explain_back_misconception: {text: "Please note: {note}"}
+explain_back_missing: {text: "One more thing to remember:\n{point}"}
+explain_back_misconception: {text: "Please note:\n{note}"}
 fidelity_reply_summary: {text: "Thank you! You mentioned {n_covered} of {n_total} key points."}
 fidelity_reply_missing: {text: "One more thing to remember: {text}"}
 fidelity_reply_misconception: {text: "Please note: {text}"}
 model_offer: {text: "Would you like to hear how another teacher does this move with these same three children? (about 1 minute)"}
 model_header: {text: "Model practice:"}
-rehearse_intro: {text: "{scene_intro} When you are ready, start talking to the children. Address a child by name. Say 'stop' to finish."}
+rehearse_intro: {text: "Scene (in Hindi, as the children hear it):\n{scene_intro}\n\nWhen you are ready, start talking to the children. Address a child by name. Say 'stop' to finish."}
 child_silent: {text: "({name} is quiet and looking down.)"}
 thinking: {text: "The children are thinking…"}
 scene_turn_limit: {text: "The practice time is over."}
 scene_all_correct: {text: "Wow! All three children understood."}
 scene_ended_neutral: {text: "Let's look at the feedback now."}
 feedback_header: {text: "Suggestions on your practice:"}
-feedback_body: {text: "👍 {strength}\n🔁 {change}\n🗣️ Next time, try saying: \"{exact_words}\""}
-feedback_trajectory: {text: "Change in the children: {trajectory}"}
+feedback_body: {text: "👍 {strength}\n🔁 {change}\n🗣️ Next time, try saying:\n\"{exact_words}\""}
+feedback_trajectory: {text: "Change in the children:\n{trajectory}"}
 coach_low_conf_prefix: {text: "(An expert will also look at this suggestion.)"}
 realism_prompt: {text: "Did these children feel like real classroom children? Choose from 1 (not at all) to 5 (exactly like them)."}
 rate_training_prompt: {text: "How useful was this week's practice for your work? Tell us any number from 1 (not at all) to 5 (very useful), typed or spoken."}
@@ -52,8 +52,8 @@ rate_training_language_words: {text: "language, change language, english, hindi,
 retry_limit: {text: "You have completed this week's 3 practices. Now it's time to try it in class!"}
 try_in_class: {text: "Now try this move in your class. Ask a fellow teacher to watch for 5 minutes and fill in this list:"}
 try_in_class_reflect: {text: "Or answer these 2 questions yourself:"}
-peer_item: {text: "Peer checklist ({i}/{n}): {item}"}
-reflect_q: {text: "Question {i}: {question}"}
+peer_item: {text: "Peer checklist ({i}/{n}):\n{item}"}
+reflect_q: {text: "Question {i}:\n{question}"}
 week_done: {text: "Well done, {name}! This week you reached '{level_name}'. Next move: {next_move_title}."}
 evidence_level_1: {text: "Practised"}
 evidence_level_2: {text: "Explained it myself"}
@@ -69,14 +69,14 @@ ask_clarify_generic: {text: "Please ask your question in a little more detail."}
 ask_source_line: {text: "Source: {source}{page_part}"}
 ask_source_citation: {text: "Source: {source}, page {page}"}
 ask_source_page_abbrev: {text: "p."}
-ask_try_this_week: {text: "Try this week: {tip}"}
-ask_escalated: {text: "Good question. I will ask your ARP and get you a reliable answer."}
-learn_reference: {text: "What the official document says on this topic (summary): {summary}\n{citation}"}
-ask_not_in_sources: {text: "I could not find the answer to this question in my official documents, so I won't guess. I will ask your ARP and get back to you."}
+ask_try_this_week: {text: "Try this week:\n{tip}"}
+ask_escalated: {text: "Good question. I do not have a reliable answer, so I have put it in your ARP's review list; they will see it there."}
+learn_reference: {text: "What the official document says on this topic (summary):\n{summary}\n{citation}"}
+ask_not_in_sources: {text: "I could not find the answer to this in my official documents, so I will not guess. I have put your question in your ARP's review list; they will see it there."}
 ask_out_of_scope: {text: "Sorry, I can only help with Class 1–3 teaching and classroom questions."}
 ask_admin: {text: "This information will come from your BEO or ARP office. I have passed your question on to your ARP."}
 ask_resume: {text: "Let's carry on from where we were."}
-followup_question: {text: "{name}, you had asked about '{topic}'. Did the suggestion help?"}
+followup_question: {text: "{name}, you had asked a question:\n«{topic}»\nDid the suggestion help?"}
 followup_try_in_class: {text: "{name}, did you try '{move_title}' in class? Choose an option to share your experience:"}
 arp_answer_delivered: {text: "Your ARP has sent the answer to your question: {answer}"}
 help_menu: {text: "What would you like to do?"}
@@ -139,8 +139,6 @@ ui_ladder_level_5: {text: "Children improved"}
 ui_board_prefix: {text: "Board: "}
 ui_time_just_now: {text: "just now"}
 ui_default_teacher_name: {text: "Teacher"}
-ui_default_move_title: {text: "Two-digit subtraction with regrouping"}
-ui_default_step_chip: {text: "Step 4/7 · Practice"}
 ui_chat_msg_sending: {text: "Sending…"}
 ui_chat_msg_sent: {text: "Sent"}
 ui_chat_msg_failed: {text: "Could not send — tap to send again"}
@@ -348,17 +346,12 @@ ui_arp_move_colon: {text: "Move:"}
 ui_arp_level: {text: "Level"}
 ui_arp_score_colon: {text: "Score:"}
 ui_arp_score: {text: "Score"}
-ui_chat_type_instead_hint: {text: "Type instead of speaking (sample questions):"}
-ui_chat_input_placeholder: {text: "Type here or hold the mic and speak…"}
+ui_chat_input_placeholder: {text: "Type or speak here…"}
 ui_chat_record_hold: {text: "Record by voice (hold)"}
 ui_chat_record: {text: "Record by voice"}
 ui_chat_menu_progress: {text: "Progress"}
 ui_chat_children_thinking: {text: "The children are thinking"}
-ui_chat_sample_chips: {text: "Sample answer chips"}
-ui_chat_child_priya_title: {text: "Priya (Class 2)"}
 ui_chat_menu_help: {text: "Help & instructions"}
-ui_chat_child_ravi_title: {text: "Ravi (Class 2)"}
-ui_chat_child_aman_title: {text: "Aman (Class 2)"}
 ui_chat_write_message: {text: "Write a message"}
 ui_chat_send: {text: "Send message"}
 ui_chat_cancel_rec: {text: "Cancel ✕"}
@@ -556,23 +549,18 @@ rehearse_one_start: {text: "Now talk to {child}. First ask for their method, the
 scene_all_correct_one: {text: "Wow! {child} used the right method on the new problem too."}
 coach_diag_change_wrong: {text: "Next time, ask the child and work out what the confusion was: {label}."}
 coach_diag_change_partly: {text: "Next time, pin the confusion down more exactly: {label}."}
-ui_scene_one_title: {text: "1-1 with {child}"}
-ui_scene_turn: {text: "Turn {turn}/{max}"}
+ui_scene_one_title: {text: "One-on-one with {child}"}
+ui_scene_turn: {text: "Your turn {turn} of {max}"}
 ui_chat_scene_end: {text: "End practice"}
 ui_chat_scene_end_confirm: {text: "End the practice now?"}
-ui_scene_cue_diagnose: {text: "First, spot the confusion"}
-ui_scene_cue_0: {text: "Confused"}
-ui_scene_cue_1: {text: "Explaining their method"}
-ui_scene_cue_2: {text: "Half understood"}
-ui_scene_cue_3: {text: "Understood: give a new problem"}
-coach_quote_suffix: {text: "Your words: «{quote}»"}
+coach_quote_suffix: {text: "Your words:\n«{quote}»"}
 ui_chat_scene_stop_word: {text: "stop"}
-coach_source_suggestion: {text: "A suggestion from the sources: {suggestion}"}
+coach_source_suggestion: {text: "A suggestion from the sources:\n{suggestion}"}
 
 # ── Modules ───────────────────────────────────────────────────────────────
 module_check_prompt: {text: "Last check: in \"{move_title}\", if a child makes a mistake, what will you do first, and why? Say it in your own words."}
 module_check_reply_pass: {text: "Very good, you named the main steps of this method."}
-module_check_reply_more: {text: "Good try. One more thing to remember: {point}"}
+module_check_reply_more: {text: "Good try. One more thing to remember:\n{point}"}
 module_check_done_pass: {text: "The module check is done. Shall we move on?"}
 module_check_done_more: {text: "Your check is saved. You can practise again if you like, or move on."}
 ui_chat_menu_modules: {text: "Modules"}
@@ -625,7 +613,7 @@ realism_prompt_one_on_one: {text: "Did {child} feel like a real classroom child?
 scene_too_short: {text: "So far you have spoken {done} time(s). I need at least {needed} to give useful advice, so {more} more. Continue the scene, or skip?"}
 scene_resumed: {text: "Okay, the scene continues from where you stopped. Say your next line."}
 btn_scene_continue: {text: "Continue the scene"}
-ui_demo_account_banner: {text: "Demo account - chat resets when you log in or out"}
+ui_demo_account_banner: {text: "Demo: chat resets on log in/out"}
 
 # ── "My class" ──────────────────────────────────────────────────────────────────
 class_ask: {text: "Where is your class struggling? Say it or type it, or send a number from the list below (optional):\n{list}"}
@@ -678,11 +666,11 @@ rehearse_child_focus: {text: "{child} makes the kind of mistake behind your clas
 rehearse_group_focus: {text: "This time {child} makes the kind of mistake behind your class's struggle ({label})."}
 coach_class_link: {text: "Your class's struggle ({label}) is the same as {child}'s mistake in this practice. In class too, ask the child for their way first, then show it with real objects."}
 learn_tip_focus: {text: "Trying this method in class"}
-learn_handbook_tip: {text: "A tip from the handbook: {tip}\n{citation}"}
+learn_handbook_tip: {text: "A tip from the handbook:\n{tip}\n{citation}"}
 ui_handbook_title: {text: "Ask the handbook"}
 ui_handbook_hint: {text: "Tap a question; the answer comes with its source and page."}
 handbook_source_label: {text: "From the FLN training package"}
-handbook_fallback: {text: "The service that writes answers is not running right now. The handbook passage on this topic (summary): {summary}\n{citation}"}
+handbook_fallback: {text: "The service that writes answers is not running right now. The handbook passage on this topic (summary):\n{summary}\n{citation}"}
 skill_ask: {text: "What would you like to get better at in your teaching? Say or type it, or give a number from the list (optional, at most {max}):\n{list}"}
 skill_confirm: {text: "I understood:\n{items}\nIs that right?"}
 skill_saved: {text: "Noted. The coach will put these first in its feedback:\n{items}\nYou can change this any time on the My class page."}
@@ -710,3 +698,97 @@ ui_trainer_skills_desc: {text: "The skill teachers chose (consenting teachers on
 stt_unavailable_type_please: {text: "The voice service is not available right now. Please type your message."}
 ui_login_shared_note: {text: "Demo accounts are shared: pick one not in use. Chats reset on login and logout."}
 ui_login_demo_teacher_experienced: {text: "Teacher (experienced): teacher.demo3"}
+
+# ── Chat clarity part 1: handbook chips, back to the scene ──
+ui_chat_typing_handbook: {text: "Looking in the handbook…"}
+ask_resume_scene_one: {text: "Back to {child}: say your next line."}
+ask_resume_scene_group: {text: "Back to the children: say your next line."}
+
+# ── Chat clarity part 2: header, step, scene bar ──
+ui_scene_group_title: {text: "With the three children"}
+ui_scene_board: {text: "Board"}
+ui_scene_pick_child: {text: "Tap a name to speak to that child"}
+ui_step_label: {text: "Step {n} of {total}: {name}"}
+ui_step_1: {text: "Learn"}
+ui_step_2: {text: "Say it in your words"}
+ui_step_3: {text: "Hear a model"}
+ui_step_4: {text: "Practice"}
+ui_step_5: {text: "Suggestions"}
+ui_step_6: {text: "Try in class"}
+ui_step_7: {text: "Reflect"}
+ui_step_done: {text: "This week's practice is complete"}
+ui_step_setup: {text: "Getting started"}
+move_title_NUM_SUB_REGROUP_BUNDLES: {text: "Subtraction with regrouping: opening a bundle"}
+move_title_NUM_ADD_CARRY_BUNDLES: {text: "Addition with carrying: making a bundle of 10 sticks"}
+move_title_NUM_PLACE_VALUE_BUNDLES: {text: "Place value: making a number from bundles and loose sticks"}
+move_title_LIT_MATRA_BLENDING: {text: "Words with matras: blending letter sounds to read"}
+
+# ── Chat clarity part 3: what to do now ──
+hint_start: {text: "Say or type hello to begin."}
+hint_consent: {text: "Tap '{agree}' to continue, or '{more}' to read what we keep."}
+hint_join_code: {text: "Type the code your ARP gave you, or type 'no' if you do not have one."}
+hint_name: {text: "Tell me your name, by voice or by typing."}
+hint_address: {text: "Tap a button below to choose how you would like to be addressed."}
+hint_experience: {text: "Tell me how many years you have been teaching, for example '2-5 years'."}
+hint_classes: {text: "Which class do you teach: 1, 2 or 3? Type it."}
+hint_share: {text: "Tap '{yes}' or '{no}'. You can change this any time."}
+hint_placement: {text: "Talk to Ravi as you would in class, by voice or typing. It is not a test."}
+hint_learn: {text: "Read this, then tap '{understood}'."}
+hint_explain: {text: "Say the most important point of this move in your own words, or tap '{skip}'."}
+hint_model: {text: "Tap '{listen}' to hear another teacher do this move, or '{skip}'."}
+hint_choose_mode: {text: "Choose who to practise with: one child (best) or all three."}
+hint_choose_child: {text: "Pick the child you want to talk to."}
+hint_diagnose: {text: "First say, in your own words, what mistake {child} made. Or tap '{skip}'."}
+hint_scene_one: {text: "Ask {child} how they did it. Tap the example or say your own."}
+hint_scene_group: {text: "Say a child's name, then your question. Tap a name above to start."}
+hint_retry_one: {text: "Try again. This time ask {child} to explain first, then use something concrete."}
+hint_retry_group: {text: "Try again. This time ask a child to explain first."}
+hint_feedback: {text: "Read the suggestions. Tap '{retry}' to practise again, or '{continue}' to go on."}
+hint_too_short: {text: "Tap '{scene_continue}' to carry on with the scene, or '{skip}'."}
+hint_module_check: {text: "Answer the last question in your own words, or tap '{continue}'."}
+hint_try: {text: "Try this in class, then tap '{peer}' or '{myself}'. Not yet? Tap '{later}'."}
+hint_peer: {text: "Tap '{yes}' or '{no}' for each point on the checklist."}
+hint_self: {text: "Answer the question in a sentence or two, by voice or typing."}
+hint_done: {text: "This week's practice is done. Tap '{next}' for the next move, or '{progress}' for your progress."}
+hint_rating: {text: "Tap a number to say how useful this training was, or tap '{skip}'."}
+hint_rating_comment: {text: "Write one line about it, or tap '{skip}'."}
+hint_class_ask: {text: "Say where the children in your class get stuck, or send a number from the list. Optional."}
+hint_skill_ask: {text: "Say what you want to get better at, or send a number from the list. Optional."}
+hint_confirm: {text: "Tap '{yes}' if that is right, or '{no}' to tell me again."}
+hint_delete: {text: "Tap '{yes}' to delete all your data, or '{no}' to keep it."}
+hint_ask_more: {text: "Say a little more about your question so the right page can be found."}
+hint_start_suggest: {text: "Namaste"}
+hint_join_code_suggest: {text: "no"}
+hint_classes_suggest: {text: "2"}
+hint_placement_suggest: {text: "Ravi, how did you get 45?"}
+hint_example_sub: {text: "{child}, how did you take {b} from {a}?"}
+hint_example_add: {text: "{child}, how did you add {a} and {b}?"}
+hint_example_place_value: {text: "{child}, how did you make this number?"}
+hint_example_read: {text: "{child}, how did you read this word?"}
+
+# ── Chat clarity part 3 (cont.): the scene line after her first turn ──
+hint_scene_one_next: {text: "Keep going with {child}: explain with something concrete, then give a new problem."}
+hint_scene_group_next: {text: "Keep going: ask the children to explain, then use something concrete."}
+hint_example_concrete: {text: "{child}, let us make {a} with bundles of ten and loose sticks."}
+
+# ── Chat clarity part 4: demo helpers ──
+ui_sample_title: {text: "Try a sample line: tap to send"}
+ui_demo_dismiss: {text: "Dismiss"}
+ui_demo_divider: {text: "Demo starts here: this chat was prepared so you can continue from here."}
+
+# ── Chat clarity (cont.): experience suggestion ──
+hint_experience_suggest: {text: "2-5 years"}
+
+# ── Chat clarity part 6: Start here ──
+ui_start_what: {text: "Abhyas is your practice partner: before you teach, you practise by talking to simulated children."}
+ui_start_do: {text: "You do: about 15 minutes, speaking or typing."}
+ui_start_get: {text: "You get: feedback on what you said, and one thing to try."}
+ui_start_button: {text: "Start your first practice"}
+ui_start_skip: {text: "Skip"}
+
+# ── Chat clarity part 7: what happened in the scene ──
+coach_outcome_told: {text: "You told {child} the answer, so they repeated it without understanding. Try asking them to explain first."}
+coach_outcome_relapse: {text: "You gave a new problem after telling the answer, so {child} went back to the old mistake. Telling the answer does not teach the method."}
+coach_outcome_checked: {text: "You checked on a new problem, and {child} solved it by explaining the method: it stuck."}
+coach_outcome_concrete: {text: "You used something concrete (bundles and sticks), so {child} could see what to do where."}
+coach_outcome_explain: {text: "You asked {child} to explain, so their own method came out."}

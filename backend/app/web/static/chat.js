@@ -24,6 +24,7 @@ const TYPING_TIMEOUT_MS = 60000; // give up the typing indicator, show the Hindi
 const COLD_START_HINT_MS = 5000; // no response for this long -> "server is waking up"
 const AUDIO_WAIT_MS = 25000; // how long a spoken reply may wait for its audio before text-only
 const CHIP_CONFIRM_MS = 1400; // how long a tapped chip shows its inline ✓
+const FOLLOW_UP_POLL_MS = 1200; // one more poll after a reply, so the step line catches up
 const MAX_AUTO_RETRIES = 3; // network/5xx attempts before a bubble shows the red "!"
 const BACKOFF_STEPS = [2000, 4000, 8000, 16000, 30000];
 
@@ -201,15 +202,22 @@ function nextMsgState(cur, ev) {
 
 // Typing indicator. `replied` stops the indicator coming back for the audio-rendering tail
 // of a turn whose text already arrived (server `pending` stays true until TTS is done).
-const TYPING_OFF = Object.freeze({ visible: false, timedOut: false, replied: false, speaker: null, since: 0 });
+const TYPING_OFF = Object.freeze({ visible: false, timedOut: false, replied: false, speaker: null, label: null, since: 0 });
 
 function typingNext(st, ev) {
   switch (ev.type) {
-    case 'accepted': // a POST was accepted
-      return { visible: true, timedOut: false, replied: false, speaker: ev.speaker || null, since: ev.now };
+    case 'accepted': // a POST was accepted, or the teacher just tapped send (`label` = what we are doing)
+      return {
+        visible: true,
+        timedOut: false,
+        replied: false,
+        speaker: ev.speaker || null,
+        label: ev.label || (st.visible ? st.label : null),
+        since: ev.now,
+      };
     case 'pending': // poll says the server is still working
       if (st.visible || st.replied) return st;
-      return { visible: true, timedOut: false, replied: false, speaker: st.speaker, since: ev.now };
+      return { visible: true, timedOut: false, replied: false, speaker: st.speaker, label: null, since: ev.now };
     case 'reply': // a new bot bubble rendered
       return st.visible || !st.replied ? { ...TYPING_OFF, replied: true } : st;
     case 'idle': // poll says nothing is pending
@@ -350,6 +358,7 @@ const state = {
   lastAudioPollAt: null,
   lastMessageCreated: null,
   msgStates: new Map(), // client_msg_id -> sending | sent | failed
+  hintDone: null, // key of the what-to-do line she has already acted on
   failedIds: new Map(), // client_msg_id -> 'network' | 'rejected'
   rows: new Map(), // client_msg_id | server id -> bubble row element
   typing: TYPING_OFF,
@@ -444,6 +453,7 @@ function updateMessageStatus(clientMsgId) {
 function failMessage(clientMsgId, reason) {
   state.failedIds.set(clientMsgId, reason);
   setMessageState(clientMsgId, 'failed');
+  typingEvent({ type: 'idle' }); // nothing is coming for a message that never arrived
   setMicPhase(clientMsgId, 'failed');
   flashStatus(failureNoticeText(reason));
 }
@@ -504,11 +514,8 @@ function renderTyping() {
     bubble.className = `pending-bubble${st.visible ? ' active' : ''}${st.timedOut ? ' timeout' : ''}`;
     bubble.setAttribute('aria-busy', st.visible && !st.timedOut ? 'true' : 'false');
   }
-  if (label) label.textContent = st.timedOut ? t('ui_chat_typing_timeout') : typingLabel(st.speaker);
-  if (st.visible) {
-    const container = document.getElementById('chat-messages');
-    if (container) container.scrollTop = container.scrollHeight;
-  }
+  if (label) label.textContent = st.timedOut ? t('ui_chat_typing_timeout') : st.label || typingLabel(st.speaker);
+  if (st.visible) scrollChatToEnd();
   if (st.visible && !st.timedOut && !state.typingTimer) {
     state.typingTimer = setInterval(() => typingEvent({ type: 'tick' }), 1000);
   } else if ((!st.visible || st.timedOut) && state.typingTimer) {
@@ -648,37 +655,98 @@ async function drainOutbox() {
   if (wakeAt) setTimeout(drainOutbox, Math.max(0, wakeAt - Date.now()) + 50);
 }
 
+// ── Scrolling: the thread is the one scrolling part of the page ──────────────
+function scrollChatToEnd() {
+  const container = document.getElementById('chat-messages');
+  if (container) container.scrollTop = container.scrollHeight;
+}
+
+// After new bubbles: show their end, unless that would push the first one's top out of sight
+// (a long answer is read from its first line).
+function scrollChatToNew(firstRow) {
+  const container = document.getElementById('chat-messages');
+  if (!container) return;
+  container.scrollTop = container.scrollHeight;
+  if (!firstRow || typeof firstRow.getBoundingClientRect !== 'function') return;
+  const offset = firstRow.getBoundingClientRect().top - container.getBoundingClientRect().top;
+  if (offset < 0) container.scrollTop += offset - 8;
+}
+
 // ── Polling Loop (§7.3) ─────────────────────────────────────────────────────
-// One-on-one header: every field comes from the server (the child state is the rule engine's)
+// Scene bar: every field comes from the server (title, turn, board, who can be addressed)
+function addressChild(name) {
+  const input = document.getElementById('chat-input');
+  if (!input || !name) return;
+  if (!input.value.startsWith(name)) input.value = `${name}, ${input.value}`;
+  if (input.focus) input.focus();
+}
+
 function renderSceneHeader(sc) {
-  const header = document.getElementById('scene-header');
-  const strip = document.getElementById('rehearse-strip');
-  if (!header) return;
-  if (!sc) {
-    header.hidden = true;
-    if (strip) strip.hidden = false;
-    return;
-  }
-  header.hidden = false;
-  if (strip) strip.hidden = true;
-  const childEl = document.getElementById('sh-child');
-  if (childEl) {
-    childEl.textContent = sc.child_name;
-    childEl.className = `child-pill active ${sc.child_id}`;
-  }
+  const bar = document.getElementById('scene-bar');
+  if (!bar) return;
+  bar.hidden = !sc;
+  if (!sc) return;
   const set = (id, text) => {
     const el = document.getElementById(id);
     if (el && el.textContent !== text) el.textContent = text;
   };
-  set('sh-board', sc.board);
-  set('sh-turn', sc.turn_label);
-  const cueEl = document.getElementById('sh-cue-text');
-  if (cueEl && cueEl.textContent !== sc.cue) {
-    cueEl.textContent = sc.cue;
-    announce(sc.cue);
+  set('sb-title', sc.title);
+  set('sb-turn', sc.turn_label);
+  set('sb-board', sc.board);
+  const kids = document.getElementById('sb-children');
+  if (!kids) return;
+  const list = sc.children || [];
+  const ids = list.map((c) => c.id).join(',');
+  if (kids.dataset.ids !== ids) {
+    kids.dataset.ids = ids;
+    while (kids.children.length) kids.removeChild(kids.children[0]);
+    list.forEach((c) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `child-pill ${c.id}`;
+      b.setAttribute('data-name', c.name);
+      b.textContent = c.name;
+      kids.appendChild(b);
+    });
   }
-  const steps = document.getElementById('sh-steps');
-  if (steps) steps.dataset.filled = String(sc.cue_state >= 0 ? sc.cue_state + 1 : 0);
+  kids.hidden = list.length === 0;
+}
+
+// What to do now: hidden once she has sent something in this step (until the guidance changes)
+function renderHint(h) {
+  const card = document.getElementById('next-card');
+  if (!card) return;
+  if (!h || state.hintDone === h.key) {
+    card.hidden = true;
+    return;
+  }
+  card.hidden = false;
+  card.setAttribute('data-key', h.key);
+  const text = document.getElementById('next-text');
+  if (text && text.textContent !== h.text) text.textContent = h.text;
+  const suggest = document.getElementById('next-suggest');
+  if (suggest) {
+    suggest.hidden = !h.suggest;
+    if (suggest.textContent !== (h.suggest || '')) suggest.textContent = h.suggest || '';
+  }
+}
+
+function hintSent() {
+  const card = document.getElementById('next-card');
+  if (!card || card.hidden) return;
+  state.hintDone = card.getAttribute('data-key');
+  card.hidden = true;
+}
+
+// Header: the move title and "Step 4 of 7: Practice" follow the weekly loop
+function applyView(view) {
+  if (!view) return;
+  renderHint(view.hint);
+  renderSamples(view.samples);
+  const title = document.getElementById('header-move-title');
+  if (title && title.textContent !== view.move_title) title.textContent = view.move_title;
+  const step = document.getElementById('header-step');
+  if (step && step.textContent !== view.step_label) step.textContent = view.step_label;
 }
 
 function setupSceneEnd() {
@@ -720,15 +788,20 @@ async function pollMessages() {
         const skew = Date.parse(data.server_time) - Date.now();
         if (!Number.isNaN(skew)) state.serverSkewMs = skew;
       }
-      // A poll that left before the last POST was accepted cannot say whether that turn is done
-      const stale = startTime <= state.lastAcceptedAt;
+      // A poll that left before the last POST was accepted cannot say whether that turn is done,
+      // and neither can any poll while a message is still on its way
+      const stale = startTime <= state.lastAcceptedAt || [...state.msgStates.values()].includes(MSG_SENDING);
       state.isPending = data.pending || stale;
 
       let gotReply = false;
+      let firstNewReply = null;
       if (data.messages && data.messages.length > 0) {
         for (const msg of data.messages) {
           const isNew = renderMessage(msg);
-          if (isNew && msg.direction === 'out') gotReply = true;
+          if (isNew && msg.direction === 'out') {
+            gotReply = true;
+            firstNewReply = firstNewReply || state.rows.get(msg.id) || null;
+          }
           if (!state.lastMessageCreated || (msg.created_at && msg.created_at >= state.lastMessageCreated)) {
             state.lastMessageId = msg.id;
             state.lastMessageCreated = msg.created_at;
@@ -736,9 +809,15 @@ async function pollMessages() {
         }
         await cacheMessages(data.messages);
       }
-      if (gotReply) typingEvent({ type: 'reply' });
+      if (gotReply) {
+        typingEvent({ type: 'reply' });
+        scrollChatToNew(firstNewReply);
+        // The step (header, what-to-do line) may be saved just after the reply: look again soon
+        setTimeout(pollMessages, FOLLOW_UP_POLL_MS);
+      }
       if (!stale) typingEvent({ type: data.pending ? 'pending' : 'idle' });
       renderSceneHeader(data.scene || null);
+      applyView(data.view);
     }
   } catch (err) {
     console.warn('Poll error:', err);
@@ -878,7 +957,6 @@ function upgradeServerAudio() {
 // ── UI Rendering ────────────────────────────────────────────────────────────
 // The optimistic bubble is keyed by client_msg_id; the server copy of the same
 // message (POST response / poll) carries the server id. Re-key the bubble so the
-// polled copy is recognised instead of being rendered as a second bubble.
 function adoptServerMessageId(clientMsgId, serverId) {
   if (!clientMsgId || !serverId || clientMsgId === serverId) return;
   if (!state.renderedMsgIds.has(clientMsgId)) return;
@@ -1063,7 +1141,7 @@ function renderMessage(msg, isLocalOptimistic = false) {
   } else {
     container.appendChild(row);
   }
-  container.scrollTop = container.scrollHeight;
+  scrollChatToEnd();
   return true;
 }
 
@@ -1247,8 +1325,10 @@ function lockChips(container, chip) {
 }
 
 // ── Sending Handlers ────────────────────────────────────────────────────────
-async function handleSendText(text) {
-  if (!text || !text.trim()) return;
+// `typingLabel` (optional): what the typing bubble says at once, before the server has answered.
+async function handleSendText(text, typingLabel = null) {
+  if (!text || !text.trim()) return null;
+  hintSent();
   const clientMsgId = crypto.randomUUID();
   const cleanText = text.trim();
 
@@ -1265,6 +1345,7 @@ async function handleSendText(text) {
     created_at: new Date().toISOString(),
   };
   renderMessage(optimisticMsg, true);
+  if (typingLabel) typingEvent({ type: 'accepted', label: typingLabel });
 
   // 3. Save to IndexedDB Outbox
   await saveToOutbox({
@@ -1278,9 +1359,11 @@ async function handleSendText(text) {
   // 4. Trigger Outbox upload & fast poll
   drainOutbox();
   triggerImmediatePoll();
+  return clientMsgId;
 }
 
 async function handleSendButton(buttonId, buttonTitle) {
+  hintSent();
   const clientMsgId = crypto.randomUUID();
 
   // Optimistic render
@@ -1307,6 +1390,7 @@ async function handleSendButton(buttonId, buttonTitle) {
 }
 
 async function handleSendAudio(audioBlob, durationSec) {
+  hintSent();
   const clientMsgId = crypto.randomUUID();
 
   // Optimistic render: voice-note label + "uploading…" line (becomes the transcript later)
@@ -1414,8 +1498,6 @@ window.toggleLiteMode = toggleLiteMode;
 // ── Mic UI Interaction ──────────────────────────────────────────────────────
 // Two ways to record, one button:
 //   tap  (press < REC_HOLD_MS): recording starts; tap the big Stop/Send button to send.
-//   hold (press >= REC_HOLD_MS): walkie-talkie style, the recording is sent on release.
-// Cancel discards. The recorder auto-stops and sends at REC_MAX_SECONDS.
 function setupMicEvents() {
   const micBtn = document.getElementById('btn-mic');
   const overlay = document.getElementById('recording-overlay');
@@ -1545,47 +1627,107 @@ function flashStatus(text) {
   setTimeout(renderNetStatus, 6000);
 }
 
-// ── Demo Chip Handler ───────────────────────────────────────────────────────
-function setupDemoChips() {
-  const chips = document.querySelectorAll('.demo-chip');
-  const setBusy = (busy) =>
-    chips.forEach((c) => {
-      c.disabled = busy;
-      c.setAttribute('aria-busy', busy ? 'true' : 'false');
-    });
+// ── Sample lines (demo): one delegated handler, the list follows the step she is on ──
+const SAMPLE_BOX_ID = 'sample-list';
 
-  chips.forEach((c) => {
-    c.onclick = async () => {
-      if (c.disabled) return;
-      setBusy(true); // locked while the sample loads: no double sends
-      c.classList.add('pressed');
-      announce(t('ui_chat_chip_done'));
-      try {
-        const id = c.getAttribute('data-id');
-        const audioAvailable = c.getAttribute('data-audio-available') === 'true';
-        const text = c.getAttribute('data-text') || c.textContent.trim();
-        if (audioAvailable && id) {
-          try {
-            const res = await netFetch(`/api/demo-sample/${id}.wav`);
-            if (res.ok) {
-              const blob = await res.blob();
-              await handleSendAudio(blob, 4);
-              return;
-            }
-          } catch (err) {
-            console.warn('Failed to load demo sample audio, falling back to text:', err);
+function setupDemoChips() {
+  const box = document.getElementById(SAMPLE_BOX_ID);
+  const tray = document.getElementById('sample-tray');
+  // Open on a wide screen, folded on a phone (the sample lines are a judge's helper)
+  if (tray && window.matchMedia && window.matchMedia('(min-width: 641px)').matches) tray.open = true;
+  if (!box) return;
+  let busy = false;
+  box.addEventListener('click', async (e) => {
+    const c = e.target && e.target.closest ? e.target.closest('.demo-chip') : null;
+    if (!c || busy) return;
+    busy = true; // locked while the sample loads: no double sends
+    c.classList.add('pressed');
+    announce(t('ui_chat_chip_done'));
+    try {
+      const id = c.getAttribute('data-id');
+      const text = c.getAttribute('data-text') || c.textContent.trim();
+      if (c.getAttribute('data-audio-available') === 'true' && id) {
+        try {
+          const res = await netFetch(`/api/demo-sample/${id}.wav`);
+          if (res.ok) {
+            await handleSendAudio(await res.blob(), 4);
+            return;
           }
+        } catch (err) {
+          console.warn('Failed to load demo sample audio, falling back to text:', err);
         }
-        await handleSendText(text);
-      } finally {
-        setBusy(false);
-        setTimeout(() => c.classList.remove('pressed'), CHIP_CONFIRM_MS);
       }
-    };
+      await handleSendText(text);
+    } finally {
+      busy = false;
+      setTimeout(() => c.classList.remove('pressed'), CHIP_CONFIRM_MS);
+    }
   });
 }
 
+// The poll carries the samples that make sense now (null outside demo mode: leave the list alone)
+function renderSamples(list) {
+  const box = document.getElementById(SAMPLE_BOX_ID);
+  if (!box || !Array.isArray(list)) return;
+  const sig = list.map((c) => `${c.id}|${c.text}|${c.label}`).join('\n');
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  while (box.children.length) box.removeChild(box.children[0]);
+  list.forEach((c) => {
+    const item = document.createElement('div');
+    item.className = 'sample-item';
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'demo-chip';
+    b.setAttribute('data-id', c.id);
+    b.setAttribute('data-text', c.text);
+    b.setAttribute('data-audio-available', c.audio ? 'true' : 'false');
+    b.textContent = c.label;
+    const note = document.createElement('span');
+    note.className = 'sample-note';
+    note.textContent = c.note;
+    item.appendChild(b);
+    item.appendChild(note);
+    box.appendChild(item);
+  });
+}
+
+// ── Demo banner: one small line, dismissed for the session ──────────────────
+function setupDemoBanner() {
+  const banner = document.getElementById('demo-banner');
+  if (!banner) return;
+  let gone = false;
+  try {
+    gone = sessionStorage.getItem('abhyas_demo_banner') === 'off';
+  } catch (e) {}
+  banner.hidden = gone;
+  const btn = document.getElementById('demo-dismiss');
+  if (btn)
+    btn.addEventListener('click', () => {
+      banner.hidden = true;
+      try {
+        sessionStorage.setItem('abhyas_demo_banner', 'off');
+      } catch (e) {}
+    });
+}
+
 // ── Ask the handbook chips: a tap sends the question through the normal text path ──
+// The chip says "Sending…", then a tick; the question bubble and a "Looking in the handbook…"
+// typing bubble show at once. One question at a time; the chips come back when the send settles.
+const CHIP_SETTLE_MAX_MS = 8000;
+
+function whenSettled(clientMsgId, maxMs) {
+  return new Promise((resolve) => {
+    const t0 = Date.now();
+    const poll = () => {
+      const st = state.msgStates.get(clientMsgId);
+      if ((st && st !== MSG_SENDING) || Date.now() - t0 >= maxMs) resolve(st || MSG_SENDING);
+      else setTimeout(poll, 100);
+    };
+    poll();
+  });
+}
+
 function setupHandbookChips() {
   const sec = document.getElementById('handbook-chips');
   const prefix = (sec && sec.getAttribute('data-prefix')) || '';
@@ -1595,9 +1737,24 @@ function setupHandbookChips() {
     c.onclick = async () => {
       if (c.disabled) return;
       busy(true); // one question at a time. Hindi UI: the label is the question; English: data-text
+      const label = c.textContent;
+      c.classList.add('sending');
+      c.textContent = t('ui_chat_msg_sending');
       try {
-        await handleSendText(c.getAttribute('data-text') || `${prefix} ${c.textContent.trim()}`);
+        const id = await handleSendText(
+          c.getAttribute('data-text') || `${prefix} ${label.trim()}`,
+          t('ui_chat_typing_handbook')
+        );
+        const st = id ? await whenSettled(id, CHIP_SETTLE_MAX_MS) : MSG_FAILED;
+        c.classList.remove('sending');
+        if (st === MSG_SENT) {
+          c.classList.add('sent');
+          c.textContent = `✓ ${t('ui_chat_msg_sent')}`;
+          await new Promise((r) => setTimeout(r, CHIP_CONFIRM_MS));
+        }
       } finally {
+        c.classList.remove('sending', 'sent');
+        c.textContent = label;
         busy(false);
       }
     };
@@ -1607,7 +1764,7 @@ function setupHandbookChips() {
     try {
       history.replaceState(null, '', location.pathname);
     } catch (e) {}
-    handleSendText(auto);
+    handleSendText(auto, t('ui_chat_typing_handbook'));
   }
 }
 
@@ -1620,6 +1777,21 @@ document.addEventListener('click', (e) => {
   if (failed) {
     const id = failed.getAttribute('data-client-id');
     if (id) retryMessage(id);
+    return;
+  }
+
+  if (target.closest('#next-suggest')) {
+    const input = document.getElementById('chat-input');
+    if (input) {
+      input.value = target.closest('#next-suggest').textContent.trim();
+      if (input.focus) input.focus();
+    }
+    return;
+  }
+
+  const childPill = target.closest('.child-pill[data-name]');
+  if (childPill) {
+    addressChild(childPill.getAttribute('data-name'));
     return;
   }
 
@@ -1733,6 +1905,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 4. Setup Mic & Demo Chips
   setupMicEvents();
   setupDemoChips();
+  setupDemoBanner();
   setupHandbookChips();
   setupSceneEnd();
 
@@ -1744,6 +1917,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 6. Seed rendered messages into IndexedDB & state; give history audio the stateful player
   initRenderedMessagesFromDom();
   upgradeServerAudio();
+  scrollChatToEnd();
+  window.addEventListener('load', scrollChatToEnd);
 
   // 7. Initial poll and outbox drain
   await drainOutbox();

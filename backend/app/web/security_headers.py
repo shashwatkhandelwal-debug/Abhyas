@@ -41,6 +41,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         for name, value in STATIC_HEADERS.items():
             response.headers.setdefault(name, value)
+        if request.url.path.startswith("/static/"):
+            # Always revalidate (a 304 is cheap): without this a browser may reuse a file for
+            # hours by its own guess, so a new deploy's page could run last deploy's script.
+            response.headers.setdefault("Cache-Control", "no-cache")
         if settings.ENVIRONMENT == "production":
             response.headers.setdefault("Strict-Transport-Security", HSTS_VALUE)
         return response

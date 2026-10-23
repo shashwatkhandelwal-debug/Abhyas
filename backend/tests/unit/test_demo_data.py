@@ -21,6 +21,7 @@ import ast
 import re
 import uuid
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
@@ -473,6 +474,7 @@ async def test_demo_banner_displayed_on_web_page() -> None:
         preferred_channel="web",
         lite_mode=False,
         is_demo=True,
+        start_seen_at=datetime.now(UTC),
     )
 
     fake_db = MagicMock()
@@ -494,8 +496,10 @@ async def test_demo_banner_displayed_on_web_page() -> None:
     ) as client:
         resp = await client.get("/teacher")
         assert resp.status_code == 200
-        assert "डेमो खाता — लॉगिन या लॉगआउट करने पर चैट रीसेट हो जाती है" in resp.text
-        assert "demo-banner" in resp.text
+        assert "डेमो: लॉगिन/लॉगआउट पर चैट रीसेट" in resp.text
+        banner = resp.text.split('id="demo-banner"')[1].split("</div>")[0]
+        assert 'href="/logout"' in banner, "a visible Log out inside the banner"
+        assert 'id="demo-dismiss"' in banner, "and the banner can be dismissed"
 
 
 def test_demo_banner_text_says_the_chat_resets_in_both_languages() -> None:
@@ -504,7 +508,7 @@ def test_demo_banner_text_says_the_chat_resets_in_both_languages() -> None:
 
     demo = AppUser(username="teacher.demo1", role="teacher", password_hash="x", is_demo=True)
     other = AppUser(username="arp.demo", role="arp", password_hash="x", is_demo=True)
-    for lang, expected in (("en", "Demo account - chat resets when you log in or out"),):
+    for lang, expected in (("en", "Demo: chat resets on log in/out"),):
         set_ui_lang(lang)
         try:
             assert _demo_banner_text(demo) == expected

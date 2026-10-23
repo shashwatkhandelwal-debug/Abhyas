@@ -1,8 +1,4 @@
-/**
- * Audio Recorder using MediaRecorder (spec/09 §9.2). MIME by feature detection: webm/opus,
- * then mp4, then the browser default (the server converts any of them with ffmpeg).
- * Mono 16 kbps; max/min length come from REC_* in config.py via #rec-config.
- */
+/* Audio Recorder using MediaRecorder (spec/09 §9.2). MIME by feature detection: webm/opus, */
 
 const REC_DEFAULTS = { maxSec: 60, minSec: 1 };
 

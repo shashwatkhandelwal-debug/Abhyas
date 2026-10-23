@@ -12,10 +12,7 @@ Routes:
 - GET /offline.html     Offline fallback page with cached checklist & history
 """
 
-import hashlib
-import json
 import logging
-import re
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -27,6 +24,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.access import scope_teachers_query
@@ -43,7 +41,12 @@ from backend.app.class_profile.skills import skill_progress
 from backend.app.class_profile.views import views_for
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
-from backend.app.core.messages import get_message, get_ui_lang, texts_for_lang
+from backend.app.core.messages import (
+    get_message,
+    get_ui_lang,
+    localize_buttons,
+    texts_for_lang,
+)
 from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
@@ -63,7 +66,10 @@ from backend.app.rehearsal.header import scene_header
 from backend.app.sessions.modules import MODULE_STEPS, module_ids, module_views
 from backend.app.sessions.repository import SessionRepository
 from backend.app.sessions.service import SessionService
+from backend.app.web.assets import STATIC_DIR, sw_build_version
 from backend.app.web.chat_api import get_teacher_for_user
+from backend.app.web.chat_view import load_chat_view
+from backend.app.web.demo_samples import demo_sample_audio
 from backend.app.web.ui_lang import register_ui_globals
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -71,47 +77,14 @@ logger = logging.getLogger("abhyas.web.teacher")
 
 WEB_DIR = Path(__file__).resolve().parent
 TEMPLATES_DIR = WEB_DIR / "templates"
-STATIC_DIR = WEB_DIR / "static"
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 register_ui_globals(templates.env)
 
 router = APIRouter(tags=["Teacher Web PWA"])
 
-
-def load_demo_chips() -> list[dict[str, Any]]:
-    """Loads demo chips from eval/samples/demo_chips.json only when DEMO_MODE is True (§9.2)."""
-    if not settings.DEMO_MODE:
-        return []
-
-    candidates = [
-        Path("eval/samples/demo_chips.json"),
-        WEB_DIR.parents[1] / "eval" / "samples" / "demo_chips.json",
-    ]
-    for p in candidates:
-        if p.is_file():
-            try:
-                content = p.read_text(encoding="utf-8")
-                data = json.loads(content)
-                if isinstance(data, list):
-                    from backend.app.speech.audio import is_wav_non_silent
-
-                    audio_dir = p.parent / "audio"
-                    for item in data:
-                        if isinstance(item, dict):
-                            sid = item.get("id")
-                            wav_path = audio_dir / f"{sid}.wav" if sid else None
-                            is_avail = bool(
-                                wav_path and wav_path.is_file() and is_wav_non_silent(wav_path)
-                            )
-                            item["audio_available"] = is_avail
-                            if not is_avail:
-                                item["audio_url"] = None
-                    return data
-            except Exception as e:
-                logger.warning("Failed to load demo_chips.json from %s: %s", p, e)
-                return []
-    return []
+# Demo logins that open on a prepared chat (seeded messages); demo1 starts empty
+PREPARED_DEMO_LOGINS = frozenset({"teacher.demo2", "teacher.demo3"})
 
 
 def _demo_banner_text(current_user: AppUser) -> str:
@@ -138,6 +111,16 @@ async def teacher_chat_page(
 
     teacher = await get_teacher_for_user(current_user, db, request=request)
 
+    # First visit: the one-time Start here screen (never in the way of a link that asks something,
+    # and ?s=1 always opens the chat, so a failed save can never loop)
+    if (
+        teacher.start_seen_at is None
+        and (current_user.is_demo or teacher.consent_service)
+        and not request.query_params.get("s")
+        and not request.query_params.get("ask")
+    ):
+        return RedirectResponse(url="/teacher/start", status_code=status.HTTP_303_SEE_OTHER)
+
     # CSRF cookie resolution for client scripts and forms
     csrf_token = request.cookies.get(CSRF_COOKIE_NAME)
     token_to_set: str | None = None
@@ -163,7 +146,7 @@ async def teacher_chat_page(
             "text": m.text,
             "speaker": m.speaker,
             "audio_ref": m.audio_ref,
-            "buttons": m.buttons,
+            "buttons": localize_buttons(m.buttons, teacher.address_form),
             "citations": m.citations,
             "created_at": m.created_at.isoformat() if m.created_at else "",
             "time_str": (
@@ -197,59 +180,22 @@ async def teacher_chat_page(
     except Exception:
         active_scene = None
 
-    board_problem = ""
-    if active_scene and active_scene.engine_state:
-        state = active_scene.engine_state
-        board_prefix = get_message("ui_board_prefix")
-        if state.get("board_problem"):
-            board_problem = str(state["board_problem"])
-        elif state.get("board_text"):
-            board_problem = str(state["board_text"])
-        elif state.get("board"):
-            board_problem = str(state["board"])
-        elif state.get("current_item_text"):
-            board_problem = f"{board_prefix} {state['current_item_text']}"
-        elif current_item := state.get("current_item"):
-            if isinstance(current_item, dict):
-                if current_item.get("text"):
-                    board_problem = f"{board_prefix} {current_item['text']}"
-                elif (
-                    current_item.get("type") == "sub"
-                    and "a" in current_item
-                    and "b" in current_item
-                ):
-                    board_problem = f"{board_prefix} {current_item['a']} − {current_item['b']}"
-                elif (
-                    current_item.get("type") == "add"
-                    and "a" in current_item
-                    and "b" in current_item
-                ):
-                    board_problem = f"{board_prefix} {current_item['a']} + {current_item['b']}"
-                elif current_item.get("word"):
-                    board_problem = f"{board_prefix} {current_item['word']}"
-            elif isinstance(current_item, str):
-                board_problem = (
-                    current_item
-                    if current_item.startswith(board_prefix)
-                    else f"{board_prefix} {current_item}"
-                )
-
     header: dict[str, Any] | None = None
     if active_scene is not None and active_scene.engine_state:
         try:
             header = scene_header(active_scene.engine_state)
         except ValueError:
             header = None
-
-    demo_chips = load_demo_chips() if is_demo else []
-    demo_banner_text = _demo_banner_text(current_user)
-    # "Ask the handbook": four questions per teacher per day while no scene is running; a link
-    # from the modules page (?ask=hb03) sends that question once the chat opens.
-    handbook_chips = (
-        chip_views(teacher.id, datetime.now(IST).date(), get_ui_lang())
-        if active_scene is None
-        else []
+    view = await load_chat_view(
+        db, teacher, header, with_samples=is_demo, sample_audio=demo_sample_audio()
     )
+    header = header or view.get("scene_preview")
+
+    demo_banner_text = _demo_banner_text(current_user)
+    # "Ask the handbook": four questions per teacher per day, in a scene too (a question there is
+    # answered and the teacher is told how to go back); a link from the modules page
+    # (?ask=hb03) sends that question once the chat opens.
+    handbook_chips = chip_views(teacher.id, datetime.now(IST).date(), get_ui_lang())
     autosend = ""
     asked = question_by_id(request.query_params.get("ask", ""))
     if asked is not None:
@@ -264,14 +210,14 @@ async def teacher_chat_page(
             "teacher_name": (
                 teacher.name or current_user.display_name or get_message("ui_default_teacher_name")
             ),
-            "move_title": get_message("ui_default_move_title"),
-            "step_chip": get_message("ui_default_step_chip"),
-            "board_problem": board_problem,
+            "view": view,
             "scene_header": header,
             "lite_mode": teacher.lite_mode,
             "demo_mode": is_demo,
             "demo_banner_text": demo_banner_text,
-            "demo_chips": demo_chips,
+            "show_demo_divider": bool(
+                current_user.username in PREPARED_DEMO_LOGINS and initial_messages
+            ),
             "handbook_chips": handbook_chips,
             "handbook_autosend": autosend,
             "handbook_prefix": settings.HANDBOOK_ASK_PREFIX,
@@ -589,6 +535,45 @@ async def teacher_modules_page(
     return response
 
 
+@router.get("/teacher/start", response_class=HTMLResponse)
+async def start_here_page(
+    request: Request,
+    current_user: Annotated[AppUser, Depends(require_role("teacher"))],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> Response:
+    """The one-time Start here screen: what Abhyas is, what she does, what she gets, one button."""
+    await get_teacher_for_user(current_user, db, request=request)
+    csrf_token = request.cookies.get(CSRF_COOKIE_NAME)
+    token_to_set: str | None = None
+    if not csrf_token:
+        csrf_token = generate_csrf_token()
+        token_to_set = csrf_token
+    response = templates.TemplateResponse(
+        request=request, name="start.html", context={"request": request, "csrf_token": csrf_token}
+    )
+    if token_to_set:
+        set_csrf_cookie(response, token_to_set)
+    return response
+
+
+@router.post("/teacher/start")
+async def start_here_done(
+    request: Request,
+    current_user: Annotated[AppUser, Depends(require_role("teacher"))],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> Response:
+    """The button or Skip: remember it and open the chat (at whatever step the account is on)."""
+    await verify_csrf_token(request)
+    teacher = await get_teacher_for_user(current_user, db, request=request)
+    teacher.start_seen_at = datetime.now(UTC)
+    try:
+        await db.commit()
+    except SQLAlchemyError:
+        await db.rollback()
+        logger.warning("could not save start_seen_at", exc_info=True)
+    return RedirectResponse(url="/teacher?s=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
 @router.post("/teacher/modules/{module_id}/start")
 async def start_teacher_module(
     module_id: str,
@@ -771,24 +756,6 @@ def chat_ui_strings() -> dict[str, str]:
     for prefix in CHAT_UI_PREFIXES:
         strings.update(texts_for_lang(prefix))
     return strings
-
-
-_SW_VERSIONED_ASSETS = ("sw.js", "chat.js", "recorder.js", "app.css", "manifest.json")
-
-
-def sw_build_version() -> str:
-    """Cache-busting id: deploy SHA plus a digest of the shipped static files.
-
-    The digest keeps the version moving when GIT_SHA is unset ("dev") or stale, so a changed
-    chat.js can never be served from a cache named after an older build.
-    """
-    digest = hashlib.sha1(usedforsecurity=False)
-    for name in _SW_VERSIONED_ASSETS:
-        path = STATIC_DIR / name
-        if path.is_file():
-            digest.update(path.read_bytes())
-    sha = re.sub(r"[^A-Za-z0-9]", "", settings.GIT_SHA)[:12] or "dev"
-    return f"{sha}-{digest.hexdigest()[:8]}"
 
 
 @router.get("/sw.js")

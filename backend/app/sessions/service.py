@@ -53,6 +53,7 @@ from backend.app.rule_engine.domain import (
     TeachingAct,
 )
 from backend.app.sessions import modules, rehearse_setup
+from backend.app.sessions.outcome import outcome_line
 from backend.app.sessions.path import MovePathEntry, compute_move_path, load_induction_order
 from backend.app.sessions.path_score import DONE_MIN_EVIDENCE
 from backend.app.sessions.repository import SessionRepository
@@ -64,6 +65,7 @@ from backend.app.sessions.state_machine import (
     SessionStateEnum,
     WeeklyStateMachine,
 )
+from backend.app.sessions.titles import move_title
 from backend.app.sessions.training_rating import (
     is_rating_escape,
     is_skip_comment,
@@ -100,7 +102,7 @@ class SessionService:
         The excerpt comes from the ingested source documents only (never move cards). When nothing
         scores above RETRIEVAL_MIN_SCORE the intro is returned unchanged.
         """
-        intro = get_message("learn_intro", address_form, move_title=move.title_hi)
+        intro = get_message("learn_intro", address_form, move_title=move_title(move.id))
         reason = personalise.because(move.id, struggle_ids or [])
         if reason is not None:
             because_line = get_message(
@@ -213,7 +215,9 @@ class SessionService:
         teacher = await self.repo.get_or_create_teacher(teacher_uuid)
         teacher.name = ctx.name
         teacher.address_form = ctx.address_form
-        teacher.cluster_id = ctx.cluster_id
+        # "UNASSIGNED" is the state machine's marker for "no join code"; the column is a foreign key
+        # to `cluster`, so it is stored as NULL (a first-time teacher without a code hit a 500 here)
+        teacher.cluster_id = None if ctx.cluster_id in (None, "UNASSIGNED") else ctx.cluster_id
         teacher.batch_id = ctx.batch_id
         teacher.district = ctx.district
         teacher.experience_band = ctx.experience_band
@@ -292,9 +296,9 @@ class SessionService:
                 next_id = path_entries[curr_idx + 1].move_id
                 if next_id:
                     next_card = load_move_card(next_id)
-                    return next_card.title_hi
+                    return move_title(next_card.id)
         curr_card = load_move_card(current_move_id)
-        return curr_card.title_hi
+        return move_title(curr_card.id)
 
     def _get_resume_prompt(
         self,
@@ -306,10 +310,16 @@ class SessionService:
         if ctx.onboarding_state != OnboardingStateEnum.READY:
             prompt_key = ONBOARDING_PROMPT_KEYS.get(ctx.onboarding_state, "welcome")
             return get_message(prompt_key, address_form)
+        if prior == SessionStateEnum.REHEARSE:
+            # Back in the scene: say who she is talking to and what to do, not the scene intro again
+            if ctx.rehearse_mode == rehearse_setup.MODE_ONE_ON_ONE:
+                child = get_message(f"speaker_{ctx.rehearse_child or 'ravi'}")
+                return get_message("ask_resume_scene_one", address_form, child=child)
+            return get_message("ask_resume_scene_group", address_form)
         prior_prompt_key = WeeklyStateMachine(ctx).get_state_prompt_key(prior)
         move = load_move_card(ctx.current_move_id)
         if prior_prompt_key == "learn_intro":
-            return get_message(prior_prompt_key, address_form, move_title=move.title_hi)
+            return get_message(prior_prompt_key, address_form, move_title=move_title(move.id))
         elif prior_prompt_key == "rehearse_intro":
             return get_message(prior_prompt_key, address_form, scene_intro=move.scenario.intro_hi)
         else:
@@ -872,7 +882,9 @@ class SessionService:
                 prompt_key = WeeklyStateMachine(ctx).get_state_prompt_key(target)
                 move = load_move_card(ctx.current_move_id)
                 if prompt_key == "learn_intro":
-                    prompt_msg = get_message(prompt_key, address_form, move_title=move.title_hi)
+                    prompt_msg = get_message(
+                        prompt_key, address_form, move_title=move_title(move.id)
+                    )
                 elif prompt_key == "rehearse_intro":
                     prompt_msg = get_message(
                         prompt_key, address_form, scene_intro=move.scenario.intro_hi
@@ -1338,7 +1350,7 @@ class SessionService:
                                 text_hi=get_message(
                                     "ready_first_move",
                                     ctx.address_form,
-                                    move_title=first_move.title_hi,
+                                    move_title=move_title(first_move.id),
                                 ),
                             ),
                             OutboundMessage(
@@ -1790,6 +1802,10 @@ class SessionService:
                     if coach_res.needs_review
                     else ""
                 )
+                # What happened, from the tagged acts and the engine's recorded answers (no model)
+                happened = outcome_line(scene.turns, address_form)
+                if happened:
+                    prefix = f"{happened}\n\n{prefix}"
                 feedback_body = get_message(
                     "feedback_body",
                     address_form,
@@ -1876,7 +1892,9 @@ class SessionService:
                     check = await check_module(
                         move,
                         text_content,
-                        get_message("module_check_prompt", address_form, move_title=move.title_hi),
+                        get_message(
+                            "module_check_prompt", address_form, move_title=move_title(move.id)
+                        ),
                         address_form,
                     )
                     await self.repo.mark_module_step(
@@ -1944,7 +1962,7 @@ class SessionService:
                     OutboundMessage(
                         kind="text",
                         text_hi=get_message(
-                            "module_check_prompt", address_form, move_title=move.title_hi
+                            "module_check_prompt", address_form, move_title=move_title(move.id)
                         ),
                     )
                 ]
@@ -2182,7 +2200,7 @@ class SessionService:
                             "progress_summary",
                             address_form,
                             n_done=1,
-                            lines=f"1. {move.title_hi}",
+                            lines=f"1. {move_title(move.id)}",
                         ),
                     )
                 ]

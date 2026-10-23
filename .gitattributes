@@ -1,2 +1,6 @@
 # Shell scripts run inside the Linux container; keep LF on every checkout
 *.sh text eol=lf
+# The web assets are served as they are checked in (LF); a CRLF checkout would only add bytes
+# against the page-weight budget (about 3 KB on chat.js alone), so keep LF on every checkout
+backend/app/web/static/* text eol=lf
+backend/app/web/templates/* text eol=lf

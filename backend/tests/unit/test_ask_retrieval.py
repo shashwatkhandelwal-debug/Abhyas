@@ -186,7 +186,7 @@ async def test_ask_flow_pedagogy_answered_and_resumed() -> None:
 
         # Message 2: Resume note + previous state prompt
         assert get_message("ask_resume", "f") in outbounds[1].text_hi
-        assert "कक्षा 2" in outbounds[1].text_hi or "तैयार हों" in outbounds[1].text_hi
+        assert get_message("ask_resume_scene_group", "f") in outbounds[1].text_hi
 
         # DB checks: Question persisted as answered
         questions = [q for q in repo._questions if q.teacher_id == t_id]

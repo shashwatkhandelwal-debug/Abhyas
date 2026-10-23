@@ -202,14 +202,14 @@ ask_try_this_week:
   text: "इस हफ्ते आज़माएँ: {tip}"
   audio: false
 ask_escalated:
-  text: "अच्छा सवाल है। इसका पक्का जवाब मैं आपके ARP से पूछकर बताती हूँ।"
+  text: "अच्छा सवाल है। इसका पक्का जवाब मेरे पास नहीं है; मैंने इसे आपके ARP की समीक्षा-सूची में रख दिया है, वे उसे वहीं देखेंगे।"
   audio: true
 learn_reference:
   text: "सरकारी दस्तावेज़ में इस विषय पर (सार): {summary}\n{citation}"
   audio: false
 ask_not_in_sources:
-  text: "इस सवाल का जवाब मुझे अपने सरकारी दस्तावेज़ों में नहीं मिला, इसलिए मैं अंदाज़े से नहीं बताऊँगी। मैं आपके ARP से पूछकर बताती हूँ।"
-  text_m: "इस सवाल का जवाब मुझे अपने सरकारी दस्तावेज़ों में नहीं मिला, इसलिए मैं अंदाज़े से नहीं बताऊँगा। मैं आपके ARP से पूछकर बताता हूँ।"
+  text: "इस सवाल का जवाब मुझे अपने सरकारी दस्तावेज़ों में नहीं मिला, इसलिए मैं अंदाज़े से नहीं बताऊँगी। मैंने आपका सवाल आपके ARP की समीक्षा-सूची में रख दिया है; वे उसे वहीं देखेंगे।"
+  text_m: "इस सवाल का जवाब मुझे अपने सरकारी दस्तावेज़ों में नहीं मिला, इसलिए मैं अंदाज़े से नहीं बताऊँगा। मैंने आपका सवाल आपके ARP की समीक्षा-सूची में रख दिया है; वे उसे वहीं देखेंगे।"
   audio: true
 ask_out_of_scope:
   text: "माफ़ कीजिए, मैं कक्षा 1-3 की पढ़ाई और कक्षा से जुड़े सवालों में ही मदद कर सकती हूँ।"
@@ -330,8 +330,6 @@ ui_ladder_level_5: {text: "बच्चों में सुधार", audio:
 ui_board_prefix: {text: "बोर्ड:", audio: false}
 ui_time_just_now: {text: "अभी", audio: false}
 ui_default_teacher_name: {text: "शिक्षिका", text_m: "शिक्षक", audio: false}
-ui_default_move_title: {text: "दो अंकों की हासिल वाली घटाव", audio: false}
-ui_default_step_chip: {text: "चरण 4/7 · अभ्यास", audio: false}
 
 # ── Chat page: visible acknowledgment states (web/static/chat.js reads ui_chat_* as JSON) ──
 ui_chat_msg_sending: {text: "भेजा जा रहा है…", audio: false}
@@ -603,17 +601,12 @@ ui_arp_move_colon: {text: "तरीका:", audio: false}
 ui_arp_level: {text: "स्तर", audio: false}
 ui_arp_score_colon: {text: "अंक:", audio: false}
 ui_arp_score: {text: "अंक", audio: false}
-ui_chat_type_instead_hint: {text: "बोलने की जगह लिखें (नमूना प्रश्न):", audio: false}
-ui_chat_input_placeholder: {text: "यहाँ लिखें या माइक दबाकर बोलें…", audio: false}
+ui_chat_input_placeholder: {text: "यहाँ लिखें या बोलें…", audio: false}
 ui_chat_record_hold: {text: "बोलकर रिकॉर्ड करें (दबाकर रखें)", audio: false}
 ui_chat_record: {text: "बोलकर रिकॉर्ड करें", audio: false}
 ui_chat_menu_progress: {text: "प्रगति (Progress)", audio: false}
 ui_chat_children_thinking: {text: "बच्चे सोच रहे हैं", audio: false}
-ui_chat_sample_chips: {text: "नमूना उत्तर चिप्स", audio: false}
-ui_chat_child_priya_title: {text: "प्रिया (कक्षा 2)", audio: false}
 ui_chat_menu_help: {text: "मदद व निर्देश", audio: false}
-ui_chat_child_ravi_title: {text: "रवि (कक्षा 2)", audio: false}
-ui_chat_child_aman_title: {text: "अमन (कक्षा 2)", audio: false}
 ui_chat_write_message: {text: "संदेश लिखें", audio: false}
 ui_chat_send: {text: "संदेश भेजें", audio: false}
 ui_chat_cancel_rec: {text: "रद्द करें ✕", audio: false}
@@ -811,15 +804,10 @@ rehearse_one_start: {text: "अब {child} से बात कीजिए। �
 scene_all_correct_one: {text: "वाह! {child} ने नए सवाल पर भी खुद सही तरीका लगाया।", audio: true}
 coach_diag_change_wrong: {text: "अगली बार बच्चे से पूछकर पहचानिए कि उलझन यह थी: {label}।", audio: false}
 coach_diag_change_partly: {text: "अगली बार उलझन को और सटीक पहचानिए: {label}।", audio: false}
-ui_scene_one_title: {text: "{child} से 1-1 बात", audio: false}
-ui_scene_turn: {text: "बारी {turn}/{max}", audio: false}
+ui_scene_one_title: {text: "{child} से आमने-सामने बात", audio: false}
+ui_scene_turn: {text: "आपकी बारी {turn}/{max}", audio: false}
 ui_chat_scene_end: {text: "अभ्यास पूरा करें", audio: false}
 ui_chat_scene_end_confirm: {text: "अभ्यास अभी पूरा करें?", audio: false}
-ui_scene_cue_diagnose: {text: "पहले उलझन पहचानिए", audio: false}
-ui_scene_cue_0: {text: "उलझन में है", audio: false}
-ui_scene_cue_1: {text: "अपना तरीका बता रहा है", audio: false}
-ui_scene_cue_2: {text: "आधा समझ आया", audio: false}
-ui_scene_cue_3: {text: "समझ आ गया, नया सवाल दें", audio: false}
 coach_quote_suffix: {text: "आपके शब्द: «{quote}»", audio: false}
 ui_chat_scene_stop_word: {text: "बस", audio: false}
 coach_source_suggestion: {text: "स्रोत से एक सुझाव: {suggestion}", audio: false}
@@ -882,7 +870,7 @@ realism_prompt_one_on_one: {text: "{child} असली कक्षा के �
 scene_too_short: {text: "अभी तक आपने {done} बार बात की है। काम की सलाह देने के लिए कम से कम {needed} बार चाहिए, यानी {more} बार और। सीन जारी रखें, या छोड़ दें?", audio: false}
 scene_resumed: {text: "ठीक है, सीन वहीं से जारी है। अपनी अगली बात कहिए।", audio: false}
 btn_scene_continue: {text: "सीन जारी रखें", audio: false}
-ui_demo_account_banner: {text: "डेमो खाता — लॉगिन या लॉगआउट करने पर चैट रीसेट हो जाती है", audio: false}
+ui_demo_account_banner: {text: "डेमो: लॉगिन/लॉगआउट पर चैट रीसेट", audio: false}
 
 # ── "My class": where is your class struggling (class_profile/flow.py) ─────────────
 class_ask:
@@ -1029,3 +1017,97 @@ ui_login_shared_note:
 ui_login_demo_teacher_experienced:
   text: "शिक्षिका (अनुभवी): teacher.demo3"
   audio: false
+
+# ── Chat clarity part 1: handbook chips, back to the scene ──
+ui_chat_typing_handbook: {text: "हैंडबुक में देखा जा रहा है…", audio: false}
+ask_resume_scene_one: {text: "अब वापस {child} के पास: अपनी अगली बात कहिए।", audio: false}
+ask_resume_scene_group: {text: "अब वापस बच्चों के पास: अपनी अगली बात कहिए।", audio: false}
+
+# ── Chat clarity part 2: header, step, scene bar ──
+ui_scene_group_title: {text: "तीनों बच्चों के साथ", audio: false}
+ui_scene_board: {text: "बोर्ड", audio: false}
+ui_scene_pick_child: {text: "किसी बच्चे से बात करने के लिए उसका नाम दबाएँ", audio: false}
+ui_step_label: {text: "चरण {n} / {total}: {name}", audio: false}
+ui_step_1: {text: "सीखना", audio: false}
+ui_step_2: {text: "अपने शब्दों में बताना", audio: false}
+ui_step_3: {text: "नमूना सुनना", audio: false}
+ui_step_4: {text: "अभ्यास", audio: false}
+ui_step_5: {text: "सुझाव", audio: false}
+ui_step_6: {text: "कक्षा में आज़माना", audio: false}
+ui_step_7: {text: "सोच-विचार", audio: false}
+ui_step_done: {text: "इस हफ्ते का अभ्यास पूरा", audio: false}
+ui_step_setup: {text: "शुरुआत", audio: false}
+move_title_NUM_SUB_REGROUP_BUNDLES: {text: "हासिल वाला घटाव: बंडल खोलकर", audio: false}
+move_title_NUM_ADD_CARRY_BUNDLES: {text: "हासिल वाला जोड़: 10 तीलियों का बंडल बनाकर", audio: false}
+move_title_NUM_PLACE_VALUE_BUNDLES: {text: "स्थानीय मान: बंडल और खुली तीलियों से संख्या", audio: false}
+move_title_LIT_MATRA_BLENDING: {text: "मात्रा वाले शब्द: अक्षर की ध्वनि मिलाकर पढ़ना", audio: false}
+
+# ── Chat clarity part 3: what to do now ──
+hint_start: {text: "शुरू करने के लिए 'नमस्ते' बोलें या लिखें।", audio: false}
+hint_consent: {text: "आगे बढ़ने के लिए '{agree}' दबाएँ, या '{more}' दबाकर पढ़ें कि हम क्या रखते हैं।", audio: false}
+hint_join_code: {text: "अपने ARP का दिया कोड लिखें; कोड न हो तो 'नहीं' लिखें।", audio: false}
+hint_name: {text: "अपना नाम बोलकर या लिखकर बताएँ।", audio: false}
+hint_address: {text: "नीचे दिए बटन से चुनें कि आपको कैसे संबोधित करें।", audio: false}
+hint_experience: {text: "अपना शिक्षण अनुभव लिखकर बताएँ, जैसे '2-5 साल'।", audio: false}
+hint_classes: {text: "आपकी कक्षा कौन-सी है: 1, 2 या 3? लिखकर बताएँ।", audio: false}
+hint_share: {text: "'{yes}' या '{no}' दबाएँ। इसे आप कभी भी बदल सकते हैं।", audio: false}
+hint_placement: {text: "रवि से कक्षा की तरह बात कीजिए, बोलकर या लिखकर। यह परीक्षा नहीं है।", audio: false}
+hint_learn: {text: "इसे पढ़ें, फिर '{understood}' दबाएँ।", audio: false}
+hint_explain: {text: "इस तरीके की सबसे ज़रूरी बात अपने शब्दों में बोलें या लिखें, या '{skip}' दबाएँ।", audio: false}
+hint_model: {text: "'{listen}' दबाकर सुनें कि दूसरी शिक्षिका यह कैसे करती हैं, या '{skip}' दबाएँ।", audio: false}
+hint_choose_mode: {text: "चुनें कि किसके साथ अभ्यास करना है: एक बच्चा (सबसे अच्छा) या तीनों।", audio: false}
+hint_choose_child: {text: "जिस बच्चे से बात करनी है, उसे चुनें।", audio: false}
+hint_diagnose: {text: "पहले अपने शब्दों में बताएँ कि {child} ने क्या गलती की, या '{skip}' दबाएँ।", audio: false}
+hint_scene_one: {text: "{child} से पूछें कि उसने यह कैसे किया। उदाहरण दबाएँ या अपनी बात कहें।", audio: false}
+hint_scene_group: {text: "किसी बच्चे का नाम लें, फिर अपना सवाल पूछें। ऊपर नाम दबाकर शुरू करें।", audio: false}
+hint_retry_one: {text: "फिर कोशिश करें। इस बार {child} से पहले समझाने को कहें, फिर कोई ठोस चीज़ इस्तेमाल करें।", audio: false}
+hint_retry_group: {text: "फिर कोशिश करें। इस बार पहले किसी बच्चे से समझाने को कहें।", audio: false}
+hint_feedback: {text: "सुझाव पढ़ें। दोबारा अभ्यास के लिए '{retry}' दबाएँ, या आगे बढ़ने के लिए '{continue}'।", audio: false}
+hint_too_short: {text: "'{scene_continue}' दबाकर दृश्य आगे बढ़ाएँ, या '{skip}' दबाएँ।", audio: false}
+hint_module_check: {text: "अंतिम सवाल का जवाब अपने शब्दों में दें, या '{continue}' दबाएँ।", audio: false}
+hint_try: {text: "इसे कक्षा में आज़माएँ, फिर '{peer}' या '{myself}' दबाएँ। अभी नहीं? '{later}' दबाएँ।", audio: false}
+hint_peer: {text: "चेकलिस्ट के हर बिंदु पर '{yes}' या '{no}' दबाएँ।", audio: false}
+hint_self: {text: "सवाल का जवाब एक-दो वाक्य में बोलकर या लिखकर दें।", audio: false}
+hint_done: {text: "इस हफ्ते का अभ्यास पूरा। अगले तरीके के लिए '{next}' दबाएँ, या प्रगति देखने के लिए '{progress}'।", audio: false}
+hint_rating: {text: "एक संख्या दबाकर बताएँ कि यह प्रशिक्षण कितना उपयोगी रहा, या '{skip}' दबाएँ।", audio: false}
+hint_rating_comment: {text: "इसके बारे में एक पंक्ति लिखें, या '{skip}' दबाएँ।", audio: false}
+hint_class_ask: {text: "बताएँ कि आपकी कक्षा में बच्चे कहाँ अटकते हैं, या सूची से संख्या भेजें। यह वैकल्पिक है।", audio: false}
+hint_skill_ask: {text: "बताएँ कि पढ़ाने में आप क्या बेहतर करना चाहते हैं, या सूची से संख्या भेजें। यह वैकल्पिक है।", audio: false}
+hint_confirm: {text: "सही हो तो '{yes}' दबाएँ, वरना '{no}' दबाकर फिर बताएँ।", audio: false}
+hint_delete: {text: "सारा डेटा मिटाने के लिए '{yes}' दबाएँ, या रखने के लिए '{no}' दबाएँ।", audio: false}
+hint_ask_more: {text: "अपने सवाल के बारे में थोड़ा और बताएँ, ताकि सही पन्ना ढूँढा जा सके।", audio: false}
+hint_start_suggest: {text: "नमस्ते", audio: false}
+hint_join_code_suggest: {text: "नहीं", audio: false}
+hint_classes_suggest: {text: "2", audio: false}
+hint_placement_suggest: {text: "रवि, तुमने 45 कैसे निकाला?", audio: false}
+hint_example_sub: {text: "{child}, तुमने {a} में से {b} कैसे घटाया?", audio: false}
+hint_example_add: {text: "{child}, तुमने {a} और {b} कैसे जोड़े?", audio: false}
+hint_example_place_value: {text: "{child}, तुमने यह संख्या कैसे बनाई?", audio: false}
+hint_example_read: {text: "{child}, तुमने यह शब्द कैसे पढ़ा?", audio: false}
+
+# ── Chat clarity part 3 (cont.): the scene line after her first turn ──
+hint_scene_one_next: {text: "{child} के साथ आगे बढ़ें: कोई ठोस चीज़ से समझाएँ, फिर एक नया सवाल दें।", audio: false}
+hint_scene_group_next: {text: "आगे बढ़ें: बच्चों से समझाने को कहें, फिर कोई ठोस चीज़ इस्तेमाल करें।", audio: false}
+hint_example_concrete: {text: "{child}, चलो {a} को दस के बंडल और खुली तीलियों से बनाते हैं।", audio: false}
+
+# ── Chat clarity part 4: demo helpers ──
+ui_sample_title: {text: "नमूना पंक्ति आज़माएँ: दबाकर भेजें", audio: false}
+ui_demo_dismiss: {text: "बंद करें", audio: false}
+ui_demo_divider: {text: "डेमो यहाँ से शुरू होता है: यह चैट पहले से तैयार है, ताकि आप यहीं से आगे बढ़ सकें।", audio: false}
+
+# ── Chat clarity (cont.): experience suggestion ──
+hint_experience_suggest: {text: "2-5 साल", audio: false}
+
+# ── Chat clarity part 6: Start here ──
+ui_start_what: {text: "अभ्यास आपका अभ्यास-साथी है: पढ़ाने से पहले आप नकली बच्चों के साथ बात करके अभ्यास करते हैं।", audio: false}
+ui_start_do: {text: "आपको करना है: लगभग 15 मिनट, बोलकर या लिखकर।", audio: false}
+ui_start_get: {text: "आपको मिलेगा: आपने जो कहा उस पर सुझाव, और आज़माने के लिए एक बात।", audio: false}
+ui_start_button: {text: "पहला अभ्यास शुरू करें", audio: false}
+ui_start_skip: {text: "छोड़ें", audio: false}
+
+# ── Chat clarity part 7: what happened in the scene ──
+coach_outcome_told: {text: "आपने {child} को उत्तर बता दिया, इसलिए उसने बिना समझे उसे दोहरा दिया। पहले उससे समझाने को कहकर देखें।", audio: false}
+coach_outcome_relapse: {text: "उत्तर बताने के बाद नया सवाल दिया, तो {child} की पुरानी गलती फिर दिखी। उत्तर बताने से तरीका नहीं सीखा जाता।", audio: false}
+coach_outcome_checked: {text: "आपने नए सवाल पर जाँचा, और {child} ने तरीका समझाकर उसे हल किया: तरीका समझ में आया है।", audio: false}
+coach_outcome_concrete: {text: "आपने ठोस चीज़ (बंडल और तीलियाँ) इस्तेमाल की, इसलिए {child} को दिखा कि कहाँ क्या करना है।", audio: false}
+coach_outcome_explain: {text: "आपने {child} से समझाने को कहा, इसलिए उसका अपना तरीका सामने आया।", audio: false}

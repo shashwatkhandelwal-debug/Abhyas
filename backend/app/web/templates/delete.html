@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#B3261E">
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>{{ get_message('ui_delete_title') }}</title>
-  <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/app.css?v={{ asset_v() }}">
 </head>
 <body>
   <div class="app-container">

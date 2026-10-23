@@ -120,14 +120,14 @@ def teacher_steps(base: str, username: str, password: str, steps: list[Step]) ->
     s = Session(base)
     run(f"{username}: login", lambda: _login(s, username, password), steps)
     run(f"{username}: /teacher", lambda: ok_page(s, "/teacher", 'id="chat-input"'), steps)
-    # four chips when idle; none while a scene is running (demo2 starts inside one: its chips are
-    # on the Modules page, checked below)
-    in_scene = username == "teacher.demo2"
+    # four chips on every chat page, inside a scene too (a question there is answered and the
+    # reply says how to go back)
     run(
-        f"{username}: handbook chips on the chat page ({'hidden in a scene' if in_scene else 'four'})",
-        lambda: _count(teacher_chips(s), 0 if in_scene else 4),
+        f"{username}: handbook chips on the chat page (four)",
+        lambda: _count(teacher_chips(s), 4),
         steps,
     )
+    run(f"{username}: what-to-do line and step header", lambda: _next_card(s), steps)
     run(
         f"{username}: /teacher/modules with chip links",
         lambda: ok_page(s, "/teacher/modules", 'href="/teacher?ask=hb'),
@@ -157,7 +157,15 @@ def _login(s: Session, username: str, password: str) -> str:
     resp = s.login(username, password)
     assert resp.status_code in (200, 302, 303), f"login -> {resp.status_code}"
     assert s.client.cookies.get("abhyas_session"), "no session cookie"
-    return f"HTTP {resp.status_code}"
+    # a first login lands on the one-time Start here screen: its button opens the chat
+    if not username.startswith("teacher."):
+        return f"HTTP {resp.status_code}"
+    start = s.get("/teacher")
+    assert start.status_code == 303 and start.headers["location"] == "/teacher/start", "no start"
+    assert "start-go" in s.get("/teacher/start").text
+    done = s.post_form("/teacher/start")
+    assert done.status_code == 303 and done.headers["location"] == "/teacher?s=1"
+    return f"HTTP {resp.status_code}, Start here shown once"
 
 
 def _count(items: list[str], expected: int) -> str:
@@ -171,11 +179,25 @@ def _first_message(s: Session) -> str:
     return f"{len([m for m in reply if m.get('direction') == 'out'])} reply bubble(s)"
 
 
+def _next_card(s: Session) -> str:
+    """Every chat page says what to do now and which step of seven she is on."""
+    page = s.get("/teacher").text
+    card = re.search(r'id="next-card"[^>]*>(.*?)</div>', page, re.S)
+    assert card is not None and 'id="next-text">' in card.group(1), "no what-to-do line"
+    text = re.search(r'id="next-text">([^<]+)<', page)
+    assert text is not None and text.group(1).strip(), "the what-to-do line is empty"
+    step = re.search(r'id="header-step">([^<]*)<', page)
+    assert step is not None, "no step header"
+    return f"{html_lib.unescape(text.group(1)).strip()[:48]} | {step.group(1).strip()}"
+
+
 def _scene_page(s: Session) -> str:
     page = s.get("/teacher").text
-    assert "43" in page and "27" in page, "board 43 - 27 not on the page"
-    assert "child-pill" in page
-    return "board and children shown"
+    assert 'id="scene-bar"' in page and " hidden" not in page.split('id="scene-bar"')[1][:80]
+    assert 'id="sb-board">43' in page and "27" in page, "board 43 - 27 not in the scene bar"
+    assert page.count('class="board-problem"') == 1, "the problem must be shown once"
+    assert "child-pill" not in page, "a one-on-one scene lists only that child"
+    return "one-on-one bar: title, turn and one board card"
 
 
 def _teach(s: Session) -> str:
@@ -202,7 +224,7 @@ def _chip(s: Session) -> str:
     # the web channel shows the source as a tappable chip, so the line is in `citations`
     cites = answers[0]["citations"]
     assert all("स्रोत" in c["line_hi"] and c.get("page") for c in cites), cites
-    for phrase in ("नहीं मिला", "ARP से पूछकर"):
+    for phrase in ("नहीं मिला", "समीक्षा-सूची"):
         assert phrase not in text, f"'not found' reply: {phrase}"
     return f"cited answer, {len(cites)} citation(s): {cites[0]['line_hi']}"
 

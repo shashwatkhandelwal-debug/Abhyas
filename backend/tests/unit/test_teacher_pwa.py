@@ -1,6 +1,7 @@
 """Unit tests for Teacher Chat PWA, templates, service worker, and asset budgets (spec/09 §9.2, T27)."""
 
 import os
+import re
 import unicodedata
 import uuid
 from datetime import UTC, datetime
@@ -19,7 +20,7 @@ from backend.app.config import settings
 from backend.app.core.messages import get_message
 from backend.app.db.models import AppUser, Message, Scene, Teacher
 from backend.app.db.session import get_db_session
-from backend.app.web.teacher import STATIC_DIR, templates
+from backend.app.web.teacher import STATIC_DIR
 from backend.app.web.teacher import router as teacher_router
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -37,6 +38,7 @@ def mock_teacher(mock_teacher_id: uuid.UUID) -> Teacher:
         name="डेमो शिक्षिका 2 (अनीता)",
         preferred_channel="web",
         lite_mode=False,
+        start_seen_at=datetime.now(UTC),  # past the one-time Start here screen
     )
 
 
@@ -120,14 +122,12 @@ async def test_get_teacher_chat_page(teacher_pwa_app: FastAPI) -> None:
 
         # Core header & branding elements (§9.2)
         assert "अभ्यास" in html
-        assert "दो अंकों की हासिल वाली घटाव" in html
-        assert "चरण 4/7 · अभ्यास" in html
+        assert 'id="header-move-title"' in html  # the move title and step follow her session
+        assert 'id="header-step"' in html
 
-        # Rehearse child strip
-        assert 'id="board-problem"' in html
-        assert "रवि" in html
-        assert "प्रिया" in html
-        assert "अमन" in html
+        # The scene bar exists but is hidden, and no children are listed, outside a scene
+        assert re.search(r'<section class="scene-bar" id="scene-bar"[^>]* hidden>', html)
+        assert 'class="child-pill' not in html
 
         # Initial messages rendered server-side
         assert "नमस्ते! अभ्यास शुरू करें?" in html
@@ -212,10 +212,7 @@ async def test_offline_page_endpoint(teacher_pwa_app: FastAPI) -> None:
 def test_asset_budget_under_150kb() -> None:
     """Strict performance budget test: HTML + CSS + JS < 150 KB uncompressed (spec/09 §9, §9.2)."""
     static_files = list(STATIC_DIR.glob("*"))
-    template_files = [
-        STATIC_DIR.parent / "templates" / "teacher.html",
-        STATIC_DIR.parent / "templates" / "chat.html",
-    ]
+    template_files = [STATIC_DIR.parent / "templates" / "teacher.html"]
 
     all_files = [*static_files, *template_files]
     total_bytes = sum(os.path.getsize(f) for f in all_files if f.is_file())
@@ -223,8 +220,8 @@ def test_asset_budget_under_150kb() -> None:
 
     # Assert total budget is strictly less than 150 KB
     assert total_kb < 150.0, f"Assets exceed 150 KB budget: {total_kb:.2f} KB"
-    # This sums every static file and both duplicate templates (admin/trainer pages too); the
-    # chat first load is ~91 KB raw (teacher.html + app.css + chat.js + recorder.js), far less gzipped.
+    # This sums every static file and the chat template (the chat first load is teacher.html +
+    # app.css + chat.js + recorder.js, far less gzipped).
     assert total_kb < 130.0, (
         f"Expected assets to comfortably sit below 130 KB, got: {total_kb:.2f} KB"
     )
@@ -234,7 +231,6 @@ def test_nfc_normalization_for_pwa_assets() -> None:
     """All Hindi strings in templates, offline HTML, and client JS must be NFC normalized."""
     text_files = [
         STATIC_DIR.parent / "templates" / "teacher.html",
-        STATIC_DIR.parent / "templates" / "chat.html",
         STATIC_DIR.parent / "templates" / "offline.html",
         STATIC_DIR / "chat.js",
         STATIC_DIR / "recorder.js",
@@ -251,6 +247,28 @@ def test_nfc_normalization_for_pwa_assets() -> None:
 # ── Review Item 5 Tests ──────────────────────────────────────────────────────
 
 
+def _scene_state_json() -> dict[str, Any]:
+    """A one-on-one scene on 43 - 27 with Ravi, as the page reads it from the scene row."""
+    from backend.app.rule_engine.domain import ChildRuntime, Domain, Problem, SceneState
+
+    problem = Problem(type="sub", a=43, b=27)
+    return SceneState(
+        move_id="NUM_SUB_REGROUP_BUNDLES",
+        domain=Domain.NUMERACY,
+        effective_acts=[],
+        target_causes=[],
+        items=[problem],
+        current_item=problem,
+        children=[
+            ChildRuntime(
+                persona_id="ravi", misconception="SUB_SMALLER_FROM_LARGER", temperament="confident"
+            )
+        ],
+        one_on_one=True,
+        max_turns=10,
+    ).model_dump(mode="json")
+
+
 @pytest.mark.asyncio
 async def test_teacher_chat_page_board_empty_without_scene(
     teacher_pwa_app: FastAPI,
@@ -261,10 +279,11 @@ async def test_teacher_chat_page_board_empty_without_scene(
     ) as client:
         res = await client.get("/teacher")
         assert res.status_code == 200
-        # Board problem element exists but contains no text
-        assert '<span class="board-problem" id="board-problem"></span>' in res.text
+        # The scene bar is hidden and its board card is empty
+        assert re.search(r'<section class="scene-bar" id="scene-bar"[^>]* hidden>', res.text)
+        assert 'id="sb-board"></span>' in res.text
         # Hard-coded '52 − 17' or '52 - 17' must NOT appear on the board
-        assert "बोर्ड: 52" not in res.text
+        assert "52 − 17" not in res.text
 
 
 @pytest.mark.asyncio
@@ -276,7 +295,7 @@ async def test_teacher_chat_page_board_shows_active_problem(
         id=uuid.uuid4(),
         teacher_id=mock_teacher_id,
         status="active",
-        engine_state={"board_problem": "बोर्ड: 43 − 27"},
+        engine_state=_scene_state_json(),
     )
 
     async def mock_db_with_scene() -> AsyncSession:
@@ -309,46 +328,31 @@ async def test_teacher_chat_page_board_shows_active_problem(
     ) as client:
         res = await client.get("/teacher")
         assert res.status_code == 200
-        assert '<span class="board-problem" id="board-problem">बोर्ड: 43 − 27</span>' in res.text
+        assert 'id="sb-board">43 − 27</span>' in res.text
+        assert not re.search(r'<section class="scene-bar" id="scene-bar"[^>]* hidden>', res.text)
+        assert get_message("ui_scene_one_title", child=get_message("speaker_ravi")) in res.text
+        assert get_message("ui_scene_turn", turn=0, max=10) in res.text
+        assert 'class="child-pill' not in res.text  # one-on-one: only that child, no switcher
 
 
 @pytest.mark.asyncio
-async def test_teacher_chat_page_chips_load_when_demo_mode_true(
-    teacher_pwa_app: FastAPI, monkeypatch: pytest.MonkeyPatch, tmp_path: Any
+async def test_sample_lines_show_in_demo_mode_only_folded_under_a_plain_title(
+    teacher_pwa_app: FastAPI, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Item 5: Chips load from demo_chips.json only when DEMO_MODE=True."""
-    sample_chips = [
-        {
-            "id": "c1",
-            "chip_label": "रवि से पूछें",
-            "text_hi": "रवि, तुमने 43 में से 27 कैसे घटाया?",
-            "audio_available": False,
-        },
-        {
-            "id": "c2",
-            "chip_label": "बंडल दिखाएँ",
-            "text_hi": "ये 4 बंडल हैं।",
-            "audio_available": True,
-        },
-    ]
-
-    from backend.app.web import teacher as teacher_mod
-
-    monkeypatch.setattr(teacher_mod, "load_demo_chips", lambda: sample_chips)
-
-    # Case 1: DEMO_MODE=True -> chips rendered
+    """The sample lines are a judge's helper: demo mode only, a plain title, a note on each line."""
     monkeypatch.setattr(settings, "DEMO_MODE", True)
     async with AsyncClient(
         transport=ASGITransport(app=teacher_pwa_app), base_url="http://test"
     ) as client:
         res = await client.get("/teacher?demo=1")
         assert res.status_code == 200
-        assert "रवि से पूछें" in res.text
-        assert 'data-audio-available="false"' in res.text
-        # Hard-coded chips must not be present
-        assert "रवि, 52 में 2 में से 7 क्यों नहीं घट सकता?" not in res.text
+        assert '<details class="sample-tray" id="sample-tray">' in res.text  # closed until opened
+        assert "नमूना पंक्ति आज़माएँ: दबाकर भेजें" in res.text
+        assert 'class="demo-chip"' in res.text and 'class="sample-note"' in res.text
+        assert "ऐसा सवाल जो हैंडबुक में नहीं है" in res.text
+        assert "हिंग्लिश" not in res.text and "Explain-back" not in res.text  # no jargon labels
 
-    # Case 2: DEMO_MODE=False -> no chips rendered
+    # DEMO_MODE off and a real speech provider: no sample lines at all
     monkeypatch.setattr(settings, "DEMO_MODE", False)
     monkeypatch.setattr(settings, "STT_PROVIDER", "sarvam")
     async with AsyncClient(
@@ -356,26 +360,7 @@ async def test_teacher_chat_page_chips_load_when_demo_mode_true(
     ) as client:
         res_no_demo = await client.get("/teacher")
         assert res_no_demo.status_code == 200
-        assert "रवि से पूछें" not in res_no_demo.text
-
-
-@pytest.mark.asyncio
-async def test_teacher_chat_page_no_chips_when_json_missing(
-    teacher_pwa_app: FastAPI, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Item 5: Render no chips if demo_chips.json is missing even if DEMO_MODE=True."""
-    monkeypatch.setattr(settings, "DEMO_MODE", True)
-    # Point load_demo_chips to a non-existent file
-    from backend.app.web import teacher as teacher_mod
-
-    monkeypatch.setattr(teacher_mod, "load_demo_chips", lambda: [])
-
-    async with AsyncClient(
-        transport=ASGITransport(app=teacher_pwa_app), base_url="http://test"
-    ) as client:
-        res = await client.get("/teacher?demo=1")
-        assert res.status_code == 200
-        assert "demo-chip" not in res.text
+        assert "sample-tray" not in res_no_demo.text and "demo-chip" not in res_no_demo.text
 
 
 # ── T27 PWA, Offline & Template Tests ────────────────────────────────────────
@@ -393,14 +378,12 @@ async def test_get_chat_alias_page(teacher_pwa_app: FastAPI) -> None:
 
         # Core header & branding elements
         assert "अभ्यास" in html
-        assert "दो अंकों की हासिल वाली घटाव" in html
-        assert "चरण 4/7 · अभ्यास" in html
+        assert 'id="header-move-title"' in html  # the move title and step follow her session
+        assert 'id="header-step"' in html
 
-        # Rehearse child strip with 3 children
-        assert 'id="board-problem"' in html
-        assert "रवि" in html
-        assert "प्रिया" in html
-        assert "अमन" in html
+        # The scene bar exists but is hidden, and no children are listed, outside a scene
+        assert re.search(r'<section class="scene-bar" id="scene-bar"[^>]* hidden>', html)
+        assert 'class="child-pill' not in html
 
         # Composer controls
         assert 'id="chat-input"' in html
@@ -412,45 +395,6 @@ async def test_get_chat_alias_page(teacher_pwa_app: FastAPI) -> None:
         assert 'id="network-banner"' in html
         assert "data-offline-text=" in html
         assert "आप ऑफ़लाइन हैं" in html
-
-
-def test_chat_html_template_renders_directly() -> None:
-    """chat.html template renders cleanly with Jinja context (§9.2, T27)."""
-    template = templates.get_template("chat.html")
-    context = {
-        "teacher_name": "शिक्षिका सुमित्रा",
-        "csrf_token": "test-csrf-token",
-        "move_title": "दो अंकों की घटाव",
-        "step_chip": "चरण 4/7 · अभ्यास",
-        "board_problem": "बोर्ड: 52 − 17",
-        "demo_mode": False,
-        "is_online": True,
-        "lite_mode": False,
-        "initial_messages": [
-            {
-                "id": "1",
-                "direction": "out",
-                "kind": "text",
-                "text": "नमस्ते!",
-                "speaker": "abhyas",
-                "time_str": "10:00",
-            }
-        ],
-    }
-    rendered = template.render(context)
-    assert "अभ्यास" in rendered
-    assert "शिक्षिका सुमित्रा" in rendered
-    assert "दो अंकों की घटाव" in rendered
-    assert "चरण 4/7 · अभ्यास" in rendered
-    assert "बोर्ड: 52 − 17" in rendered
-    assert "रवि" in rendered
-    assert "प्रिया" in rendered
-    assert "अमन" in rendered
-    assert "नमस्ते!" in rendered
-    assert 'id="chat-input"' in rendered
-    assert 'id="btn-mic"' in rendered
-    assert 'id="btn-send"' in rendered
-    assert "data-offline-text=" in rendered
 
 
 def test_offline_banner_text_and_catalog() -> None:
@@ -465,9 +409,7 @@ def test_offline_banner_text_and_catalog() -> None:
     teacher_template = (STATIC_DIR.parent / "templates" / "teacher.html").read_text(
         encoding="utf-8"
     )
-    chat_template = (STATIC_DIR.parent / "templates" / "chat.html").read_text(encoding="utf-8")
     assert "data-offline-text=\"{{ get_message('ui_offline_banner') }}\"" in teacher_template
-    assert "data-offline-text=\"{{ get_message('ui_offline_banner') }}\"" in chat_template
 
     # Offline fallback page check
     offline_template = (STATIC_DIR.parent / "templates" / "offline.html").read_text(
@@ -542,9 +484,9 @@ def test_service_worker_contract() -> None:
     assert "url.pathname.startsWith('/api/audio/')" in sw_content
 
     # Static assets cache list
-    assert "'/static/app.css'" in sw_content
-    assert "'/static/chat.js'" in sw_content
-    assert "'/static/recorder.js'" in sw_content
+    assert "'/static/app.css?v=' + BUILD_VERSION" in sw_content
+    assert "'/static/chat.js?v=' + BUILD_VERSION" in sw_content
+    assert "'/static/recorder.js?v=' + BUILD_VERSION" in sw_content
     assert "'/static/manifest.json'" in sw_content
     assert "'/offline.html'" in sw_content
 
@@ -576,7 +518,8 @@ async def test_chat_page_serves_ui_strings_json_and_status_slots(teacher_pwa_app
     assert strings["ui_chat_cold_start"] == get_message("ui_chat_cold_start", lang="hi")
     for slot in ('id="status-bar"', 'id="sr-live"', 'id="pending-bubble"', 'id="rec-status"'):
         assert slot in html
-    assert "रवि सोच रहा है" not in html  # placeholder text is now generic + set by chat.js
+    # the typing bubble starts generic; chat.js names the child (the strings are in the JSON above)
+    assert '<span id="pending-text">जवाब आ रहा है…</span>' in html
     assert "function playAudioDirect" not in html  # the duplicate inline player is gone
 
 
@@ -640,3 +583,32 @@ async def test_english_chat_page_shows_english_chips_that_send_the_hindi_questio
     for q in chips_for(uuid.UUID(int=2), datetime.now(UTC).date()):
         expected = f'data-id="{q.id}" data-text="{escape(q.send_text())}">{escape(q.en)}</button>'
         assert expected in section
+
+
+@pytest.mark.asyncio
+async def test_first_visit_goes_to_start_here_then_the_chat(
+    teacher_pwa_app: FastAPI, mock_teacher: Teacher
+) -> None:
+    """A demo teacher who has not seen the Start here screen is sent there; ?s=1 and ?ask skip it."""
+    mock_teacher.start_seen_at = None
+    mock_teacher.consent_service = True
+    async with AsyncClient(
+        transport=ASGITransport(app=teacher_pwa_app), base_url="http://test", follow_redirects=False
+    ) as client:
+        first = await client.get("/teacher")
+        assert first.status_code == 303 and first.headers["location"] == "/teacher/start"
+        assert (await client.get("/teacher?s=1")).status_code == 200
+        assert (await client.get("/teacher?ask=hb01")).status_code == 200
+        page = (await client.get("/teacher/start")).text
+        assert 'id="start-go"' in page and 'id="start-skip"' in page
+        assert get_message("ui_start_button") in page
+
+
+def test_start_here_is_short_and_plain_in_both_languages() -> None:
+    """Three lines, one button, a skip link: under 80 words, no jargon."""
+    for lang in ("hi", "en"):
+        keys = ("ui_start_what", "ui_start_do", "ui_start_get", "ui_start_button", "ui_start_skip")
+        words = sum(len(get_message(k, lang=lang).split()) for k in keys)
+        assert words < 80, (lang, words)
+        for jargon in ("rubric", "deliberate", "engine", "LLM", "FLN", "NIPUN"):
+            assert all(jargon not in get_message(k, lang=lang) for k in keys)

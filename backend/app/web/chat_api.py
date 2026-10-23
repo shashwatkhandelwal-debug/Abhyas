@@ -40,6 +40,7 @@ from backend.app.auth.guards import get_current_user
 from backend.app.auth.rate_limit import check_chat_rate_limit, check_translate_rate_limit
 from backend.app.channels.web import is_teacher_pending, mark_teacher_pending, process_inbound_web
 from backend.app.config import settings
+from backend.app.core.messages import localize_buttons
 from backend.app.db.models import (
     AppUser,
     Message,
@@ -54,6 +55,8 @@ from backend.app.rehearsal.header import scene_header
 from backend.app.rehearsal.scene_store import scene_store
 from backend.app.retrieval.search import get_guide_retriever
 from backend.app.speech.cache import tts_cache
+from backend.app.web.chat_view import load_chat_view
+from backend.app.web.demo_samples import demo_sample_audio
 
 logger = logging.getLogger("abhyas.web.chat")
 
@@ -430,7 +433,7 @@ async def get_chat_messages(
             "kind": m.kind,
             "text": m.text,
             "audio_ref": m.audio_ref,
-            "buttons": m.buttons,
+            "buttons": localize_buttons(m.buttons, teacher.address_form),
             "citations": m.citations,
             "speaker": m.speaker,
             "template_name": m.template_name,
@@ -445,10 +448,19 @@ async def get_chat_messages(
     scene_record = await scene_store.get_active_for_teacher(teacher.id)
     header = scene_header(scene_record.scene_state, scene_record.active) if scene_record else None
 
+    # The sample lines only exist in demo mode (null elsewhere: the page leaves its list alone)
+    view = await load_chat_view(
+        db,
+        teacher,
+        header,
+        with_samples=bool(settings.DEMO_MODE and (current_user.is_demo or teacher.is_demo)),
+        sample_audio=demo_sample_audio(),
+    )
     return {
         "messages": messages_data,
         "pending": pending,
-        "scene": header,
+        "scene": header or view.get("scene_preview"),
+        "view": view,
         "server_time": server_time.isoformat(),
     }
 

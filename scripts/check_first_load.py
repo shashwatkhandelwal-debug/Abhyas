@@ -226,6 +226,7 @@ async def measure_first_load(
             referenced_paths = _extract_asset_paths(res_teacher.text)
             # Ensure standard PWA offline assets are audited (the service worker is one file,
             # served at /sw.js; counting /static/sw.js as well would count it twice)
+            referenced_bare = {p.split("?")[0] for p in referenced_paths}
             for extra in (
                 "/static/app.css",
                 "/static/chat.js",
@@ -234,7 +235,7 @@ async def measure_first_load(
                 "/offline.html",
                 "/manifest.json",
             ):
-                if extra not in referenced_paths:
+                if extra not in referenced_bare:
                     referenced_paths.append(extra)
 
             seen_paths: set[str] = set()
@@ -246,13 +247,14 @@ async def measure_first_load(
                 res_asset = await client.get(p)
                 if res_asset.status_code == 200:
                     asset_content = res_asset.content
+                    bare = p.split("?")[0]
                     kind = (
                         "CSS"
-                        if p.endswith(".css")
+                        if bare.endswith(".css")
                         else (
                             "JS"
-                            if p.endswith(".js")
-                            else ("JSON" if p.endswith(".json") else "HTML")
+                            if bare.endswith(".js")
+                            else ("JSON" if bare.endswith(".json") else "HTML")
                         )
                     )
                     measurements.append(
@@ -278,7 +280,7 @@ async def measure_first_load(
     teacher_bundle_items = [
         m
         for m in measurements
-        if m.path
+        if m.path.split("?")[0]
         in (
             "/teacher",
             "/static/app.css",
