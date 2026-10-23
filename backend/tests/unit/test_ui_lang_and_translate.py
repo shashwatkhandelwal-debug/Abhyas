@@ -69,7 +69,7 @@ async def test_english_chat_page_has_no_devanagari_in_chrome(teacher_pwa_app: Fa
     chrome = re.sub(r"<span class=\"child-pill[^>]*>.*?</span>", "", chrome, flags=re.S)
     chrome = re.sub(r"<title>.*?</title>", "", chrome, flags=re.S)
     assert not DEVANAGARI.search(chrome), (len(leftovers), DEVANAGARI.findall(chrome)[:20])
-    assert "Log out" in english and "Type here or hold the mic and speak…" in english
+    assert "Log out" in english and "Type or speak here…" in english
     # the thread only has a system bubble, so no per-bubble Translate button is rendered
     assert 'class="translate-btn"' not in english
     # the strings chat.js receives are English too

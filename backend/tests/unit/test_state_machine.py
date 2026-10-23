@@ -1143,3 +1143,24 @@ async def test_learn_step_free_text_reminds_of_the_two_buttons_and_does_not_adva
     assert (
         await service.get_or_create_context(t_id)
     ).current_state == SessionStateEnum.EXPLAIN_BACK
+
+
+@pytest.mark.parametrize(
+    ("text", "band"),
+    [
+        ("0-1 साल", "0-1"),
+        ("पहला साल, 1 साल", "0-1"),
+        ("2-5 साल", "2-5"),
+        ("3 years", "2-5"),
+        ("६ से १० साल", "6-10"),
+        ("10+", "10+"),
+        ("12 साल", "10+"),
+        ("exp_2_5", "2-5"),
+        ("कुछ साल", None),
+    ],
+)
+def test_free_words_about_teaching_years_become_a_stored_band(text: str, band: str | None) -> None:
+    """teacher.experience_band only accepts four values; free text used to break the save."""
+    from backend.app.sessions.state_machine import experience_band_of
+
+    assert experience_band_of(text) == band

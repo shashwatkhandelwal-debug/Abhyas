@@ -601,7 +601,7 @@ ui_arp_move_colon: {text: "तरीका:", audio: false}
 ui_arp_level: {text: "स्तर", audio: false}
 ui_arp_score_colon: {text: "अंक:", audio: false}
 ui_arp_score: {text: "अंक", audio: false}
-ui_chat_input_placeholder: {text: "यहाँ लिखें या माइक दबाकर बोलें…", audio: false}
+ui_chat_input_placeholder: {text: "यहाँ लिखें या बोलें…", audio: false}
 ui_chat_record_hold: {text: "बोलकर रिकॉर्ड करें (दबाकर रखें)", audio: false}
 ui_chat_record: {text: "बोलकर रिकॉर्ड करें", audio: false}
 ui_chat_menu_progress: {text: "प्रगति (Progress)", audio: false}
@@ -1048,7 +1048,7 @@ hint_consent: {text: "आगे बढ़ने के लिए '{agree}' द�
 hint_join_code: {text: "अपने ARP का दिया कोड लिखें; कोड न हो तो 'नहीं' लिखें।", audio: false}
 hint_name: {text: "अपना नाम बोलकर या लिखकर बताएँ।", audio: false}
 hint_address: {text: "नीचे दिए बटन से चुनें कि आपको कैसे संबोधित करें।", audio: false}
-hint_experience: {text: "आपका शिक्षण अनुभव कितने साल का है? नीचे से चुनें।", audio: false}
+hint_experience: {text: "अपना शिक्षण अनुभव लिखकर बताएँ, जैसे '2-5 साल'।", audio: false}
 hint_classes: {text: "आपकी कक्षा कौन-सी है: 1, 2 या 3? लिखकर बताएँ।", audio: false}
 hint_share: {text: "'{yes}' या '{no}' दबाएँ। इसे आप कभी भी बदल सकते हैं।", audio: false}
 hint_placement: {text: "रवि से कक्षा की तरह बात कीजिए, बोलकर या लिखकर। यह परीक्षा नहीं है।", audio: false}
@@ -1094,3 +1094,6 @@ hint_example_concrete: {text: "{child}, चलो {a} को दस के ब�
 ui_sample_title: {text: "नमूना पंक्ति आज़माएँ: दबाकर भेजें", audio: false}
 ui_demo_dismiss: {text: "बंद करें", audio: false}
 ui_demo_divider: {text: "डेमो यहाँ से शुरू होता है: यह चैट पहले से तैयार है, ताकि आप यहीं से आगे बढ़ सकें।", audio: false}
+
+# ── Chat clarity (cont.): experience suggestion ──
+hint_experience_suggest: {text: "2-5 साल", audio: false}

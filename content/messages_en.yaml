@@ -346,7 +346,7 @@ ui_arp_move_colon: {text: "Move:"}
 ui_arp_level: {text: "Level"}
 ui_arp_score_colon: {text: "Score:"}
 ui_arp_score: {text: "Score"}
-ui_chat_input_placeholder: {text: "Type here or hold the mic and speak…"}
+ui_chat_input_placeholder: {text: "Type or speak here…"}
 ui_chat_record_hold: {text: "Record by voice (hold)"}
 ui_chat_record: {text: "Record by voice"}
 ui_chat_menu_progress: {text: "Progress"}
@@ -729,7 +729,7 @@ hint_consent: {text: "Tap '{agree}' to continue, or '{more}' to read what we kee
 hint_join_code: {text: "Type the code your ARP gave you, or type 'no' if you do not have one."}
 hint_name: {text: "Tell me your name, by voice or by typing."}
 hint_address: {text: "Tap a button below to choose how you would like to be addressed."}
-hint_experience: {text: "How many years have you been teaching? Choose below."}
+hint_experience: {text: "Tell me how many years you have been teaching, for example '2-5 years'."}
 hint_classes: {text: "Which class do you teach: 1, 2 or 3? Type it."}
 hint_share: {text: "Tap '{yes}' or '{no}'. You can change this any time."}
 hint_placement: {text: "Talk to Ravi as you would in class, by voice or typing. It is not a test."}
@@ -775,3 +775,6 @@ hint_example_concrete: {text: "{child}, let us make {a} with bundles of ten and 
 ui_sample_title: {text: "Try a sample line: tap to send"}
 ui_demo_dismiss: {text: "Dismiss"}
 ui_demo_divider: {text: "Demo starts here: this chat was prepared so you can continue from here."}
+
+# ── Chat clarity (cont.): experience suggestion ──
+hint_experience_suggest: {text: "2-5 years"}

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -971,6 +972,26 @@ class WeeklyStateMachine:
         )
 
 
+_DEVANAGARI_DIGITS = {0x966 + i: str(i) for i in range(10)}  # U+0966..U+096F to 0..9
+
+
+def experience_band_of(text: str) -> str | None:
+    """Her free words about her teaching years ("2-5 years", "3 years", "10+", Devanagari digits)
+    as one of the stored bands (the teacher table only accepts these); None without a number."""
+    cleaned = text.translate(_DEVANAGARI_DIGITS).lower().replace("exp_", "").replace("_", "-")
+    numbers = [int(n) for n in re.findall(r"\d+", cleaned)]
+    if not numbers:
+        return None
+    years = max(numbers)
+    if "+" in cleaned or years > 10:
+        return "10+"
+    if years <= 1:
+        return "0-1"
+    if years <= 5:
+        return "2-5"
+    return "6-10"
+
+
 class OnboardingStateMachine:
     """Manages legal transitions in teacher onboarding (spec/08 §8.1)."""
 
@@ -1070,8 +1091,9 @@ class OnboardingStateMachine:
             )
 
         if prev == OnboardingStateEnum.PROFILE_EXPERIENCE:
-            self.ctx.experience_band = raw_text
-            self.ctx.first_year = "0-1" in raw_text or "exp_0_1" in token
+            band = experience_band_of(token if token.startswith("exp_") else raw_text)
+            self.ctx.experience_band = band
+            self.ctx.first_year = band == "0-1"
             self.ctx.onboarding_state = OnboardingStateEnum.PROFILE_CLASSES
             return TransitionResult(
                 previous_state=str(prev),

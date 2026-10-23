@@ -213,7 +213,9 @@ class SessionService:
         teacher = await self.repo.get_or_create_teacher(teacher_uuid)
         teacher.name = ctx.name
         teacher.address_form = ctx.address_form
-        teacher.cluster_id = ctx.cluster_id
+        # "UNASSIGNED" is the state machine's marker for "no join code"; the column is a foreign key
+        # to `cluster`, so it is stored as NULL (a first-time teacher without a code hit a 500 here)
+        teacher.cluster_id = None if ctx.cluster_id in (None, "UNASSIGNED") else ctx.cluster_id
         teacher.batch_id = ctx.batch_id
         teacher.district = ctx.district
         teacher.experience_band = ctx.experience_band

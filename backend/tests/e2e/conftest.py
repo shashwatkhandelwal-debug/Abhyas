@@ -156,6 +156,7 @@ class Teacher:
             color_scheme=scheme,
             locale="hi-IN" if lang == "hi" else "en-IN",
         )
+        self.context.add_init_script(NAV_PROBE)
         self.page = self.context.new_page()
         self.errors: list[str] = []
         self.page.on("pageerror", lambda e: self.errors.append(f"pageerror: {e}"))
@@ -205,3 +206,73 @@ CLIPPED = """(selector) => [...document.querySelectorAll(selector)]
   .filter((el) => el.offsetParent !== null
     && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1))
   .map((el) => (el.id || el.className || el.tagName) + ': ' + el.textContent.trim().slice(0, 40))"""
+
+
+# Visible text that is cut off: a leaf element clipped by its own box (overflow or ellipsis), an
+# element running off the screen's edge (outside a row that scrolls by design), or an input
+# placeholder wider than its field.
+CUT_OFF = """() => {
+  const out = [];
+  const vw = document.documentElement.clientWidth;
+  const hiddenAncestor = (el) => el.closest('[hidden], .sr-only, details:not([open]) > :not(summary)');
+  for (const el of document.querySelectorAll('body *')) {
+    if (el.matches('script, style, svg, svg *, option') || hiddenAncestor(el)) continue;
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+    const label = (el.id || el.className || el.tagName) + ': ' + (el.textContent || '').trim().slice(0, 30);
+    if (el.tagName === 'INPUT' && el.placeholder) {
+      const probe = document.createElement('span');
+      probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;font:' + cs.font;
+      probe.textContent = el.placeholder;
+      document.body.appendChild(probe);
+      const need = probe.getBoundingClientRect().width;
+      probe.remove();
+      const room = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      if (need > room + 1) out.push('placeholder: ' + el.placeholder);
+      continue;
+    }
+    if (el.children.length || !(el.textContent || '').trim()) continue;
+    if (cs.overflowX !== 'visible' && el.scrollWidth > el.clientWidth + 1) out.push('clipped x ' + label);
+    if (cs.overflowY !== 'visible' && el.scrollHeight > el.clientHeight + 1) out.push('clipped y ' + label);
+    if (cs.textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth) out.push('ellipsis ' + label);
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && !el.closest('.handbook-chips, .sample-list') && (r.right > vw + 1 || r.left < -1)) {
+      out.push('off screen ' + label);
+    }
+  }
+  return out;
+}"""
+
+# Records when a link tap showed the "Opening..." bar, across the page load it starts
+NAV_PROBE = """
+document.addEventListener('click', () => sessionStorage.setItem('probe_click', String(Date.now())), true);
+new MutationObserver(() => {
+  if (document.querySelector('.nav-ack:not([hidden])') && !sessionStorage.getItem('probe_ack')) {
+    sessionStorage.setItem('probe_ack', String(Date.now()));
+  }
+}).observe(document, { childList: true, subtree: true, attributes: true });
+"""
+RESPONSE_MS = 300
+
+
+def tap_and_expect(
+    page: Any, tap: Any, predicate: str, arg: Any = None, ms: int = RESPONSE_MS
+) -> None:
+    """Runs `tap()`, then requires `predicate` to hold within `ms` (a visible response)."""
+    tap()
+    page.wait_for_function(predicate, arg=arg, timeout=ms)
+
+
+def link_acks_within(page: Any, tap: Any, url_glob: str, ms: int = RESPONSE_MS) -> None:
+    """A link tap must show the "Opening..." bar (or already be on the next page) within `ms`."""
+    page.evaluate(
+        "sessionStorage.removeItem('probe_click'); sessionStorage.removeItem('probe_ack')"
+    )
+    tap()
+    page.wait_for_url(url_glob, timeout=15_000)
+    page.wait_for_load_state("domcontentloaded")
+    gap = page.evaluate(
+        "() => { const c = +sessionStorage.getItem('probe_click'), a = +sessionStorage.getItem('probe_ack');"
+        " return (c && a) ? a - c : -1; }"
+    )
+    assert 0 <= gap <= ms, f"the tap showed nothing within {ms} ms (gap {gap})"

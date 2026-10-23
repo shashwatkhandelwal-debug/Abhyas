@@ -18,7 +18,7 @@ ONBOARDING_HINTS: dict[str, tuple[str, str | None]] = {
     OnboardingStateEnum.JOIN_CODE.value: ("hint_join_code", "hint_join_code_suggest"),
     OnboardingStateEnum.PROFILE_NAME.value: ("hint_name", None),
     OnboardingStateEnum.PROFILE_ADDRESS.value: ("hint_address", None),
-    OnboardingStateEnum.PROFILE_EXPERIENCE.value: ("hint_experience", None),
+    OnboardingStateEnum.PROFILE_EXPERIENCE.value: ("hint_experience", "hint_experience_suggest"),
     OnboardingStateEnum.PROFILE_CLASSES.value: ("hint_classes", "hint_classes_suggest"),
     OnboardingStateEnum.SHARE_CONSENT.value: ("hint_share", None),
     OnboardingStateEnum.PLACEMENT_INTRO.value: ("hint_placement", "hint_placement_suggest"),

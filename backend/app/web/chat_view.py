@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import Text, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.messages import get_message, has_message
@@ -167,11 +167,16 @@ async def load_chat_view(
     onboarding = str(teacher.onboarding_state)
     started = True
     if onboarding == OnboardingStateEnum.NEW.value:
-        # Her first words bring the welcome and the consent question: before that, "say hello"
+        # Her first words bring the welcome and the consent question (its "I agree" button):
+        # before that, "say hello". Other replies (a handbook answer) do not count.
         sent = await db.scalar(
             select(func.count())
             .select_from(Message)
-            .where(Message.teacher_id == uuid.UUID(str(teacher.id)), Message.direction == "out")
+            .where(
+                Message.teacher_id == uuid.UUID(str(teacher.id)),
+                Message.direction == "out",
+                cast(Message.buttons, Text).like("%btn_agree%"),
+            )
         )
         started = isinstance(sent, int) and sent > 0
     return build_view(

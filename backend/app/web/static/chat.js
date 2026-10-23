@@ -24,6 +24,7 @@ const TYPING_TIMEOUT_MS = 60000; // give up the typing indicator, show the Hindi
 const COLD_START_HINT_MS = 5000; // no response for this long -> "server is waking up"
 const AUDIO_WAIT_MS = 25000; // how long a spoken reply may wait for its audio before text-only
 const CHIP_CONFIRM_MS = 1400; // how long a tapped chip shows its inline ✓
+const FOLLOW_UP_POLL_MS = 1200; // one more poll after a reply, so the step line catches up
 const MAX_AUTO_RETRIES = 3; // network/5xx attempts before a bubble shows the red "!"
 const BACKOFF_STEPS = [2000, 4000, 8000, 16000, 30000];
 
@@ -811,6 +812,8 @@ async function pollMessages() {
       if (gotReply) {
         typingEvent({ type: 'reply' });
         scrollChatToNew(firstNewReply);
+        // The step (header, what-to-do line) may be saved just after the reply: look again soon
+        setTimeout(pollMessages, FOLLOW_UP_POLL_MS);
       }
       if (!stale) typingEvent({ type: data.pending ? 'pending' : 'idle' });
       renderSceneHeader(data.scene || null);
