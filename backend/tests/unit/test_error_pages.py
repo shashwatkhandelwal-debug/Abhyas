@@ -103,6 +103,7 @@ def test_failure_messages_exist_in_both_languages_with_a_next_step() -> None:
     keys = [
         "stt_failed",
         "stt_budget_type_please",
+        "stt_unavailable_type_please",
         "system_error_retry",
         "ui_chat_rec_unsupported",
         "ui_chat_rec_permission",

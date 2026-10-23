@@ -51,6 +51,8 @@ COUNTED_TABLES = (
     "move_path",
     "session_state",
     "doc_chunk",
+    "review_item",
+    "question",
 )
 
 
@@ -127,6 +129,28 @@ def _counts(db_name: str) -> dict[str, int]:
         engine.dispose()
 
 
+def _review_queue(db_name: str) -> list[tuple[str, str, str, bool]]:
+    """(kind, ref_id, status, the referenced row exists) for every review item."""
+    engine = create_engine(_sync_url(db_name))
+    query = (
+        "SELECT r.kind, r.ref_id, r.status, "
+        "CASE r.kind "
+        " WHEN 'rehearsal_score' THEN EXISTS (SELECT 1 FROM rehearsal_score x WHERE x.id::text = r.ref_id) "
+        " WHEN 'explain_score' THEN EXISTS (SELECT 1 FROM explain_score x WHERE x.id::text = r.ref_id) "
+        " WHEN 'question' THEN EXISTS (SELECT 1 FROM question x WHERE x.id::text = r.ref_id) "
+        " ELSE false END "
+        "FROM review_item r ORDER BY r.created_at"
+    )
+    try:
+        with engine.connect() as conn:
+            return [
+                (str(k), str(ref), str(st), bool(found))
+                for k, ref, st, found in conn.execute(text(query))
+            ]
+    finally:
+        engine.dispose()
+
+
 def _orphans(db_name: str) -> dict[str, int]:
     engine = create_engine(_sync_url(db_name))
     queries = {
@@ -157,6 +181,17 @@ def test_seed_runs_on_fresh_postgres_and_is_idempotent(scratch_db: str) -> None:
     assert first["turn"] > 0
     assert first["app_user"] > 0
     assert _orphans(scratch_db) == {"rehearsal_score": 0, "turn": 0}
+    # the coach queue starts with a small, believable set of real rows, not one item per teacher
+    queue = _review_queue(scratch_db)
+    assert 3 <= len(queue) <= 8, queue
+    assert {kind for kind, _ref, status, _found in queue} <= {
+        "rehearsal_score",
+        "explain_score",
+        "question",
+    }
+    assert {status for _kind, _ref, status, _found in queue} == {"open"}
+    assert all(found for _kind, _ref, _status, found in queue), "every item points at a real row"
+    assert first["review_item"] == len(queue) and first["question"] == 1
 
     _run(["-m", "backend.app.db.seed"], scratch_db)
     assert _counts(scratch_db) == first

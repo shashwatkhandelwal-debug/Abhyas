@@ -249,6 +249,18 @@ def validate_all_content(content_dir: Path) -> list[MoveCard]:
     return validated_moves
 
 
+def validate_class_struggles(moves: list[MoveCard]) -> list[str]:
+    """Problems in content/class_struggles.yaml (unknown move, misconception or chunk id)."""
+    from backend.app.class_profile.library import load_library, validate_library
+
+    known = {m.id: set(m.misconceptions) | set(m.target_causes) for m in moves}
+    return validate_library(load_library(), known)
+
+
 if __name__ == "__main__":
     validated = validate_all_content(Path("content"))
     print(f"All {len(validated)} seed moves validated successfully!")
+    problems = validate_class_struggles(validated)
+    if problems:
+        raise SystemExit("class_struggles.yaml: " + "; ".join(problems))
+    print("class_struggles.yaml validated successfully!")

@@ -199,7 +199,7 @@ async def test_admin_fast_forward_success() -> None:
             )
             assert res.status_code == 303
             assert "/admin?msg=ff_ok&advanced=2" in res.headers["location"]
-            mock_ff.assert_awaited_once_with(teacher_id)
+            mock_ff.assert_awaited_once_with(teacher_id, session_factory=None)
 
     app.dependency_overrides.clear()
 

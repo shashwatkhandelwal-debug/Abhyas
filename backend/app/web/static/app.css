@@ -1,7 +1,4 @@
-/* ==========================================================================
-   Abhyas (अभ्यास) Main Stylesheet - Single CSS File (spec/09 §9.1, §9.2)
-   Asset Budget: < 150 KB total uncompressed first load
-   ========================================================================== */
+/* Abhyas (अभ्यास) main stylesheet, the single CSS file (spec/09). Budget: < 150 KB first load */
 
 :root {
   /* Color Tokens (spec/09 §9.1) */
@@ -217,6 +214,10 @@ body {
   font-size: 0.85rem;
   font-weight: 600;
   text-align: center;
+}
+
+.demo-banner:empty {
+  display: none;
 }
 
 /* Network Banners */
@@ -542,7 +543,8 @@ body {
 }
 
 /* Demo Helper Chips */
-.demo-helper-section {
+.demo-helper-section,
+.handbook-section {
   padding: 0.3rem 0.8rem;
   background-color: var(--surface);
   border-top: 1px dashed var(--border);
@@ -555,14 +557,16 @@ body {
   font-weight: 600;
 }
 
-.demo-chips {
+.demo-chips,
+.handbook-chips {
   display: flex;
   overflow-x: auto;
   gap: 0.4rem;
   padding-bottom: 0.25rem;
 }
 
-.demo-chip {
+.demo-chip,
+.handbook-chip {
   background-color: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
@@ -576,9 +580,13 @@ body {
   align-items: center;
 }
 
-.demo-chip:hover {
+.demo-chip:hover,
+.handbook-chip:hover {
   background-color: var(--brand-light);
 }
+
+.handbook-chips { flex-wrap: wrap; overflow-x: visible; }
+.handbook-chip { white-space: normal; text-align: left; line-height: 1.25; text-decoration: none; }
 
 /* Composer Section */
 .composer-wrapper {
@@ -728,9 +736,7 @@ body {
   gap: 0.4rem;
 }
 
-/* ==========================================================================
-   Progress & Deletion Pages (spec/09 §9.1, §9.2)
-   ========================================================================== */
+/* Progress & deletion pages (spec/09) */
 
 .progress-main {
   flex: 1;
@@ -1084,11 +1090,8 @@ body {
 }
 
 
-/* ==========================================================================
-   Visible acknowledgment states (chat.js): bubble ticks, typing, audio, mic,
-   chips, status bar. Motion: one-off transitions <= 200 ms; looped indicators
-   stop under prefers-reduced-motion. Status text >= 4.5:1 (tests/unit/test_chat_ux_assets.py).
-   ========================================================================== */
+/* Visible acknowledgment states (chat.js): ticks, typing, audio, mic, chips, status bar. Motion <= 200 ms,
+   loops stop under prefers-reduced-motion; status text >= 4.5:1 (test_chat_ux_assets.py) */
 
 :root {
   --status-meta: #4B5450;
@@ -1399,7 +1402,8 @@ body {
   font-weight: 700;
 }
 
-.demo-chip:disabled:not(.pressed) {
+.demo-chip:disabled:not(.pressed),
+.handbook-chip:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -1437,3 +1441,18 @@ body {
 }
 
 .nav-ack{position:fixed;top:0;left:0;right:0;z-index:1000;padding:.5rem .75rem;background:#1f2937;color:#fff;text-align:center}.nav-ack[hidden]{display:none}
+
+/* My class (page, card) */
+.class-page { gap: 1rem; }
+.class-card { margin: 0 0 1rem 0; padding: 1rem; background: var(--surface, #fff); border: 1px solid var(--border, #ddd); border-radius: 12px; }
+.class-list { margin: 0.25rem 0 0.75rem 1.25rem; padding: 0; }
+.class-item { margin-bottom: 0.75rem; }
+.class-tip, .class-practice { margin: 0.25rem 0; font-size: 0.9rem; }
+.class-k { font-weight: 600; }
+.class-src, .class-none, .class-empty, .class-privacy { color: var(--muted, #5E6662); font-size: 0.85rem; }
+.class-chips fieldset { border: 0; padding: 0; margin: 0 0 0.75rem 0; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.class-chips legend { font-weight: 600; margin-bottom: 0.5rem; }
+.class-chip { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 2.75rem; padding: 0.25rem 0.8rem; border: 1px solid var(--border, #ddd); border-radius: 999px; background: var(--surface, #fff); }
+.class-chip input { width: 1.1rem; height: 1.1rem; }
+.class-text textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 0.5rem; border: 1px solid var(--border, #ddd); border-radius: 8px; margin: 0.4rem 0; }
+.class-nomatch { padding: 0.75rem 1rem; border-left: 4px solid var(--border, #ddd); background: var(--surface, #fff); }

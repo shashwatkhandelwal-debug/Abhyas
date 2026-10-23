@@ -1,4 +1,4 @@
-# Sample inputs (five, ready to paste or speak)
+# Sample inputs (five for practice, two for "My class", one handbook chip, one skill)
 
 Use these in the chat of **`teacher.demo2`** (one-on-one with Ravi, problem 43 − 27) unless a row says
 otherwise. Speak them with the mic or paste them in the text box; the sample chips in the chat carry the same
@@ -94,6 +94,72 @@ Off-topic check, same box:
 
 Actual run: category `out_of_scope`, nothing retrieved, no model answer; the reply is the fixed line "माफ़
 कीजिए, मैं कक्षा 1-3 की पढ़ाई और कक्षा से जुड़े सवालों में ही मदद कर सकती हूँ।"
+
+## 6. "My class": two struggles in one sentence
+
+In any teacher login (try `teacher.demo1`), open the menu (☰) → **मेरी कक्षा**, or type "मेरी कक्षा", then say or
+type:
+
+> बच्चे हासिल वाले जोड़ में हासिल भूल जाते हैं और गिनती भी कमज़ोर है
+
+Actual run (2026-10-23, real `class_struggle_classifier` on Haiku 5.5; the keyword matcher returns the same two
+ids for this sentence):
+
+- The classifier returned `NUM_ADD_CARRY`, `NUM_COUNTING` (from the closed list of 14; it cannot return anything else).
+- Abhyas asks "मैंने ऐसा समझा: 1. हासिल वाला जोड़ गलत करते हैं  2. बच्चे गिनती में अटकते हैं …" with **हाँ / नहीं**.
+- After **हाँ** it saves both, in that order, and shows for each a handbook tip and its source:
+  1. हासिल वाला जोड़ → "पहले बच्चों को जोड़ने के अपने तरीके बनाने दें और 10-10 के बंडलों से दिखाएँ…", practice
+     "हासिल वाला जोड़: 10 तीलियों का बंडल बनाकर", source "निपुण भारत दिशानिर्देश, पृष्ठ 281".
+  2. गिनती → "गिनवाते समय हर चीज़ को छुआएँ या हटवाएँ…", **"इसके लिए अभी अभ्यास का केस नहीं है; सिर्फ़ यह सुझाव है।"**,
+     source "निपुण भारत दिशानिर्देश, पृष्ठ 85".
+- Effect on the path (fixed rules, no model): the addition-with-carry module moves to the top of **Modules**
+  with "आपकी कक्षा के लिए चुना गया: … हासिल वाला जोड़ गलत करते हैं"; in a one-on-one practice of that module
+  Ravi is starred (his mistake, `ADD_CARRY_FORGOTTEN`, is the one behind this struggle) and the coach's feedback
+  ends with a line linking it to your class. Counting has no practice case, so nothing else moves.
+
+## 7. "My class": a struggle with no practice case yet
+
+> बच्चे पढ़ तो लेते हैं पर क्या पढ़ा यह नहीं बता पाते
+
+Actual run: classifier `LIT_COMPREHENSION`, confirm, then the saved message: the tip "पढ़ना अर्थ बनाना है। पढ़ने से
+पहले अगला शब्द या घटना अनुमान लगवाएँ, पढ़ने के बाद कहानी अपने शब्दों में सुनवाएँ और उस पर सवाल पूछें।", the source
+"निपुण भारत दिशानिर्देश, पृष्ठ 71", and "इसके लिए अभी अभ्यास का केस नहीं है; सिर्फ़ यह सुझाव है।" No module order changes.
+
+Try also a sentence that is not on the list, for example "बच्चे घड़ी में समय नहीं देख पाते": nothing is saved, you
+get a general handbook tip (page 162 of the NIPUN guidelines) and the same honest line, and the list of numbers
+again. Tapping a chip or sending a number from the list (1 to 9, or 10 for "something else") works the same way.
+On 32 labelled sentences the classifier, the keyword matcher alone and the two together are compared in
+`eval/class_profile/REPORT.md`.
+
+## 8. An "Ask the handbook" chip
+
+In the chat (not inside a scene) or on the Modules page, tap one of the four chips under the text box, for example
+**पढ़ने की रवानगी (reading fluency) का मतलब क्या है?** The chip sends "सवाल: ..." as typed text; the app answers from
+the official passages only.
+
+Actual run (2026-10-23, real Sonnet 5.5 answerer, no speech; the retrieval step is the same on every run): classifier
+skipped (a curated question is known to be a how-to question), 5 passages retrieved, answered with citations
+"स्रोत: निपुण भारत दिशानिर्देश, पृष्ठ 75" and "... पृष्ठ 20", a one-line "try this week" and the label
+"FLN प्रशिक्षण पैकेज से". The answer: fluency means reading a text accurately, at a suitable speed, with expression and
+with understanding; many children know the letters but read letter by letter, which blocks meaning.
+All ten chip questions were run the same way: ten of ten gave a generated answer with two to four citations, and the
+question's own passage was among them every time. With the answering model switched off (mock LLM, or a failed guard)
+the chip shows that passage's stored Hindi summary and its source page instead, and never "not found" (ten of ten).
+
+## 9. What do you want to get better at
+
+After saving "My class" (or on the My class page), say or type what you want to improve, for example:
+
+> मैं बच्चों से यह पूछना सीखना चाहती हूँ कि उन्होंने सवाल कैसे हल किया
+
+Actual run (2026-10-23, real `teaching_skill_classifier` on Haiku 5.5, 16 team-written sentences in
+`eval/teaching_skills/REPORT.md`: 16 of 16 matched, 3 of 3 vague or off-topic sentences stored nothing, 0 ids outside the
+list; the labels are ours, not teachers'): the classifier returns `asks_to_explain`, Abhyas asks to confirm and, after
+**हाँ**, saves it with the handbook page it comes from. Two skills in one sentence ("बच्चों से तरीका पूछना और फिर नया
+सवाल देकर जाँचना") give `asks_to_explain`, `checks_on_new_problem`; a skill not on the list ("कक्षा का अनुशासन") gives
+`other`; "आज मौसम बहुत अच्छा है" gives nothing and the numbered list comes back. In the next one-on-one practice the coach's
+feedback begins with "आपने '...' में आगे बढ़ना चुना था। इस अभ्यास में: ..." using the rubric's own wording for the level you
+reached, and after two scored practices the progress page shows your first and latest level on it.
 
 ## Notes
 

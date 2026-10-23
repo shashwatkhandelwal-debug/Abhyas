@@ -11,6 +11,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from httpx import ASGITransport, AsyncClient
+from markupsafe import escape
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.guards import get_current_user
@@ -577,3 +578,65 @@ async def test_chat_page_serves_ui_strings_json_and_status_slots(teacher_pwa_app
         assert slot in html
     assert "रवि सोच रहा है" not in html  # placeholder text is now generic + set by chat.js
     assert "function playAudioDirect" not in html  # the duplicate inline player is gone
+
+
+@pytest.mark.asyncio
+async def test_chat_page_shows_four_handbook_chips_when_idle(teacher_pwa_app: FastAPI) -> None:
+    from backend.app.handbook.questions import chips_for
+
+    async with AsyncClient(
+        transport=ASGITransport(app=teacher_pwa_app), base_url="http://test"
+    ) as client:
+        html = (await client.get("/teacher")).text
+    assert html.count('class="handbook-chip"') == settings.HANDBOOK_CHIPS_SHOWN == 4
+    assert get_message("ui_handbook_title") in html
+    assert 'data-autosend=""' in html
+    # server-rendered: the four labels are today's questions (Hindi UI: the label is the question,
+    # the script adds the ask keyword from data-prefix)
+    today = chips_for(uuid.UUID(int=2), datetime.now(UTC).date())
+    assert f'data-prefix="{settings.HANDBOOK_ASK_PREFIX}"' in html
+    for q in today:
+        assert f'data-id="{q.id}">{q.hi}</button>' in html
+    assert "data-text=" not in html.split('id="handbook-chips"')[1].split("</section>")[0]
+
+
+@pytest.mark.asyncio
+async def test_ask_parameter_sets_the_question_to_send_only_for_a_known_chip(
+    teacher_pwa_app: FastAPI,
+) -> None:
+    from backend.app.handbook.questions import load_handbook_questions
+
+    q = load_handbook_questions()[2]
+    async with AsyncClient(
+        transport=ASGITransport(app=teacher_pwa_app), base_url="http://test"
+    ) as client:
+        known = (await client.get(f"/teacher?ask={q.id}")).text
+        unknown = (await client.get("/teacher?ask=not-a-question")).text
+    assert f'data-autosend="{q.send_text()}"' in known
+    assert 'data-autosend=""' in unknown
+
+
+def test_handbook_chips_keep_the_page_light() -> None:
+    """The chips are markup plus a few lines of script: the chat page budget (150 KB) still holds."""
+    js = (STATIC_DIR / "chat.js").read_text(encoding="utf-8")
+    assert "setupHandbookChips" in js and js.count("handleSendText(") >= 3
+    assert not (STATIC_DIR / "handbook.js").exists()  # no extra script file
+
+
+@pytest.mark.asyncio
+async def test_english_chat_page_shows_english_chips_that_send_the_hindi_question(
+    teacher_pwa_app: FastAPI,
+) -> None:
+    from backend.app.handbook.questions import chips_for
+    from backend.app.web.ui_lang import LANG_COOKIE_NAME, UiLangMiddleware
+
+    teacher_pwa_app.add_middleware(UiLangMiddleware)
+    async with AsyncClient(
+        transport=ASGITransport(app=teacher_pwa_app), base_url="http://test"
+    ) as client:
+        html = (await client.get("/teacher", cookies={LANG_COOKIE_NAME: "en"})).text
+    section = html.split('id="handbook-chips"')[1].split("</section>")[0]
+    assert "data-prefix" not in section  # no Hindi keyword in English chrome
+    for q in chips_for(uuid.UUID(int=2), datetime.now(UTC).date()):
+        expected = f'data-id="{q.id}" data-text="{escape(q.send_text())}">{escape(q.en)}</button>'
+        assert expected in section

@@ -13,6 +13,7 @@ from backend.app.core.messages import get_message
 from backend.app.core.types import InboundMessage
 from backend.app.db.models import (
     AdoptionEvidence,
+    ClassOutcome,
     ConsentLog,
     ExplainScore,
     InviteCode,
@@ -420,6 +421,7 @@ class FakeSessionRepository(SessionRepository):
         self._move_paths: list[MovePath] = []
         self._realism_ratings: list[RealismRating] = []
         self._training_ratings: list[TrainingRating] = []
+        self._class_outcomes: list[ClassOutcome] = []
         self._module_progress: dict[tuple[UUID, str], ModuleProgress] = {}
         self._invite_codes: dict[str, InviteCode] = {
             "KNP-C01-B1": InviteCode(
@@ -611,7 +613,34 @@ class FakeSessionRepository(SessionRepository):
         return paths
 
     async def get_move_path(self, teacher_id: UUID) -> list[MovePath]:
-        return [m for m in self._move_paths if m.teacher_id == teacher_id]
+        return sorted(
+            (m for m in self._move_paths if m.teacher_id == teacher_id), key=lambda m: m.position
+        )
+
+    async def replace_move_path(
+        self, teacher_id: UUID, entries: list[MovePathEntry]
+    ) -> list[MovePath]:
+        self._move_paths = [m for m in self._move_paths if m.teacher_id != teacher_id]
+        return await self.record_move_path(teacher_id, entries)
+
+    async def done_move_ids(self, teacher_id: UUID, min_level: int) -> set[str]:
+        return {
+            e.move_id for e in self._evidence if e.teacher_id == teacher_id and e.level >= min_level
+        }
+
+    async def record_class_outcome(
+        self, teacher_id: UUID, move_id: str, answer: str, struggle_ids: list[str]
+    ) -> ClassOutcome:
+        row = ClassOutcome(
+            id=uuid4(),
+            teacher_id=teacher_id,
+            move_id=move_id,
+            answer=answer,
+            struggle_ids=list(struggle_ids),
+            created_at=datetime.now(UTC),
+        )
+        self._class_outcomes.append(row)
+        return row
 
     async def record_realism_rating(
         self, teacher_id: UUID, rating: int, scene_id: UUID | None = None
@@ -974,7 +1003,7 @@ async def test_admin_escalation_creates_review_item() -> None:
 
 @pytest.mark.asyncio
 async def test_coach_skipped_when_under_three_teacher_turns() -> None:
-    """Verifies scene with < 3 teacher turns skips coach, records no score, and sends scene_ended_neutral."""
+    """A scene with < 3 teacher turns skips the coach, records no score, offers continue/skip."""
     repo = FakeSessionRepository()
     service = SessionService(repository=repo)
     t_id = uuid4()
@@ -996,8 +1025,11 @@ async def test_coach_skipped_when_under_three_teacher_turns() -> None:
     scores = [s for s in repo._rehearsal_scores if s.teacher_id == t_id]
     assert len(scores) == 0
 
-    # Output contains scene_ended_neutral
-    assert any("फीडबैक देखते हैं" in str(m.text_hi or "") for m in out)
+    # No feedback-less realism question: the teacher is told and offered continue / skip
+    assert not any("फीडबैक देखते हैं" in str(m.text_hi or "") for m in out)
+    assert not any(get_message("realism_prompt", "f") == m.text_hi for m in out)
+    assert [b.id for b in (out[-1].buttons or [])] == ["btn_scene_continue", "btn_skip"]
+    assert out[-1].text_hi == get_message("scene_too_short", "f", done=1, needed=3, more=2)
 
 
 @pytest.mark.asyncio

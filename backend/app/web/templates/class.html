@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="{{ ui_lang() }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1F6F5C">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{{ get_message('ui_class_title') }}</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="chat-header">
+      <div class="header-left">
+        <a href="/teacher/modules" class="btn-icon" aria-label="{{ get_message('ui_class_btn_back') }}">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </a>
+        <div class="header-titles">
+          <span class="header-move-title">{{ get_message('ui_class_title') }}</span>
+          <span class="header-step-chip">{{ teacher_name }}</span>
+        </div>
+      </div>
+      <div class="header-right">
+        {{ lang_switch() }}
+        <a href="/logout" class="btn-icon" aria-label="{{ get_message('ui_logout') }}" title="{{ get_message('ui_logout') }}">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </a>
+      </div>
+    </header>
+
+    {% if demo_mode %}
+    <div class="demo-banner" role="status" aria-label="{{ get_message('ui_demo_notice_label') }}">{{ demo_banner_text or get_message('ui_demo_banner') }}</div>
+    {% endif %}
+
+    <main class="progress-main class-page">
+      <p class="class-intro">{{ get_message('ui_class_intro') }}</p>
+      {% if notice %}<div class="success-banner" role="status">{{ notice }}</div>{% endif %}
+
+      {% if saved %}
+      <section class="class-saved" aria-label="{{ get_message('ui_class_card_set') }}">
+        <h2 class="section-heading">{{ get_message('ui_class_card_set') }}</h2>
+        <ol class="class-list">
+          {% for s in saved %}
+          <li class="class-item" data-struggle="{{ s.id }}">
+            <strong>{{ s.label }}</strong>
+            <p class="class-tip"><span class="class-k">{{ get_message('ui_class_tip_label') }}</span> {{ s.tip }} <span class="class-src">{{ s.source }}{{ ' (OCR)' if s.ocr else '' }}</span></p>
+            <p class="class-practice">
+              {% if s.practice_title %}<span class="class-k">{{ get_message('ui_class_practice_label') }}</span> {{ s.practice_title }}
+              {% else %}<span class="class-none">{{ get_message('ui_class_no_practice') }}</span>{% endif %}
+            </p>
+          </li>
+          {% endfor %}
+        </ol>
+        <form method="post" action="/teacher/class/clear">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="reply-chip">{{ get_message('ui_class_btn_clear') }}</button>
+        </form>
+      </section>
+      {% else %}
+      <p class="class-empty">{{ get_message('ui_class_card_empty') }}</p>
+      {% endif %}
+
+      {% if pending %}
+      <section class="class-pending" aria-label="{{ get_message('ui_class_pending_title') }}">
+        <h2 class="section-heading">{{ get_message('ui_class_pending_title') }}</h2>
+        <ol class="class-list">
+          {% for s in pending %}<li class="class-item" data-struggle="{{ s.id }}"><strong>{{ s.label }}</strong></li>{% endfor %}
+        </ol>
+        <form method="post" action="/teacher/class/save">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="ids" value="{{ pending_ids }}">
+          <button type="submit" class="btn-primary reply-chip">{{ get_message('ui_class_btn_save') }}</button>
+          <a class="reply-chip" href="/teacher/class">{{ get_message('ui_class_btn_change') }}</a>
+        </form>
+      </section>
+      {% endif %}
+
+      {% if no_match %}
+      <div class="class-nomatch" role="status">
+        <p>{{ get_message('ui_class_no_match') }}</p>
+        <p class="class-tip"><span class="class-k">{{ get_message('ui_class_tip_label') }}</span> {{ other_tip }}</p>
+        <p class="class-none">{{ get_message('ui_class_no_practice') }}</p>
+      </div>
+      {% endif %}
+
+      <form method="post" action="/teacher/class/save" class="class-chips" id="class-chips-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="order" id="class-order" value="">
+        <fieldset>
+          <legend>{{ get_message('ui_class_pick_label', max=max_chosen) }}</legend>
+          {% for c in chips %}
+          <label class="class-chip">
+            <input type="checkbox" name="struggle" value="{{ c.id }}"{{ ' checked' if c.id in (saved | map(attribute='id') | list) else '' }}>
+            <span>{{ c.chip }}</span>
+          </label>
+          {% endfor %}
+        </fieldset>
+        <button type="submit" class="btn-primary reply-chip">{{ get_message('ui_class_btn_save') }}</button>
+      </form>
+
+      <form method="post" action="/teacher/class/describe" class="class-text">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label for="class-text">{{ get_message('ui_class_text_label') }}</label>
+        <textarea id="class-text" name="text" rows="3" maxlength="400"></textarea>
+        <button type="submit" class="reply-chip">{{ get_message('ui_class_btn_describe') }}</button>
+      </form>
+
+      <form method="post" action="/teacher/class/start">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="reply-chip">{{ get_message('ui_class_btn_speak') }}</button>
+      </form>
+
+      <section class="class-skills" id="class-skills" aria-label="{{ get_message('ui_skills_title') }}">
+        <h2 class="section-heading">{{ get_message('ui_skills_title') }}</h2>
+        <p class="class-intro">{{ get_message('ui_skills_intro', max=skill_max) }}</p>
+        {% if skills_saved %}
+        <p class="class-k">{{ get_message('ui_skills_saved_label') }}</p>
+        <ol class="class-list" id="skills-saved">
+          {% for s in skills_saved %}<li class="class-item" data-skill="{{ s.id }}"><strong>{{ s.label }}</strong>{% if s.source %} <span class="class-src">{{ s.source }}{{ ' (OCR)' if s.ocr else '' }}</span>{% endif %}</li>{% endfor %}
+        </ol>
+        {% else %}
+        <p class="class-empty">{{ get_message('ui_skills_none') }}</p>
+        {% endif %}
+        <form method="post" action="/teacher/class/skills/save" class="class-chips" id="skills-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <fieldset>
+            <legend>{{ get_message('ui_class_pick_label', max=skill_max) }}</legend>
+            {% for s in skills_all %}
+            <label class="class-chip">
+              <input type="checkbox" name="skill" value="{{ s.id }}"{{ ' checked' if s.id in skills_saved_ids else '' }}>
+              <span>{{ s.label }}</span>
+            </label>
+            {% endfor %}
+          </fieldset>
+          <button type="submit" class="btn-primary reply-chip">{{ get_message('ui_skills_btn_save') }}</button>
+        </form>
+        <form method="post" action="/teacher/class/skills/start">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="reply-chip">{{ get_message('ui_skills_btn_voice') }}</button>
+        </form>
+        {% if skills_saved %}
+        <form method="post" action="/teacher/class/skills/clear">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="reply-chip">{{ get_message('ui_skills_btn_clear') }}</button>
+        </form>
+        {% endif %}
+      </section>
+
+      <p class="class-privacy">{{ get_message('ui_class_privacy') }}</p>
+    </main>
+  </div>
+  <script>
+    // Keeps the order she ticked the chips in (the first one counts as the most important)
+    // and stops her ticking more than {{ max_chosen }}.
+    (function () {
+      var form = document.getElementById('class-chips-form');
+      if (!form) return;
+      var max = {{ max_chosen }};
+      var order = document.getElementById('class-order');
+      var seq = [];
+      var boxes = form.querySelectorAll('input[name=struggle]');
+      for (var i = 0; i < boxes.length; i++) if (boxes[i].checked) seq.push(boxes[i].value);
+      function sync() { order.value = seq.join(','); }
+      form.addEventListener('change', function (e) {
+        var box = e.target;
+        if (!box || box.name !== 'struggle') return;
+        var at = seq.indexOf(box.value);
+        if (box.checked && at < 0) {
+          if (seq.length >= max) { box.checked = false; return; }
+          seq.push(box.value);
+        } else if (!box.checked && at >= 0) {
+          seq.splice(at, 1);
+        }
+        sync();
+      });
+      sync();
+    })();
+  </script>
+  <script>
+    // At most {{ skill_max }} skills can be ticked.
+    (function () {
+      var form = document.getElementById('skills-form');
+      if (!form) return;
+      var max = {{ skill_max }};
+      form.addEventListener('change', function (e) {
+        var box = e.target;
+        if (!box || box.name !== 'skill' || !box.checked) return;
+        var ticked = form.querySelectorAll('input[name=skill]:checked');
+        if (ticked.length > max) box.checked = false;
+      });
+    })();
+  </script>
+  {% include "_ack.html" %}
+</body>
+</html>

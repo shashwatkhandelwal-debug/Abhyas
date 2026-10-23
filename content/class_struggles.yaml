@@ -1,0 +1,256 @@
+# Closed library of class-level struggles ("My class"). Built from docs/FLN_TRAINING_MAP.md section 2.
+#
+# A teacher describes where her class is lagging; the matcher, the classifier role and the chips can
+# only ever pick an id from this file. No child data is stored: only these ids.
+#
+# Fields
+#   id             stable id, stored in teacher.class_struggles
+#   domain         numeracy | literacy
+#   label_hi/en    plain teacher words, as she would say them
+#   chip_hi/en     short chip text; present only on the entries shown as tappable chips
+#   triggers_hi    2-3 phrases a teacher would say (matched as whole phrases)
+#   keywords       stems / words (Hindi, Hinglish, English) matched as substrings (Latin: whole words)
+#   misconception_ids   ids from the move's `misconceptions` block or `target_causes`; [] = no practice case
+#   move_id        move card that practises it, or null
+#   chunk_ids      1-2 handbook chunks (content/chunks/*.jsonl) the tip is taken from
+#   tip_hi/en      short tip paraphrasing only what those chunks say
+#
+# `other` is not a struggle and is never stored: it is the honest answer when nothing matches.
+
+struggles:
+  - id: NUM_COUNTING
+    domain: numeracy
+    label_hi: "बच्चे गिनती में अटकते हैं (क्रम, कोई संख्या छूट जाना)"
+    label_en: "Children slip in counting (order, skipping a number)"
+    chip_hi: "गिनती"
+    chip_en: "Counting"
+    triggers_hi:
+      - "गिनती में गलती करते हैं"
+      - "गिनते समय संख्या छोड़ देते हैं"
+      - "उल्टी गिनती नहीं आती"
+    keywords: [गिनती, गिनना, गिन नहीं, counting, count, ginti]
+    misconception_ids: []
+    move_id: null
+    chunk_ids: ["nipun_guidelines_2021:p087:080", "up_ganit_sandarshika_c1:p026:031"]
+    tip_hi: "गिनवाते समय हर चीज़ को छुआएँ या हटवाएँ, और पहले संख्या-नामों का क्रम पक्का करवाएँ। हर चीज़ के लिए एक ही संख्या बोली जाए।"
+    tip_en: "When children count, have them touch or move each object, and make the order of number names firm first. One number for each object."
+
+  - id: NUM_NUMBER_WRITING
+    domain: numeracy
+    label_hi: "संख्या लिखने-पढ़ने में गड़बड़ी (47 की जगह 74, \"चालीस-सात\" को 407)"
+    label_en: "Mix-ups in writing and reading numbers (74 for 47, \"forty-seven\" as 407)"
+    triggers_hi:
+      - "संख्या उल्टी लिख देते हैं"
+      - "संख्या का नाम सुनकर गलत लिखते हैं"
+      - "संख्या पढ़ना-लिखना नहीं आता"
+    keywords: [उल्टी लिख, उल्टा लिख, संख्या लिख, संख्या पढ़, संख्या नाम, "407", write numbers, number likhna, "74 लिख", उल्टे अंक]
+    misconception_ids: [PV_CONCAT_SPOKEN, PV_REVERSAL]
+    move_id: NUM_PLACE_VALUE_BUNDLES
+    chunk_ids: ["nipun_guidelines_2021:p282:283", "up_ganit_sandarshika_c1:p063:102"]
+    tip_hi: "संख्या का नाम बंडल और खुली तीलियों से जोड़ें: पहले कितने बंडल (दहाई), फिर कितनी खुली तीलियाँ (इकाई), तब अंक लिखवाएँ।"
+    tip_en: "Tie the number name to bundles and loose sticks: first how many bundles (tens), then how many loose sticks (ones), and only then have the digits written."
+
+  - id: NUM_PLACE_VALUE
+    domain: numeracy
+    label_hi: "दहाई-इकाई (स्थानीय मान) समझ नहीं आता"
+    label_en: "Tens and ones (place value) are not clear"
+    chip_hi: "दहाई-इकाई"
+    chip_en: "Tens and ones"
+    triggers_hi:
+      - "दहाई और इकाई में उलझते हैं"
+      - "स्थानीय मान समझ नहीं आता"
+      - "बंडल को एक गिनते हैं"
+    keywords: [दहाई, इकाई, स्थानीय मान, place value, tens, बंडल को एक]
+    misconception_ids: [PV_BUNDLE_AS_ONE, PV_REVERSAL]
+    move_id: NUM_PLACE_VALUE_BUNDLES
+    chunk_ids: ["nipun_guidelines_2021:p088:082", "nishtha_fln:p439:316"]
+    tip_hi: "संख्या सिखाते समय तीलियों या पेंसिल जैसी चीज़ों के 10-10 के बंडल (दहाई) इस्तेमाल करें, ताकि बच्चे देखें कि 10 खुली चीज़ें मिलकर एक बंडल बनती हैं।"
+    tip_en: "When teaching numbers, use groups of ten (bundles of sticks or pencils), so children see that ten loose things make one bundle."
+
+  - id: NUM_COMPARE
+    domain: numeracy
+    label_hi: "संख्याओं की तुलना (कौन बड़ी, कौन छोटी)"
+    label_en: "Comparing numbers (which is bigger, which is smaller)"
+    triggers_hi:
+      - "कौन सी संख्या बड़ी है नहीं बता पाते"
+      - "बड़ी-छोटी संख्या में गलती करते हैं"
+      - "ज़्यादा-कम में उलझते हैं"
+    keywords: [तुलना, बड़ी संख्या, छोटी संख्या, संख्या बड़ी, संख्या छोटी, बड़ा-छोटा, ज़्यादा-कम, ज्यादा-कम, compare, bigger number]
+    misconception_ids: []
+    move_id: null
+    chunk_ids: ["nipun_guidelines_2021:p283:284", "up_ganit_sandarshika_c1:p030:039"]
+    tip_hi: "चीज़ें सामने रखकर \"ज़्यादा\", \"कम\", \"बराबर\" जैसे शब्द बच्चों से बुलवाएँ। आकार में बड़ी चीज़ ज़्यादा हो, यह ज़रूरी नहीं; मात्रा से तुलना करवाएँ।"
+    tip_en: "Put objects in front of children and have them use the words more, less and equal. A bigger-looking object need not be more; compare by quantity."
+
+  - id: NUM_ADD_CARRY
+    domain: numeracy
+    label_hi: "हासिल वाला जोड़ गलत करते हैं"
+    label_en: "Addition with carry goes wrong"
+    chip_hi: "हासिल वाला जोड़"
+    chip_en: "Addition with carry"
+    triggers_hi:
+      - "हासिल जोड़ना भूल जाते हैं"
+      - "दो अंक का जोड़ गलत करते हैं"
+      - "इकाई का जोड़ दस से ऊपर जाए तो अटक जाते हैं"
+    keywords: [हासिल, कैरी, carry, दो अंक का जोड़, दो अंकों का जोड़]
+    misconception_ids: [ADD_CARRY_FORGOTTEN, ADD_NO_CARRY, ADD_CARRY_WRONG_DIGIT]
+    move_id: NUM_ADD_CARRY_BUNDLES
+    chunk_ids: ["nipun_guidelines_2021:p283:284", "nishtha_fln:p439:316"]
+    tip_hi: "पहले बच्चों को जोड़ने के अपने तरीके बनाने दें और 10-10 के बंडलों से दिखाएँ; उसके बाद ही जोड़ का मानक तरीका सिखाएँ।"
+    tip_en: "Let children build their own ways of adding first and show it with groups of ten; teach the standard method after that."
+
+  - id: NUM_SUB_REGROUP
+    domain: numeracy
+    label_hi: "हासिल वाला घटाव गलत करते हैं (बंडल खोलना)"
+    label_en: "Subtraction with regrouping goes wrong (opening a bundle)"
+    chip_hi: "हासिल वाला घटाव"
+    chip_en: "Subtraction with regrouping"
+    triggers_hi:
+      - "घटाव में बंडल खोलना नहीं आता"
+      - "ऊपर का अंक छोटा हो तो उल्टा घटा देते हैं"
+      - "घटाव में हासिल लेना भूल जाते हैं"
+    keywords: [घटाव, घटाना, ghatav, subtraction, borrow, regroup, उधार, बंडल खोल, bundle khol]
+    misconception_ids: [SUB_SMALLER_FROM_LARGER, SUB_BORROW_NO_DECREMENT, SUB_WRITE_ZERO_WHEN_STUCK]
+    move_id: NUM_SUB_REGROUP_BUNDLES
+    chunk_ids: ["nipun_guidelines_2021:p283:284", "nishtha_fln:p439:316"]
+    tip_hi: "घटाव में पहले \"बचे कितने\" वाले सवाल ठोस चीज़ों से हल करवाएँ और बच्चों को अपने तरीके बनाने दें; मानक तरीका उसके बाद सिखाएँ।"
+    tip_en: "For subtraction, first solve \"how many are left\" problems with real objects and let children build their own ways; teach the standard method after that."
+
+  - id: NUM_WORD_PROBLEM
+    domain: numeracy
+    label_hi: "कहानी वाले सवाल में जोड़ या घटाव नहीं पहचान पाते"
+    label_en: "Cannot tell add from subtract in a story problem"
+    chip_hi: "कहानी वाले सवाल"
+    chip_en: "Word problems"
+    triggers_hi:
+      - "कहानी वाले सवाल समझ नहीं पाते"
+      - "जोड़ना है या घटाना, तय नहीं कर पाते"
+      - "सवाल की भाषा समझने में दिक्कत है"
+    keywords: [कहानी वाले, शाब्दिक, सवाल की भाषा, word problem, story sum]
+    misconception_ids: []
+    move_id: null
+    chunk_ids: ["nipun_guidelines_2021:p284:285", "up_ganit_sandarshika_c1:p052:082"]
+    tip_hi: "बच्चों के छोटे समूह बनाएँ, हर समूह को एक सवाल और ज़रूरत भर कंकड़ दें; बच्चे कंकड़ों से हल करें और फिर अंकों में लिखें।"
+    tip_en: "Make small groups, give each one problem and as many pebbles as it needs; children solve it with the pebbles and then write it in numbers."
+
+  - id: NUM_SMALL_FACTS
+    domain: numeracy
+    label_hi: "20 तक के छोटे जोड़-घटाव में धीमे हैं"
+    label_en: "Slow with small add and subtract facts (up to 20)"
+    triggers_hi:
+      - "छोटे जोड़-घटाव उँगलियों पर करते हैं"
+      - "20 तक का जोड़ नहीं आता"
+      - "जोड़ और घटाव मिला देते हैं"
+    keywords: [उँगलियों, उंगलियों, 20 तक, छोटे जोड़, जोड़ और घटाव मिला, count on]
+    misconception_ids: []
+    move_id: null
+    chunk_ids: ["up_ganit_sandarshika_c1:p043:065", "nipun_guidelines_2021:p283:284"]
+    tip_hi: "आगे की गिनती (count on) और ठोस चीज़ों से जोड़-घटाव करवाएँ, और जोड़ व घटाव के आपसी रिश्ते पर बात करें।"
+    tip_en: "Practise counting on and adding and subtracting with real objects, and talk about how addition and subtraction are related."
+
+  - id: LIT_MATRA_DROP
+    domain: literacy
+    label_hi: "मात्रा छोड़ देते हैं या मात्रा वाले शब्द नहीं पढ़ पाते"
+    label_en: "Leave out matras, or cannot read words with matras"
+    chip_hi: "मात्रा वाले शब्द"
+    chip_en: "Matra words"
+    triggers_hi:
+      - "मात्रा छोड़कर पढ़ते हैं"
+      - "मात्रा वाले शब्द नहीं पढ़ पाते"
+      - "मात्रा की पहचान में गलती करते हैं"
+    keywords: [मात्रा, मात्राएँ, मात्राओं, matra]
+    misconception_ids: [MATRA_DROP]
+    move_id: LIT_MATRA_BLENDING
+    chunk_ids: ["nipun_guidelines_2021:p200:199", "up_bhasha_sandarshika_c1:p015:014"]
+    tip_hi: "हिंदी की साप्ताहिक योजना में अक्षर पहचान, मात्रा पहचान और फिर मिलाकर पढ़ना (ब्लेंडिंग) एक क्रम में आते हैं; इसी क्रम से अभ्यास कराएँ।"
+    tip_en: "The Hindi weekly plan runs akshar recognition, matra recognition and then blending, in that order; practise in the same order."
+
+  - id: LIT_AKSHAR_BY_AKSHAR
+    domain: literacy
+    label_hi: "एक-एक अक्षर अटक-अटक कर पढ़ते हैं"
+    label_en: "Read one akshar at a time, slowly and haltingly"
+    chip_hi: "अटक-अटक कर पढ़ना"
+    chip_en: "Reads akshar by akshar"
+    triggers_hi:
+      - "एक-एक अक्षर जोड़कर पढ़ते हैं"
+      - "पढ़ने में बहुत समय लगाते हैं"
+      - "शब्द एक साथ नहीं पढ़ पाते"
+    keywords: [एक-एक अक्षर, अटक, धीरे पढ़, ब्लेंडिंग, fluency]
+    misconception_ids: [AKSHAR_BY_AKSHAR]
+    move_id: LIT_MATRA_BLENDING
+    chunk_ids: ["nipun_guidelines_2021:p075:069", "up_bhasha_sandarshika_c1:p030:051"]
+    tip_hi: "कई बच्चे अक्षर पहचानते हैं पर एक-एक करके अटक-अटक कर पढ़ते हैं, जिससे अर्थ समझना रुक जाता है। अक्षरों को मिलाकर पढ़ने (ब्लेंडिंग) और शब्द पढ़ने का रोज़ अभ्यास कराएँ।"
+    tip_en: "Many children know the aksharas but read them one by one, which blocks understanding. Give daily practice in blending aksharas and reading whole words."
+
+  - id: LIT_FIRST_AKSHAR_GUESS
+    domain: literacy
+    label_hi: "पहला अक्षर देखकर अंदाज़े से शब्द बोल देते हैं"
+    label_en: "Guess the word from its first akshar"
+    triggers_hi:
+      - "शब्द का अंदाज़ा लगाकर पढ़ते हैं"
+      - "पहला अक्षर देखकर कोई भी शब्द बोल देते हैं"
+      - "चित्र देखकर शब्द बोल देते हैं"
+    keywords: [अंदाज़ा, अंदाजा, अनुमान लगा, पहला अक्षर देखकर, guess]
+    misconception_ids: [FIRST_AKSHAR_GUESS]
+    move_id: LIT_MATRA_BLENDING
+    chunk_ids: ["nipun_guidelines_2021:p074:068", "nishtha_fln:p276:188"]
+    tip_hi: "बच्चों को अक्षरों और उनकी ध्वनियों के संबंध से शब्द खोलना सिखाएँ। पढ़ते समय रुककर दोबारा पढ़ना (अपनी गलती सुधारना) पढ़ने की सामान्य प्रक्रिया है।"
+    tip_en: "Teach children to work out a word from the link between aksharas and their sounds. Stopping to re-read and correct oneself is a normal part of reading."
+
+  - id: LIT_LETTER_SOUND
+    domain: literacy
+    label_hi: "अक्षर और उनकी ध्वनि नहीं पहचानते"
+    label_en: "Do not recognise letters and their sounds"
+    chip_hi: "अक्षर और ध्वनि"
+    chip_en: "Letters and sounds"
+    triggers_hi:
+      - "अक्षर पहचानने में दिक्कत है"
+      - "अक्षर की आवाज़ नहीं बता पाते"
+      - "वर्ण नहीं पहचानते"
+    keywords: [अक्षर पहचान, वर्ण, ध्वनि, आवाज़, letter sound, phonics]
+    misconception_ids: []
+    move_id: null
+    chunk_ids: ["nipun_guidelines_2021:p074:068", "ncert_vidya_pravesh:p032:031"]
+    tip_hi: "अक्षर और ध्वनि का संबंध जाने-पहचाने शब्दों और पाठ से सिखाएँ, वर्णमाला के क्रम से नहीं। शब्द की शुरू, बीच और अंत की ध्वनि पहचानने के खेल कराएँ।"
+    tip_en: "Teach the link between letters and sounds through familiar words and texts, not in alphabet order. Play games on the beginning, middle and end sounds of words."
+
+  - id: LIT_COMPREHENSION
+    domain: literacy
+    label_hi: "पढ़ तो लेते हैं पर अर्थ नहीं समझते"
+    label_en: "Can read aloud but do not understand what they read"
+    chip_hi: "पढ़कर समझना"
+    chip_en: "Comprehension"
+    triggers_hi:
+      - "पढ़ तो लेते हैं पर अर्थ नहीं समझते"
+      - "कहानी पढ़कर सवाल का जवाब नहीं दे पाते"
+      - "पढ़ा हुआ बता नहीं पाते"
+    keywords: [अर्थ नहीं, समझते नहीं, समझ नहीं पाते, comprehension, पढ़ा हुआ, क्या पढ़ा, पढ़कर सवाल, सवाल का जवाब नहीं]
+    misconception_ids: []
+    move_id: null
+    chunk_ids: ["nipun_guidelines_2021:p073:066", "nishtha_fln:p292:201"]
+    tip_hi: "पढ़ना अर्थ बनाना है। पढ़ने से पहले अगला शब्द या घटना अनुमान लगवाएँ, पढ़ने के बाद कहानी अपने शब्दों में सुनवाएँ और उस पर सवाल पूछें।"
+    tip_en: "Reading is making meaning. Before reading, have children predict what comes next; afterwards, have them retell the story in their own words and ask them questions."
+
+  - id: LIT_WRITING
+    domain: literacy
+    label_hi: "सुनकर शब्द लिखने और वर्तनी में गलती"
+    label_en: "Mistakes in writing words from dictation and in spelling"
+    triggers_hi:
+      - "सुनकर शब्द नहीं लिख पाते"
+      - "लिखते समय मात्रा गलत लगाते हैं"
+      - "वर्तनी की गलतियाँ करते हैं"
+    keywords: [वर्तनी, लिखने में, लिखते समय, लिख नहीं पाते, सुनकर लिख, dictation, spelling]
+    misconception_ids: []
+    move_id: null
+    chunk_ids: ["nipun_guidelines_2021:p200:199", "up_bhasha_sandarshika_c1:p005:004"]
+    tip_hi: "शुरू में बच्चों को ध्वनि और अक्षर के संबंध के सहारे अपने ढंग से शब्द लिखने दें; मात्राओं से परिचय परिचित शब्दों में धीरे-धीरे कराएँ।"
+    tip_en: "At first let children write words their own way using sound-letter links; introduce matras gradually through familiar words."
+
+other:
+  label_hi: "कुछ और"
+  label_en: "Something else"
+  chip_hi: "कुछ और"
+  chip_en: "Something else"
+  chunk_ids: ["nipun_guidelines_2021:p164:164"]
+  tip_hi: "बच्चे से पहले अपना तरीका बताने को कहें, फिर अगर गलती हो तो उसे धीरे से बताएँ।"
+  tip_en: "Ask the child to explain how they did it first, and only then point out an error, gently."

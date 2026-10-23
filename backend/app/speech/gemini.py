@@ -29,11 +29,13 @@ async def post_interaction(
     label: str,
     error_cls: type[Exception],
     max_retries: int,
+    rate_limit_cls: type[Exception] | None = None,
 ) -> dict[str, Any]:
     """POSTs one Interactions request; retries up to max_retries on timeout/network/5xx.
 
     Any other HTTP error (401/402/403/429 included) raises ``error_cls``
-    immediately so a fallback provider can take over. The API key is only
+    immediately so a fallback provider can take over; a 429 or a RESOURCE_EXHAUSTED / quota
+    body raises ``rate_limit_cls`` (a subclass) when given, so callers can pause the provider. The API key is only
     ever placed in the request header and never logged.
     """
     url = f"{base_url.rstrip('/')}/interactions"
@@ -55,6 +57,8 @@ async def post_interaction(
                     raise error_cls(f"{label} returned unexpected JSON")
                 return body
             last_error = f"HTTP {response.status_code}"
+            if rate_limit_cls is not None and _is_rate_limited(response):
+                raise rate_limit_cls(f"{label} rate limited: {last_error}")
             if response.status_code < 500:
                 raise error_cls(f"{label} failed: {last_error}")
 
@@ -63,6 +67,16 @@ async def post_interaction(
             await asyncio.sleep(0.5)
 
     raise error_cls(f"{label} failed after retry: {last_error}")
+
+
+def _is_rate_limited(response: httpx.Response) -> bool:
+    """429, or a body that says the quota is used up (never logged: it may echo the request)."""
+    if response.status_code == 429:
+        return True
+    if response.status_code in (400, 403):
+        body = response.text.lower()
+        return "resource_exhausted" in body or "quota" in body
+    return False
 
 
 def model_output_items(body: dict[str, Any], content_type: str) -> list[dict[str, Any]]:

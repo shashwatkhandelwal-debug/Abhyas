@@ -205,6 +205,9 @@ async def test_picker_page_start_route_and_dashboards(
                 assert f'id="module-{module_id}"' in page.text
             # learn is done for subtraction: one tick, the rest open
             assert page.text.count("module-step done") == 1
+            # "Ask the handbook": four links that open the chat and send that question
+            assert page.text.count('class="handbook-chip handbook-link"') == 4
+            assert page.text.count('href="/teacher?ask=hb') == 4
 
             resp = await client.post(
                 f"/teacher/modules/{SUB}/start",

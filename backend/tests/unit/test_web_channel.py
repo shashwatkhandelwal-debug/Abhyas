@@ -1283,7 +1283,8 @@ async def test_stt_failure_sends_hindi_retry_instead_of_silence(
 
     added = [c.args[0] for c in mock_session.add.call_args_list]
     replies = [m for m in added if isinstance(m, Message) and m.direction == "out"]
-    assert [m.text for m in replies] == [get_message("stt_failed", "f")]
+    expected_key = "stt_unavailable_type_please" if stt_behaviour == "raises" else "stt_failed"
+    assert [m.text for m in replies] == [get_message(expected_key, "f")]
     assert voice_row.text == get_message(
         "stt_unclear_label", "f"
     )  # bubble no longer "transcribing"

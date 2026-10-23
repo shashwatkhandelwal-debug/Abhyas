@@ -48,7 +48,9 @@ from backend.app.db.models import (
     Cluster,
     ExplainScore,
     ModuleProgress,
+    Question,
     RehearsalScore,
+    ReviewItem,
     Scene,
     Teacher,
     Turn,
@@ -639,6 +641,11 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
         )
     await session.flush()
 
+    # 4c. A small coach review queue. Every seeded score carries the fallback coach's honest low
+    # confidence, but only a handful is put in the queue: a coach opening /review sees a few
+    # believable items (real rows, real confidence), not one per cohort teacher.
+    await _seed_review_queue(session, teachers, now)
+
     # 5. Compute AggModuleBatch using compute_aggregates_for_batch (no hard-coded or random numbers)
     for b_id in ["KNP-B1", "KNP-B2", "KNP-B3"]:
         computed_agg = await compute_aggregates_for_batch(session, b_id, target_move_id)
@@ -661,3 +668,84 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
     logger.info(
         "Successfully populated demo cohort with SceneRunner deliberate practice rehearsals."
     )
+
+
+# Cohort positions (0-based, demo4 onwards) whose seeded scores go to the coach review queue
+REVIEW_QUEUE_RESCORE_POSITIONS = (4, 9, 14, 21)
+REVIEW_QUEUE_EXPLAIN_POSITION = 7
+REVIEW_QUEUE_QUESTION_POSITION = 6  # demo7, cluster KNP-C01: the ARP demo login sees it too
+REVIEW_QUEUE_QUESTION_TEXT = "डेमो: मेरी कक्षा में कक्षा 1 और 2 के बच्चे साथ बैठते हैं। घटाव एक साथ कैसे सिखाऊँ?"
+
+
+async def _seed_review_queue(session: AsyncSession, teachers: list[Teacher], now: datetime) -> None:
+    """Adds the small, deterministic set of open review items (idempotent, fixed ids)."""
+    from backend.app.config import settings
+
+    def item_id(n: int) -> uuid.UUID:
+        return uuid.UUID(f"00000000-0000-0001-0007-{n:012x}")
+
+    async def add(n: int, kind: str, ref_id: str, reason: str, age_hours: int) -> None:
+        if await session.get(ReviewItem, item_id(n)) is None:
+            session.add(
+                ReviewItem(
+                    id=item_id(n),
+                    kind=kind,
+                    ref_id=ref_id,
+                    reason=reason,
+                    status="open",
+                    created_at=now - timedelta(hours=age_hours),
+                )
+            )
+
+    n = 0
+    for position in REVIEW_QUEUE_RESCORE_POSITIONS:
+        score = await session.get(
+            RehearsalScore, uuid.UUID(f"00000000-0000-0001-0005-{position + 1:012x}")
+        )
+        if score is None or score.confidence is None:
+            continue
+        n += 1
+        await add(
+            n,
+            "rehearsal_score",
+            str(score.id),
+            f"Coach confidence {score.confidence:.2f} below threshold "
+            f"{settings.COACH_CONFIDENCE_THRESHOLD:.2f}",
+            age_hours=6 * n,
+        )
+
+    explain = await session.get(
+        ExplainScore,
+        uuid.UUID(f"00000000-0000-0001-0006-{REVIEW_QUEUE_EXPLAIN_POSITION + 1:012x}"),
+    )
+    if explain is not None and explain.confidence is not None:
+        n += 1
+        await add(
+            n,
+            "explain_score",
+            str(explain.id),
+            f"Fidelity confidence {explain.confidence:.2f} below threshold "
+            f"{settings.FIDELITY_CONFIDENCE_THRESHOLD:.2f}",
+            age_hours=6 * n,
+        )
+
+    asker = teachers[REVIEW_QUEUE_QUESTION_POSITION]
+    question_id = uuid.UUID("00000000-0000-0001-0008-000000000001")
+    if await session.get(Question, question_id) is None:
+        session.add(
+            Question(
+                id=question_id,
+                teacher_id=asker.id,
+                text=REVIEW_QUEUE_QUESTION_TEXT,
+                category="pedagogy",
+                answer_hi=None,
+                source_ids=[],
+                confidence=0.0,
+                status="escalated",
+                created_at=now - timedelta(hours=3),
+            )
+        )
+        await session.flush()
+    n += 1
+    await add(n, "question", str(question_id), "Question escalated: pedagogy", age_hours=3)
+    await session.flush()

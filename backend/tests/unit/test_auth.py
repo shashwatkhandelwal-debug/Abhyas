@@ -525,3 +525,34 @@ async def test_wrong_passwords_for_different_usernames_do_not_block_each_other(
         assert res.status_code == 200
     auth_app.dependency_overrides.clear()
     reset_login_rate_limits()
+
+
+@pytest.mark.asyncio
+async def test_login_page_tells_judges_the_demo_accounts_are_shared(
+    auth_app: FastAPI, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from backend.app.config import settings
+    from backend.app.core.messages import LANG_COOKIE_NAME, get_message
+    from backend.app.web.ui_lang import UiLangMiddleware
+
+    auth_app.add_middleware(UiLangMiddleware)
+    monkeypatch.setattr(settings, "DEMO_MODE", True)
+    async with AsyncClient(transport=ASGITransport(app=auth_app), base_url="http://test") as client:
+        hi = (await client.get("/login")).text
+        en = (await client.get("/login", cookies={LANG_COOKIE_NAME: "en"})).text
+    note_hi = get_message("ui_login_shared_note", lang="hi")
+    note_en = get_message("ui_login_shared_note", lang="en")
+    assert 'role="note"' in hi and note_hi in hi
+    assert note_en in en and note_en == (
+        "Demo accounts are shared: pick one not in use. Chats reset on login and logout."
+    )
+    # the note sits above the form, so it is read before a judge picks an account
+    assert hi.index("shared-note") < hi.index('<form method="POST"')
+    # all three shared teacher logins can be picked from the page
+    for login in ("teacher.demo1", "teacher.demo2", "teacher.demo3"):
+        assert f"fillCreds('{login}')" in hi
+
+    monkeypatch.setattr(settings, "DEMO_MODE", False)
+    async with AsyncClient(transport=ASGITransport(app=auth_app), base_url="http://test") as client:
+        plain = (await client.get("/login")).text
+    assert note_hi not in plain and "fillCreds" not in plain.split("</main>")[0]

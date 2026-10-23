@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: str = "abhyas-admin-2026"
     # Logout resets the shared demo teachers; rows younger than this are session-made, older are seed
     DEMO_RESET_SEED_MIN_AGE_HOURS: int = 24
+    # Teacher turns a scene needs before the coach gives feedback (shorter scenes offer continue/skip)
+    MIN_TURNS_FOR_COACH_GROUP: int = 3
+    MIN_TURNS_FOR_COACH_ONE_ON_ONE: int = 2
+    # Login skips a demo reset done this recently when nothing was written since (double login)
+    DEMO_RESET_DEBOUNCE_SECONDS: int = 60
     TRUSTED_PROXY_IPS: str = "127.0.0.1"
     MAX_LOGIN_ATTEMPTS_PER_MINUTE: int = 5  # failed attempts per (IP, username) per window
     MAX_LOGIN_FAILURES_PER_IP_PER_MINUTE: int = 30  # failed attempts per IP across usernames
@@ -112,6 +117,9 @@ class Settings(BaseSettings):
     STT_TIMEOUT_S: float = 8.0
     # Retries per speech provider call; a primary with a fallback configured gets 0
     SPEECH_MAX_RETRIES: int = 1
+    # After a provider answers 429 / quota exceeded, calls skip it for this long and go
+    # straight to the fallback (no failed call and no wasted seconds per voice note)
+    SPEECH_RATE_LIMIT_COOLDOWN_S: int = 60
     STT_MIN_CONFIDENCE: float = 0.50
     # Web voice recorder (static/recorder.js reads these through #rec-config)
     REC_MAX_SECONDS: int = 60  # auto-stop and send
@@ -184,6 +192,43 @@ class Settings(BaseSettings):
     TRANSLATE_MAX_WORD_RATIO: float = 3.0
     TRANSLATE_MAX_SOURCE_CHARS: int = 2000
     TRANSLATE_MAX_OUTPUT_TOKENS: int = 1500  # Devanagari-heavy sources cost many tokens
+
+    # ── "Ask the handbook" chips (content/handbook_questions.yaml) ───────────
+    HANDBOOK_QUESTIONS_MIN: int = 8
+    HANDBOOK_QUESTIONS_MAX: int = 12
+    HANDBOOK_CHIPS_SHOWN: int = 4  # chosen per teacher per day, deterministic
+    HANDBOOK_VALIDATION_TOP_K: int = 5  # each question's chunk must be in the BM25 top K
+    HANDBOOK_ASK_PREFIX: str = "सवाल:"  # the ask keyword a chip puts before its question
+    # A tip on each module's learning step uses the same gates as the coach's source suggestion
+    HANDBOOK_TIP_POOL: int = 60
+    HANDBOOK_TIP_CANDIDATES: int = 3
+
+    # ── "My class": class-level struggles (content/class_struggles.yaml) ────
+    STRUGGLE_MAX_CHOSEN: int = 3  # most struggles a teacher keeps, ordered
+    STRUGGLE_LIBRARY_MAX: int = 14  # the library stays small and closed
+    STRUGGLE_CHIPS_MIN: int = 8
+    STRUGGLE_CHIPS_MAX: int = 10
+    STRUGGLE_PHRASE_TOKEN_COVERAGE: float = (
+        0.66  # share of a trigger phrase's words that must appear
+    )
+    STRUGGLE_INPUT_MAX_CHARS: int = 400  # longer free text is cut before matching or classifying
+    STRUGGLE_PHRASE_WEIGHT: int = 3  # a whole trigger phrase found in her words
+    STRUGGLE_PARTIAL_PHRASE_WEIGHT: int = (
+        1  # most of a trigger phrase's words found (not the phrase)
+    )
+    STRUGGLE_KEYWORD_WEIGHT: int = 2  # a keyword / stem found in her words
+    STRUGGLE_MATCH_MIN_SCORE: int = 2  # below this the keyword matcher says "no match"
+    STRUGGLE_CLASSIFIER_MIN_CONFIDENCE: float = 0.50
+    STRUGGLE_CLASSIFIER_MAX_TOKENS: int = 256
+    # "What do you want to get better at?" (content/teaching_skills.yaml)
+    TEACHING_SKILLS_MAX: int = 2  # most skills a teacher keeps
+    TEACHING_SKILL_CLASSIFIER_MIN_CONFIDENCE: float = 0.50
+    TEACHING_SKILL_CLASSIFIER_MAX_TOKENS: int = 192
+    SKILL_PROGRESS_MIN_SCENES: int = 2  # scenes scored on a skill before before/after is shown
+    SKILL_LEVEL_MAX: int = 2  # rubric levels run 0..2
+    CLASS_HELPED_MAX_UNCLEAR: int = (
+        1  # unclear replies to "did it help your class?" before moving on
+    )
 
     # ── Pedagogical & Rule Engine Thresholds ──────────────────────────────
     MAX_TURNS_PER_REHEARSAL: int = 8

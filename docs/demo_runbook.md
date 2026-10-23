@@ -26,7 +26,7 @@ Exact click path for the video and the live demo. Passwords are in the submissio
 ## Path 3: ARP and trainer (about 40 s)
 1. Log in as `arp.demo`: weekly digest lists consenting teachers only; the escalated question from the multi-grade question chip appears.
 2. Log in as `trainer.demo`: module × batch view; batch KNP-B3 is suppressed (n < 10).
-TODO(human): these pages depend on T32–T33; remove this path if they are not shipped by the freeze.
+Both pages are shipped (see `docs/JUDGE_QUICKSTART.md` for what each role shows).
 
 ## Path 4: low-connectivity (about 20 s)
 1. In the browser dev tools set the network to Offline.

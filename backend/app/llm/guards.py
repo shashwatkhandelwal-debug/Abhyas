@@ -16,6 +16,7 @@ from backend.app.config import settings
 from backend.app.llm.hindi_numbers import DEVANAGARI_DIGITS, extract_numbers
 from backend.app.llm.schemas import (
     ActTaggerOutput,
+    ClassStruggleClassifierOutput,
     CoachFeedbackOutput,
     CoachSuggestionOutput,
     DiagnosisClassifierOutput,
@@ -26,6 +27,7 @@ from backend.app.llm.schemas import (
     PageOCROutput,
     QuestionClassifierOutput,
     RetrievedChunk,
+    TeachingSkillClassifierOutput,
 )
 from backend.app.rule_engine.domain import (
     ChildResponse,
@@ -434,6 +436,34 @@ def guard_diagnosis_classifier(
     """The classified id must be one of the offered misconception ids (or "none")."""
     if output.misconception_id != "none" and output.misconception_id not in candidate_ids:
         return False, f"misconception_id {output.misconception_id!r} is not one of {candidate_ids}"
+    return True, "Valid"
+
+
+def guard_class_struggle_classifier(
+    output: ClassStruggleClassifierOutput, candidate_ids: list[str]
+) -> tuple[bool, str]:
+    """Only offered ids, no repeats, at most STRUGGLE_MAX_CHOSEN of them."""
+    if len(output.struggle_ids) > settings.STRUGGLE_MAX_CHOSEN:
+        return False, f"more than {settings.STRUGGLE_MAX_CHOSEN} struggle ids"
+    if len(set(output.struggle_ids)) != len(output.struggle_ids):
+        return False, "repeated struggle id"
+    for sid in output.struggle_ids:
+        if sid not in candidate_ids:
+            return False, f"struggle id {sid!r} is not one of {candidate_ids}"
+    return True, "Valid"
+
+
+def guard_teaching_skill_classifier(
+    output: TeachingSkillClassifierOutput, candidate_ids: list[str]
+) -> tuple[bool, str]:
+    """Only offered ids, no repeats, at most TEACHING_SKILLS_MAX of them."""
+    if len(output.skill_ids) > settings.TEACHING_SKILLS_MAX:
+        return False, f"more than {settings.TEACHING_SKILLS_MAX} skill ids"
+    if len(set(output.skill_ids)) != len(output.skill_ids):
+        return False, "repeated skill id"
+    for sid in output.skill_ids:
+        if sid not in candidate_ids:
+            return False, f"skill id {sid!r} is not one of {candidate_ids}"
     return True, "Valid"
 
 

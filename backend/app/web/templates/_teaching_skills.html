@@ -1,0 +1,15 @@
+{# "What do you want to get better at?" aggregate. Context: teaching_skills (TeachingSkillSummary), suppression_message, get_message. Counts only, no teacher identity. #}
+<section class="card table-card" id="teaching-skills" style="margin: 1rem 0; padding: 1rem 1.25rem; background: var(--surface, #fff); border: 1px solid var(--border, #ddd); border-radius: 12px;">
+  <h2 style="margin: 0 0 0.25rem 0; font-size: 1.1rem;">{{ get_message("ui_trainer_skills_title") }}</h2>
+  <p style="margin: 0 0 0.75rem 0; color: var(--muted, #5E6662); font-size: 0.9rem;">{{ get_message("ui_trainer_skills_desc") }}</p>
+  {% if teaching_skills.n_teachers == 0 %}
+    <p style="margin: 0; color: var(--muted, #5E6662);">&mdash;</p>
+  {% elif teaching_skills.suppressed %}
+    <p style="margin: 0;">{{ suppression_message }}</p>
+  {% else %}
+    <p style="margin: 0 0 0.5rem 0;"><strong>{{ get_message("ui_trainer_class_teachers") }}:</strong> <span id="teaching-skills-n">{{ teaching_skills.n_teachers }}</span></p>
+    <ul id="teaching-skills-rows" style="margin: 0; padding-left: 1.2rem;">
+      {% for r in teaching_skills.rows %}<li data-skill="{{ r.skill_id }}">{{ r.label }} &mdash; {{ r.teachers }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+</section>

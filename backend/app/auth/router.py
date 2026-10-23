@@ -68,7 +68,11 @@ def _render_login_page(
         else ""
     )
     demo_creds_html = ""
+    shared_note_html = ""
     if settings.DEMO_MODE:
+        shared_note_html = (
+            f'<p class="shared-note" role="note">{html.escape(m("ui_login_shared_note"))}</p>'
+        )
         demo_title = html.escape(m("ui_login_demo_title", password="@@PW@@")).replace(
             "@@PW@@", f"<code>{html.escape(settings.DEMO_PASSWORD)}</code>"
         )
@@ -78,6 +82,7 @@ def _render_login_page(
             <div class="demo-chips">
                 <button type="button" onclick="fillCreds('teacher.demo1')">{html.escape(m("ui_login_demo_teacher_new"))}</button>
                 <button type="button" onclick="fillCreds('teacher.demo2')">{html.escape(m("ui_login_demo_teacher_practiced"))}</button>
+                <button type="button" onclick="fillCreds('teacher.demo3')">{html.escape(m("ui_login_demo_teacher_experienced"))}</button>
                 <button type="button" onclick="fillCreds('arp.demo')">{html.escape(m("ui_login_demo_arp"))}</button>
                 <button type="button" onclick="fillCreds('trainer.demo')">{html.escape(m("ui_login_demo_trainer"))}</button>
                 <button type="button" onclick="fillCreds('coach.demo')">{html.escape(m("ui_login_demo_coach"))}</button>
@@ -190,6 +195,7 @@ def _render_login_page(
         .lang-row {{ margin: 0.5rem 0 0; font-size: 0.9rem; }}
         .lang-link {{ color: var(--brand); text-decoration: none; padding: 0.4rem 0.5rem; display: inline-block; }}
         .lang-link.active {{ font-weight: 700; text-decoration: underline; }}
+        .shared-note {{ background: #FFF7DD; border: 1px solid var(--accent); border-radius: 8px; padding: 0.6rem 0.9rem; margin: 0 0 1.25rem; font-size: 0.9rem; }}
         .demo-card {{
             margin-top: 1.75rem;
             padding-top: 1.25rem;
@@ -228,6 +234,8 @@ def _render_login_page(
         </header>
 
         {error_html}
+
+        {shared_note_html}
 
         <form method="POST" action="/login">
             <input type="hidden" name="csrf_token" value="{csrf_token}">
@@ -346,6 +354,7 @@ async def login(
         return resp
 
     clear_login_failures(request, user_val)
+    await _reset_demo_teacher(db, user, on_login=True)
 
     # 4. Create session token
     session_payload: dict[str, Any] = {
@@ -391,15 +400,18 @@ async def login(
     return redir_resp
 
 
-async def _reset_demo_teacher_on_logout(db: AsyncSession, user: AppUser | None) -> None:
-    """Resets a shared demo teacher login to the seeded state. Never blocks the logout."""
+async def _reset_demo_teacher(db: AsyncSession, user: AppUser | None, *, on_login: bool) -> None:
+    """Resets a shared demo teacher login to the seeded state. Never blocks login or logout."""
     if user is None or not user.is_demo or user.role != "teacher":
         return
-    from backend.app.db.seed import reset_demo_teacher
+    from backend.app.db.seed import reset_demo_teacher, reset_demo_teacher_unless_fresh
 
     try:
         async with db.begin_nested():
-            await reset_demo_teacher(db, user.username)
+            if on_login:
+                await reset_demo_teacher_unless_fresh(db, user.username)
+            else:
+                await reset_demo_teacher(db, user.username)
     except Exception:
         logger.exception("demo_reset_failed username=%s", user.username)
 
@@ -416,7 +428,7 @@ async def logout(
     except Exception:
         logger.exception("logout_user_lookup_failed")
         user = None
-    await _reset_demo_teacher_on_logout(db, user)
+    await _reset_demo_teacher(db, user, on_login=False)
 
     accept = request.headers.get("accept", "")
     if "application/json" in accept and "text/html" not in accept:

@@ -315,6 +315,10 @@ def _generate_schema_default(schema: dict[str, Any], role: str | None = None) ->
         }
     if role == "diagnosis_classifier":
         return {"misconception_id": "none", "confidence": 0.0}
+    if role == "class_struggle_classifier":
+        return {"struggle_ids": [], "confidence": 0.0}
+    if role == "teaching_skill_classifier":
+        return {"skill_ids": [], "confidence": 0.0}
     if role == "translator":
         from backend.app.llm.schemas import MOCK_TRANSLATION_TEXT
 

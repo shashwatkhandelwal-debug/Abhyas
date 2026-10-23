@@ -67,6 +67,14 @@ Set them under the service's **Environment** tab. **Never commit values.** Names
 **Speech** (all optional; with the defaults STT/TTS are mocks):
 `STT_PROVIDER`, `TTS_PROVIDER`, `STT_FALLBACK_PROVIDER`, `TTS_FALLBACK_PROVIDER`, `SPEECH_PROVIDER_LIVE`,
 `GEMINI_API_KEY`, `SARVAM_API_KEY`, `SPEECH_DAILY_BUDGET_INR`, `SPEECH_TOTAL_BUDGET_INR`.
+
+**Gemini rate limits (free-tier quota).** To survive a quota error during the judges' hour, set
+`STT_PROVIDER=gemini`, `TTS_PROVIDER=gemini`, `STT_FALLBACK_PROVIDER=sarvam`, `TTS_FALLBACK_PROVIDER=sarvam` and both
+keys. A Gemini answer of HTTP 429 (or a quota / `RESOURCE_EXHAUSTED` body) makes the call fall back to Sarvam at once and
+Gemini is skipped for `SPEECH_RATE_LIMIT_COOLDOWN_S` (60 s), so the next voice notes do not each pay for a failed call. If
+Sarvam fails too, a voice note gets the Hindi reply "the voice service is not available right now, please type your
+message" (`stt_unavailable_type_please`) and a child's line is sent as text without audio. Without the fallback variables
+the chain does not exist (`none` is the default) and a quota error goes straight to that "please type" reply.
 A provider named in any of the four `*_PROVIDER` variables needs its key, or startup fails.
 
 **Boot helpers** (both default to `false`): `SEED_ON_BOOT`, `PREWARM_ON_BOOT` (§5).
@@ -128,7 +136,7 @@ Render → service → **Logs** (filter with the search box). Lines are plain `k
 | `llm_role role=<r> model=<m> latency_ms=<n> fallback_used=<true\|false>` | One line per Claude role call (`act_tagger`, `child_voice`, `coach`, `fidelity_checker`, `guide_answerer`, `intent_router`, `question_classifier`, `translator`). `fallback_used=true` means the model output failed its schema or guard twice (or the call failed) and the deterministic template was used instead. | Occasional `true` is by design. If one role is `true` for most calls, check `ANTHROPIC_API_KEY`, the model ids and the quota; `latency_ms` shows slow roles. |
 | `<role> guard failed (attempt N): <reason>` | The first or second guard rejection that precedes a fallback. | The reason names the rule (for example a child line that said a forbidden number). |
 | `coach_fallback reason=<r> move=<MOVE_ID>` | The coach feedback was built from the move card's feedback bank instead of by the model. `reason` is `guard_failed` (output failed the guard twice), `llm_unavailable` (no key / provider error) or `call_or_validation_error` (call or schema error). Only acts evidenced in the teacher's own words are credited. | `llm_unavailable` right after a deploy means the Anthropic key is missing or invalid. The feedback is still shown to the teacher and queued for coach review. |
-| `web_stt_failed reason=<r> message_id=<id>` | A web voice note produced no transcript: `reason=stt_failed` (provider error or empty transcript) or `stt_budget_type_please` (speech budget reached). The teacher got the Hindi "please speak again or type" reply. | Check the STT key and `STT_PROVIDER`; `STT failed for web voice note …` just above has the provider error. Budget: raise `SPEECH_DAILY_BUDGET_INR` or wait for the next IST day. |
+| `web_stt_failed reason=<r> message_id=<id>` | A web voice note produced no transcript: `reason=stt_failed` (empty transcript), `stt_unavailable_type_please` (every STT provider failed or is rate limited) or `stt_budget_type_please` (speech budget reached). The teacher got the matching Hindi "speak again or type" / "please type" reply. | Check the STT key and `STT_PROVIDER`; `STT failed for web voice note …` just above has the provider error. Budget: raise `SPEECH_DAILY_BUDGET_INR` or wait for the next IST day. |
 | `page_ocr_failed …` | Only from the offline OCR tool, never from the service. | n/a |
 | `Production startup failed: required secrets missing or insecure: …` | The service refused to boot; the list names the missing variables. | Set them (§3) and redeploy. |
 | `start.sh: ERROR: demo data seed failed; continuing startup` | The seed raised; the app is up without demo data. | Read the traceback above it. |

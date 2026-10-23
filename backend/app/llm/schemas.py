@@ -121,6 +121,20 @@ class DiagnosisClassifierOutput(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
 
 
+class ClassStruggleClassifierOutput(BaseModel):
+    """Output schema for class_struggle_classifier (teacher's words -> ids from the closed list)."""
+
+    struggle_ids: list[str] = Field(default_factory=list)  # offered ids only; [] = none fits
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+class TeachingSkillClassifierOutput(BaseModel):
+    """Output schema for teaching_skill_classifier (teacher's words -> ids from the closed list)."""
+
+    skill_ids: list[str] = Field(default_factory=list)  # offered ids only; [] = none fits
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
 class RetrievedChunk(BaseModel):
     """Retrieved reference document chunk for guide_answerer (§5.8)."""
 

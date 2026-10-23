@@ -23,6 +23,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.passwords import hash_password
+from backend.app.class_profile import personalise
 from backend.app.config import settings
 from backend.app.db.demo_data import (
     FICTIONAL_TEACHER_NAMES,
@@ -33,6 +34,7 @@ from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
     Batch,
+    ClassOutcome,
     Cluster,
     ConsentLog,
     ExplainScore,
@@ -84,6 +86,22 @@ _DEMO_TEACHER_PROFILE: dict[str, tuple[OnboardingStateEnum, list[int], bool]] = 
     "teacher.demo1": (OnboardingStateEnum.NEW, [1, 2], True),
     "teacher.demo2": (OnboardingStateEnum.READY, [2, 3], True),
     "teacher.demo3": (OnboardingStateEnum.READY, [1, 2, 3], False),
+}
+
+# "My class" choice of the demo teachers: demo1 starts with none (the judge sets it), demo3 has one
+# (a literacy and a numeracy struggle: its learn step is the matra move), demo2 has none.
+_DEMO_CLASS_STRUGGLES: dict[str, list[str]] = {
+    "teacher.demo1": [],
+    "teacher.demo2": [],
+    "teacher.demo3": ["LIT_MATRA_DROP", "NUM_ADD_CARRY"],
+}
+
+# "What do you want to get better at?" of the demo teachers: only demo3 has one (a one-on-one
+# rubric skill, so the coach leads with it and the progress page can show before and after).
+_DEMO_TEACHING_SKILLS: dict[str, list[str]] = {
+    "teacher.demo1": [],
+    "teacher.demo2": [],
+    "teacher.demo3": ["asks_to_explain"],
 }
 
 # demo3's seeded completed moves: (move_id, adoption level, evidence source)
@@ -340,6 +358,12 @@ async def _seed_demo3_learn_step(session: AsyncSession) -> None:
         )
     if await session.get(Message, DEMO3_LEARN_MESSAGE_ID) is None:
         move = load_move_card(_DEMO3_LEARN_MOVE_ID)
+        demo3 = await session.get(Teacher, TEACHER_DEMO3_ID)
+        intro = get_message("learn_intro", lang="hi", move_title=move.title_hi)
+        reason = personalise.because(move.id, list(demo3.class_struggles or []) if demo3 else [])
+        if reason is not None:
+            line = get_message("ui_class_chosen_because", lang="hi", label=reason.label_hi)
+            intro = f"{line}\n\n{intro}"
         buttons = [
             Button(id="btn_understood", title_hi=get_message("btn_understood", lang="hi")),
             Button(id="btn_replay", title_hi=get_message("btn_replay", lang="hi")),
@@ -353,7 +377,7 @@ async def _seed_demo3_learn_step(session: AsyncSession) -> None:
                 channel="web",
                 channel_msg_id="seed-demo3-learn",
                 kind="buttons",
-                text=get_message("learn_intro", lang="hi", move_title=move.title_hi),
+                text=intro,
                 buttons=[b.model_dump() for b in buttons],
                 created_at=stamp,
                 updated_at=stamp,
@@ -405,6 +429,30 @@ async def _seed_demo2_session_state(session: AsyncSession) -> None:
     )
 
 
+# Per-process record of when each demo teacher was last reset (login debounce only)
+_LAST_DEMO_RESET: dict[uuid.UUID, datetime] = {}
+
+
+async def reset_demo_teacher_unless_fresh(session: AsyncSession, login: str) -> bool:
+    """Login-time reset: skipped if reset within DEMO_RESET_DEBOUNCE_SECONDS and nothing written since."""
+    entry = DEMO_TEACHER_LOGINS.get(login)
+    if entry is None:
+        return False
+    teacher_id = entry[0]
+    last = _LAST_DEMO_RESET.get(teacher_id)
+    if last is not None and datetime.now(UTC) - last < timedelta(
+        seconds=settings.DEMO_RESET_DEBOUNCE_SECONDS
+    ):
+        newer = await session.execute(
+            select(Message.id)
+            .where(Message.teacher_id == teacher_id, Message.created_at > last)
+            .limit(1)
+        )
+        if newer.first() is None:
+            return True
+    return await reset_demo_teacher(session, login)
+
+
 async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
     """Restores one shared demo teacher to the seeded state; False for any non-demo login.
 
@@ -419,6 +467,7 @@ async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
     teacher_id, position = entry
     onboarding, classes, share_scores = _DEMO_TEACHER_PROFILE[login]
     now = datetime.now(UTC)
+    _LAST_DEMO_RESET[teacher_id] = now
     cutoff = now - timedelta(hours=settings.DEMO_RESET_SEED_MIN_AGE_HOURS)
 
     await session.execute(delete(Message).where(Message.teacher_id == teacher_id))
@@ -428,6 +477,7 @@ async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
     await session.execute(delete(Question).where(Question.teacher_id == teacher_id))
     await session.execute(delete(RealismRating).where(RealismRating.teacher_id == teacher_id))
     await session.execute(delete(TrainingRating).where(TrainingRating.teacher_id == teacher_id))
+    await session.execute(delete(ClassOutcome).where(ClassOutcome.teacher_id == teacher_id))
     await session.execute(
         delete(ConsentLog).where(
             ConsentLog.teacher_id == teacher_id, ConsentLog.created_at > cutoff
@@ -480,6 +530,10 @@ async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
     await session.flush()
 
     teacher = await session.get(Teacher, teacher_id)
+    if teacher is None:
+        # Not seeded in this database: nothing to restore (and rows below would break the FK)
+        logger.info("Demo teacher %s has no teacher row; reset skipped", login)
+        return False
     if teacher is not None:
         teacher.onboarding_state = onboarding
         teacher.name = f"डेमो {FICTIONAL_TEACHER_NAMES[position - 1]}"
@@ -490,6 +544,9 @@ async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
         teacher.consent_research = False
         teacher.address_form = "f"
         teacher.lite_mode = False
+        teacher.class_struggles = list(_DEMO_CLASS_STRUGGLES[login])
+        teacher.teaching_skills = list(_DEMO_TEACHING_SKILLS[login])
+        teacher.class_profile_prompted_at = None
         teacher.phone_hash = None
         teacher.preferred_channel = "web"
         teacher.last_inbound_at = None if onboarding == OnboardingStateEnum.NEW else now
@@ -633,6 +690,10 @@ async def seed_database() -> None:
             session.add(t3)
         else:
             repair_onboarding_state(t3, OnboardingStateEnum.READY)
+        if not t3.class_struggles:
+            t3.class_struggles = list(_DEMO_CLASS_STRUGGLES["teacher.demo3"])
+        if not t3.teaching_skills:
+            t3.teaching_skills = list(_DEMO_TEACHING_SKILLS["teacher.demo3"])
 
         await session.flush()
 
@@ -796,6 +857,10 @@ async def seed_database() -> None:
         # 9. Synthetic demo cohort (db/demo_data.py)
         await dedupe_adoption_evidence(session)
         await populate_demo_cohort(session)
+
+        # 9b. Shared demo teachers always start from the seeded state, even on a redeploy
+        for demo_login in sorted(DEMO_TEACHER_LOGINS):
+            await reset_demo_teacher(session, demo_login)
 
         # 10. Document chunks into doc_chunk table (spec/10 §10.4)
         await load_chunks_to_db(session)

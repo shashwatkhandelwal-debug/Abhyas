@@ -1,0 +1,28 @@
+# Labelled sentences for "What do you want to get better at?": what a teacher might say -> the ids the closed
+# list (content/teaching_skills.yaml) should return.
+#
+# Written and labelled by the build team (not by teachers), so this measures the classifier against our own
+# reading of the list, not against real classroom speech. Replace or add lines from real teachers (with
+# consent) when user testing produces them.
+#
+# expect: ordered ids (the first is the one she stresses first). [] = too vague or off-topic: the right
+# behaviour is to store nothing and show the numbered list again.
+#   kind: hi = Hindi, hinglish = Latin script Hindi, en = English, two = two skills in one sentence,
+#         other = a skill not on the list, none = vague or off-topic
+
+- {id: k01, kind: hi, text: "मैं बच्चों से यह पूछना सीखना चाहती हूँ कि उन्होंने सवाल कैसे हल किया", expect: [asks_to_explain]}
+- {id: k02, kind: hi, text: "बच्चा गलती करे तो मैं झट से सही उत्तर बता देती हूँ, यह आदत छोड़नी है", expect: [does_not_tell_answer]}
+- {id: k03, kind: hi, text: "मैं बच्चों को तीलियों और कंकड़ से समझाना बेहतर करना चाहती हूँ", expect: [uses_concrete_representation]}
+- {id: k04, kind: hi, text: "बच्चे के जवाब के बाद एक और सवाल पूछकर उसकी समझ परखना सीखना है", expect: [probes_with_followup]}
+- {id: k05, kind: hi, text: "सिखाने के बाद नया सवाल देकर देखना कि बच्चे ने सीखा या नहीं", expect: [checks_on_new_problem]}
+- {id: k06, kind: hinglish, text: "mujhe bachchon se poochna hai ki unhone kaise kiya", expect: [asks_to_explain]}
+- {id: k07, kind: hinglish, text: "main jaldi se answer bata deti hoon, bachche ko sochne dena chahti hoon", expect: [does_not_tell_answer]}
+- {id: k08, kind: en, text: "I want to get better at using sticks and bundles to explain", expect: [uses_concrete_representation]}
+- {id: k09, kind: en, text: "I want to ask follow-up questions after a child answers", expect: [probes_with_followup]}
+- {id: k10, kind: two, text: "बच्चों से तरीका पूछना और फिर नया सवाल देकर जाँचना, दोनों सीखना है", expect: [asks_to_explain, checks_on_new_problem]}
+- {id: k11, kind: two, text: "उत्तर खुद न बताना और चीज़ों से समझाना, ये दो चीज़ें सुधारनी हैं", expect: [does_not_tell_answer, uses_concrete_representation]}
+- {id: k12, kind: other, text: "मुझे बच्चों को शांत रखना और कक्षा का अनुशासन सुधारना है", expect: [other]}
+- {id: k13, kind: other, text: "I want to improve my handwriting on the blackboard", expect: [other]}
+- {id: k14, kind: none, text: "पता नहीं, कुछ भी", expect: []}
+- {id: k15, kind: none, text: "आज मौसम बहुत अच्छा है", expect: []}
+- {id: k16, kind: none, text: "मुझे सब कुछ बेहतर करना है", expect: []}

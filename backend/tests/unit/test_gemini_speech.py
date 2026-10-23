@@ -543,7 +543,9 @@ async def test_no_fallback_keeps_one_retry(wav_5s: bytes) -> None:
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_prewarm_script_stores_clips_under_synthesizing_provider(tmp_path: Path) -> None:
+async def test_prewarm_script_stores_clips_under_synthesizing_provider(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     text = "अभ्यास में स्वागत है।"
     msg_file = tmp_path / "messages_hi.yaml"
     msg_file.write_text(f'msg_1:\n  audio: true\n  text: "{text}"\n', encoding="utf-8")
@@ -570,11 +572,16 @@ async def test_prewarm_script_stores_clips_under_synthesizing_provider(tmp_path:
         "sarvam",
     )
 
+    clock = [1000.0]
+    monkeypatch.setattr("backend.app.speech.tts._now", lambda: clock[0])
+
     first = await prewarm_tts(messages_path=msg_file, moves_dir=moves_dir, tts_provider=chain)
     assert first["synthesized"] == 1
     assert await tts_cache.has(sarvam_key, "wav") is True
     assert await tts_cache.has(gemini_key, "wav") is False
 
+    # the 429 paused Gemini; once the cool-down is over the next run uses it again
+    clock[0] += settings.SPEECH_RATE_LIMIT_COOLDOWN_S + 1
     second = await prewarm_tts(messages_path=msg_file, moves_dir=moves_dir, tts_provider=chain)
     assert second["synthesized"] == 1
     assert await tts_cache.has(gemini_key, "wav") is True

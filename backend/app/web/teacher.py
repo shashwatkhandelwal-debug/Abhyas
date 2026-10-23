@@ -20,6 +20,7 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
+from zoneinfo import ZoneInfo
 
 import yaml
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -38,9 +39,11 @@ from backend.app.auth.csrf import (
 from backend.app.auth.guards import get_current_user, require_role
 from backend.app.auth.session import clear_session_cookie
 from backend.app.channels.web import WebChannel
+from backend.app.class_profile.skills import skill_progress
+from backend.app.class_profile.views import views_for
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
-from backend.app.core.messages import get_message, texts_for_lang
+from backend.app.core.messages import get_message, get_ui_lang, texts_for_lang
 from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
@@ -54,6 +57,7 @@ from backend.app.db.models import (
     Teacher,
 )
 from backend.app.db.session import get_db_session
+from backend.app.handbook.questions import chip_views, question_by_id
 from backend.app.privacy.purge import purge_teacher_data
 from backend.app.rehearsal.header import scene_header
 from backend.app.sessions.modules import MODULE_STEPS, module_ids, module_views
@@ -62,6 +66,7 @@ from backend.app.sessions.service import SessionService
 from backend.app.web.chat_api import get_teacher_for_user
 from backend.app.web.ui_lang import register_ui_globals
 
+IST = ZoneInfo("Asia/Kolkata")
 logger = logging.getLogger("abhyas.web.teacher")
 
 WEB_DIR = Path(__file__).resolve().parent
@@ -107,6 +112,13 @@ def load_demo_chips() -> list[dict[str, Any]]:
                 logger.warning("Failed to load demo_chips.json from %s: %s", p, e)
                 return []
     return []
+
+
+def _demo_banner_text(current_user: AppUser) -> str:
+    """Shared demo logins are reset on login/logout; other demo views only show synthetic data."""
+    if current_user.is_demo and current_user.role == "teacher":
+        return get_message("ui_demo_account_banner")
+    return get_message("ui_demo_banner")
 
 
 @router.get("/chat", response_class=HTMLResponse)
@@ -230,7 +242,18 @@ async def teacher_chat_page(
             header = None
 
     demo_chips = load_demo_chips() if is_demo else []
-    demo_banner_text = get_message("ui_demo_banner")
+    demo_banner_text = _demo_banner_text(current_user)
+    # "Ask the handbook": four questions per teacher per day while no scene is running; a link
+    # from the modules page (?ask=hb03) sends that question once the chat opens.
+    handbook_chips = (
+        chip_views(teacher.id, datetime.now(IST).date(), get_ui_lang())
+        if active_scene is None
+        else []
+    )
+    autosend = ""
+    asked = question_by_id(request.query_params.get("ask", ""))
+    if asked is not None:
+        autosend = asked.send_text()
 
     response = templates.TemplateResponse(
         request=request,
@@ -249,6 +272,9 @@ async def teacher_chat_page(
             "demo_mode": is_demo,
             "demo_banner_text": demo_banner_text,
             "demo_chips": demo_chips,
+            "handbook_chips": handbook_chips,
+            "handbook_autosend": autosend,
+            "handbook_prefix": settings.HANDBOOK_ASK_PREFIX,
             "initial_messages": initial_messages,
             "ui_strings": chat_ui_strings(),
             "rec_config": {
@@ -370,6 +396,7 @@ async def teacher_progress_page(
             move_ids = ["NUM_SUB_REGROUP_BUNDLES"]
 
     move_cards: list[dict[str, Any]] = []
+    all_scored: list[tuple[datetime, str, dict[str, Any]]] = []
 
     for m_id in move_ids:
         card = all_moves.get(m_id)
@@ -402,6 +429,13 @@ async def teacher_progress_page(
         rscores = (await db.execute(stmt_scores)).scalars().all()
         score_history: list[dict[str, Any]] = []
         for s_idx, rs in enumerate(rscores):
+            all_scored.append(
+                (
+                    rs.created_at or datetime.min.replace(tzinfo=UTC),
+                    m_id,
+                    rs.scores if isinstance(rs.scores, dict) else {},
+                )
+            )
             num_vals: list[float] = []
             if isinstance(rs.scores, dict):
                 for v in rs.scores.values():
@@ -480,7 +514,13 @@ async def teacher_progress_page(
             }
         )
 
-    demo_banner_text = get_message("ui_demo_banner")
+    # What she chose to get better at: first and latest level on that rubric criterion
+    skill_cards = skill_progress(
+        [(m, sc) for _, m, sc in sorted(all_scored, key=lambda row: row[0])],
+        [str(i) for i in teacher.teaching_skills or []],
+    )
+
+    demo_banner_text = _demo_banner_text(current_user)
 
     response = templates.TemplateResponse(
         request=request,
@@ -497,6 +537,9 @@ async def teacher_progress_page(
             "consent_share_scores": teacher.consent_share_scores,
             "consent_research": teacher.consent_research,
             "move_cards": move_cards,
+            "skill_cards": skill_cards,
+            "skill_min_scenes": settings.SKILL_PROGRESS_MIN_SCENES,
+            "skill_max_level": settings.SKILL_LEVEL_MAX,
         },
     )
     if token_to_set:
@@ -525,7 +568,10 @@ async def teacher_modules_page(
             "request": request,
             "csrf_token": csrf_token,
             "teacher_name": teacher.name or get_message("ui_default_teacher_name"),
-            "modules": module_views({r.module_id: r for r in rows}),
+            "modules": module_views(
+                {r.module_id: r for r in rows}, [str(i) for i in teacher.class_struggles or []]
+            ),
+            "class_saved": views_for([str(i) for i in teacher.class_struggles or []]),
             "steps": MODULE_STEPS,
             "step_labels": {
                 "learn": get_message("ui_modules_step_learn"),
@@ -534,7 +580,8 @@ async def teacher_modules_page(
                 "check": get_message("ui_modules_step_check"),
             },
             "demo_mode": bool(current_user.is_demo or teacher.is_demo),
-            "demo_banner_text": get_message("ui_demo_banner"),
+            "demo_banner_text": _demo_banner_text(current_user),
+            "handbook_chips": chip_views(teacher.id, datetime.now(IST).date(), get_ui_lang()),
         },
     )
     if token_to_set:

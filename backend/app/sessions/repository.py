@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db.models import (
     AdoptionEvidence,
+    ClassOutcome,
     ConsentLog,
     ExplainScore,
     InviteCode,
@@ -261,6 +262,34 @@ class SessionRepository:
             self.session.add(mp)
         await self.session.commit()
         return paths
+
+    async def replace_move_path(
+        self, teacher_id: UUID, entries: list[MovePathEntry]
+    ) -> list[MovePath]:
+        """Replaces the teacher's whole path (used when her class choice reorders it)."""
+        await self.session.execute(delete(MovePath).where(MovePath.teacher_id == teacher_id))
+        await self.session.flush()
+        return await self.record_move_path(teacher_id, entries)
+
+    async def done_move_ids(self, teacher_id: UUID, min_level: int) -> set[str]:
+        """Moves she has already completed with adoption evidence at `min_level` or above."""
+        res = await self.session.execute(
+            select(AdoptionEvidence.move_id)
+            .where(AdoptionEvidence.teacher_id == teacher_id, AdoptionEvidence.level >= min_level)
+            .distinct()
+        )
+        return {str(m) for m in res.scalars().all()}
+
+    async def record_class_outcome(
+        self, teacher_id: UUID, move_id: str, answer: str, struggle_ids: list[str]
+    ) -> ClassOutcome:
+        """Her own answer to "Did it help your class?" (yes / some / no)."""
+        row = ClassOutcome(
+            teacher_id=teacher_id, move_id=move_id, answer=answer, struggle_ids=list(struggle_ids)
+        )
+        self.session.add(row)
+        await self.session.commit()
+        return row
 
     async def get_move_path(self, teacher_id: UUID) -> list[MovePath]:
         """Retrieves personal move path sequence for teacher."""

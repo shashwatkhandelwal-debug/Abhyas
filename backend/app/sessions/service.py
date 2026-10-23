@@ -6,12 +6,16 @@ import logging
 import unicodedata
 import uuid
 from datetime import UTC, date, datetime, timedelta
+from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.class_profile import flow as class_flow
+from backend.app.class_profile import personalise, skills_flow
+from backend.app.class_profile.skills import clean_skill_ids, load_skills, skill_levels
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
 from backend.app.core.intents import (
@@ -23,9 +27,10 @@ from backend.app.core.intents import (
 from backend.app.core.messages import get_message
 from backend.app.core.types import Button, Citation, InboundMessage, OutboundMessage
 from backend.app.db.models import Message
+from backend.app.handbook.fallback import fallback_reply, match_handbook_question
 from backend.app.llm.client import LLMUnavailable
 from backend.app.llm.roles.coach import coach_feedback
-from backend.app.llm.roles.coach_suggestion import suggest_from_sources
+from backend.app.llm.roles.coach_suggestion import SuggestionResult, suggest_from_sources
 from backend.app.llm.roles.fidelity_checker import check_fidelity
 from backend.app.llm.roles.guide_answerer import (
     answer_guide_question,
@@ -48,7 +53,8 @@ from backend.app.rule_engine.domain import (
     TeachingAct,
 )
 from backend.app.sessions import modules, rehearse_setup
-from backend.app.sessions.path import compute_move_path, load_induction_order
+from backend.app.sessions.path import MovePathEntry, compute_move_path, load_induction_order
+from backend.app.sessions.path_score import DONE_MIN_EVIDENCE
 from backend.app.sessions.repository import SessionRepository
 from backend.app.sessions.state_machine import (
     ONBOARDING_PROMPT_KEYS,
@@ -86,19 +92,30 @@ class SessionService:
         self.scene_runner = scene_runner or SceneRunner()
         self.retriever: GuideRetriever = get_guide_retriever()
 
-    async def _learn_intro(self, move: MoveCard, address_form: str) -> tuple[str, list[Citation]]:
+    async def _learn_intro(
+        self, move: MoveCard, address_form: str, struggle_ids: list[str] | None = None
+    ) -> tuple[str, list[Citation]]:
         """Learn-step intro, plus the best matching official excerpt for the move's topic.
 
         The excerpt comes from the ingested source documents only (never move cards). When nothing
         scores above RETRIEVAL_MIN_SCORE the intro is returned unchanged.
         """
         intro = get_message("learn_intro", address_form, move_title=move.title_hi)
+        reason = personalise.because(move.id, struggle_ids or [])
+        if reason is not None:
+            because_line = get_message(
+                "ui_class_chosen_because", label=personalise.label_of(reason)
+            )
+            intro = f"{because_line}\n\n{intro}"
         query = f"{move.title_hi} {' '.join(t.replace('_', ' ') for t in move.tags)}"
         hits = await self.retriever.retrieve(
             query, top_k=1, min_score=settings.RETRIEVAL_MIN_SCORE, official_only=True
         )
+        tip_text, tip_cites = await self._learn_tip(move, address_form)
+        if tip_text:
+            intro = f"{intro}\n\n{tip_text}"
         if not hits or not hits[0].gloss_hi:
-            return intro, []
+            return intro, tip_cites
         hit = hits[0]
         chunk = RetrievedChunk(
             chunk_id=hit.chunk_id,
@@ -115,7 +132,7 @@ class SessionService:
             summary=hit.gloss_hi,
             citation=cites[0].line_hi if cites else "",
         )
-        return f"{intro}\n\n{ref}", cites
+        return f"{intro}\n\n{ref}", cites + [c for c in tip_cites if c.chunk_id != hit.chunk_id]
 
     async def get_or_create_context(self, teacher_id: UUID) -> SessionContext:
         """Loads or constructs a SessionContext from database state."""
@@ -168,7 +185,14 @@ class SessionService:
             rehearse_stage=str(ctx_data.get("rehearse_stage", "")),
             rehearse_mode=str(ctx_data.get("rehearse_mode", "")),
             rehearse_child=str(ctx_data.get("rehearse_child", "")),
+            resume_scene_id=str(ctx_data.get("resume_scene_id", "")),
             diagnosis=dict(ctx_data.get("diagnosis") or {}),
+            class_stage=str(ctx_data.get("class_stage", "")),
+            class_pending=[str(i) for i in ctx_data.get("class_pending") or []],
+            class_struggles=[str(i) for i in teacher.class_struggles or []],
+            skill_stage=str(ctx_data.get("skill_stage", "")),
+            skill_pending=[str(i) for i in ctx_data.get("skill_pending") or []],
+            teaching_skills=[str(i) for i in teacher.teaching_skills or []],
             name=teacher.name,
             address_form=teacher.address_form or "f",
             cluster_id=teacher.cluster_id,
@@ -200,6 +224,8 @@ class SessionService:
         teacher.onboarding_state = ctx.onboarding_state.value
         teacher.last_inbound_at = ctx.last_inbound_at
         teacher.lite_mode = ctx.lite_mode
+        teacher.class_struggles = list(ctx.class_struggles)
+        teacher.teaching_skills = list(ctx.teaching_skills)
         await self.repo.save_teacher(teacher)
 
         week_d = date.fromisoformat(ctx.week_start)
@@ -233,7 +259,12 @@ class SessionService:
             "rehearse_stage": ctx.rehearse_stage,
             "rehearse_mode": ctx.rehearse_mode,
             "rehearse_child": ctx.rehearse_child,
+            "resume_scene_id": ctx.resume_scene_id,
             "diagnosis": ctx.diagnosis,
+            "class_stage": ctx.class_stage,
+            "class_pending": ctx.class_pending,
+            "skill_stage": ctx.skill_stage,
+            "skill_pending": ctx.skill_pending,
         }
         await self.repo.save_session_state(db_state)
         if (
@@ -322,10 +353,15 @@ class SessionService:
     async def _begin_training_rating(
         self, ctx: SessionContext, teacher_id: UUID, level: int
     ) -> list[OutboundMessage]:
-        """After REFLECT: ask for the 1-5 usefulness rating before the week_done message."""
-        ctx.rating_stage = "rating"
+        """After REFLECT: "did it help your class?" (when she named a struggle this move practises),
+        then the 1-5 usefulness rating, before the week_done message."""
         ctx.rating_unclear = 0
         ctx.rating_level = level
+        if personalise.because(ctx.current_move_id, ctx.class_struggles) is not None:
+            ctx.rating_stage = "helped"
+            await self._sync_context_to_db(ctx, teacher_id)
+            return [class_flow.helped_message()]
+        ctx.rating_stage = "rating"
         await self._sync_context_to_db(ctx, teacher_id)
         return [
             OutboundMessage(
@@ -343,17 +379,19 @@ class SessionService:
             for n in (1, 3, 5)
         ]
 
-    async def _source_suggestion(
-        self, move: MoveCard, change_hi: str, address_form: str
-    ) -> OutboundMessage | None:
-        """One tip from the FLN training package after a scene, with a tappable citation.
+    async def _cited_tip(
+        self, query: str, move_title_hi: str, change_hi: str, *, pool: int, candidates: int
+    ) -> SuggestionResult | None:
+        """One guarded tip from the FLN training package, or None.
 
-        No retrieval support (or a failed guard) means no suggestion: nothing is invented.
+        Official chunks only (`official_only`), the retrieval score and matched-terms gates, then
+        `suggest_from_sources` (schema, cited chunk must be one retrieved, grounded wording, one
+        retry). No support or a failed guard means no tip: nothing is invented.
         """
         try:
             hits = await self.retriever.retrieve(
-                f"{move.title_hi} {change_hi}",
-                top_k=settings.COACH_SUGGESTION_POOL,
+                query,
+                top_k=pool,
                 min_score=settings.RETRIEVAL_MIN_SCORE,
                 official_only=True,
                 min_matched_terms=settings.RETRIEVAL_MIN_MATCHED_TERMS,
@@ -371,12 +409,27 @@ class SessionService:
                 )
                 for c in hits
                 if c.source == settings.COACH_SUGGESTION_SOURCE_ID
-            ][: settings.COACH_SUGGESTION_CANDIDATES]
-            result = await suggest_from_sources(move.title_hi, change_hi, chunks)
+            ][:candidates]
+            result = await suggest_from_sources(move_title_hi, change_hi, chunks)
         except (LLMUnavailable, TimeoutError, ValueError, OSError) as exc:
-            logger.warning("coach source suggestion skipped: %s", exc)
+            logger.warning("source tip skipped: %s", exc)
             return None
         if not result.suggestion_hi or result.chunk is None:
+            return None
+        return result
+
+    async def _source_suggestion(
+        self, move: MoveCard, change_hi: str, address_form: str
+    ) -> OutboundMessage | None:
+        """One tip from the FLN training package after a scene, with a tappable citation."""
+        result = await self._cited_tip(
+            f"{move.title_hi} {change_hi}",
+            move.title_hi,
+            change_hi,
+            pool=settings.COACH_SUGGESTION_POOL,
+            candidates=settings.COACH_SUGGESTION_CANDIDATES,
+        )
+        if result is None or result.chunk is None:
             return None
         cite = format_guide_citation(
             result.chunk.source_short_hi, result.chunk.page, address_form=address_form
@@ -390,6 +443,26 @@ class SessionService:
             citations=citations_for_chunks([result.chunk], address_form),
         )
 
+    async def _learn_tip(self, move: MoveCard, address_form: str) -> tuple[str, list[Citation]]:
+        """One handbook tip for a module's learning step: text to append and its citation."""
+        query = f"{move.title_hi} {' '.join(t.replace('_', ' ') for t in move.tags)}"
+        result = await self._cited_tip(
+            query,
+            move.title_hi,
+            get_message("learn_tip_focus", address_form),
+            pool=settings.HANDBOOK_TIP_POOL,
+            candidates=settings.HANDBOOK_TIP_CANDIDATES,
+        )
+        if result is None or result.chunk is None:
+            return "", []
+        cite = format_guide_citation(
+            result.chunk.source_short_hi, result.chunk.page, address_form=address_form
+        )
+        text = get_message(
+            "learn_handbook_tip", address_form, tip=result.suggestion_hi, citation=cite
+        )
+        return text, citations_for_chunks([result.chunk], address_form)
+
     async def _begin_rehearse_setup(
         self, ctx: SessionContext, teacher_id: UUID, move: MoveCard
     ) -> list[OutboundMessage]:
@@ -397,6 +470,59 @@ class SessionService:
         messages = rehearse_setup.begin_setup(ctx, move)
         await self._sync_context_to_db(ctx, teacher_id)
         return messages
+
+    def _realism_prompt(self, ctx: SessionContext, address_form: str) -> str:
+        """The realism question names the child in a 1-1 scene, otherwise 'these children'."""
+        if ctx.rehearse_mode == rehearse_setup.MODE_ONE_ON_ONE and ctx.rehearse_child:
+            return get_message(
+                "realism_prompt_one_on_one",
+                address_form,
+                child=rehearse_setup.child_name(ctx.rehearse_child),
+            )
+        return get_message("realism_prompt", address_form)
+
+    @staticmethod
+    def _skill_lead(
+        move: MoveCard, scores: dict[str, Any], ctx: SessionContext, address_form: str
+    ) -> str:
+        """ "You chose to improve at X; in this practice: ..." from the rubric's own level wording."""
+        lib = load_skills()
+        lines: list[str] = []
+        for item in skill_levels(move, scores, ctx.teaching_skills):
+            skill = lib.get(item.skill_id)
+            if skill is None or not item.level_text_hi:
+                continue
+            lines.append(
+                get_message(
+                    "coach_skill_lead",
+                    address_form,
+                    label=skill.label,
+                    level_text=item.level_text_hi,
+                    level=item.level,
+                    max=settings.SKILL_LEVEL_MAX,
+                )
+            )
+        return "\n".join(lines)
+
+    async def _resume_scene(self, ctx: SessionContext, teacher_id: UUID) -> bool:
+        """Reopens the scene that ended too early; False if it is gone."""
+        try:
+            scene_id = UUID(ctx.resume_scene_id)
+        except ValueError:
+            return False
+        scene = await scene_store.get(scene_id)
+        if scene is None or scene.teacher_id != teacher_id:
+            return False
+        # The "stop" marker is not a real turn and its index is the next real turn's index: drop it
+        scene.turns = [t for t in scene.turns if t.acts != ["stop"]]
+        scene.active = True
+        scene.scene_state.ended = False
+        scene.scene_state.end_reason = None
+        await scene_store.save(scene)
+        ctx.current_state = SessionStateEnum.REHEARSE
+        ctx.resume_scene_id = ""
+        await self._sync_context_to_db(ctx, teacher_id)
+        return True
 
     async def _clear_rating_stage(self, ctx: SessionContext, teacher_id: UUID) -> None:
         ctx.rating_stage = ""
@@ -409,6 +535,27 @@ class SessionService:
     ) -> list[OutboundMessage]:
         """Reads the rating (button, typed digit or spoken number), then the optional comment."""
         address_form = ctx.address_form
+        if ctx.rating_stage == "helped":
+            answer = class_flow.parse_helped(text, btn_id)
+            if answer is None and ctx.rating_unclear < settings.CLASS_HELPED_MAX_UNCLEAR:
+                ctx.rating_unclear += 1
+                await self._sync_context_to_db(ctx, teacher_id)
+                return [class_flow.helped_message()]
+            ctx.rating_stage = "rating"
+            ctx.rating_unclear = 0
+            await self._sync_context_to_db(ctx, teacher_id)
+            rating_prompt = OutboundMessage(
+                kind="buttons",
+                text_hi=get_message("rate_training_prompt", address_form),
+                buttons=self._rating_buttons(address_form),
+            )
+            if answer is None:  # never trap her: nothing stored, on to the rating
+                return [rating_prompt]
+            await self.repo.record_class_outcome(
+                teacher_id, ctx.current_move_id, answer, ctx.class_struggles
+            )
+            thanks = OutboundMessage(kind="text", text_hi=get_message("class_helped_thanks"))
+            return [thanks, rating_prompt]
         if ctx.rating_stage == "rating":
             value = parse_training_rating(text, btn_id)
             if value is None and ctx.rating_unclear >= settings.TRAINING_RATING_MAX_UNCLEAR:
@@ -454,6 +601,56 @@ class SessionService:
             kind="text", text_hi=get_message("rate_training_thanks", address_form)
         )
         return [thanks, *await self._week_done_messages(ctx, teacher_id, level)]
+
+    async def _after_class_saved(self, ctx: SessionContext, teacher_id: UUID) -> None:
+        """Her class choice changed: moves that practise it come first on her path."""
+        rows = await self.repo.get_move_path(teacher_id)
+        entries = [MovePathEntry(r.position, r.move_id, r.reason or "") for r in rows if r.move_id]
+        if not entries:
+            return
+        done = await self.repo.done_move_ids(teacher_id, DONE_MIN_EVIDENCE)
+        ordered = personalise.order_path(
+            entries,
+            ctx.class_struggles,
+            done_moves=frozenset(done),
+            skill_ids=ctx.teaching_skills,
+        )
+        if [(e.move_id, e.reason) for e in ordered] != [(e.move_id, e.reason) for e in entries]:
+            await self.repo.replace_move_path(teacher_id, ordered)
+
+    async def set_class_struggles(self, teacher_id: UUID, ids: list[str]) -> list[str]:
+        """The "My class" page saved (or cleared) her choice: closed list, ordered, at most 3."""
+        ctx = await self.get_or_create_context(teacher_id)
+        ctx.class_struggles = class_flow.clean_ids(ids)
+        ctx.class_stage = class_flow.STAGE_NONE
+        ctx.class_pending = []
+        await self._after_class_saved(ctx, teacher_id)
+        await self._sync_context_to_db(ctx, teacher_id)
+        return list(ctx.class_struggles)
+
+    async def set_teaching_skills(self, teacher_id: UUID, ids: list[str]) -> list[str]:
+        """The My class page saved (or cleared) what she wants to get better at: closed list, max 2."""
+        ctx = await self.get_or_create_context(teacher_id)
+        ctx.teaching_skills = clean_skill_ids(ids)
+        ctx.skill_stage = skills_flow.STAGE_NONE
+        ctx.skill_pending = []
+        await self._after_class_saved(ctx, teacher_id)
+        await self._sync_context_to_db(ctx, teacher_id)
+        return list(ctx.teaching_skills)
+
+    async def start_teaching_skills(self, teacher_id: UUID) -> list[OutboundMessage]:
+        """My class page -> chat: ask what she wants to get better at (voice, text or a number)."""
+        ctx = await self.get_or_create_context(teacher_id)
+        result = skills_flow.start(ctx)
+        await self._sync_context_to_db(ctx, teacher_id)
+        return result.messages
+
+    async def start_class_profile(self, teacher_id: UUID) -> list[OutboundMessage]:
+        """Teacher home -> chat: ask where her class is struggling (voice, text or a number)."""
+        ctx = await self.get_or_create_context(teacher_id)
+        result = class_flow.start(ctx)
+        await self._sync_context_to_db(ctx, teacher_id)
+        return result.messages
 
     async def handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
         """Handles one teacher message, then records which module steps it completed."""
@@ -512,7 +709,7 @@ class SessionService:
         ctx.module_check_stage = modules.CHECK_IDLE
         await self._sync_context_to_db(ctx, teacher_id)
         move = load_move_card(module_id)
-        intro_text, intro_cites = await self._learn_intro(move, address_form)
+        intro_text, intro_cites = await self._learn_intro(move, address_form, ctx.class_struggles)
         return [
             OutboundMessage(
                 kind="text",
@@ -582,7 +779,9 @@ class SessionService:
                 ctx.last_inbound_at = now
                 await self._sync_context_to_db(ctx, teacher_id)
                 move = load_move_card(ctx.current_move_id)
-                intro_text, intro_cites = await self._learn_intro(move, address_form)
+                intro_text, intro_cites = await self._learn_intro(
+                    move, address_form, ctx.class_struggles
+                )
                 return [
                     OutboundMessage(
                         kind="text",
@@ -616,6 +815,35 @@ class SessionService:
                 await self._clear_rating_stage(ctx, teacher_id)
             else:
                 return await self._handle_training_rating(ctx, teacher_id, text_content, btn_id)
+
+        # 1c. "My class" (optional): her words about where the class struggles, or a chip number
+        if (
+            ctx.onboarding_state == OnboardingStateEnum.READY
+            and matched_intent != Intent.DELETE
+            and text_content != "delete"
+            and not ctx.awaiting_delete_confirm
+        ):
+            # "What do you want to get better at?" is asked right after the class choice is saved
+            skill_stage_before = ctx.skill_stage
+            skill_res = await skills_flow.handle(ctx, text_content, btn_id, matched_intent)
+            if skill_res.handled:
+                if skill_res.saved:
+                    await self._after_class_saved(ctx, teacher_id)
+                await self._sync_context_to_db(ctx, teacher_id)
+                return skill_res.messages
+            if ctx.skill_stage != skill_stage_before:
+                await self._sync_context_to_db(ctx, teacher_id)
+            stage_before = ctx.class_stage
+            class_res = await class_flow.handle(ctx, text_content, btn_id, matched_intent)
+            if class_res.handled:
+                messages = class_res.messages
+                if class_res.saved:
+                    await self._after_class_saved(ctx, teacher_id)
+                    messages = [*messages, *skills_flow.start(ctx).messages]
+                await self._sync_context_to_db(ctx, teacher_id)
+                return messages
+            if ctx.class_stage != stage_before:
+                await self._sync_context_to_db(ctx, teacher_id)
 
         # 2. Delete confirmation flow (§8.3 step 7)
         if ctx.awaiting_delete_confirm:
@@ -732,28 +960,34 @@ class SessionService:
                     )
                 ]
 
-            # Execute Question Classifier
-            classify_res = await classify_question(
-                q_text, clarifying_already_asked=ctx.clarifying_already_asked
-            )
-
-            if classify_res.output.needs_clarification and not ctx.clarifying_already_asked:
-                ctx.clarifying_already_asked = True
-                await self._sync_context_to_db(ctx, teacher_id)
-                clarify_msg = classify_res.output.clarifying_question_hi or get_message(
-                    "ask_clarify_generic", address_form
+            # A curated handbook question is known to be a pedagogy question: no classifier call.
+            chip_q = match_handbook_question(q_text)
+            if chip_q is not None:
+                category = "pedagogy"
+                search_query = chip_q.hi
+            else:
+                # Execute Question Classifier
+                classify_res = await classify_question(
+                    q_text, clarifying_already_asked=ctx.clarifying_already_asked
                 )
-                return [
-                    OutboundMessage(
-                        kind="text",
-                        text_hi=clarify_msg,
+
+                if classify_res.output.needs_clarification and not ctx.clarifying_already_asked:
+                    ctx.clarifying_already_asked = True
+                    await self._sync_context_to_db(ctx, teacher_id)
+                    clarify_msg = classify_res.output.clarifying_question_hi or get_message(
+                        "ask_clarify_generic", address_form
                     )
-                ]
+                    return [
+                        OutboundMessage(
+                            kind="text",
+                            text_hi=clarify_msg,
+                        )
+                    ]
+                category = classify_res.output.category
+                search_query = classify_res.output.search_query_hi or q_text
 
             # Retrieval
-            chunks = await self.retriever.retrieve_supported(
-                classify_res.output.search_query_hi or q_text
-            )
+            chunks = await self.retriever.retrieve_supported(search_query)
             schema_chunks = [
                 RetrievedChunk(
                     chunk_id=c.chunk_id,
@@ -771,19 +1005,29 @@ class SessionService:
             # Guide Answerer
             answer_res = await answer_guide_question(
                 question=q_text,
-                category=classify_res.output.category,
+                category=category,
                 chunks=schema_chunks,
                 address_form=address_form,
             )
+
+            # A chip question never ends in "not found": if the answerer could not run or failed
+            # its guard, show the question's own chunk summary and source (stored text, no model).
+            chip_fallback = None
+            if chip_q is not None and answer_res.escalated:
+                chip_fallback = fallback_reply(chip_q, self.retriever, address_form)
+                if chip_fallback is not None:
+                    answer_res = answer_res.model_copy(update={"escalated": False})
 
             # Persist question record
             status_val = "escalated" if answer_res.escalated else "answered"
             q_rec = await self.repo.record_question(
                 teacher_id=teacher_id,
                 text=q_text,
-                category=classify_res.output.category,
-                answer_hi=answer_res.output.answer_hi,
-                source_ids=answer_res.output.source_ids,
+                category=category,
+                answer_hi=chip_fallback[0] if chip_fallback else answer_res.output.answer_hi,
+                source_ids=[chip_q.chunk_id]
+                if chip_fallback and chip_q
+                else answer_res.output.source_ids,
                 confidence=answer_res.output.confidence,
                 status=status_val,
             )
@@ -791,24 +1035,31 @@ class SessionService:
                 await self.repo.record_review_item(
                     kind="question",
                     ref_id=str(q_rec.id),
-                    reason=f"Question escalated: {classify_res.output.category}",
+                    reason=f"Question escalated: {category}",
                 )
 
             # Compose reply
-            if answer_res.escalated:
-                if classify_res.output.category == "admin":
+            reply_cites: list[Citation] = []
+            if chip_fallback is not None:
+                reply_text, reply_cites = chip_fallback
+            elif answer_res.escalated:
+                if category == "admin":
                     reply_key = "ask_admin"
                 elif answer_res.no_sources:
                     reply_key = "ask_not_in_sources"
                 else:
                     reply_key = "ask_escalated"
                 reply_text = get_message(reply_key, address_form)
-            elif classify_res.output.category == "out_of_scope":
+            elif category == "out_of_scope":
                 reply_text = get_message("ask_out_of_scope", address_form)
-            elif classify_res.output.category == "admin":
+            elif category == "admin":
                 reply_text = get_message("ask_admin", address_form)
             else:
                 reply_text = compose_guide_reply(answer_res.output, schema_chunks, address_form)
+                reply_cites = citations_for_chunks(answer_res.sources_cited, address_form)
+            if chip_q is not None and reply_cites:
+                label = get_message("handbook_source_label", address_form)
+                reply_text = f"{reply_text}\n\n{label}"
 
             # Resume prior state
             prior = ctx.prior_state_before_ask or SessionStateEnum.LEARN
@@ -827,9 +1078,7 @@ class SessionService:
                     # A generated guide answer gets the "guide" speaker (the web UI offers a
                     # translation for it); escalation / canned replies are plain system text.
                     speaker=None if answer_res.escalated else "guide",
-                    citations=[]
-                    if answer_res.escalated
-                    else citations_for_chunks(answer_res.sources_cited, address_form),
+                    citations=reply_cites,
                 ),
                 OutboundMessage(kind="text", text_hi=f"{resume_note}\n\n{prior_prompt}"),
             ]
@@ -1073,7 +1322,9 @@ class SessionService:
 
                     first_move = load_move_card(ctx.current_move_id)
                     ready_outbounds: list[OutboundMessage] = []
-                    first_text, first_cites = await self._learn_intro(first_move, ctx.address_form)
+                    first_text, first_cites = await self._learn_intro(
+                        first_move, ctx.address_form, ctx.class_struggles
+                    )
                     if turn_res:
                         ready_outbounds.extend(turn_res.outbound)
                     ready_outbounds.extend(
@@ -1107,6 +1358,10 @@ class SessionService:
                             ),
                         ]
                     )
+                    if not ctx.class_struggles:
+                        ready_outbounds.append(class_flow.invite_message())
+                        teacher_row = await self.repo.get_or_create_teacher(teacher_id)
+                        teacher_row.class_profile_prompted_at = now
                     return ready_outbounds
 
                 await self._sync_context_to_db(ctx, teacher_id)
@@ -1119,7 +1374,9 @@ class SessionService:
         if curr == SessionStateEnum.LEARN:
             move = load_move_card(ctx.current_move_id)
             if matched_intent == Intent.REPEAT or btn_id == "btn_replay":
-                intro_text, intro_cites = await self._learn_intro(move, address_form)
+                intro_text, intro_cites = await self._learn_intro(
+                    move, address_form, ctx.class_struggles
+                )
                 return [
                     OutboundMessage(
                         kind="buttons",
@@ -1375,39 +1632,40 @@ class SessionService:
                     else:
                         trajectories[child.persona_id] = [child.state]
 
-                # Empty scene or missing trajectories, or < 3 teacher turns -> skip coach entirely
-                if not scene.turns or teacher_turns_count < 3 or not trajectories:
+                min_turns = (
+                    settings.MIN_TURNS_FOR_COACH_ONE_ON_ONE
+                    if scene.scene_state.one_on_one
+                    else settings.MIN_TURNS_FOR_COACH_GROUP
+                )
+                # Too short for useful feedback: say so and let the teacher continue or skip
+                if not scene.turns or teacher_turns_count < min_turns or not trajectories:
+                    ctx.resume_scene_id = str(scene.scene_id)
                     await self._sync_context_to_db(ctx, teacher_id)
-                    outbounds: list[OutboundMessage] = []
-                    has_neutral = any(
-                        m.text_hi == get_message("scene_ended_neutral", address_form)
-                        for m in turn_res.outbound
-                    )
-                    outbounds.extend(turn_res.outbound)
-                    if not has_neutral:
-                        outbounds.append(
-                            OutboundMessage(
-                                kind="text",
-                                text_hi=get_message("scene_ended_neutral", address_form),
-                            )
-                        )
-                    outbounds.append(
+                    needed_more = max(1, min_turns - teacher_turns_count)
+                    neutral = get_message("scene_ended_neutral", address_form)
+                    return [
+                        *[m for m in turn_res.outbound if m.text_hi != neutral],
                         OutboundMessage(
                             kind="buttons",
-                            text_hi=get_message("realism_prompt", address_form),
+                            text_hi=get_message(
+                                "scene_too_short",
+                                address_form,
+                                done=teacher_turns_count,
+                                needed=min_turns,
+                                more=needed_more,
+                            ),
                             buttons=[
                                 Button(
-                                    id="btn_retry",
-                                    title_hi=get_message("btn_retry", address_form),
+                                    id="btn_scene_continue",
+                                    title_hi=get_message("btn_scene_continue", address_form),
                                 ),
                                 Button(
-                                    id="btn_continue",
-                                    title_hi=get_message("btn_continue", address_form),
+                                    id="btn_skip",
+                                    title_hi=get_message("btn_skip", address_form),
                                 ),
                             ],
-                        )
-                    )
-                    return outbounds
+                        ),
+                    ]
 
                 # Generate coach feedback (one-on-one: its own rubric, plus the diagnosis result)
                 move = load_move_card(ctx.current_move_id)
@@ -1540,12 +1798,30 @@ class SessionService:
                     exact_words=coach_res.feedback.exact_words_hi,
                 )
 
+                skill_lead = self._skill_lead(move, coach_res.feedback.scores, ctx, address_form)
+                if skill_lead:
+                    feedback_body = f"{skill_lead}\n\n{feedback_body}"
+
                 ctx.rehearse_stage = rehearse_setup.STAGE_NONE
                 await self._sync_context_to_db(ctx, teacher_id)
                 suggestion = await self._source_suggestion(
                     move, coach_res.feedback.change_hi, address_form
                 )
                 suggestion_msgs = [suggestion] if suggestion else []
+                class_focus = personalise.focus_child(move, ctx.class_struggles)
+                if class_focus is not None:
+                    suggestion_msgs.insert(
+                        0,
+                        OutboundMessage(
+                            kind="text",
+                            text_hi=get_message(
+                                "coach_class_link",
+                                address_form,
+                                label=personalise.label_of(class_focus.struggle),
+                                child=rehearse_setup.child_name(class_focus.persona_id),
+                            ),
+                        ),
+                    )
                 coach_outbounds: list[OutboundMessage] = list(turn_res.outbound)
                 coach_outbounds.extend(
                     [
@@ -1556,7 +1832,7 @@ class SessionService:
                         *suggestion_msgs,
                         OutboundMessage(
                             kind="buttons",
-                            text_hi=get_message("realism_prompt", address_form),
+                            text_hi=self._realism_prompt(ctx, address_form),
                             buttons=[
                                 Button(
                                     id="btn_retry", title_hi=get_message("btn_retry", address_form)
@@ -1577,6 +1853,21 @@ class SessionService:
 
         elif curr == SessionStateEnum.FEEDBACK:
             move = load_move_card(ctx.current_move_id)
+            if ctx.resume_scene_id and (btn_id == "btn_scene_continue"):
+                resumed = await self._resume_scene(ctx, teacher_id)
+                if resumed:
+                    return [
+                        OutboundMessage(
+                            kind="text", text_hi=get_message("scene_resumed", address_form)
+                        )
+                    ]
+                ctx.current_state = SessionStateEnum.REHEARSE_INTRO
+                ctx.resume_scene_id = ""
+                return await self._begin_rehearse_setup(ctx, teacher_id, move)
+            if ctx.resume_scene_id and (btn_id == "btn_skip" or matched_intent == Intent.SKIP):
+                btn_id = "btn_continue"  # skipping the too-short scene's feedback moves on
+                matched_intent = Intent.NEXT
+            ctx.resume_scene_id = ""
             if ctx.module_mode and ctx.module_check_stage == modules.CHECK_ASKING:
                 if matched_intent == Intent.NEXT or btn_id == "btn_continue":
                     ctx.module_check_stage = modules.CHECK_DONE  # skipped: the module stays open
@@ -1710,7 +2001,7 @@ class SessionService:
                 return [
                     OutboundMessage(
                         kind="buttons",
-                        text_hi=get_message("realism_prompt", address_form),
+                        text_hi=self._realism_prompt(ctx, address_form),
                         buttons=[
                             Button(id="btn_retry", title_hi=get_message("btn_retry", address_form)),
                             Button(
@@ -1864,7 +2155,9 @@ class SessionService:
             if matched_intent == Intent.NEXT or btn_id == "btn_next_move":
                 wsm.transition("btn_next_move")
                 await self._sync_context_to_db(ctx, teacher_id)
-                intro_text, intro_cites = await self._learn_intro(move, address_form)
+                intro_text, intro_cites = await self._learn_intro(
+                    move, address_form, ctx.class_struggles
+                )
                 return [
                     OutboundMessage(
                         kind="buttons",

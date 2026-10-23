@@ -1585,6 +1585,32 @@ function setupDemoChips() {
   });
 }
 
+// ── Ask the handbook chips: a tap sends the question through the normal text path ──
+function setupHandbookChips() {
+  const sec = document.getElementById('handbook-chips');
+  const prefix = (sec && sec.getAttribute('data-prefix')) || '';
+  const chips = document.querySelectorAll('.handbook-chip[data-id]');
+  const busy = (b) => chips.forEach((c) => (c.disabled = b));
+  chips.forEach((c) => {
+    c.onclick = async () => {
+      if (c.disabled) return;
+      busy(true); // one question at a time. Hindi UI: the label is the question; English: data-text
+      try {
+        await handleSendText(c.getAttribute('data-text') || `${prefix} ${c.textContent.trim()}`);
+      } finally {
+        busy(false);
+      }
+    };
+  });
+  const auto = sec && sec.getAttribute('data-autosend'); // ?ask=hb03 from Modules
+  if (auto) {
+    try {
+      history.replaceState(null, '', location.pathname);
+    } catch (e) {}
+    handleSendText(auto);
+  }
+}
+
 // ── Delegated Event Handlers for Server-Rendered Buttons ──────────────────
 document.addEventListener('click', (e) => {
   const target = e.target;
@@ -1707,6 +1733,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 4. Setup Mic & Demo Chips
   setupMicEvents();
   setupDemoChips();
+  setupHandbookChips();
   setupSceneEnd();
 
   setupLogoutCleanup();

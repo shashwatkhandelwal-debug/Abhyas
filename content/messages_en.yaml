@@ -5,7 +5,7 @@
 # ingest time stay Hindi on purpose (see KEEP_HINDI in that test).
 welcome: {text: "Hello! I am Abhyas — your practice partner. Each week, in about 15 minutes, we will learn one classroom move and practise it by voice with three children."}
 consent_service: {text: "Before we start: your voice is turned into text and the audio is deleted straight away. Your scores are visible only to you unless you yourself allow sharing with your ARP. You can erase everything at any time by writing 'delete my data'. Do you agree?"}
-consent_details: {text: "What we keep: your name, class, experience, the text of what you say and your practice scores. What we do not keep: recordings of your voice, any information about children. Trainers (DIET/SCERT) only see totals for groups of 10 or more teachers, never anyone's name."}
+consent_details: {text: "What we keep: your name, class, experience, the text of what you say, your practice scores and, if you tell us, the struggles you pick in 'My class' (from a fixed list, at most 3) and the teaching skill you want to get better at (from a fixed list, at most 2). What we do not keep: recordings of your voice, any information about children. Trainers (DIET/SCERT) only see totals for groups of 10 or more teachers, never anyone's name; your ARP does not see your class struggles or this choice."}
 consent_declined: {text: "No problem. Whenever you want to start, send 'hello'."}
 ask_join_code: {text: "Send the code your ARP gave you. If you do not have a code, write 'no'."}
 join_code_invalid: {text: "That code was not found. Please send it again, or write 'no'."}
@@ -621,3 +621,92 @@ ui_waking_title: {text: "Abhyas is waking up…"}
 ui_waking_body: {text: "The free server sleeps when idle and wakes up again; this takes about a minute. Keep this page open — you will be taken in automatically as soon as it is ready."}
 ui_waking_still: {text: "Still waking up… please wait a little longer."}
 learn_buttons_reminder: {text: "At this step, tap one of the two buttons below: “{next}” or “{replay}”. Typed text does not move it forward here."}
+realism_prompt_one_on_one: {text: "Did {child} feel like a real classroom child? Choose from 1 (not at all) to 5 (exactly like them)."}
+scene_too_short: {text: "So far you have spoken {done} time(s). I need at least {needed} to give useful advice, so {more} more. Continue the scene, or skip?"}
+scene_resumed: {text: "Okay, the scene continues from where you stopped. Say your next line."}
+btn_scene_continue: {text: "Continue the scene"}
+ui_demo_account_banner: {text: "Demo account - chat resets when you log in or out"}
+
+# ── "My class" ──────────────────────────────────────────────────────────────────
+class_ask: {text: "Where is your class struggling? Say it or type it, or send a number from the list below (optional):\n{list}"}
+class_ask_invite: {text: "Optional, about 2 minutes: tell us where the children in your class get stuck. Your practice will be chosen to fit. No information about children is collected."}
+btn_cls_start: {text: "Tell us"}
+btn_cls_skip: {text: "Not now"}
+class_confirm: {text: "This is what I understood:\n{items}\nIs that right? If not, press 'No' and tell me again."}
+class_saved: {text: "Done. This is saved for your class:\n{items}\nPractice for the struggles that have a practice case will come first in your order. Write 'My class' any time to change it."}
+class_item: {text: "{n}. {label}\n   Handbook tip: {tip}\n   {practice}\n   {source}"}
+class_item_short: {text: "{n}. {label}"}
+class_practice_yes: {text: "Practice: {move_title}"}
+class_practice_none: {text: "There is no practice case for this yet; only this tip."}
+class_no_match: {text: "That did not match anything on my list, so nothing was saved. A general tip: {tip}\n{source}\nThere is no practice case for this yet. Send a number from the list, tell me again, or press 'Not now'."}
+class_skipped: {text: "Okay. Write 'My class' whenever you want to tell us."}
+class_command_words: {text: "my class, meri kaksha, meri class, change my class"}
+class_other_item: {text: "Something else"}
+ui_menu_my_class: {text: "My class"}
+ui_class_title: {text: "My class"}
+ui_class_intro: {text: "Tell us where the children in your class get stuck. We link it to what the handbooks say and choose your practice. No information about children is collected, only your choice."}
+ui_class_card_empty: {text: "Not told yet. Take 2 minutes so that practice is chosen to fit your class."}
+ui_class_card_set: {text: "Your class:"}
+ui_class_btn_set: {text: "Tell us about your class"}
+ui_class_btn_change: {text: "Change"}
+ui_class_pick_label: {text: "Choose from the list (at most {max}; your first choice counts as the most important):"}
+ui_class_text_label: {text: "Or write it in your own words:"}
+ui_class_btn_describe: {text: "Understand"}
+ui_class_btn_save: {text: "Save this"}
+ui_class_btn_clear: {text: "Remove all"}
+ui_class_btn_speak: {text: "Say it by voice"}
+ui_class_btn_back: {text: "Back"}
+ui_class_pending_title: {text: "This is what I understood. Is that right?"}
+ui_class_privacy: {text: "This is only your choice. Trainers see only totals for 10 or more teachers, and only for teachers who agreed to share scores."}
+ui_class_no_practice: {text: "There is no practice case for this yet; only the handbook tip."}
+ui_class_practice_label: {text: "Practice:"}
+ui_class_tip_label: {text: "Handbook tip:"}
+ui_class_no_match: {text: "That did not match anything on the list, so nothing was saved."}
+ui_class_saved: {text: "Your class is saved."}
+ui_class_cleared: {text: "Your class choice was removed."}
+ui_class_too_many: {text: "Choose at most {max}; the first {max} were kept."}
+ui_class_chosen_because: {text: "Chosen for your class: children get stuck here — {label}"}
+ui_trainer_class_title: {text: "Common class struggles"}
+ui_trainer_class_desc: {text: "What teachers said about their class (consenting teachers only; hidden below 10)."}
+ui_trainer_class_teachers: {text: "Teachers who answered"}
+class_helped_ask: {text: "One question after trying it in class: did this help your class?"}
+btn_helped_yes: {text: "Yes, it helped"}
+btn_helped_some: {text: "A little"}
+btn_helped_no: {text: "It did not"}
+class_helped_thanks: {text: "Thank you, this is saved."}
+rehearse_child_focus: {text: "{child} makes the kind of mistake behind your class's struggle ({label}), so that child is placed first (★)."}
+rehearse_group_focus: {text: "This time {child} makes the kind of mistake behind your class's struggle ({label})."}
+coach_class_link: {text: "Your class's struggle ({label}) is the same as {child}'s mistake in this practice. In class too, ask the child for their way first, then show it with real objects."}
+learn_tip_focus: {text: "Trying this method in class"}
+learn_handbook_tip: {text: "A tip from the handbook: {tip}\n{citation}"}
+ui_handbook_title: {text: "Ask the handbook"}
+ui_handbook_hint: {text: "Tap a question; the answer comes with its source and page."}
+handbook_source_label: {text: "From the FLN training package"}
+handbook_fallback: {text: "The service that writes answers is not running right now. The handbook passage on this topic (summary): {summary}\n{citation}"}
+skill_ask: {text: "What would you like to get better at in your teaching? Say or type it, or give a number from the list (optional, at most {max}):\n{list}"}
+skill_confirm: {text: "I understood:\n{items}\nIs that right?"}
+skill_saved: {text: "Noted. The coach will put these first in its feedback:\n{items}\nYou can change this any time on the My class page."}
+skill_item: {text: "{n}. {label}\n   {source}"}
+skill_item_other: {text: "{n}. {label}\n   For this, see the Ask the handbook questions."}
+skill_no_match: {text: "I could not match that to the list. Give a number from the list, or skip:\n{list}"}
+skill_skipped: {text: "Okay. You can choose this later on the My class page."}
+btn_skill_skip: {text: "Not now"}
+coach_skill_lead: {text: "You chose to improve at '{label}'. In this practice: {level_text} ({level}/{max})"}
+ui_skills_title: {text: "What would you like to get better at?"}
+ui_skills_intro: {text: "Choose at most {max} from the list. The coach will put these first in its feedback, and the progress page will show before and after."}
+ui_skills_saved_label: {text: "Your choice"}
+ui_skills_none: {text: "Nothing chosen yet."}
+ui_skills_btn_save: {text: "Save"}
+ui_skills_btn_clear: {text: "Remove my choice"}
+ui_skills_btn_voice: {text: "Tell it by voice"}
+ui_skills_notice_saved: {text: "Your choice is saved."}
+ui_skills_notice_cleared: {text: "Your choice was removed."}
+ui_skill_progress_title: {text: "The skill you chose"}
+ui_skill_progress_before: {text: "First practice"}
+ui_skill_progress_now: {text: "Latest"}
+ui_skill_progress_wait: {text: "After {n} practices, the before and after comparison shows here."}
+ui_trainer_skills_title: {text: "What teachers want to get better at"}
+ui_trainer_skills_desc: {text: "The skill teachers chose (consenting teachers only; hidden below 10)."}
+stt_unavailable_type_please: {text: "The voice service is not available right now. Please type your message."}
+ui_login_shared_note: {text: "Demo accounts are shared: pick one not in use. Chats reset on login and logout."}
+ui_login_demo_teacher_experienced: {text: "Teacher (experienced): teacher.demo3"}
