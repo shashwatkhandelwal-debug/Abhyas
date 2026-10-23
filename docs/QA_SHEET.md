@@ -1,4 +1,4 @@
-# The 15 hardest questions, with honest answers
+# The 16 hardest questions, with honest answers
 
 Every answer points to a file, a test or a number in this repository. A claim that cannot be checked from the
 repository is marked **[UNVERIFIED]**. Numbers from our own runs are in `docs/PERFORMANCE.md` (with date and git
@@ -132,3 +132,23 @@ or slow voice provider (the chat tells the teacher to type instead); other judge
 teacher at the same moment (they reset on logout, so stay in your own session). Known weaknesses: the act tagger
 can mis-tag an unusual Hindi/Hinglish sentence, and the child's wording varies between runs (its numbers do not).
 See `docs/JUDGE_QUICKSTART.md`.
+
+**16. How does it adapt to my class, and can that personalisation make the AI decide what a child says?**
+No. A teacher says where her class struggles (voice, text or a chip) and the answer is matched to a **closed list of
+14 class struggles** (`content/class_struggles.yaml`), each tied to what the FLN training sources say about it
+(`docs/FLN_TRAINING_MAP.md`: NIPUN Bharat, NISHTHA FLN, Vidya Pravesh and the two UP guides, with chunk ids and
+pages) and, for 7 of them, to a practice move. The Haiku role `class_struggle_classifier` can only return ids from
+that list (`guard_class_struggle_classifier`; one retry; then the keyword matcher; then nothing is stored), so
+nothing a teacher or a model says can add a new category (`test_resolve_never_returns_an_id_outside_the_library`).
+The choice reorders her path, labels her module cards "chosen because…", stars the child in a practice scene whose
+mistake matches, and adds a fixed sentence to the coach's feedback; none of it touches the engine's input.
+`test_hostile_llm_output_and_a_class_profile_never_change_a_childs_answer` runs the same scene with no profile, with
+a profile, and with the child's voice and the classifier patched to lie: the engine's answers are identical. What
+is stored: up to 3 ids on her own row; no child data. Trainers see counts only for 10 or more consenting teachers
+(`class_struggle_summary`, `test_trainer_aggregate_counts_consenting_teachers_and_hides_small_groups`); the ARP sees
+nothing. Honest limits: the list and the sentence labels are ours, not teachers' (32 sentences in
+`eval/class_profile/sentences.yaml`; results in `eval/class_profile/REPORT.md`, and the keyword numbers there are
+optimistic because we added keywords after a first run on the same set); only 7 struggles have a practice case,
+the rest get the cited tip and an honest "no practice case yet"; the two UP guides are OCR, so their pages are
+pointers to check. We have no evidence yet that personalising raises learning; the "did it help your class?"
+answers (`class_outcome`) are how we would start to find out **[UNVERIFIED]**.
