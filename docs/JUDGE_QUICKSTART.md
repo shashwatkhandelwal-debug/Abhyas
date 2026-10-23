@@ -22,7 +22,7 @@ classify, coach and answer from cited documents.**
    "अब नया सवाल: 61 में से 28।": he gets it wrong again (47). Nothing in the model decided that.
 3. Send input 4 (the bundles move) to see him get to the right answer with help. Tap **end practice** (or let the
    scene finish) to get the coach's feedback with your own words quoted.
-4. Type the how-to question (input 5): the answer ends with a citation chip; tap it to read the source page.
+4. Type the how-to question (input 5), or tap one of the four **हैंडबुक से पूछें** chips under the text box (on `teacher.demo1` and `teacher.demo3`; `teacher.demo2` starts inside a scene, so its chips are on the Modules page): the answer ends with a citation chip; tap it to read the source page.
 5. **Try "My class" (about 2 minutes).** Log in as `teacher.demo1`, open the menu (☰) and tap **मेरी कक्षा**
    (or type it in the chat). Say or type where your class struggles, e.g. input 6 in `docs/SAMPLE_INPUTS.md`
    ("बच्चे हासिल वाले जोड़ में हासिल भूल जाते हैं और गिनती भी कमज़ोर है"), or tick up to three chips. Confirm what it
@@ -31,6 +31,9 @@ classify, coach and answer from cited documents.**
    struggle is first and says "आपकी कक्षा के लिए चुना गया…". In a one-on-one practice the child who makes your
    class's mistake is starred, and the coach's feedback ends with a line linking it to your class. `teacher.demo3`
    already has a class choice (matra words, addition with carry) so you can see the result without typing.
+   Right after you confirm, Abhyas asks **what you want to get better at** (input 9 in `docs/SAMPLE_INPUTS.md`: say
+   "बच्चों से यह पूछना कि उन्होंने कैसे किया", or give a number from the list); at most two skills are kept, and in the next
+   one-on-one practice the coach's feedback starts with your skill. `teacher.demo3` has one seeded (`asks_to_explain`).
 6. **Log out.** The three shared teacher logins reset to their starting state on logout, including "My class".
 
 ## What to try per role

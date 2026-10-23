@@ -72,6 +72,12 @@ def load_skills(path: str | None = None) -> SkillLibrary:
     return SkillLibrary.model_validate(yaml.safe_load(source.read_text(encoding="utf-8")))
 
 
+def resolve_candidates(lib: SkillLibrary | None = None) -> dict[str, str]:
+    """The id -> description map offered to the classifier (English and Hindi labels)."""
+    lib = lib or load_skills()
+    return {s.id: f"{s.label_en} ({s.label_hi})" for s in lib.skills}
+
+
 def clean_skill_ids(ids: list[str], lib: SkillLibrary | None = None) -> list[str]:
     """Only library ids, no repeats, in order, at most TEACHING_SKILLS_MAX.
 

@@ -21,6 +21,7 @@ from backend.app.class_profile.skills import (
     TeachingSkill,
     clean_skill_ids,
     load_skills,
+    resolve_candidates,
 )
 from backend.app.config import settings
 from backend.app.core.intents import Intent
@@ -72,8 +73,7 @@ async def resolve_skills(text: str, lib: SkillLibrary | None = None) -> list[str
     clean = clip_input(unicodedata.normalize("NFC", text or "")).strip()
     if not clean:
         return []
-    candidates = {s.id: f"{s.label_en} ({s.label_hi})" for s in lib.skills}
-    ids = await classify_teaching_skills(clean, candidates)
+    ids = await classify_teaching_skills(clean, resolve_candidates(lib))
     return clean_skill_ids(ids or [], lib)
 
 
