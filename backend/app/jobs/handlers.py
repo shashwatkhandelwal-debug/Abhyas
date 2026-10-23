@@ -618,9 +618,10 @@ async def handle_followup_try_in_class(ctx: JobContext, job: ScheduledJob) -> No
 
     try:
         from backend.app.rehearsal.scene_runner import load_move_card
+        from backend.app.sessions import titles
 
         move_card = load_move_card(move_id)
-        move_title = move_card.title_hi
+        move_title = titles.move_title(move_card.id)
     except (FileNotFoundError, ValueError, OSError):
         move_title = move_id
 

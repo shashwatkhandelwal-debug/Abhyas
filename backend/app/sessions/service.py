@@ -65,6 +65,7 @@ from backend.app.sessions.state_machine import (
     SessionStateEnum,
     WeeklyStateMachine,
 )
+from backend.app.sessions.titles import move_title
 from backend.app.sessions.training_rating import (
     is_rating_escape,
     is_skip_comment,
@@ -101,7 +102,7 @@ class SessionService:
         The excerpt comes from the ingested source documents only (never move cards). When nothing
         scores above RETRIEVAL_MIN_SCORE the intro is returned unchanged.
         """
-        intro = get_message("learn_intro", address_form, move_title=move.title_hi)
+        intro = get_message("learn_intro", address_form, move_title=move_title(move.id))
         reason = personalise.because(move.id, struggle_ids or [])
         if reason is not None:
             because_line = get_message(
@@ -295,9 +296,9 @@ class SessionService:
                 next_id = path_entries[curr_idx + 1].move_id
                 if next_id:
                     next_card = load_move_card(next_id)
-                    return next_card.title_hi
+                    return move_title(next_card.id)
         curr_card = load_move_card(current_move_id)
-        return curr_card.title_hi
+        return move_title(curr_card.id)
 
     def _get_resume_prompt(
         self,
@@ -318,7 +319,7 @@ class SessionService:
         prior_prompt_key = WeeklyStateMachine(ctx).get_state_prompt_key(prior)
         move = load_move_card(ctx.current_move_id)
         if prior_prompt_key == "learn_intro":
-            return get_message(prior_prompt_key, address_form, move_title=move.title_hi)
+            return get_message(prior_prompt_key, address_form, move_title=move_title(move.id))
         elif prior_prompt_key == "rehearse_intro":
             return get_message(prior_prompt_key, address_form, scene_intro=move.scenario.intro_hi)
         else:
@@ -881,7 +882,9 @@ class SessionService:
                 prompt_key = WeeklyStateMachine(ctx).get_state_prompt_key(target)
                 move = load_move_card(ctx.current_move_id)
                 if prompt_key == "learn_intro":
-                    prompt_msg = get_message(prompt_key, address_form, move_title=move.title_hi)
+                    prompt_msg = get_message(
+                        prompt_key, address_form, move_title=move_title(move.id)
+                    )
                 elif prompt_key == "rehearse_intro":
                     prompt_msg = get_message(
                         prompt_key, address_form, scene_intro=move.scenario.intro_hi
@@ -1347,7 +1350,7 @@ class SessionService:
                                 text_hi=get_message(
                                     "ready_first_move",
                                     ctx.address_form,
-                                    move_title=first_move.title_hi,
+                                    move_title=move_title(first_move.id),
                                 ),
                             ),
                             OutboundMessage(
@@ -1889,7 +1892,9 @@ class SessionService:
                     check = await check_module(
                         move,
                         text_content,
-                        get_message("module_check_prompt", address_form, move_title=move.title_hi),
+                        get_message(
+                            "module_check_prompt", address_form, move_title=move_title(move.id)
+                        ),
                         address_form,
                     )
                     await self.repo.mark_module_step(
@@ -1957,7 +1962,7 @@ class SessionService:
                     OutboundMessage(
                         kind="text",
                         text_hi=get_message(
-                            "module_check_prompt", address_form, move_title=move.title_hi
+                            "module_check_prompt", address_form, move_title=move_title(move.id)
                         ),
                     )
                 ]
@@ -2195,7 +2200,7 @@ class SessionService:
                             "progress_summary",
                             address_form,
                             n_done=1,
-                            lines=f"1. {move.title_hi}",
+                            lines=f"1. {move_title(move.id)}",
                         ),
                     )
                 ]

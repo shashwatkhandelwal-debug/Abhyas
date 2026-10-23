@@ -27,8 +27,8 @@ from backend.app.core.messages import get_message, get_ui_lang
 from backend.app.core.types import Button, Citation, OutboundMessage
 from backend.app.llm.roles.class_struggle_classifier import classify_class_struggles
 from backend.app.llm.roles.guide_answerer import format_guide_citation
-from backend.app.rehearsal.scene_runner import load_move_card
 from backend.app.sessions.state_machine import SessionContext
+from backend.app.sessions.titles import move_title
 from backend.app.sessions.training_rating import is_rating_escape
 
 STAGE_NONE = ""
@@ -100,7 +100,7 @@ def source_line(chunk_ids: list[str], address_form: str) -> tuple[str, list[Cita
 def practice_line(s: ClassStruggle) -> str:
     if s.move_id is None:
         return get_message("class_practice_none")
-    title = load_move_card(s.move_id).title_hi
+    title = move_title(s.move_id)
     return get_message("class_practice_yes", move_title=title)
 
 

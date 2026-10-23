@@ -12,12 +12,13 @@ from typing import Any
 from sqlalchemy import Text, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.core.messages import get_message, has_message
+from backend.app.core.messages import get_message
 from backend.app.db.models import Message, SessionState, Teacher
 from backend.app.rehearsal.header import preview_header
 from backend.app.rehearsal.scene_runner import load_move_card
 from backend.app.sessions.path import load_induction_order
 from backend.app.sessions.state_machine import OnboardingStateEnum, SessionStateEnum
+from backend.app.sessions.titles import move_title
 from backend.app.web.demo_samples import build_samples
 from backend.app.web.next_action import next_action
 
@@ -38,17 +39,6 @@ STEP_OF_STATE: dict[str, int] = {
     SessionStateEnum.REFLECT_SELF.value: 7,
     SessionStateEnum.DONE.value: 7,
 }
-
-
-def move_title(move_id: str) -> str:
-    """The move's full title in the UI language (the Hindi card title when there is no translation)."""
-    key = f"move_title_{move_id}"
-    if has_message(key):
-        return get_message(key)
-    try:
-        return load_move_card(move_id).title_hi
-    except FileNotFoundError:
-        return move_id
 
 
 def step_of(state: str, prior_state: str | None) -> int:

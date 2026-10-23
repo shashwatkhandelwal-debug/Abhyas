@@ -1,16 +1,16 @@
 # First-Load Transfer Size Audit Report
 
 **Environment**: `local, mock providers, mock DB, empty chat history`  
-**Timestamp**: 2026-10-23 15:45:16 UTC  
+**Timestamp**: 2026-10-23 15:56:54 UTC  
 **Status**: ✅ PASSED (Budget: < 150.0 KB)  
 
 > Note: In the local test run, `/teacher` HTML is measured with mock providers, a mock DB, and an empty chat history, which represents a lower bound for the page size.
 
 ## 1. Executive Summary
 
-- **Teacher Chat First-Load (HTML + CSS + JS)**: **32.22 KB** gzip (124.89 KB raw)
-- **Total Asset Payload (All Offline Assets)**: **39.9 KB** gzip (147.74 KB raw)
-- **Budget Headroom**: **25.11 KB** under the 150 KB ceiling (83.3% of budget)
+- **Teacher Chat First-Load (HTML + CSS + JS)**: **32.22 KB** gzip (124.9 KB raw)
+- **Total Asset Payload (All Offline Assets)**: **39.89 KB** gzip (147.76 KB raw)
+- **Budget Headroom**: **25.1 KB** under the 150 KB ceiling (83.3% of budget)
 - **Target Constraint**: Spec 09 §9.2 requires first-load payload < 150 KB excluding audio to ensure accessibility on low-cost Android smartphones over 2G/3G connections.
 
 ## 2. Asset Breakdown
@@ -18,7 +18,7 @@
 | Asset Name | Path | Kind | Status | Raw Size (KB) | Gzip Size (KB) |
 |---|---|---|---|---|---|
 | `Login Page (HTML)` | `/login` | HTML | 200 | 7.15 KB | 2.19 KB |
-| `Teacher Chat PWA (HTML)` | `/teacher` | HTML | 200 | 18.49 KB | 4.99 KB |
+| `Teacher Chat PWA (HTML)` | `/teacher` | HTML | 200 | 18.51 KB | 4.99 KB |
 | `manifest.json` | `/manifest.json` | JSON | 200 | 0.5 KB | 0.29 KB |
 | `ack.js` | `/static/ack.js` | JS | 200 | 1.07 KB | 0.56 KB |
 | `app.css?v=dev-88692bfe` | `/static/app.css?v=dev-88692bfe` | CSS | 200 | 33.05 KB | 7.34 KB |
@@ -43,4 +43,4 @@
 ## 4. Assertion
 
 Assertion `total_first_load < 150 KB`: **✅ PASSED**
-- Measured: 124.89 KB raw < 150.00 KB
+- Measured: 124.9 KB raw < 150.00 KB

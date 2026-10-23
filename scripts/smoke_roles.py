@@ -224,7 +224,7 @@ def _chip(s: Session) -> str:
     # the web channel shows the source as a tappable chip, so the line is in `citations`
     cites = answers[0]["citations"]
     assert all("स्रोत" in c["line_hi"] and c.get("page") for c in cites), cites
-    for phrase in ("नहीं मिला", "ARP से पूछकर"):
+    for phrase in ("नहीं मिला", "समीक्षा-सूची"):
         assert phrase not in text, f"'not found' reply: {phrase}"
     return f"cited answer, {len(cites)} citation(s): {cites[0]['line_hi']}"
 

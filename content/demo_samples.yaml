@@ -66,7 +66,7 @@ samples:
   - id: s5_question_multigrade
     scope: any
     text_kind: static
-    text_hi: "मेरी कक्षा में पहली और दूसरी कक्षा के बच्चे साथ बैठते हैं। हासिल वाला घटाव दोनों को एक साथ कैसे कराऊँ?"
+    text_hi: "सवाल: मेरी कक्षा में पहली और दूसरी कक्षा के बच्चे साथ बैठते हैं। हासिल वाला घटाव दोनों को एक साथ कैसे कराऊँ?"
     label:
       hi: "ऐसा सवाल जो हैंडबुक में नहीं है"
       en: "A question the handbook does not cover"

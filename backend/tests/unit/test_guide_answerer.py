@@ -117,7 +117,7 @@ async def test_answer_guide_question_empty_chunks_escalates() -> None:
         assert m_tool.call_count == 0
         assert result.escalated is True
         assert result.used_fallback is True
-        assert "ARP से पूछकर" in result.answer_text_hi
+        assert "ARP की समीक्षा-सूची" in result.answer_text_hi
 
 
 @pytest.mark.asyncio
@@ -153,7 +153,7 @@ async def test_answer_guide_question_low_retrieval_score_escalates() -> None:
         assert m_tool.call_count == 0
         assert result.escalated is True
         assert result.used_fallback is True
-        assert "ARP से पूछकर" in result.answer_text_hi
+        assert "ARP की समीक्षा-सूची" in result.answer_text_hi
 
 
 @pytest.mark.asyncio
@@ -178,7 +178,7 @@ async def test_answer_guide_question_low_confidence_escalates(
         )
 
         assert result.escalated is True
-        assert "ARP से पूछकर" in result.answer_text_hi
+        assert "ARP की समीक्षा-सूची" in result.answer_text_hi
 
 
 @pytest.mark.asyncio
@@ -230,7 +230,7 @@ async def test_answer_guide_question_llm_unavailable_escalates(
         assert m_tool.call_count == 1
         assert result.escalated is True
         assert result.used_fallback is True
-        assert "ARP से पूछकर" in result.answer_text_hi
+        assert "ARP की समीक्षा-सूची" in result.answer_text_hi
 
 
 def test_compose_guide_reply_deduplicates_sources(sample_chunks: list[RetrievedChunk]) -> None:

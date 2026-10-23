@@ -22,22 +22,22 @@ ready_first_move: {text: "Your first move is: {move_title}. Let's begin!"}
 learn_intro: {text: "This week's move: {move_title}. First listen to this 2-minute voice note. The key points are written below:"}
 explain_back_prompt: {text: "Now, in 1 minute, tell me in your own words: what is the most important thing in this move? Send it by voice or by typing."}
 explain_back_reply: {text: "Thank you! You mentioned {covered} of {total} key points."}
-explain_back_missing: {text: "One more thing to remember: {point}"}
-explain_back_misconception: {text: "Please note: {note}"}
+explain_back_missing: {text: "One more thing to remember:\n{point}"}
+explain_back_misconception: {text: "Please note:\n{note}"}
 fidelity_reply_summary: {text: "Thank you! You mentioned {n_covered} of {n_total} key points."}
 fidelity_reply_missing: {text: "One more thing to remember: {text}"}
 fidelity_reply_misconception: {text: "Please note: {text}"}
 model_offer: {text: "Would you like to hear how another teacher does this move with these same three children? (about 1 minute)"}
 model_header: {text: "Model practice:"}
-rehearse_intro: {text: "{scene_intro} When you are ready, start talking to the children. Address a child by name. Say 'stop' to finish."}
+rehearse_intro: {text: "Scene (in Hindi, as the children hear it):\n{scene_intro}\n\nWhen you are ready, start talking to the children. Address a child by name. Say 'stop' to finish."}
 child_silent: {text: "({name} is quiet and looking down.)"}
 thinking: {text: "The children are thinking…"}
 scene_turn_limit: {text: "The practice time is over."}
 scene_all_correct: {text: "Wow! All three children understood."}
 scene_ended_neutral: {text: "Let's look at the feedback now."}
 feedback_header: {text: "Suggestions on your practice:"}
-feedback_body: {text: "👍 {strength}\n🔁 {change}\n🗣️ Next time, try saying: \"{exact_words}\""}
-feedback_trajectory: {text: "Change in the children: {trajectory}"}
+feedback_body: {text: "👍 {strength}\n🔁 {change}\n🗣️ Next time, try saying:\n\"{exact_words}\""}
+feedback_trajectory: {text: "Change in the children:\n{trajectory}"}
 coach_low_conf_prefix: {text: "(An expert will also look at this suggestion.)"}
 realism_prompt: {text: "Did these children feel like real classroom children? Choose from 1 (not at all) to 5 (exactly like them)."}
 rate_training_prompt: {text: "How useful was this week's practice for your work? Tell us any number from 1 (not at all) to 5 (very useful), typed or spoken."}
@@ -52,8 +52,8 @@ rate_training_language_words: {text: "language, change language, english, hindi,
 retry_limit: {text: "You have completed this week's 3 practices. Now it's time to try it in class!"}
 try_in_class: {text: "Now try this move in your class. Ask a fellow teacher to watch for 5 minutes and fill in this list:"}
 try_in_class_reflect: {text: "Or answer these 2 questions yourself:"}
-peer_item: {text: "Peer checklist ({i}/{n}): {item}"}
-reflect_q: {text: "Question {i}: {question}"}
+peer_item: {text: "Peer checklist ({i}/{n}):\n{item}"}
+reflect_q: {text: "Question {i}:\n{question}"}
 week_done: {text: "Well done, {name}! This week you reached '{level_name}'. Next move: {next_move_title}."}
 evidence_level_1: {text: "Practised"}
 evidence_level_2: {text: "Explained it myself"}
@@ -69,14 +69,14 @@ ask_clarify_generic: {text: "Please ask your question in a little more detail."}
 ask_source_line: {text: "Source: {source}{page_part}"}
 ask_source_citation: {text: "Source: {source}, page {page}"}
 ask_source_page_abbrev: {text: "p."}
-ask_try_this_week: {text: "Try this week: {tip}"}
-ask_escalated: {text: "Good question. I will ask your ARP and get you a reliable answer."}
-learn_reference: {text: "What the official document says on this topic (summary): {summary}\n{citation}"}
-ask_not_in_sources: {text: "I could not find the answer to this question in my official documents, so I won't guess. I will ask your ARP and get back to you."}
+ask_try_this_week: {text: "Try this week:\n{tip}"}
+ask_escalated: {text: "Good question. I do not have a reliable answer, so I have put it in your ARP's review list; they will see it there."}
+learn_reference: {text: "What the official document says on this topic (summary):\n{summary}\n{citation}"}
+ask_not_in_sources: {text: "I could not find the answer to this in my official documents, so I will not guess. I have put your question in your ARP's review list; they will see it there."}
 ask_out_of_scope: {text: "Sorry, I can only help with Class 1–3 teaching and classroom questions."}
 ask_admin: {text: "This information will come from your BEO or ARP office. I have passed your question on to your ARP."}
 ask_resume: {text: "Let's carry on from where we were."}
-followup_question: {text: "{name}, you had asked about '{topic}'. Did the suggestion help?"}
+followup_question: {text: "{name}, you had asked a question:\n«{topic}»\nDid the suggestion help?"}
 followup_try_in_class: {text: "{name}, did you try '{move_title}' in class? Choose an option to share your experience:"}
 arp_answer_delivered: {text: "Your ARP has sent the answer to your question: {answer}"}
 help_menu: {text: "What would you like to do?"}
@@ -553,14 +553,14 @@ ui_scene_one_title: {text: "One-on-one with {child}"}
 ui_scene_turn: {text: "Your turn {turn} of {max}"}
 ui_chat_scene_end: {text: "End practice"}
 ui_chat_scene_end_confirm: {text: "End the practice now?"}
-coach_quote_suffix: {text: "Your words: «{quote}»"}
+coach_quote_suffix: {text: "Your words:\n«{quote}»"}
 ui_chat_scene_stop_word: {text: "stop"}
-coach_source_suggestion: {text: "A suggestion from the sources: {suggestion}"}
+coach_source_suggestion: {text: "A suggestion from the sources:\n{suggestion}"}
 
 # ── Modules ───────────────────────────────────────────────────────────────
 module_check_prompt: {text: "Last check: in \"{move_title}\", if a child makes a mistake, what will you do first, and why? Say it in your own words."}
 module_check_reply_pass: {text: "Very good, you named the main steps of this method."}
-module_check_reply_more: {text: "Good try. One more thing to remember: {point}"}
+module_check_reply_more: {text: "Good try. One more thing to remember:\n{point}"}
 module_check_done_pass: {text: "The module check is done. Shall we move on?"}
 module_check_done_more: {text: "Your check is saved. You can practise again if you like, or move on."}
 ui_chat_menu_modules: {text: "Modules"}
@@ -666,11 +666,11 @@ rehearse_child_focus: {text: "{child} makes the kind of mistake behind your clas
 rehearse_group_focus: {text: "This time {child} makes the kind of mistake behind your class's struggle ({label})."}
 coach_class_link: {text: "Your class's struggle ({label}) is the same as {child}'s mistake in this practice. In class too, ask the child for their way first, then show it with real objects."}
 learn_tip_focus: {text: "Trying this method in class"}
-learn_handbook_tip: {text: "A tip from the handbook: {tip}\n{citation}"}
+learn_handbook_tip: {text: "A tip from the handbook:\n{tip}\n{citation}"}
 ui_handbook_title: {text: "Ask the handbook"}
 ui_handbook_hint: {text: "Tap a question; the answer comes with its source and page."}
 handbook_source_label: {text: "From the FLN training package"}
-handbook_fallback: {text: "The service that writes answers is not running right now. The handbook passage on this topic (summary): {summary}\n{citation}"}
+handbook_fallback: {text: "The service that writes answers is not running right now. The handbook passage on this topic (summary):\n{summary}\n{citation}"}
 skill_ask: {text: "What would you like to get better at in your teaching? Say or type it, or give a number from the list (optional, at most {max}):\n{list}"}
 skill_confirm: {text: "I understood:\n{items}\nIs that right?"}
 skill_saved: {text: "Noted. The coach will put these first in its feedback:\n{items}\nYou can change this any time on the My class page."}
