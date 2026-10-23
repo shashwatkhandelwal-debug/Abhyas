@@ -505,6 +505,10 @@ async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
     await session.flush()
 
     teacher = await session.get(Teacher, teacher_id)
+    if teacher is None:
+        # Not seeded in this database: nothing to restore (and rows below would break the FK)
+        logger.info("Demo teacher %s has no teacher row; reset skipped", login)
+        return False
     if teacher is not None:
         teacher.onboarding_state = onboarding
         teacher.name = f"डेमो {FICTIONAL_TEACHER_NAMES[position - 1]}"

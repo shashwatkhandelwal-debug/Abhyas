@@ -28,7 +28,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, 
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import delete, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession, async_sessionmaker
 
 from backend.app.auth.csrf import (
     CSRF_COOKIE_NAME,
@@ -463,7 +463,14 @@ async def admin_fast_forward(
             detail="Cannot fast-forward a non-demo teacher",
         )
 
-    result = await fast_forward_teacher(t_uuid)
+    # Run on the same database as this request (not the process-wide default)
+    bind = db.bind
+    factory = (
+        async_sessionmaker(bind, expire_on_commit=False)
+        if isinstance(bind, AsyncEngine | AsyncConnection)
+        else None
+    )
+    result = await fast_forward_teacher(t_uuid, session_factory=factory)
     return RedirectResponse(
         url=f"/admin?msg=ff_ok&advanced={result.advanced}",
         status_code=status.HTTP_303_SEE_OTHER,
