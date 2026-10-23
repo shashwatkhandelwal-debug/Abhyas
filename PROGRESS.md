@@ -576,3 +576,9 @@ All items from `spec/15_human_inputs.md` are currently open:
 - Built `docs/FLN_TRAINING_MAP.md`: 5 training sources + our move seeds (1,157 chunks) summarised; 14 class-level struggles mapped to training topic, chunk ids (all 72 cited ids checked against the chunk files) and move card. 6 of 14 have a practice scene, 7 are handbook-tip only, 1 is partial.
 - Gaps recorded in the doc: only Class 1 UP guides ingested (no carry/borrow wording anywhere in the chunks), UP guides are OCR.
 - Decision: branched from `main` (5cd0398). The `fix/demo-reset-and-1on1-feedback` branch (4 commits) is not merged and no handbook-chips branch exists locally or on origin, so nothing was merged first.
+
+### Part 2 - closed class-struggle library (2026-10-23)
+- `content/class_struggles.yaml`: 14 struggles (8 numeracy, 6 literacy) + the `other` entry. Each has Hindi/English label, 3 trigger phrases, keywords (Hindi, Hinglish, English), misconception ids, move id (or null), 2 chunk ids and a short tip paraphrasing only those chunks. 9 entries have a tappable chip, plus "something else".
+- `backend/app/class_profile/library.py` (loader, NFC, `validate_library`, citations from the chunk files) and `matcher.py` (deterministic keyword matcher: whole trigger phrase 3, most of a phrase 1, keyword 2, minimum 2, at most 3 results, best first). All weights are in `config.py` (`STRUGGLE_*`).
+- `backend/tests/unit/test_class_struggles.py`: validation (every move, misconception and chunk id must exist), NFC, each trigger phrase finds its own entry first, real Hindi/Hinglish sentences, no-match cases.
+- Decisions: keywords is an extra field beside the 2-3 trigger phrases, because whole phrases alone are too brittle for free speech. Misconception ids for the literacy move come from its `target_causes` (it has no `misconceptions` block).
