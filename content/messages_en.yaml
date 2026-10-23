@@ -710,3 +710,8 @@ ui_trainer_skills_desc: {text: "The skill teachers chose (consenting teachers on
 stt_unavailable_type_please: {text: "The voice service is not available right now. Please type your message."}
 ui_login_shared_note: {text: "Demo accounts are shared: pick one not in use. Chats reset on login and logout."}
 ui_login_demo_teacher_experienced: {text: "Teacher (experienced): teacher.demo3"}
+
+# ── Chat clarity part 1: handbook chips, back to the scene ──
+ui_chat_typing_handbook: {text: "Looking in the handbook…"}
+ask_resume_scene_one: {text: "Back to {child}: say your next line."}
+ask_resume_scene_group: {text: "Back to the children: say your next line."}

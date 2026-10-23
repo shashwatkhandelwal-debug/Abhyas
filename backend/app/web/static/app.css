@@ -580,13 +580,18 @@ body {
   align-items: center;
 }
 
-.demo-chip:hover,
-.handbook-chip:hover {
-  background-color: var(--brand-light);
+/* Hover only where a pointer exists: on a phone the last tapped chip would stay "hovered" (a
+   light fill under light text in the dark theme) until the next tap elsewhere. */
+@media (hover: hover) {
+  .demo-chip:hover,
+  .handbook-chip:hover {
+    border-color: var(--brand);
+  }
 }
 
-.handbook-chips { flex-wrap: wrap; overflow-x: visible; }
-.handbook-chip { white-space: normal; text-align: left; line-height: 1.25; text-decoration: none; }
+.handbook-chip { white-space: normal; text-align: left; line-height: 1.25; text-decoration: none; flex: 0 0 15rem; min-width: 0; }
+.handbook-card .handbook-chips { flex-wrap: wrap; overflow-x: visible; }
+.handbook-card .handbook-chip { flex: 1 1 15rem; }
 
 /* Composer Section */
 .composer-wrapper {
@@ -1456,3 +1461,16 @@ body {
 .class-chip input { width: 1.1rem; height: 1.1rem; }
 .class-text textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 0.5rem; border: 1px solid var(--border, #ddd); border-radius: 8px; margin: 0.4rem 0; }
 .class-nomatch { padding: 0.75rem 1rem; border-left: 4px solid var(--border, #ddd); background: var(--surface, #fff); }
+
+/* Chat shell: the thread is the one scrolling part, so a new bubble can be scrolled into view */
+.chat-page { height: 100vh; height: 100dvh; overflow: hidden; }
+.chat-page .app-container { height: 100%; min-height: 0; }
+.chat-page .app-container > * { flex: none; }
+.chat-page .app-container > .chat-messages { flex: 1 1 auto; min-height: 0; overscroll-behavior: contain; }
+.chat-page .chat-header, .chat-page .composer-wrapper { position: static; }
+.helper-tray { max-height: 34vh; overflow-y: auto; border-top: 1px solid var(--border); background-color: var(--surface); }
+.helper-tray .demo-helper-section, .helper-tray .handbook-section { border-top: 0; }
+.handbook-chip.sending, .handbook-chip.sent { border-color: var(--brand); color: var(--brand); opacity: 1; }
+.handbook-chip.sent { background-color: var(--bubble-in); color: var(--ink); }
+@media (prefers-color-scheme: dark) { .brand-badge { color: #7FD0B9; } .brand-logo-icon { stroke: #7FD0B9; } }
+@media (max-height: 560px) { .chat-page .helper-tray, .chat-page .demo-banner { display: none; } }

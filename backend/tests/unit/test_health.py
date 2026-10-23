@@ -188,11 +188,30 @@ def test_service_worker_version_tracks_asset_content(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """With GIT_SHA unset ("dev"), editing chat.js alone still moves the version."""
-    from backend.app.web import teacher
+    from backend.app.web import assets
 
-    for name in teacher._SW_VERSIONED_ASSETS:
+    for name in assets.SW_VERSIONED_ASSETS:
         (tmp_path / name).write_text("v1", encoding="utf-8")
-    monkeypatch.setattr(teacher, "STATIC_DIR", tmp_path)
-    before = teacher.sw_build_version()
+    monkeypatch.setattr(assets, "STATIC_DIR", tmp_path)
+    before = assets.sw_build_version()
     (tmp_path / "chat.js").write_text("v2", encoding="utf-8")
-    assert teacher.sw_build_version() != before
+    assert assets.sw_build_version() != before
+
+
+async def test_pages_ask_for_assets_by_the_build_stamp(async_client: AsyncClient) -> None:
+    """Pages carry the same stamp as the service worker, so a new build never reuses an old file."""
+    from backend.app.web.assets import sw_build_version
+
+    stamp = sw_build_version()
+    page = (await async_client.get("/offline.html")).text
+    assert f"/static/app.css?v={stamp}" in page
+    worker = (await async_client.get("/sw.js")).text
+    assert f"const BUILD_VERSION = '{stamp}'" in worker
+
+
+async def test_static_files_are_always_revalidated(async_client: AsyncClient) -> None:
+    """Without this a browser may keep last deploy's chat.js for hours by its own guess."""
+    for path in ("/static/chat.js", "/static/app.css"):
+        resp = await async_client.get(path)
+        assert resp.status_code == 200
+        assert resp.headers["cache-control"] == "no-cache", path

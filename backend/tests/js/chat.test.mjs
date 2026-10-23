@@ -171,6 +171,31 @@ test('a poll that left before the POST was accepted cannot hide the typing indic
   assert.equal(c.state.isPending, true, 'keeps the fast poll cadence');
 });
 
+test('a poll that comes back while the message is still on its way cannot hide the typing label', async () => {
+  const c = load({ strings: { ui_chat_typing_handbook: 'Looking in the handbook…' } });
+  let acceptPost;
+  const posted = new Promise((r) => (acceptPost = r));
+  c.net.handler = (url) =>
+    url.startsWith('/api/chat/messages')
+      ? Promise.resolve({ status: 200, ok: true, json: async () => ({ messages: [], pending: false }) })
+      : posted.then(() => ({ status: 202, ok: true, json: async () => ({ message_id: 'srv' }) }));
+  await c.handleSendText('सवाल: कुछ', 'Looking in the handbook…');
+  await c.flush(); // the immediate poll answers "nothing pending" before the POST is accepted
+  assert.equal(c.state.typing.visible, true);
+  assert.equal(c.byId['pending-text'].textContent, 'Looking in the handbook…');
+  acceptPost();
+  await c.flush();
+  assert.equal(c.state.typing.label, 'Looking in the handbook…', 'label kept through the accept');
+});
+
+test('a message that fails to send clears the typing label it started', async () => {
+  const c = load({ strings: { ui_chat_typing_handbook: 'Looking in the handbook…' } });
+  c.net.handler = async () => ({ status: 403, ok: false, json: async () => ({}) });
+  await c.handleSendText('सवाल: कुछ', 'Looking in the handbook…');
+  await c.flush();
+  assert.equal(c.state.typing.visible, false);
+});
+
 // ── audio bubble ────────────────────────────────────────────────────────────
 test('audio state machine', () => {
   const { audioNext: n } = load();
@@ -353,20 +378,50 @@ function addHandbookChips(c, chips) {
   });
 }
 
-test('handbook chip tap sends its question as typed text, once, and re-enables afterwards', async () => {
-  const c = load();
-  c.net.handler = async () => ({ status: 202, ok: true, json: async () => ({ message_id: 'srv-1' }) });
+const CHIP_STRINGS = {
+  ui_chat_msg_sending: 'Sending…',
+  ui_chat_msg_sent: 'Sent',
+  ui_chat_typing_handbook: 'Looking in the handbook…',
+};
+
+test('handbook chip tap: question bubble and typing label at once, Sending… then a tick, then back', async () => {
+  const c = load({ strings: CHIP_STRINGS });
+  c.net.handler = async (url) =>
+    url.startsWith('/api/chat/messages')
+      ? { status: 200, ok: true, json: async () => ({ pending: true, messages: [] }) }
+      : { status: 202, ok: true, json: async () => ({ message_id: 'srv-1' }) };
   const chips = addHandbookChips(c, [{ label: 'पहला प्रश्न?' }, { label: 'दूसरा प्रश्न?' }]);
   c.setupHandbookChips();
   chips[0].onclick();
   chips[1].onclick(); // a second tap while the first is sending is ignored
   assert.ok(chips.every((x) => x.disabled));
+  // before any network answer: the question bubble, the chip's "Sending…" and the typing label
+  assert.equal(chips[0].textContent, 'Sending…');
+  assert.equal(c.rows().length, 1, 'one bubble: the question');
+  assert.equal(c.byId['pending-text'].textContent, 'Looking in the handbook…');
+  assert.ok(c.byId['pending-bubble'].classList.contains('active'));
   await c.flush();
   const posts = c.fetchCalls.filter((f) => f.url === '/api/chat/text');
   assert.equal(posts.length, 1);
   assert.equal(JSON.parse(posts[0].opts.body).text, 'सवाल: पहला प्रश्न?');
-  assert.equal(c.rows().length, 1, 'one bubble: the question');
+  await c.advance(300); // accepted: a tick on the chip
+  assert.equal(chips[0].textContent, '✓ Sent');
+  assert.ok(chips[0].classList.contains('sent'));
+  assert.equal(c.byId['pending-text'].textContent, 'Looking in the handbook…', 'label survives the accept');
+  await c.advance(2000);
+  assert.equal(chips[0].textContent, 'पहला प्रश्न?');
   assert.ok(chips.every((x) => !x.disabled));
+});
+
+test('handbook chip: a send that never leaves the phone re-enables the chip and clears nothing wrongly', async () => {
+  const c = load({ strings: CHIP_STRINGS, online: false });
+  const chips = addHandbookChips(c, [{ label: 'पहला प्रश्न?' }]);
+  c.setupHandbookChips();
+  chips[0].onclick();
+  await c.advance(9000); // offline: the settle wait gives up after CHIP_SETTLE_MAX_MS
+  assert.equal(chips[0].textContent, 'पहला प्रश्न?');
+  assert.ok(!chips[0].disabled);
+  assert.equal(c.rows().length, 1, 'the question stays as a bubble with its clock');
 });
 
 test('English UI chip sends the Hindi question from data-text, not its English label', async () => {

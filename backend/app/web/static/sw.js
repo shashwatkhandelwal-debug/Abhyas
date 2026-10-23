@@ -13,10 +13,12 @@ const CACHE_NAME_STATIC = STATIC_CACHE_PREFIX + BUILD_VERSION;
 const CACHE_NAME_AUDIO = 'abhyas-audio-v1';
 const MAX_AUDIO_CACHE_ITEMS = 30;
 
+// Pages ask for these as `?v=<BUILD_VERSION>` (the same stamp), so a new build's pages never match
+// an older build's cached copy of the same file.
 const STATIC_ASSETS = [
-  '/static/app.css',
-  '/static/chat.js',
-  '/static/recorder.js',
+  '/static/app.css?v=' + BUILD_VERSION,
+  '/static/chat.js?v=' + BUILD_VERSION,
+  '/static/recorder.js?v=' + BUILD_VERSION,
   '/static/ack.js',
   '/static/manifest.json',
   '/offline.html',

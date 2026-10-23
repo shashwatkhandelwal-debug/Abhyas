@@ -19,7 +19,7 @@ from backend.app.config import settings
 from backend.app.core.messages import get_message
 from backend.app.db.models import AppUser, Message, Scene, Teacher
 from backend.app.db.session import get_db_session
-from backend.app.web.teacher import STATIC_DIR, templates
+from backend.app.web.teacher import STATIC_DIR
 from backend.app.web.teacher import router as teacher_router
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -212,10 +212,7 @@ async def test_offline_page_endpoint(teacher_pwa_app: FastAPI) -> None:
 def test_asset_budget_under_150kb() -> None:
     """Strict performance budget test: HTML + CSS + JS < 150 KB uncompressed (spec/09 §9, §9.2)."""
     static_files = list(STATIC_DIR.glob("*"))
-    template_files = [
-        STATIC_DIR.parent / "templates" / "teacher.html",
-        STATIC_DIR.parent / "templates" / "chat.html",
-    ]
+    template_files = [STATIC_DIR.parent / "templates" / "teacher.html"]
 
     all_files = [*static_files, *template_files]
     total_bytes = sum(os.path.getsize(f) for f in all_files if f.is_file())
@@ -223,8 +220,8 @@ def test_asset_budget_under_150kb() -> None:
 
     # Assert total budget is strictly less than 150 KB
     assert total_kb < 150.0, f"Assets exceed 150 KB budget: {total_kb:.2f} KB"
-    # This sums every static file and both duplicate templates (admin/trainer pages too); the
-    # chat first load is ~91 KB raw (teacher.html + app.css + chat.js + recorder.js), far less gzipped.
+    # This sums every static file and the chat template (the chat first load is teacher.html +
+    # app.css + chat.js + recorder.js, far less gzipped).
     assert total_kb < 130.0, (
         f"Expected assets to comfortably sit below 130 KB, got: {total_kb:.2f} KB"
     )
@@ -234,7 +231,6 @@ def test_nfc_normalization_for_pwa_assets() -> None:
     """All Hindi strings in templates, offline HTML, and client JS must be NFC normalized."""
     text_files = [
         STATIC_DIR.parent / "templates" / "teacher.html",
-        STATIC_DIR.parent / "templates" / "chat.html",
         STATIC_DIR.parent / "templates" / "offline.html",
         STATIC_DIR / "chat.js",
         STATIC_DIR / "recorder.js",
@@ -414,45 +410,6 @@ async def test_get_chat_alias_page(teacher_pwa_app: FastAPI) -> None:
         assert "आप ऑफ़लाइन हैं" in html
 
 
-def test_chat_html_template_renders_directly() -> None:
-    """chat.html template renders cleanly with Jinja context (§9.2, T27)."""
-    template = templates.get_template("chat.html")
-    context = {
-        "teacher_name": "शिक्षिका सुमित्रा",
-        "csrf_token": "test-csrf-token",
-        "move_title": "दो अंकों की घटाव",
-        "step_chip": "चरण 4/7 · अभ्यास",
-        "board_problem": "बोर्ड: 52 − 17",
-        "demo_mode": False,
-        "is_online": True,
-        "lite_mode": False,
-        "initial_messages": [
-            {
-                "id": "1",
-                "direction": "out",
-                "kind": "text",
-                "text": "नमस्ते!",
-                "speaker": "abhyas",
-                "time_str": "10:00",
-            }
-        ],
-    }
-    rendered = template.render(context)
-    assert "अभ्यास" in rendered
-    assert "शिक्षिका सुमित्रा" in rendered
-    assert "दो अंकों की घटाव" in rendered
-    assert "चरण 4/7 · अभ्यास" in rendered
-    assert "बोर्ड: 52 − 17" in rendered
-    assert "रवि" in rendered
-    assert "प्रिया" in rendered
-    assert "अमन" in rendered
-    assert "नमस्ते!" in rendered
-    assert 'id="chat-input"' in rendered
-    assert 'id="btn-mic"' in rendered
-    assert 'id="btn-send"' in rendered
-    assert "data-offline-text=" in rendered
-
-
 def test_offline_banner_text_and_catalog() -> None:
     """Offline banner text is from message catalog and includes 'आप ऑफ़लाइन हैं' (§9.2, T27)."""
     banner_text = get_message("ui_offline_banner")
@@ -465,9 +422,7 @@ def test_offline_banner_text_and_catalog() -> None:
     teacher_template = (STATIC_DIR.parent / "templates" / "teacher.html").read_text(
         encoding="utf-8"
     )
-    chat_template = (STATIC_DIR.parent / "templates" / "chat.html").read_text(encoding="utf-8")
     assert "data-offline-text=\"{{ get_message('ui_offline_banner') }}\"" in teacher_template
-    assert "data-offline-text=\"{{ get_message('ui_offline_banner') }}\"" in chat_template
 
     # Offline fallback page check
     offline_template = (STATIC_DIR.parent / "templates" / "offline.html").read_text(
@@ -542,9 +497,9 @@ def test_service_worker_contract() -> None:
     assert "url.pathname.startsWith('/api/audio/')" in sw_content
 
     # Static assets cache list
-    assert "'/static/app.css'" in sw_content
-    assert "'/static/chat.js'" in sw_content
-    assert "'/static/recorder.js'" in sw_content
+    assert "'/static/app.css?v=' + BUILD_VERSION" in sw_content
+    assert "'/static/chat.js?v=' + BUILD_VERSION" in sw_content
+    assert "'/static/recorder.js?v=' + BUILD_VERSION" in sw_content
     assert "'/static/manifest.json'" in sw_content
     assert "'/offline.html'" in sw_content
 
@@ -576,7 +531,8 @@ async def test_chat_page_serves_ui_strings_json_and_status_slots(teacher_pwa_app
     assert strings["ui_chat_cold_start"] == get_message("ui_chat_cold_start", lang="hi")
     for slot in ('id="status-bar"', 'id="sr-live"', 'id="pending-bubble"', 'id="rec-status"'):
         assert slot in html
-    assert "रवि सोच रहा है" not in html  # placeholder text is now generic + set by chat.js
+    # the typing bubble starts generic; chat.js names the child (the strings are in the JSON above)
+    assert '<span id="pending-text">जवाब आ रहा है…</span>' in html
     assert "function playAudioDirect" not in html  # the duplicate inline player is gone
 
 

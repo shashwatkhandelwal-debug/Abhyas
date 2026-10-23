@@ -201,15 +201,22 @@ function nextMsgState(cur, ev) {
 
 // Typing indicator. `replied` stops the indicator coming back for the audio-rendering tail
 // of a turn whose text already arrived (server `pending` stays true until TTS is done).
-const TYPING_OFF = Object.freeze({ visible: false, timedOut: false, replied: false, speaker: null, since: 0 });
+const TYPING_OFF = Object.freeze({ visible: false, timedOut: false, replied: false, speaker: null, label: null, since: 0 });
 
 function typingNext(st, ev) {
   switch (ev.type) {
-    case 'accepted': // a POST was accepted
-      return { visible: true, timedOut: false, replied: false, speaker: ev.speaker || null, since: ev.now };
+    case 'accepted': // a POST was accepted, or the teacher just tapped send (`label` = what we are doing)
+      return {
+        visible: true,
+        timedOut: false,
+        replied: false,
+        speaker: ev.speaker || null,
+        label: ev.label || (st.visible ? st.label : null),
+        since: ev.now,
+      };
     case 'pending': // poll says the server is still working
       if (st.visible || st.replied) return st;
-      return { visible: true, timedOut: false, replied: false, speaker: st.speaker, since: ev.now };
+      return { visible: true, timedOut: false, replied: false, speaker: st.speaker, label: null, since: ev.now };
     case 'reply': // a new bot bubble rendered
       return st.visible || !st.replied ? { ...TYPING_OFF, replied: true } : st;
     case 'idle': // poll says nothing is pending
@@ -444,6 +451,7 @@ function updateMessageStatus(clientMsgId) {
 function failMessage(clientMsgId, reason) {
   state.failedIds.set(clientMsgId, reason);
   setMessageState(clientMsgId, 'failed');
+  typingEvent({ type: 'idle' }); // nothing is coming for a message that never arrived
   setMicPhase(clientMsgId, 'failed');
   flashStatus(failureNoticeText(reason));
 }
@@ -504,11 +512,8 @@ function renderTyping() {
     bubble.className = `pending-bubble${st.visible ? ' active' : ''}${st.timedOut ? ' timeout' : ''}`;
     bubble.setAttribute('aria-busy', st.visible && !st.timedOut ? 'true' : 'false');
   }
-  if (label) label.textContent = st.timedOut ? t('ui_chat_typing_timeout') : typingLabel(st.speaker);
-  if (st.visible) {
-    const container = document.getElementById('chat-messages');
-    if (container) container.scrollTop = container.scrollHeight;
-  }
+  if (label) label.textContent = st.timedOut ? t('ui_chat_typing_timeout') : st.label || typingLabel(st.speaker);
+  if (st.visible) scrollChatToEnd();
   if (st.visible && !st.timedOut && !state.typingTimer) {
     state.typingTimer = setInterval(() => typingEvent({ type: 'tick' }), 1000);
   } else if ((!st.visible || st.timedOut) && state.typingTimer) {
@@ -648,6 +653,23 @@ async function drainOutbox() {
   if (wakeAt) setTimeout(drainOutbox, Math.max(0, wakeAt - Date.now()) + 50);
 }
 
+// ── Scrolling: the thread is the one scrolling part of the page ──────────────
+function scrollChatToEnd() {
+  const container = document.getElementById('chat-messages');
+  if (container) container.scrollTop = container.scrollHeight;
+}
+
+// After new bubbles: show their end, unless that would push the first one's top out of sight
+// (a long answer is read from its first line).
+function scrollChatToNew(firstRow) {
+  const container = document.getElementById('chat-messages');
+  if (!container) return;
+  container.scrollTop = container.scrollHeight;
+  if (!firstRow || typeof firstRow.getBoundingClientRect !== 'function') return;
+  const offset = firstRow.getBoundingClientRect().top - container.getBoundingClientRect().top;
+  if (offset < 0) container.scrollTop += offset - 8;
+}
+
 // ── Polling Loop (§7.3) ─────────────────────────────────────────────────────
 // One-on-one header: every field comes from the server (the child state is the rule engine's)
 function renderSceneHeader(sc) {
@@ -720,15 +742,20 @@ async function pollMessages() {
         const skew = Date.parse(data.server_time) - Date.now();
         if (!Number.isNaN(skew)) state.serverSkewMs = skew;
       }
-      // A poll that left before the last POST was accepted cannot say whether that turn is done
-      const stale = startTime <= state.lastAcceptedAt;
+      // A poll that left before the last POST was accepted cannot say whether that turn is done,
+      // and neither can any poll while a message is still on its way
+      const stale = startTime <= state.lastAcceptedAt || [...state.msgStates.values()].includes(MSG_SENDING);
       state.isPending = data.pending || stale;
 
       let gotReply = false;
+      let firstNewReply = null;
       if (data.messages && data.messages.length > 0) {
         for (const msg of data.messages) {
           const isNew = renderMessage(msg);
-          if (isNew && msg.direction === 'out') gotReply = true;
+          if (isNew && msg.direction === 'out') {
+            gotReply = true;
+            firstNewReply = firstNewReply || state.rows.get(msg.id) || null;
+          }
           if (!state.lastMessageCreated || (msg.created_at && msg.created_at >= state.lastMessageCreated)) {
             state.lastMessageId = msg.id;
             state.lastMessageCreated = msg.created_at;
@@ -736,7 +763,10 @@ async function pollMessages() {
         }
         await cacheMessages(data.messages);
       }
-      if (gotReply) typingEvent({ type: 'reply' });
+      if (gotReply) {
+        typingEvent({ type: 'reply' });
+        scrollChatToNew(firstNewReply);
+      }
       if (!stale) typingEvent({ type: data.pending ? 'pending' : 'idle' });
       renderSceneHeader(data.scene || null);
     }
@@ -1063,7 +1093,7 @@ function renderMessage(msg, isLocalOptimistic = false) {
   } else {
     container.appendChild(row);
   }
-  container.scrollTop = container.scrollHeight;
+  scrollChatToEnd();
   return true;
 }
 
@@ -1247,8 +1277,9 @@ function lockChips(container, chip) {
 }
 
 // ── Sending Handlers ────────────────────────────────────────────────────────
-async function handleSendText(text) {
-  if (!text || !text.trim()) return;
+// `typingLabel` (optional): what the typing bubble says at once, before the server has answered.
+async function handleSendText(text, typingLabel = null) {
+  if (!text || !text.trim()) return null;
   const clientMsgId = crypto.randomUUID();
   const cleanText = text.trim();
 
@@ -1265,6 +1296,7 @@ async function handleSendText(text) {
     created_at: new Date().toISOString(),
   };
   renderMessage(optimisticMsg, true);
+  if (typingLabel) typingEvent({ type: 'accepted', label: typingLabel });
 
   // 3. Save to IndexedDB Outbox
   await saveToOutbox({
@@ -1278,6 +1310,7 @@ async function handleSendText(text) {
   // 4. Trigger Outbox upload & fast poll
   drainOutbox();
   triggerImmediatePoll();
+  return clientMsgId;
 }
 
 async function handleSendButton(buttonId, buttonTitle) {
@@ -1586,6 +1619,22 @@ function setupDemoChips() {
 }
 
 // ── Ask the handbook chips: a tap sends the question through the normal text path ──
+// The chip says "Sending…", then a tick; the question bubble and a "Looking in the handbook…"
+// typing bubble show at once. One question at a time; the chips come back when the send settles.
+const CHIP_SETTLE_MAX_MS = 8000;
+
+function whenSettled(clientMsgId, maxMs) {
+  return new Promise((resolve) => {
+    const t0 = Date.now();
+    const poll = () => {
+      const st = state.msgStates.get(clientMsgId);
+      if ((st && st !== MSG_SENDING) || Date.now() - t0 >= maxMs) resolve(st || MSG_SENDING);
+      else setTimeout(poll, 100);
+    };
+    poll();
+  });
+}
+
 function setupHandbookChips() {
   const sec = document.getElementById('handbook-chips');
   const prefix = (sec && sec.getAttribute('data-prefix')) || '';
@@ -1595,9 +1644,24 @@ function setupHandbookChips() {
     c.onclick = async () => {
       if (c.disabled) return;
       busy(true); // one question at a time. Hindi UI: the label is the question; English: data-text
+      const label = c.textContent;
+      c.classList.add('sending');
+      c.textContent = t('ui_chat_msg_sending');
       try {
-        await handleSendText(c.getAttribute('data-text') || `${prefix} ${c.textContent.trim()}`);
+        const id = await handleSendText(
+          c.getAttribute('data-text') || `${prefix} ${label.trim()}`,
+          t('ui_chat_typing_handbook')
+        );
+        const st = id ? await whenSettled(id, CHIP_SETTLE_MAX_MS) : MSG_FAILED;
+        c.classList.remove('sending');
+        if (st === MSG_SENT) {
+          c.classList.add('sent');
+          c.textContent = `✓ ${t('ui_chat_msg_sent')}`;
+          await new Promise((r) => setTimeout(r, CHIP_CONFIRM_MS));
+        }
       } finally {
+        c.classList.remove('sending', 'sent');
+        c.textContent = label;
         busy(false);
       }
     };
@@ -1607,7 +1671,7 @@ function setupHandbookChips() {
     try {
       history.replaceState(null, '', location.pathname);
     } catch (e) {}
-    handleSendText(auto);
+    handleSendText(auto, t('ui_chat_typing_handbook'));
   }
 }
 
@@ -1744,6 +1808,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 6. Seed rendered messages into IndexedDB & state; give history audio the stateful player
   initRenderedMessagesFromDom();
   upgradeServerAudio();
+  scrollChatToEnd();
+  window.addEventListener('load', scrollChatToEnd);
 
   // 7. Initial poll and outbox drain
   await drainOutbox();

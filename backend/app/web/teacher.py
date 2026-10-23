@@ -12,10 +12,8 @@ Routes:
 - GET /offline.html     Offline fallback page with cached checklist & history
 """
 
-import hashlib
 import json
 import logging
-import re
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -63,6 +61,7 @@ from backend.app.rehearsal.header import scene_header
 from backend.app.sessions.modules import MODULE_STEPS, module_ids, module_views
 from backend.app.sessions.repository import SessionRepository
 from backend.app.sessions.service import SessionService
+from backend.app.web.assets import STATIC_DIR, sw_build_version
 from backend.app.web.chat_api import get_teacher_for_user
 from backend.app.web.ui_lang import register_ui_globals
 
@@ -71,7 +70,6 @@ logger = logging.getLogger("abhyas.web.teacher")
 
 WEB_DIR = Path(__file__).resolve().parent
 TEMPLATES_DIR = WEB_DIR / "templates"
-STATIC_DIR = WEB_DIR / "static"
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 register_ui_globals(templates.env)
@@ -243,13 +241,10 @@ async def teacher_chat_page(
 
     demo_chips = load_demo_chips() if is_demo else []
     demo_banner_text = _demo_banner_text(current_user)
-    # "Ask the handbook": four questions per teacher per day while no scene is running; a link
-    # from the modules page (?ask=hb03) sends that question once the chat opens.
-    handbook_chips = (
-        chip_views(teacher.id, datetime.now(IST).date(), get_ui_lang())
-        if active_scene is None
-        else []
-    )
+    # "Ask the handbook": four questions per teacher per day, in a scene too (a question there is
+    # answered and the teacher is told how to go back); a link from the modules page
+    # (?ask=hb03) sends that question once the chat opens.
+    handbook_chips = chip_views(teacher.id, datetime.now(IST).date(), get_ui_lang())
     autosend = ""
     asked = question_by_id(request.query_params.get("ask", ""))
     if asked is not None:
@@ -771,24 +766,6 @@ def chat_ui_strings() -> dict[str, str]:
     for prefix in CHAT_UI_PREFIXES:
         strings.update(texts_for_lang(prefix))
     return strings
-
-
-_SW_VERSIONED_ASSETS = ("sw.js", "chat.js", "recorder.js", "app.css", "manifest.json")
-
-
-def sw_build_version() -> str:
-    """Cache-busting id: deploy SHA plus a digest of the shipped static files.
-
-    The digest keeps the version moving when GIT_SHA is unset ("dev") or stale, so a changed
-    chat.js can never be served from a cache named after an older build.
-    """
-    digest = hashlib.sha1(usedforsecurity=False)
-    for name in _SW_VERSIONED_ASSETS:
-        path = STATIC_DIR / name
-        if path.is_file():
-            digest.update(path.read_bytes())
-    sha = re.sub(r"[^A-Za-z0-9]", "", settings.GIT_SHA)[:12] or "dev"
-    return f"{sha}-{digest.hexdigest()[:8]}"
 
 
 @router.get("/sw.js")

@@ -1,5 +1,24 @@
 # PROGRESS.md — Abhyas Build Progress
 
+## Chat clarity (fix/chat-clarity, started 2026-10-23, from `main` at `c8dd1d4`)
+
+Source: the founder's first real use of the hosted site as a first-time user. Each item below is
+evidence for the "user inputs and testing" page of the submission: what was seen, the cause found by
+reproducing it first (Playwright with the installed Chromium against a locally seeded app, mock
+providers; screenshots before and after in `docs/screens/`), the change, and the commit.
+
+### User feedback -> change
+
+| # | What was seen | Cause (reproduced first) | Change | Commit | Evidence |
+|---|---|---|---|---|---|
+| 1 | Tapping an "Ask the handbook" chip appears to do nothing | **Three causes, all reproduced.** (a) The chat thread never scrolled: `chat.js` set `scrollTop` on `#chat-messages`, but that element grew with its content and the *page* scrolled, so a new bubble was appended below the fold on any chat longer than a screen (demo2: typed question, 6 s later the screen was unchanged). (b) First load after a deploy ran last deploy's `chat.js` against the new HTML: the service worker served `/static/chat.js` stale-while-revalidate from the old cache, so the chips had no handler until a second load (reproduced: chip tap gave 0 new bubbles on the first load after the swap, 1 on the second). The browser's own heuristic caching of `/static/*` could do the same. (c) No feedback: the typing bubble only appeared after the server accepted the POST, the chip did not change, and in a scene there were no chips at all. In the dark theme a tapped chip stayed in `:hover` (light fill under light text). | Fixed-height chat shell where the thread is the one scrolling part (scrolls to the new bubble, or to the top of a long answer); asset URLs carry the build stamp (`/static/chat.js?v=<stamp>`, same stamp the service worker uses), `/static/*` is `no-cache`; at tap: question bubble, chip says "Sending…" then "✓ Sent", typing bubble "Looking in the handbook…" within one frame, chips also in a scene, and a scene answer ends with "Back to Ravi: say your next line."; hover only on pointer devices. | `{{P1}}` | `docs/screens/demo{1,2,3}_{mobile,desktop}_chip_{before,after}.png`; `backend/tests/e2e/test_e2e_handbook_chips.py` (demo1 and demo2, Hindi and English, phone and desktop, dark and light; stale-cache test); Node tests in `chat.test.mjs` and `sw.test.mjs` |
+
+### Parts
+
+| Part | Status | Notes |
+|---|---|---|
+| 1 handbook chips | done | See row 1 above. Files: `static/chat.js` (scroll helpers, chip send/settle, typing label, polls that come back while a message is still on its way no longer hide the typing bubble), `static/app.css` (chat shell, tray), `static/sw.js` (versioned precache), `web/assets.py` (build stamp moved out of `teacher.py`; `asset_v()` Jinja global), `web/security_headers.py` (`Cache-Control: no-cache` for `/static/`), `sessions/service.py::_get_resume_prompt` (scene resume line). New e2e fixtures in `backend/tests/e2e/conftest.py` (real seeded server in a subprocess, skipped without `TEST_DATABASE_URL` or Chromium). **Page weight**: `.gitattributes` now pins LF for the web assets (a CRLF checkout added about 3 KB), the embedded `ui-strings` JSON keeps Hindi as Hindi instead of `\uXXXX` (Jinja policy, about 5 KB on the chat page), the dead duplicate `chat.html` template (served by no route, 10 KB) was removed with its tests, and `check_first_load.py` no longer counts versioned and bare URLs twice. Now: chat first load 121.3 KB, all offline assets 144.6 KB (budget 150). |
+
 ## Final push (feat/final-push, started 2026-10-23)
 
 ### Needs a person (placeholders)

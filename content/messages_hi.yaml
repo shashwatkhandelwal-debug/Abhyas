@@ -1029,3 +1029,8 @@ ui_login_shared_note:
 ui_login_demo_teacher_experienced:
   text: "शिक्षिका (अनुभवी): teacher.demo3"
   audio: false
+
+# ── Chat clarity part 1: handbook chips, back to the scene ──
+ui_chat_typing_handbook: {text: "हैंडबुक में देखा जा रहा है…", audio: false}
+ask_resume_scene_one: {text: "अब वापस {child} के पास: अपनी अगली बात कहिए।", audio: false}
+ask_resume_scene_group: {text: "अब वापस बच्चों के पास: अपनी अगली बात कहिए।", audio: false}

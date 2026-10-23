@@ -7,9 +7,9 @@
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>{{ get_message('ui_app_name') }} — {{ teacher_name or get_message('ui_default_teacher_name') }}</title>
   <link rel="manifest" href="/manifest.json">
-  <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/app.css?v={{ asset_v() }}">
 </head>
-<body>
+<body class="chat-page">
   <div class="app-container">
     <header class="chat-header">
       <div class="header-left">
@@ -132,6 +132,7 @@
       </div>
     </main>
 
+    <div class="helper-tray" id="helper-tray">
     {% if demo_mode and demo_chips %}
     <section class="demo-helper-section" aria-label="{{ get_message('ui_chat_sample_chips') }}">
       <div class="demo-hint">{{ get_message('ui_chat_type_instead_hint') }}</div>
@@ -158,6 +159,7 @@
       </div>
     </section>
     {% endif %}
+    </div>
 
     <footer class="composer-wrapper">
       <form class="composer-form" id="composer-form" autocomplete="off">
@@ -209,8 +211,8 @@
 
   <script type="application/json" id="ui-strings">{{ (ui_strings or {})|tojson }}</script>
   <script type="application/json" id="rec-config">{{ (rec_config or {})|tojson }}</script>
-  <script src="/static/recorder.js"></script>
-  <script src="/static/chat.js"></script>
+  <script src="/static/recorder.js?v={{ asset_v() }}"></script>
+  <script src="/static/chat.js?v={{ asset_v() }}"></script>
   <script>
     function toggleMenu() {
       const m = document.getElementById('menu-dropdown');

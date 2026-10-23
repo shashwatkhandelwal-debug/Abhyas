@@ -15,7 +15,7 @@
       if (lang === 'en') document.title = {{ get_message('ui_offline_title', lang='en')|tojson }};
     })();
   </script>
-  <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/app.css?v={{ asset_v() }}">
   <style>
     .bi > [lang="en"] { display: none; }
     html[data-lang="en"] .bi > [lang="hi"] { display: none; }

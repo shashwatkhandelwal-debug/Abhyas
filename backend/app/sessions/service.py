@@ -306,6 +306,12 @@ class SessionService:
         if ctx.onboarding_state != OnboardingStateEnum.READY:
             prompt_key = ONBOARDING_PROMPT_KEYS.get(ctx.onboarding_state, "welcome")
             return get_message(prompt_key, address_form)
+        if prior == SessionStateEnum.REHEARSE:
+            # Back in the scene: say who she is talking to and what to do, not the scene intro again
+            if ctx.rehearse_mode == rehearse_setup.MODE_ONE_ON_ONE:
+                child = get_message(f"speaker_{ctx.rehearse_child or 'ravi'}")
+                return get_message("ask_resume_scene_one", address_form, child=child)
+            return get_message("ask_resume_scene_group", address_form)
         prior_prompt_key = WeeklyStateMachine(ctx).get_state_prompt_key(prior)
         move = load_move_card(ctx.current_move_id)
         if prior_prompt_key == "learn_intro":
