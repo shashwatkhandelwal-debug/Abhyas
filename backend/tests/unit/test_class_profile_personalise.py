@@ -191,7 +191,9 @@ async def test_coach_feedback_mentions_her_class_struggle(
     )
     assert link in body
     # the link comes before the retry / continue question and is not part of the coach scores
-    assert body.index(link) < body.index(get_message("realism_prompt", "f"))
+    assert body.index(link) < body.index(
+        get_message("realism_prompt_one_on_one", "f", child=get_message("speaker_ravi"))
+    )
 
 
 # ── no LLM output changes what a child answers ──────────────────────────────────

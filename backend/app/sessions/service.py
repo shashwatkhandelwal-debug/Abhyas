@@ -441,6 +441,8 @@ class SessionService:
         scene = await scene_store.get(scene_id)
         if scene is None or scene.teacher_id != teacher_id:
             return False
+        # The "stop" marker is not a real turn and its index is the next real turn's index: drop it
+        scene.turns = [t for t in scene.turns if t.acts != ["stop"]]
         scene.active = True
         scene.scene_state.ended = False
         scene.scene_state.end_reason = None

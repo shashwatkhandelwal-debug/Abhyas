@@ -12,7 +12,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm.exc import StaleDataError
 
 from backend.app.config import settings
@@ -159,14 +159,28 @@ class PostgresSceneStore:
                     if not scene.active and db_scene.ended_at is None:
                         db_scene.ended_at = scene.updated_at
 
-                # 2. Persist Turn rows
+                # 2. Persist Turn rows. The turn list is the truth: a row whose index is no longer
+                # in it goes (a "continue the scene" drops the stop marker, whose index the next
+                # real turn reuses), and a row that exists is updated, never silently kept.
+                await session.execute(
+                    delete(Turn).where(
+                        Turn.scene_id == scene.scene_id,
+                        Turn.idx.notin_([t.turn_index for t in scene.turns]),
+                    )
+                )
                 for turn in scene.turns:
                     stmt = select(Turn).where(
                         Turn.scene_id == scene.scene_id, Turn.idx == turn.turn_index
                     )
                     res = await session.execute(stmt)
                     existing_turn = res.scalar_one_or_none()
-                    if existing_turn is None:
+                    if existing_turn is not None:
+                        existing_turn.transcript = turn.transcript
+                        existing_turn.acts = turn.acts
+                        existing_turn.addressed_child = turn.addressed_child
+                        existing_turn.stage_ms = turn.stage_ms
+                        existing_turn.latency_ms = turn.stage_ms.get("total_ms")
+                    else:
                         db_turn = Turn(
                             id=uuid4(),
                             teacher_id=scene.teacher_id,
