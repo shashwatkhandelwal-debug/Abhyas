@@ -53,6 +53,7 @@ from backend.app.rule_engine.domain import (
     TeachingAct,
 )
 from backend.app.sessions import modules, rehearse_setup
+from backend.app.sessions.outcome import outcome_line
 from backend.app.sessions.path import MovePathEntry, compute_move_path, load_induction_order
 from backend.app.sessions.path_score import DONE_MIN_EVIDENCE
 from backend.app.sessions.repository import SessionRepository
@@ -1798,6 +1799,10 @@ class SessionService:
                     if coach_res.needs_review
                     else ""
                 )
+                # What happened, from the tagged acts and the engine's recorded answers (no model)
+                happened = outcome_line(scene.turns, address_form)
+                if happened:
+                    prefix = f"{happened}\n\n{prefix}"
                 feedback_body = get_message(
                     "feedback_body",
                     address_form,

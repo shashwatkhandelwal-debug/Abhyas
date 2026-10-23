@@ -120,6 +120,22 @@ class InMemorySceneStore:
         self._teacher_active_scenes.clear()
 
 
+def _rule_result(turn: TurnRecord) -> dict[str, Any] | None:
+    """What the rule engine answered for this turn, kept so the feedback can name what happened."""
+    if not turn.child_responses:
+        return None
+    return {"child_responses": [r.model_dump(mode="json") for r in turn.child_responses]}
+
+
+def _stored_responses(rule_result: dict[str, Any] | None) -> list[ChildResponse]:
+    try:
+        return [
+            ChildResponse.model_validate(r) for r in (rule_result or {}).get("child_responses", [])
+        ]
+    except ValueError:
+        return []
+
+
 class PostgresSceneStore:
     """Postgres-backed scene and turn persistence via scene and turn tables (CHANGES 254f622 Item 5)."""
 
@@ -179,6 +195,7 @@ class PostgresSceneStore:
                         existing_turn.acts = turn.acts
                         existing_turn.addressed_child = turn.addressed_child
                         existing_turn.stage_ms = turn.stage_ms
+                        existing_turn.rule_result = _rule_result(turn)
                         existing_turn.latency_ms = turn.stage_ms.get("total_ms")
                     else:
                         db_turn = Turn(
@@ -191,6 +208,7 @@ class PostgresSceneStore:
                             acts=turn.acts,
                             addressed_child=turn.addressed_child,
                             stage_ms=turn.stage_ms,
+                            rule_result=_rule_result(turn),
                             latency_ms=turn.stage_ms.get("total_ms"),
                             created_at=turn.created_at,
                         )
@@ -229,6 +247,7 @@ class PostgresSceneStore:
                             transcript=t.transcript or "",
                             acts=t.acts or [],
                             addressed_child=t.addressed_child,
+                            child_responses=_stored_responses(t.rule_result),
                             stage_ms=t.stage_ms or {},
                             ended=(db_scene.status != "active" and t.idx == db_scene.teacher_turns),
                             end_reason=db_scene.end_reason

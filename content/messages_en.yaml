@@ -785,3 +785,10 @@ ui_start_do: {text: "You do: about 15 minutes, speaking or typing."}
 ui_start_get: {text: "You get: feedback on what you said, and one thing to try."}
 ui_start_button: {text: "Start your first practice"}
 ui_start_skip: {text: "Skip"}
+
+# ── Chat clarity part 7: what happened in the scene ──
+coach_outcome_told: {text: "You told {child} the answer, so they repeated it without understanding. Try asking them to explain first."}
+coach_outcome_relapse: {text: "You gave a new problem after telling the answer, so {child} went back to the old mistake. Telling the answer does not teach the method."}
+coach_outcome_checked: {text: "You checked on a new problem, and {child} solved it by explaining the method: it stuck."}
+coach_outcome_concrete: {text: "You used something concrete (bundles and sticks), so {child} could see what to do where."}
+coach_outcome_explain: {text: "You asked {child} to explain, so their own method came out."}

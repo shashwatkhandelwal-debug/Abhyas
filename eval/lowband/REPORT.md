@@ -1,7 +1,7 @@
 # First-Load Transfer Size Audit Report
 
 **Environment**: `local, mock providers, mock DB, empty chat history`  
-**Timestamp**: 2026-10-23 15:35:39 UTC  
+**Timestamp**: 2026-10-23 15:45:16 UTC  
 **Status**: ✅ PASSED (Budget: < 150.0 KB)  
 
 > Note: In the local test run, `/teacher` HTML is measured with mock providers, a mock DB, and an empty chat history, which represents a lower bound for the page size.
@@ -9,7 +9,7 @@
 ## 1. Executive Summary
 
 - **Teacher Chat First-Load (HTML + CSS + JS)**: **32.22 KB** gzip (124.89 KB raw)
-- **Total Asset Payload (All Offline Assets)**: **39.89 KB** gzip (147.74 KB raw)
+- **Total Asset Payload (All Offline Assets)**: **39.9 KB** gzip (147.74 KB raw)
 - **Budget Headroom**: **25.11 KB** under the 150 KB ceiling (83.3% of budget)
 - **Target Constraint**: Spec 09 §9.2 requires first-load payload < 150 KB excluding audio to ensure accessibility on low-cost Android smartphones over 2G/3G connections.
 

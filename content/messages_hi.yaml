@@ -1104,3 +1104,10 @@ ui_start_do: {text: "आपको करना है: लगभग 15 मिन
 ui_start_get: {text: "आपको मिलेगा: आपने जो कहा उस पर सुझाव, और आज़माने के लिए एक बात।", audio: false}
 ui_start_button: {text: "पहला अभ्यास शुरू करें", audio: false}
 ui_start_skip: {text: "छोड़ें", audio: false}
+
+# ── Chat clarity part 7: what happened in the scene ──
+coach_outcome_told: {text: "आपने {child} को उत्तर बता दिया, इसलिए उसने बिना समझे उसे दोहरा दिया। पहले उससे समझाने को कहकर देखें।", audio: false}
+coach_outcome_relapse: {text: "उत्तर बताने के बाद नया सवाल दिया, तो {child} की पुरानी गलती फिर दिखी। उत्तर बताने से तरीका नहीं सीखा जाता।", audio: false}
+coach_outcome_checked: {text: "आपने नए सवाल पर जाँचा, और {child} ने तरीका समझाकर उसे हल किया: तरीका समझ में आया है।", audio: false}
+coach_outcome_concrete: {text: "आपने ठोस चीज़ (बंडल और तीलियाँ) इस्तेमाल की, इसलिए {child} को दिखा कि कहाँ क्या करना है।", audio: false}
+coach_outcome_explain: {text: "आपने {child} से समझाने को कहा, इसलिए उसका अपना तरीका सामने आया।", audio: false}
