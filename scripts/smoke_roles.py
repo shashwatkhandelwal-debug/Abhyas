@@ -157,7 +157,15 @@ def _login(s: Session, username: str, password: str) -> str:
     resp = s.login(username, password)
     assert resp.status_code in (200, 302, 303), f"login -> {resp.status_code}"
     assert s.client.cookies.get("abhyas_session"), "no session cookie"
-    return f"HTTP {resp.status_code}"
+    # a first login lands on the one-time Start here screen: its button opens the chat
+    if not username.startswith("teacher."):
+        return f"HTTP {resp.status_code}"
+    start = s.get("/teacher")
+    assert start.status_code == 303 and start.headers["location"] == "/teacher/start", "no start"
+    assert "start-go" in s.get("/teacher/start").text
+    done = s.post_form("/teacher/start")
+    assert done.status_code == 303 and done.headers["location"] == "/teacher?s=1"
+    return f"HTTP {resp.status_code}, Start here shown once"
 
 
 def _count(items: list[str], expected: int) -> str:

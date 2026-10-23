@@ -957,7 +957,6 @@ function upgradeServerAudio() {
 // ── UI Rendering ────────────────────────────────────────────────────────────
 // The optimistic bubble is keyed by client_msg_id; the server copy of the same
 // message (POST response / poll) carries the server id. Re-key the bubble so the
-// polled copy is recognised instead of being rendered as a second bubble.
 function adoptServerMessageId(clientMsgId, serverId) {
   if (!clientMsgId || !serverId || clientMsgId === serverId) return;
   if (!state.renderedMsgIds.has(clientMsgId)) return;
@@ -1499,8 +1498,6 @@ window.toggleLiteMode = toggleLiteMode;
 // ── Mic UI Interaction ──────────────────────────────────────────────────────
 // Two ways to record, one button:
 //   tap  (press < REC_HOLD_MS): recording starts; tap the big Stop/Send button to send.
-//   hold (press >= REC_HOLD_MS): walkie-talkie style, the recording is sent on release.
-// Cancel discards. The recorder auto-stops and sends at REC_MAX_SECONDS.
 function setupMicEvents() {
   const micBtn = document.getElementById('btn-mic');
   const overlay = document.getElementById('recording-overlay');

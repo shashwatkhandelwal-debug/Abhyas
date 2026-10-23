@@ -552,8 +552,7 @@ body {
   text-decoration: none;
 }
 
-/* Hover only where a pointer exists: on a phone the last tapped chip would stay "hovered" (a
-   light fill under light text in the dark theme) until the next tap elsewhere. */
+/* Hover only where a pointer exists: on a phone the last tapped chip would stay "hovered" (a */
 @media (hover: hover) {
   .demo-chip:hover,
   .handbook-chip:hover {
@@ -1067,8 +1066,7 @@ body {
 }
 
 
-/* Visible acknowledgment states (chat.js): ticks, typing, audio, mic, chips, status bar. Motion <= 200 ms,
-   loops stop under prefers-reduced-motion; status text >= 4.5:1 (test_chat_ux_assets.py) */
+/* Visible acknowledgment states (chat.js): ticks, typing, audio, mic, chips, status bar. Motion <= 200 ms, */
 
 :root {
   --status-meta: #4B5450;
@@ -1287,8 +1285,7 @@ body {
   animation: audio-spin 0.8s linear infinite;
 }
 
-/* Waiting for the file to exist: spinner sits in the (hidden) button's slot, so nothing shifts
-   when the player appears and there is never a dead play button */
+/* Waiting for the file to exist: spinner sits in the (hidden) button's slot, so nothing shifts */
 .bubble-audio[data-has-audio="false"] .btn-play {
   visibility: hidden;
 }
@@ -1481,3 +1478,11 @@ body {
 .header-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 0.1rem 0.5rem; }
 .header-logout { color: var(--muted); font-size: 0.75rem; text-decoration: underline; padding: 0.35rem 0.2rem; white-space: nowrap; }
 .demo-divider { align-self: stretch; text-align: center; font-size: 0.75rem; color: var(--muted); padding: 0.3rem 0.5rem; border: 1px dashed var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+/* Start here: three lines and one large button */
+.start-main { display: flex; flex-direction: column; gap: 1.2rem; padding: 2rem 1.2rem; min-height: 100vh; justify-content: center; }
+.start-title { margin: 0; color: var(--brand); font-size: 1.6rem; }
+.start-lines { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.7rem; font-size: 1.05rem; }
+.start-form { display: flex; flex-direction: column; align-items: center; gap: 0.8rem; }
+.start-button { width: 100%; min-height: 3.6rem; font: inherit; font-size: 1.15rem; font-weight: 700; border: 0; border-radius: var(--radius-lg); background: var(--brand); color: var(--brand-ink); cursor: pointer; }
+.start-skip { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 0.85rem; text-decoration: underline; min-height: 2.5rem; cursor: pointer; }
+.start-lang { text-align: center; font-size: 0.85rem; }

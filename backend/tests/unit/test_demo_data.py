@@ -21,6 +21,7 @@ import ast
 import re
 import uuid
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
@@ -473,6 +474,7 @@ async def test_demo_banner_displayed_on_web_page() -> None:
         preferred_channel="web",
         lite_mode=False,
         is_demo=True,
+        start_seen_at=datetime.now(UTC),
     )
 
     fake_db = MagicMock()

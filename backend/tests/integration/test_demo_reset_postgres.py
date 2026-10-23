@@ -128,6 +128,7 @@ async def _snapshot(session: AsyncSession, teacher_id: UUID) -> dict[str, Any]:
             "class_struggles",
             "teaching_skills",
             "class_profile_prompted_at",
+            "start_seen_at",
         )
     }
 
@@ -188,6 +189,7 @@ async def _dirty(session: AsyncSession, teacher_id: UUID) -> None:
     teacher.class_struggles = ["NUM_COUNTING", "LIT_WRITING"]
     teacher.teaching_skills = ["probes_with_followup", "checks_on_new_problem"]
     teacher.class_profile_prompted_at = now
+    teacher.start_seen_at = now
     session.add(
         ClassOutcome(
             teacher_id=teacher_id,
@@ -296,6 +298,7 @@ async def test_logout_resets_demo_teacher_to_seed(session: AsyncSession, login: 
         ["asks_to_explain"] if login == "teacher.demo3" else []
     )
     assert after["profile"]["class_profile_prompted_at"] is None
+    assert after["profile"]["start_seen_at"] is None, "Start here shows again after a reset"
     assert after["class_outcomes"] == []
     if login == "teacher.demo2":
         scene = await session.get(Scene, DEMO2_SCENE_ID)

@@ -146,6 +146,7 @@ class Teacher:
         viewport: dict[str, int] = MOBILE,
         lang: str = "hi",
         scheme: str = "light",
+        skip_start: bool = True,
     ) -> None:
         mobile = viewport["width"] < 500
         self.base = base
@@ -166,6 +167,11 @@ class Teacher:
         self.page.click("button[type=submit]")
         self.page.wait_for_load_state("networkidle")
         assert "/login" not in self.page.url, "login failed"
+        if skip_start and self.page.url.endswith("/teacher/start"):
+            self.page.click("#start-go")  # the one-time Start here screen
+            self.page.wait_for_selector("#chat-input")
+        if not skip_start:
+            return  # the test looks at the Start here screen itself
         if lang == "en":
             self.page.goto(f"{base}/lang/en?next=/teacher")
             self.page.wait_for_load_state("networkidle")

@@ -438,6 +438,7 @@ class SessionRepository:
             teacher.district = None
             teacher.classes = []
             teacher.experience_band = None
+            teacher.start_seen_at = None
             teacher.first_year = False
             teacher.consent_service = False
             teacher.consent_share_scores = False

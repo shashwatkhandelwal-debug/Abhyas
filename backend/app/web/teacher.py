@@ -24,6 +24,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.access import scope_teachers_query
@@ -109,6 +110,16 @@ async def teacher_chat_page(
         )
 
     teacher = await get_teacher_for_user(current_user, db, request=request)
+
+    # First visit: the one-time Start here screen (never in the way of a link that asks something,
+    # and ?s=1 always opens the chat, so a failed save can never loop)
+    if (
+        teacher.start_seen_at is None
+        and (current_user.is_demo or teacher.consent_service)
+        and not request.query_params.get("s")
+        and not request.query_params.get("ask")
+    ):
+        return RedirectResponse(url="/teacher/start", status_code=status.HTTP_303_SEE_OTHER)
 
     # CSRF cookie resolution for client scripts and forms
     csrf_token = request.cookies.get(CSRF_COOKIE_NAME)
@@ -522,6 +533,45 @@ async def teacher_modules_page(
     if token_to_set:
         set_csrf_cookie(response, token_to_set)
     return response
+
+
+@router.get("/teacher/start", response_class=HTMLResponse)
+async def start_here_page(
+    request: Request,
+    current_user: Annotated[AppUser, Depends(require_role("teacher"))],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> Response:
+    """The one-time Start here screen: what Abhyas is, what she does, what she gets, one button."""
+    await get_teacher_for_user(current_user, db, request=request)
+    csrf_token = request.cookies.get(CSRF_COOKIE_NAME)
+    token_to_set: str | None = None
+    if not csrf_token:
+        csrf_token = generate_csrf_token()
+        token_to_set = csrf_token
+    response = templates.TemplateResponse(
+        request=request, name="start.html", context={"request": request, "csrf_token": csrf_token}
+    )
+    if token_to_set:
+        set_csrf_cookie(response, token_to_set)
+    return response
+
+
+@router.post("/teacher/start")
+async def start_here_done(
+    request: Request,
+    current_user: Annotated[AppUser, Depends(require_role("teacher"))],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> Response:
+    """The button or Skip: remember it and open the chat (at whatever step the account is on)."""
+    await verify_csrf_token(request)
+    teacher = await get_teacher_for_user(current_user, db, request=request)
+    teacher.start_seen_at = datetime.now(UTC)
+    try:
+        await db.commit()
+    except SQLAlchemyError:
+        await db.rollback()
+        logger.warning("could not save start_seen_at", exc_info=True)
+    return RedirectResponse(url="/teacher?s=1", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/teacher/modules/{module_id}/start")

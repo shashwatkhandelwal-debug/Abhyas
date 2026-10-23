@@ -448,7 +448,10 @@ async def reset_demo_teacher_unless_fresh(session: AsyncSession, login: str) -> 
             .where(Message.teacher_id == teacher_id, Message.created_at > last)
             .limit(1)
         )
-        if newer.first() is None:
+        seen = await session.execute(
+            select(Teacher.id).where(Teacher.id == teacher_id, Teacher.start_seen_at > last)
+        )  # she tapped through the Start here screen: the next login shows it again
+        if newer.first() is None and seen.first() is None:
             return True
     return await reset_demo_teacher(session, login)
 
@@ -547,6 +550,7 @@ async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
         teacher.class_struggles = list(_DEMO_CLASS_STRUGGLES[login])
         teacher.teaching_skills = list(_DEMO_TEACHING_SKILLS[login])
         teacher.class_profile_prompted_at = None
+        teacher.start_seen_at = None  # the Start here screen shows again after every reset
         teacher.phone_hash = None
         teacher.preferred_channel = "web"
         teacher.last_inbound_at = None if onboarding == OnboardingStateEnum.NEW else now

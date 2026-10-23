@@ -1,11 +1,4 @@
-/**
- * Abhyas Service Worker (spec/09 §9.2).
- * - Static cache name carries the build version (the server stamps the BUILD_VERSION constant on
- *   every GET /sw.js), so each deploy installs a fresh cache and activate drops the old ones.
- * - Stale-while-revalidate for /static/*.js and *.css; cache-first for other /static/*
- * - LRU cache (max 30 items) for /api/audio/* already played
- * - Network-first for HTML pages with fallback to offline.html (network error) or waking (502-504)
- */
+/* Abhyas Service Worker (spec/09 §9.2). */
 
 const BUILD_VERSION = '__BUILD_VERSION__';
 const STATIC_CACHE_PREFIX = 'abhyas-static-';

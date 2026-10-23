@@ -38,6 +38,7 @@ def mock_teacher(mock_teacher_id: uuid.UUID) -> Teacher:
         name="डेमो शिक्षिका 2 (अनीता)",
         preferred_channel="web",
         lite_mode=False,
+        start_seen_at=datetime.now(UTC),  # past the one-time Start here screen
     )
 
 
@@ -582,3 +583,32 @@ async def test_english_chat_page_shows_english_chips_that_send_the_hindi_questio
     for q in chips_for(uuid.UUID(int=2), datetime.now(UTC).date()):
         expected = f'data-id="{q.id}" data-text="{escape(q.send_text())}">{escape(q.en)}</button>'
         assert expected in section
+
+
+@pytest.mark.asyncio
+async def test_first_visit_goes_to_start_here_then_the_chat(
+    teacher_pwa_app: FastAPI, mock_teacher: Teacher
+) -> None:
+    """A demo teacher who has not seen the Start here screen is sent there; ?s=1 and ?ask skip it."""
+    mock_teacher.start_seen_at = None
+    mock_teacher.consent_service = True
+    async with AsyncClient(
+        transport=ASGITransport(app=teacher_pwa_app), base_url="http://test", follow_redirects=False
+    ) as client:
+        first = await client.get("/teacher")
+        assert first.status_code == 303 and first.headers["location"] == "/teacher/start"
+        assert (await client.get("/teacher?s=1")).status_code == 200
+        assert (await client.get("/teacher?ask=hb01")).status_code == 200
+        page = (await client.get("/teacher/start")).text
+        assert 'id="start-go"' in page and 'id="start-skip"' in page
+        assert get_message("ui_start_button") in page
+
+
+def test_start_here_is_short_and_plain_in_both_languages() -> None:
+    """Three lines, one button, a skip link: under 80 words, no jargon."""
+    for lang in ("hi", "en"):
+        keys = ("ui_start_what", "ui_start_do", "ui_start_get", "ui_start_button", "ui_start_skip")
+        words = sum(len(get_message(k, lang=lang).split()) for k in keys)
+        assert words < 80, (lang, words)
+        for jargon in ("rubric", "deliberate", "engine", "LLM", "FLN", "NIPUN"):
+            assert all(jargon not in get_message(k, lang=lang) for k in keys)

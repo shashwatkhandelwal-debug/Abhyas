@@ -1097,3 +1097,10 @@ ui_demo_divider: {text: "डेमो यहाँ से शुरू होत
 
 # ── Chat clarity (cont.): experience suggestion ──
 hint_experience_suggest: {text: "2-5 साल", audio: false}
+
+# ── Chat clarity part 6: Start here ──
+ui_start_what: {text: "अभ्यास आपका अभ्यास-साथी है: पढ़ाने से पहले आप नकली बच्चों के साथ बात करके अभ्यास करते हैं।", audio: false}
+ui_start_do: {text: "आपको करना है: लगभग 15 मिनट, बोलकर या लिखकर।", audio: false}
+ui_start_get: {text: "आपको मिलेगा: आपने जो कहा उस पर सुझाव, और आज़माने के लिए एक बात।", audio: false}
+ui_start_button: {text: "पहला अभ्यास शुरू करें", audio: false}
+ui_start_skip: {text: "छोड़ें", audio: false}

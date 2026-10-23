@@ -1,16 +1,16 @@
 # First-Load Transfer Size Audit Report
 
 **Environment**: `local, mock providers, mock DB, empty chat history`  
-**Timestamp**: 2026-10-23 15:14:12 UTC  
+**Timestamp**: 2026-10-23 15:35:39 UTC  
 **Status**: ✅ PASSED (Budget: < 150.0 KB)  
 
 > Note: In the local test run, `/teacher` HTML is measured with mock providers, a mock DB, and an empty chat history, which represents a lower bound for the page size.
 
 ## 1. Executive Summary
 
-- **Teacher Chat First-Load (HTML + CSS + JS)**: **32.38 KB** gzip (124.63 KB raw)
-- **Total Asset Payload (All Offline Assets)**: **40.23 KB** gzip (147.92 KB raw)
-- **Budget Headroom**: **25.37 KB** under the 150 KB ceiling (83.1% of budget)
+- **Teacher Chat First-Load (HTML + CSS + JS)**: **32.22 KB** gzip (124.89 KB raw)
+- **Total Asset Payload (All Offline Assets)**: **39.89 KB** gzip (147.74 KB raw)
+- **Budget Headroom**: **25.11 KB** under the 150 KB ceiling (83.3% of budget)
 - **Target Constraint**: Spec 09 §9.2 requires first-load payload < 150 KB excluding audio to ensure accessibility on low-cost Android smartphones over 2G/3G connections.
 
 ## 2. Asset Breakdown
@@ -21,10 +21,10 @@
 | `Teacher Chat PWA (HTML)` | `/teacher` | HTML | 200 | 18.49 KB | 4.99 KB |
 | `manifest.json` | `/manifest.json` | JSON | 200 | 0.5 KB | 0.29 KB |
 | `ack.js` | `/static/ack.js` | JS | 200 | 1.07 KB | 0.56 KB |
-| `app.css?v=dev-ddf43900` | `/static/app.css?v=dev-ddf43900` | CSS | 200 | 32.39 KB | 7.3 KB |
-| `chat.js?v=dev-ddf43900` | `/static/chat.js?v=dev-ddf43900` | JS | 200 | 66.7 KB | 17.69 KB |
-| `recorder.js?v=dev-ddf43900` | `/static/recorder.js?v=dev-ddf43900` | JS | 200 | 6.54 KB | 2.1 KB |
-| `sw.js` | `/sw.js` | JS | 200 | 5.27 KB | 1.71 KB |
+| `app.css?v=dev-88692bfe` | `/static/app.css?v=dev-88692bfe` | CSS | 200 | 33.05 KB | 7.34 KB |
+| `chat.js?v=dev-88692bfe` | `/static/chat.js?v=dev-88692bfe` | JS | 200 | 66.47 KB | 17.59 KB |
+| `recorder.js?v=dev-88692bfe` | `/static/recorder.js?v=dev-88692bfe` | JS | 200 | 6.38 KB | 2.01 KB |
+| `sw.js` | `/sw.js` | JS | 200 | 4.83 KB | 1.54 KB |
 | `offline.html` | `/offline.html` | HTML | 200 | 9.8 KB | 3.38 KB |
 
 ## 3. Low-Connectivity Verification Matrix
@@ -43,4 +43,4 @@
 ## 4. Assertion
 
 Assertion `total_first_load < 150 KB`: **✅ PASSED**
-- Measured: 124.63 KB raw < 150.00 KB
+- Measured: 124.89 KB raw < 150.00 KB
