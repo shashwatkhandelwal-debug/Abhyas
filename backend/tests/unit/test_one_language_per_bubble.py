@@ -74,7 +74,6 @@ async def walk_the_week(service: SessionService, t: UUID) -> list[OutboundMessag
     await say(button="btn_female")
     await say("2-5 years")
     await say("2")
-    await say(button="btn_yes")
     await say("Ravi, how did you get 45?")
     await say("Did you open a bundle?")
     await say(button="btn_understood")
@@ -114,7 +113,6 @@ async def test_the_question_flow_resumes_in_one_language(ui: str, state_button: 
         (None, "btn_female"),
         ("2-5 years", None),
         ("2", None),
-        (None, "btn_yes"),
         ("Ravi, how did you get 45?", None),
         ("Did you open a bundle?", None),
     ):
@@ -147,7 +145,6 @@ async def test_the_question_the_handbook_does_not_cover_says_what_happens_next(u
         (None, "btn_female"),
         ("2-5 years", None),
         ("2", None),
-        (None, "btn_yes"),
         ("Ravi, how did you get 45?", None),
         ("Did you open a bundle?", None),
     ):
@@ -161,3 +158,54 @@ async def test_the_question_the_handbook_does_not_cover_says_what_happens_next(u
     assert any(sentence in spoken for sentence in review_list), spoken[:300]
     assert "ARP" in spoken
     assert mixed_lines(out, ui) == []
+
+
+async def test_learn_step_splits_handbook_tip_into_its_own_bubble() -> None:
+    """A3: In English UI, the learn intro is pure English and the Hindi handbook tip is in a separate bubble."""
+    from unittest.mock import AsyncMock, patch
+
+    from backend.app.llm.roles.coach_suggestion import SuggestionResult
+    from backend.app.llm.schemas import RetrievedChunk
+    from backend.app.rehearsal.scene_runner import load_move_card
+
+    token = set_ui_lang("en")
+    try:
+        service = SessionService(repository=FakeSessionRepository())
+        move = load_move_card("NUM_SUB_REGROUP_BUNDLES")
+        chunk = RetrievedChunk(
+            chunk_id="test:p01:001",
+            source_short_hi="निपुण भारत दिशानिर्देश",
+            page=42,
+            text="बच्चे को समझाएँ",
+            score=0.95,
+        )
+        tip_result = SuggestionResult(
+            suggestion_hi="बच्चे को खुद सोचने दें और बंडल से दिखाएँ।",
+            chunk=chunk,
+        )
+        with patch(
+            "backend.app.sessions.service.suggest_from_sources", new_callable=AsyncMock
+        ) as mock_sugg:
+            mock_sugg.return_value = tip_result
+            messages = await service._build_learn_messages(move, address_form="f")
+
+        assert len(messages) == 2, f"Expected 2 separate bubbles (intro + tip), got {len(messages)}"
+        bubble1, bubble2 = messages[0], messages[1]
+
+        # Bubble 1: Pure English introduction
+        assert "This week's move:" in (bubble1.text_hi or "")
+        assert not DEVANAGARI.search(bubble1.text_hi or ""), (
+            f"Bubble 1 has mixed Devanagari: {bubble1.text_hi}"
+        )
+
+        # Bubble 2: Pure Hindi handbook tip with guide speaker and citation
+        assert bubble2.speaker == "guide"
+        assert DEVANAGARI.search(bubble2.text_hi or "")
+        assert "बच्चे को खुद सोचने दें" in (bubble2.text_hi or "")
+        assert bubble2.citations and bubble2.citations[0].page == 42
+        assert bubble2.buttons and [b.id for b in bubble2.buttons] == [
+            "btn_understood",
+            "btn_replay",
+        ]
+    finally:
+        reset_ui_lang(token)

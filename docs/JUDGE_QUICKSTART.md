@@ -40,7 +40,7 @@ classify, coach and answer from cited documents.**
 
 | Login | Page | Try |
 |---|---|---|
-| `teacher.demo1` | `/teacher` | New teacher: welcome, consent (service / score sharing), onboarding, first move, a voice note. No class choice yet: set one with **मेरी कक्षा** (step 5). |
+| `teacher.demo1` | `/teacher` | New teacher: welcome, service consent, onboarding (score sharing is asked after first rehearsal feedback), first move, a voice note. No class choice yet: set one with **मेरी कक्षा** (step 5). |
 | `teacher.demo2` | `/teacher` | The Ravi scene above; after feedback, retry and pick 1-1 or three children; say a diagnosis sentence (input 1). |
 | `teacher.demo3` | `/teacher` | Opens on a learning step with two buttons ("समझ गई, आगे" / "फिर से सुनें"); typing gets a reminder of them. Has not agreed to share scores. Has a seeded class choice (matra words, addition with carry): the learning step says why it was chosen, and **Modules** / **मेरी कक्षा** show it. |
 | `arp.demo` | `/arp` | Weekly digest of consenting teachers only; escalated questions to answer; observation form. |

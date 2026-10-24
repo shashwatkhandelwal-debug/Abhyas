@@ -186,8 +186,8 @@ STATE_TRANSITION_TABLE: tuple[TransitionEdge, ...] = (
     TransitionEdge(
         source_state="PROFILE_CLASSES",
         input_kind="classes_choice",
-        target_state="SHARE_CONSENT",
-        message_keys=("consent_share_scores",),
+        target_state="PLACEMENT_INTRO",
+        message_keys=("placement_intro",),
         description="Teacher selects grades taught",
     ),
     TransitionEdge(
@@ -504,6 +504,7 @@ class SessionContext(BaseModel):
     classes: list[int] = Field(default_factory=list)
     consent_service: bool = False
     consent_share_scores: bool = False
+    asked_share_consent: bool = False
     clarifying_already_asked: bool = False
     # "Rate the training" after REFLECT: "" (not asking), "rating" (waiting for 1-5), "comment"
     rating_stage: str = ""
@@ -1103,11 +1104,11 @@ class OnboardingStateMachine:
 
         if prev == OnboardingStateEnum.PROFILE_CLASSES:
             self.ctx.classes = [1, 2]
-            self.ctx.onboarding_state = OnboardingStateEnum.SHARE_CONSENT
+            self.ctx.onboarding_state = OnboardingStateEnum.PLACEMENT_INTRO
             return TransitionResult(
                 previous_state=str(prev),
-                new_state=str(OnboardingStateEnum.SHARE_CONSENT),
-                message_keys=["consent_share_scores"],
+                new_state=str(OnboardingStateEnum.PLACEMENT_INTRO),
+                message_keys=["placement_intro"],
             )
 
         if prev == OnboardingStateEnum.SHARE_CONSENT:

@@ -101,6 +101,7 @@ async def _render(
             "skills_saved": skill_views([str(i) for i in teacher.teaching_skills or []]),
             "skills_saved_ids": [str(i) for i in teacher.teaching_skills or []],
             "skill_max": settings.TEACHING_SKILLS_MAX,
+            "consent_share_scores": bool(teacher.consent_share_scores),
             "demo_mode": bool(current_user.is_demo or teacher.is_demo),
             "demo_banner_text": get_message("ui_demo_banner"),
         },

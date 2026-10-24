@@ -536,7 +536,10 @@ async def test_chat_page_shows_four_handbook_chips_when_idle(teacher_pwa_app: Fa
     assert 'data-autosend=""' in html
     # server-rendered: the four labels are today's questions (Hindi UI: the label is the question,
     # the script adds the ask keyword from data-prefix)
-    today = chips_for(uuid.UUID(int=2), datetime.now(UTC).date())
+    from zoneinfo import ZoneInfo
+
+    ist = ZoneInfo("Asia/Kolkata")
+    today = chips_for(uuid.UUID(int=2), datetime.now(ist).date())
     assert f'data-prefix="{settings.HANDBOOK_ASK_PREFIX}"' in html
     for q in today:
         assert f'data-id="{q.id}">{q.hi}</button>' in html
@@ -580,7 +583,10 @@ async def test_english_chat_page_shows_english_chips_that_send_the_hindi_questio
         html = (await client.get("/teacher", cookies={LANG_COOKIE_NAME: "en"})).text
     section = html.split('id="handbook-chips"')[1].split("</section>")[0]
     assert "data-prefix" not in section  # no Hindi keyword in English chrome
-    for q in chips_for(uuid.UUID(int=2), datetime.now(UTC).date()):
+    from zoneinfo import ZoneInfo
+
+    ist = ZoneInfo("Asia/Kolkata")
+    for q in chips_for(uuid.UUID(int=2), datetime.now(ist).date()):
         expected = f'data-id="{q.id}" data-text="{escape(q.send_text())}">{escape(q.en)}</button>'
         assert expected in section
 

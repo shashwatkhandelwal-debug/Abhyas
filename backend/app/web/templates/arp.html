@@ -314,12 +314,17 @@
     </section>
 
     <!-- Section 2: Who is practicing (Consenting Only Table + Non-Consenting Aggregate Row) -->
+    {% if (digest.consenting_teachers | length) >= 10 %}
     {% include "_module_progress.html" %}
+    {% endif %}
 
     <section class="arp-section" aria-label="{{ get_message('ui_arp_section_teachers') }}">
       <div class="arp-section-title">
         <span>{{ get_message('ui_arp_section_teachers') }}</span>
       </div>
+      <p class="arp-share-summary" style="margin: 0.5rem 0 1rem; color: var(--muted); font-size: 0.95rem;">
+        {{ get_message('ui_arp_share_ratio', shared=digest.consenting_teachers | length, total=digest.total_teachers) }}
+      </p>
       <div class="arp-table-wrap">
         <table class="arp-table">
           <thead>

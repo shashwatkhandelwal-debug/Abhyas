@@ -21,7 +21,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.access import can_access_teacher, can_view_teacher_scores
+from backend.app.auth.access import SUPPRESSION_MESSAGE, can_access_teacher, can_view_teacher_scores
 from backend.app.auth.csrf import (
     CSRF_COOKIE_NAME,
     generate_csrf_token,
@@ -29,6 +29,7 @@ from backend.app.auth.csrf import (
     verify_csrf_token,
 )
 from backend.app.auth.guards import require_role
+from backend.app.config import settings
 from backend.app.core.messages import get_message
 from backend.app.db.models import (
     AdoptionEvidence,
@@ -74,7 +75,11 @@ async def get_arp_dashboard(
     digest_data = await build_arp_digest(db, current_user, week_start=selected_week)
 
     # Module progress of the consenting teachers in this cluster (pilot and demo labelled)
-    modules = await module_progress_summary(db, cluster_id=current_user.cluster_id)
+    modules = await module_progress_summary(
+        db,
+        cluster_id=current_user.cluster_id,
+        suppress_below=settings.AGGREGATION_SUPPRESSION_N,
+    )
 
     csrf_token = request.cookies.get(CSRF_COOKIE_NAME)
     token_to_set: str | None = None
@@ -101,7 +106,7 @@ async def get_arp_dashboard(
             "request": request,
             "digest": digest_data,
             "modules": modules,
-            "suppression_message": "",
+            "suppression_message": SUPPRESSION_MESSAGE,
             "user": current_user,
             "csrf_token": csrf_token,
             "get_message": get_message,

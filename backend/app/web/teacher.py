@@ -213,6 +213,7 @@ async def teacher_chat_page(
             "view": view,
             "scene_header": header,
             "lite_mode": teacher.lite_mode,
+            "consent_share_scores": bool(teacher.consent_share_scores),
             "demo_mode": is_demo,
             "demo_banner_text": demo_banner_text,
             "show_demo_divider": bool(
@@ -614,37 +615,80 @@ async def update_teacher_consent(
         )
 
     content_type = request.headers.get("content-type", "")
+    redirect_to = "/teacher/progress?saved=1"
+    now = datetime.now(UTC)
     if "application/json" in content_type:
         body = await request.json()
-        new_share = bool(body.get("consent_share_scores", False))
-        new_research = bool(body.get("consent_research", False))
+        if "consent_share_scores" in body:
+            teacher.consent_share_scores = bool(body["consent_share_scores"])
+            db.add(
+                ConsentLog(
+                    id=uuid.uuid4(),
+                    teacher_id=teacher.id,
+                    field="consent_share_scores",
+                    value=teacher.consent_share_scores,
+                    channel="web",
+                    created_at=now,
+                )
+            )
+        if "consent_research" in body:
+            teacher.consent_research = bool(body["consent_research"])
+            db.add(
+                ConsentLog(
+                    id=uuid.uuid4(),
+                    teacher_id=teacher.id,
+                    field="consent_research",
+                    value=teacher.consent_research,
+                    channel="web",
+                    created_at=now,
+                )
+            )
     else:
         form = await request.form()
-        new_share = form.get("consent_share_scores") in ("true", "1", "on", True)
-        new_research = form.get("consent_research") in ("true", "1", "on", True)
+        if "redirect_to" in form:
+            redirect_to = str(form["redirect_to"])
+        if "consent_share_scores" in form:
+            teacher.consent_share_scores = form.get("consent_share_scores") in (
+                "true",
+                "1",
+                "on",
+                True,
+            )
+            db.add(
+                ConsentLog(
+                    id=uuid.uuid4(),
+                    teacher_id=teacher.id,
+                    field="consent_share_scores",
+                    value=teacher.consent_share_scores,
+                    channel="web",
+                    created_at=now,
+                )
+            )
+        elif "consent_research" in form:
+            teacher.consent_share_scores = False
+            db.add(
+                ConsentLog(
+                    id=uuid.uuid4(),
+                    teacher_id=teacher.id,
+                    field="consent_share_scores",
+                    value=False,
+                    channel="web",
+                    created_at=now,
+                )
+            )
+        if "consent_research" in form:
+            teacher.consent_research = form.get("consent_research") in ("true", "1", "on", True)
+            db.add(
+                ConsentLog(
+                    id=uuid.uuid4(),
+                    teacher_id=teacher.id,
+                    field="consent_research",
+                    value=teacher.consent_research,
+                    channel="web",
+                    created_at=now,
+                )
+            )
 
-    teacher.consent_share_scores = new_share
-    teacher.consent_research = new_research
-
-    now = datetime.now(UTC)
-    log_share = ConsentLog(
-        id=uuid.uuid4(),
-        teacher_id=teacher.id,
-        field="consent_share_scores",
-        value=new_share,
-        channel="web",
-        created_at=now,
-    )
-    log_research = ConsentLog(
-        id=uuid.uuid4(),
-        teacher_id=teacher.id,
-        field="consent_research",
-        value=new_research,
-        channel="web",
-        created_at=now,
-    )
-    db.add(log_share)
-    db.add(log_research)
     await db.commit()
 
     accept = request.headers.get("accept", "")
@@ -652,13 +696,13 @@ async def update_teacher_consent(
         return JSONResponse(
             content={
                 "ok": True,
-                "consent_share_scores": new_share,
-                "consent_research": new_research,
+                "consent_share_scores": teacher.consent_share_scores,
+                "consent_research": teacher.consent_research,
             }
         )
 
     return RedirectResponse(
-        url="/teacher/progress?saved=1",
+        url=redirect_to,
         status_code=status.HTTP_303_SEE_OTHER,
     )
 

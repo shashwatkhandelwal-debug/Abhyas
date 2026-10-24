@@ -504,6 +504,9 @@ class FakeSessionRepository(SessionRepository):
         self._consent_logs.append(entry)
         return entry
 
+    async def has_consent_decision(self, teacher_id: UUID, field: str) -> bool:
+        return any(c.teacher_id == teacher_id and c.field == field for c in self._consent_logs)
+
     async def record_adoption_evidence(
         self,
         teacher_id: UUID,
@@ -806,40 +809,34 @@ async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence(
     assert any("कक्षा" in str(m.text_hi or "") for m in out5)
     assert teacher.first_year is True
 
-    # 6. PROFILE_CLASSES -> SHARE_CONSENT
+    # 6. PROFILE_CLASSES -> PLACEMENT_INTRO
     out6 = await service.handle_inbound(make_inbound(teacher_id=t_id, text="कक्षा 1-2"))
-    assert any("ARP" in str(m.text_hi or "") or "अंक" in str(m.text_hi or "") for m in out6)
+    assert any("रवि" in str(m.text_hi or "") or "अभ्यास" in str(m.text_hi or "") for m in out6)
+    assert teacher.consent_share_scores is False
 
-    # 7. SHARE_CONSENT -> PLACEMENT_INTRO
+    # 7. PLACEMENT_INTRO -> PLACEMENT (turn 1)
     out7 = await service.handle_inbound(
-        make_inbound(teacher_id=t_id, text="हाँ", button_id="btn_yes")
-    )
-    assert any("रवि" in str(m.text_hi or "") or "अभ्यास" in str(m.text_hi or "") for m in out7)
-    assert teacher.consent_share_scores is True
-
-    # 8. PLACEMENT_INTRO -> PLACEMENT (turn 1)
-    out8 = await service.handle_inbound(
         make_inbound(teacher_id=t_id, text="रवि, 52 में से 17 घटाना है।")
     )
-    assert len(out8) >= 1
+    assert len(out7) >= 1
 
-    # 9. PLACEMENT turn 2 -> READY -> LEARN
-    out9 = await service.handle_inbound(
+    # 8. PLACEMENT turn 2 -> READY -> LEARN
+    out8 = await service.handle_inbound(
         make_inbound(teacher_id=t_id, text="रवि, 52 में 5 बंडल और 2 तीलियाँ हैं।")
     )
     assert any(
         "placement_done" in str(m.text_hi or "")
         or "तैयार" in str(m.text_hi or "")
         or "तरीका" in str(m.text_hi or "")
-        for m in out9
+        for m in out8
     )
     ctx = await service.get_or_create_context(t_id)
     assert ctx.onboarding_state == OnboardingStateEnum.READY
     assert ctx.current_state == SessionStateEnum.LEARN
 
-    # 10. LEARN -> EXPLAIN_BACK
-    out10 = await service.handle_inbound(make_inbound(teacher_id=t_id, button_id="btn_understood"))
-    assert any("शब्दों में" in str(m.text_hi or "") for m in out10)
+    # 9. LEARN -> EXPLAIN_BACK
+    out9 = await service.handle_inbound(make_inbound(teacher_id=t_id, button_id="btn_understood"))
+    assert any("शब्दों में" in str(m.text_hi or "") for m in out9)
     ctx = await service.get_or_create_context(t_id)
     assert ctx.current_state == SessionStateEnum.EXPLAIN_BACK
 

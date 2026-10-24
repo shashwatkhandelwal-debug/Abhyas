@@ -843,3 +843,42 @@ test('lite mode that cannot reach the server says so instead of failing silently
 test('the voice-too-short message tells the teacher how long to speak', () => {
   assert.ok(strings.ui_chat_rec_too_short.includes('1 सेकंड'));
 });
+
+test('slow network banner does NOT appear on slow first load alone', () => {
+  const c = load();
+  const banner = c.byId['network-banner'];
+  // First load: request latency > 8000ms (e.g. server cold start)
+  c.recordRequestLatency(9500);
+  assert.equal(c.isSlowNetwork(), false);
+  assert.equal(banner.classList.contains('slow'), false);
+  assert.equal(banner.style.display || 'none', 'none');
+});
+
+test('slow network banner appears on genuinely slow network (3 slow requests or connection effectiveType 2g/saveData)', () => {
+  const c = load();
+  const banner = c.byId['network-banner'];
+
+  // Case 1: Across several requests (> 8000ms across 3 subsequent requests)
+  c.recordRequestLatency(9500); // request 1: first load, ignored
+  c.recordRequestLatency(8500); // request 2: slow 1
+  assert.equal(c.isSlowNetwork(), false);
+  c.recordRequestLatency(8500); // request 3: slow 2
+  assert.equal(c.isSlowNetwork(), false);
+  c.recordRequestLatency(9000); // request 4: slow 3 -> threshold reached!
+  assert.equal(c.isSlowNetwork(), true);
+  assert.ok(banner.classList.contains('slow'));
+  assert.equal(banner.style.display, 'block');
+
+  // Fast request resets consecutive slow count
+  c.recordRequestLatency(300);
+  assert.equal(c.state.slowRequestCount, 0);
+
+  // Case 2: navigator.connection 2g / slow-2g or saveData
+  c.navigator.connection = { effectiveType: '2g', saveData: false };
+  assert.equal(c.isSlowNetwork(), true);
+  c.recordRequestLatency(200); // even with fast latency, connection is 2g
+  assert.ok(banner.classList.contains('slow'));
+
+  c.navigator.connection = { effectiveType: '4g', saveData: true };
+  assert.equal(c.isSlowNetwork(), true);
+});

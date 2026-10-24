@@ -94,47 +94,118 @@ class SessionService:
         self.scene_runner = scene_runner or SceneRunner()
         self.retriever: GuideRetriever = get_guide_retriever()
 
-    async def _learn_intro(
-        self, move: MoveCard, address_form: str, struggle_ids: list[str] | None = None
-    ) -> tuple[str, list[Citation]]:
-        """Learn-step intro, plus the best matching official excerpt for the move's topic.
+    async def _build_learn_messages(
+        self,
+        move: MoveCard,
+        address_form: str,
+        struggle_ids: list[str] | None = None,
+        audio_ref: str | None = None,
+    ) -> list[OutboundMessage]:
+        """Builds one or two bubbles for the learn step according to one-language-per-bubble rule.
 
-        The excerpt comes from the ingested source documents only (never move cards). When nothing
-        scores above RETRIEVAL_MIN_SCORE the intro is returned unchanged.
+        Bubble 1 is the move introduction (in the teacher's UI language). If official tips or
+        excerpts exist in Hindi, they form their own separate bubble (Bubble 2, speaker="guide")
+        so English and Hindi text never mix inside a single bubble.
         """
-        intro = get_message("learn_intro", address_form, move_title=move_title(move.id))
+        intro_key = "learn_intro_audio" if audio_ref else "learn_intro"
+        intro = get_message(intro_key, address_form, move_title=move_title(move.id))
         reason = personalise.because(move.id, struggle_ids or [])
         if reason is not None:
             because_line = get_message(
                 "ui_class_chosen_because", label=personalise.label_of(reason)
             )
             intro = f"{because_line}\n\n{intro}"
+
+        buttons = [
+            Button(
+                id="btn_understood",
+                title_hi=get_message("btn_understood", address_form),
+            ),
+            Button(id="btn_replay", title_hi=get_message("btn_replay", address_form)),
+        ]
+
+        tip_text, tip_cites = await self._learn_tip(move, address_form)
+
         query = f"{move.title_hi} {' '.join(t.replace('_', ' ') for t in move.tags)}"
         hits = await self.retriever.retrieve(
             query, top_k=1, min_score=settings.RETRIEVAL_MIN_SCORE, official_only=True
         )
-        tip_text, tip_cites = await self._learn_tip(move, address_form)
+        hit_cites: list[Citation] = []
+        ref_text = ""
+        if hits and hits[0].gloss_hi:
+            hit = hits[0]
+            chunk = RetrievedChunk(
+                chunk_id=hit.chunk_id,
+                source_short_hi=hit.source_short_hi,
+                section=hit.section,
+                page=hit.page,
+                text=hit.text,
+                score=hit.similarity_score,
+            )
+            hit_cites = citations_for_chunks([chunk], address_form)
+            ref_text = get_message(
+                "learn_reference",
+                address_form,
+                summary=hit.gloss_hi,
+                citation=hit_cites[0].line_hi if hit_cites else "",
+            )
+
+        guide_parts: list[str] = []
         if tip_text:
-            intro = f"{intro}\n\n{tip_text}"
-        if not hits or not hits[0].gloss_hi:
-            return intro, tip_cites
-        hit = hits[0]
-        chunk = RetrievedChunk(
-            chunk_id=hit.chunk_id,
-            source_short_hi=hit.source_short_hi,
-            section=hit.section,
-            page=hit.page,
-            text=hit.text,
-            score=hit.similarity_score,
-        )
-        cites = citations_for_chunks([chunk], address_form)
-        ref = get_message(
-            "learn_reference",
-            address_form,
-            summary=hit.gloss_hi,
-            citation=cites[0].line_hi if cites else "",
-        )
-        return f"{intro}\n\n{ref}", cites + [c for c in tip_cites if c.chunk_id != hit.chunk_id]
+            guide_parts.append(tip_text)
+        if ref_text:
+            guide_parts.append(ref_text)
+
+        all_guide_cites = list(tip_cites) + [
+            c for c in hit_cites if c.chunk_id not in {tc.chunk_id for tc in tip_cites}
+        ]
+
+        if guide_parts:
+            guide_body = "\n\n".join(guide_parts)
+            return [
+                OutboundMessage(
+                    kind="buttons",
+                    text_hi=intro,
+                    audio_ref=audio_ref,
+                    buttons=buttons,
+                ),
+                OutboundMessage(
+                    kind="buttons",
+                    text_hi=guide_body,
+                    citations=all_guide_cites,
+                    speaker="guide",
+                    buttons=buttons,
+                ),
+            ]
+
+        return [
+            OutboundMessage(
+                kind="buttons",
+                text_hi=intro,
+                audio_ref=audio_ref,
+                buttons=buttons,
+            )
+        ]
+
+    async def _learn_intro(
+        self,
+        move: MoveCard,
+        address_form: str,
+        struggle_ids: list[str] | None = None,
+        audio_ref: str | None = None,
+    ) -> tuple[str, list[Citation]]:
+        """Learn-step intro, plus the best matching official excerpt for the move's topic.
+
+        The excerpt comes from the ingested source documents only (never move cards). When nothing
+        scores above RETRIEVAL_MIN_SCORE the intro is returned unchanged.
+        """
+        msgs = await self._build_learn_messages(move, address_form, struggle_ids, audio_ref)
+        combined = "\n\n".join(m.text_hi or "" for m in msgs)
+        all_cites: list[Citation] = []
+        for m in msgs:
+            if m.citations:
+                all_cites.extend(m.citations)
+        return combined, all_cites
 
     async def get_or_create_context(self, teacher_id: UUID) -> SessionContext:
         """Loads or constructs a SessionContext from database state."""
@@ -189,6 +260,7 @@ class SessionService:
             rehearse_child=str(ctx_data.get("rehearse_child", "")),
             resume_scene_id=str(ctx_data.get("resume_scene_id", "")),
             diagnosis=dict(ctx_data.get("diagnosis") or {}),
+            asked_share_consent=bool(ctx_data.get("asked_share_consent", False)),
             class_stage=str(ctx_data.get("class_stage", "")),
             class_pending=[str(i) for i in ctx_data.get("class_pending") or []],
             class_struggles=[str(i) for i in teacher.class_struggles or []],
@@ -269,6 +341,7 @@ class SessionService:
             "class_pending": ctx.class_pending,
             "skill_stage": ctx.skill_stage,
             "skill_pending": ctx.skill_pending,
+            "asked_share_consent": ctx.asked_share_consent,
         }
         await self.repo.save_session_state(db_state)
         if (
@@ -719,20 +792,7 @@ class SessionService:
         ctx.module_check_stage = modules.CHECK_IDLE
         await self._sync_context_to_db(ctx, teacher_id)
         move = load_move_card(module_id)
-        intro_text, intro_cites = await self._learn_intro(move, address_form, ctx.class_struggles)
-        return [
-            OutboundMessage(
-                kind="text",
-                text_hi=intro_text,
-                citations=intro_cites,
-                buttons=[
-                    Button(
-                        id="btn_understood", title_hi=get_message("btn_understood", address_form)
-                    ),
-                    Button(id="btn_replay", title_hi=get_message("btn_replay", address_form)),
-                ],
-            )
-        ]
+        return await self._build_learn_messages(move, address_form, ctx.class_struggles)
 
     async def _handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
         """Dispatches an inbound teacher message through conversation flow and persists side effects."""
@@ -789,25 +849,7 @@ class SessionService:
                 ctx.last_inbound_at = now
                 await self._sync_context_to_db(ctx, teacher_id)
                 move = load_move_card(ctx.current_move_id)
-                intro_text, intro_cites = await self._learn_intro(
-                    move, address_form, ctx.class_struggles
-                )
-                return [
-                    OutboundMessage(
-                        kind="text",
-                        text_hi=intro_text,
-                        citations=intro_cites,
-                        buttons=[
-                            Button(
-                                id="btn_understood",
-                                title_hi=get_message("btn_understood", address_form),
-                            ),
-                            Button(
-                                id="btn_replay", title_hi=get_message("btn_replay", address_form)
-                            ),
-                        ],
-                    )
-                ]
+                return await self._build_learn_messages(move, address_form, ctx.class_struggles)
 
         ctx.last_inbound_at = now
 
@@ -1242,18 +1284,8 @@ class SessionService:
                 await self._sync_context_to_db(ctx, teacher_id)
                 return [
                     OutboundMessage(
-                        kind="buttons",
-                        text_hi=get_message("consent_share_scores", ctx.address_form),
-                        buttons=[
-                            Button(
-                                id="btn_yes",
-                                title_hi=get_message("btn_yes", ctx.address_form),
-                            ),
-                            Button(
-                                id="btn_no",
-                                title_hi=get_message("btn_no", ctx.address_form),
-                            ),
-                        ],
+                        kind="text",
+                        text_hi=get_message("placement_intro", ctx.address_form),
                     )
                 ]
 
@@ -1334,9 +1366,6 @@ class SessionService:
 
                     first_move = load_move_card(ctx.current_move_id)
                     ready_outbounds: list[OutboundMessage] = []
-                    first_text, first_cites = await self._learn_intro(
-                        first_move, ctx.address_form, ctx.class_struggles
-                    )
                     if turn_res:
                         ready_outbounds.extend(turn_res.outbound)
                     ready_outbounds.extend(
@@ -1353,20 +1382,8 @@ class SessionService:
                                     move_title=move_title(first_move.id),
                                 ),
                             ),
-                            OutboundMessage(
-                                kind="buttons",
-                                text_hi=first_text,
-                                citations=first_cites,
-                                buttons=[
-                                    Button(
-                                        id="btn_understood",
-                                        title_hi=get_message("btn_understood", ctx.address_form),
-                                    ),
-                                    Button(
-                                        id="btn_replay",
-                                        title_hi=get_message("btn_replay", ctx.address_form),
-                                    ),
-                                ],
+                            *await self._build_learn_messages(
+                                first_move, ctx.address_form, ctx.class_struggles
                             ),
                         ]
                     )
@@ -1386,25 +1403,7 @@ class SessionService:
         if curr == SessionStateEnum.LEARN:
             move = load_move_card(ctx.current_move_id)
             if matched_intent == Intent.REPEAT or btn_id == "btn_replay":
-                intro_text, intro_cites = await self._learn_intro(
-                    move, address_form, ctx.class_struggles
-                )
-                return [
-                    OutboundMessage(
-                        kind="buttons",
-                        text_hi=intro_text,
-                        citations=intro_cites,
-                        buttons=[
-                            Button(
-                                id="btn_understood",
-                                title_hi=get_message("btn_understood", address_form),
-                            ),
-                            Button(
-                                id="btn_replay", title_hi=get_message("btn_replay", address_form)
-                            ),
-                        ],
-                    )
-                ]
+                return await self._build_learn_messages(move, address_form, ctx.class_struggles)
             if matched_intent == Intent.NEXT or btn_id == "btn_understood":
                 wsm.transition("btn_understood")
                 await self._sync_context_to_db(ctx, teacher_id)
@@ -1572,7 +1571,7 @@ class SessionService:
             async def _on_text_ready(
                 child_lines: list[ChildLineRecord], text_msgs: list[OutboundMessage]
             ) -> None:
-                if inbound.channel == "web":
+                if inbound.channel == "web" and self.repo.session is not None:
                     for tm in text_msgs:
                         row_id = uuid.uuid4()
                         tm.message_id = row_id
@@ -1601,7 +1600,7 @@ class SessionService:
                 on_text_ready=_on_text_ready,
             )
 
-            if early_text_rows:
+            if early_text_rows and self.repo.session is not None:
                 for outbound in turn_res.outbound:
                     for early_row in early_text_rows:
                         if (
@@ -1861,6 +1860,29 @@ class SessionService:
                         ),
                     ]
                 )
+                teacher = await self.repo.get_or_create_teacher(teacher_id)
+                has_decision = await self.repo.has_consent_decision(
+                    teacher_id, "consent_share_scores"
+                )
+                if not has_decision and not teacher.is_demo and not ctx.asked_share_consent:
+                    ctx.asked_share_consent = True
+                    await self._sync_context_to_db(ctx, teacher_id)
+                    coach_outbounds.append(
+                        OutboundMessage(
+                            kind="buttons",
+                            text_hi=get_message("consent_share_scores", address_form),
+                            buttons=[
+                                Button(
+                                    id="btn_share_arp",
+                                    title_hi=get_message("btn_share_arp", address_form),
+                                ),
+                                Button(
+                                    id="btn_share_not_now",
+                                    title_hi=get_message("btn_share_not_now", address_form),
+                                ),
+                            ],
+                        )
+                    )
                 return coach_outbounds
 
             wsm.transition(text_content)
@@ -1869,6 +1891,30 @@ class SessionService:
 
         elif curr == SessionStateEnum.FEEDBACK:
             move = load_move_card(ctx.current_move_id)
+            if btn_id in ("btn_share_arp", "btn_share_not_now"):
+                share_ok = btn_id == "btn_share_arp"
+                ctx.consent_share_scores = share_ok
+                ctx.asked_share_consent = True
+                teacher = await self.repo.get_or_create_teacher(teacher_id)
+                teacher.consent_share_scores = share_ok
+                await self.repo.save_teacher(teacher)
+                await self.repo.log_consent(teacher_id, "consent_share_scores", share_ok)
+                await self._sync_context_to_db(ctx, teacher_id)
+                ack_key = "consent_share_saved_yes" if share_ok else "consent_share_saved_no"
+                return [
+                    OutboundMessage(kind="text", text_hi=get_message(ack_key, address_form)),
+                    OutboundMessage(
+                        kind="buttons",
+                        text_hi=self._realism_prompt(ctx, address_form),
+                        buttons=[
+                            Button(id="btn_retry", title_hi=get_message("btn_retry", address_form)),
+                            Button(
+                                id="btn_continue",
+                                title_hi=get_message("btn_continue", address_form),
+                            ),
+                        ],
+                    ),
+                ]
             if ctx.resume_scene_id and (btn_id == "btn_scene_continue"):
                 resumed = await self._resume_scene(ctx, teacher_id)
                 if resumed:
@@ -2173,25 +2219,7 @@ class SessionService:
             if matched_intent == Intent.NEXT or btn_id == "btn_next_move":
                 wsm.transition("btn_next_move")
                 await self._sync_context_to_db(ctx, teacher_id)
-                intro_text, intro_cites = await self._learn_intro(
-                    move, address_form, ctx.class_struggles
-                )
-                return [
-                    OutboundMessage(
-                        kind="buttons",
-                        text_hi=intro_text,
-                        citations=intro_cites,
-                        buttons=[
-                            Button(
-                                id="btn_understood",
-                                title_hi=get_message("btn_understood", address_form),
-                            ),
-                            Button(
-                                id="btn_replay", title_hi=get_message("btn_replay", address_form)
-                            ),
-                        ],
-                    )
-                ]
+                return await self._build_learn_messages(move, address_form, ctx.class_struggles)
             if matched_intent == Intent.PROGRESS or btn_id == "btn_progress":
                 return [
                     OutboundMessage(

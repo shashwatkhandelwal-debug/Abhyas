@@ -98,132 +98,132 @@ def _render_login_page(
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{html.escape(m("ui_login_page_title"))}</title>
     <style>
-        :root {{
-            --bg: #FAF7F2;
-            --surface: #FFFFFF;
-            --ink: #1F2421;
-            --muted: #5E6662;
-            --brand: #1F6F5C;
-            --brand-ink: #FFFFFF;
-            --accent: #E0A100;
-            --danger: #B3261E;
-        }}
-        body {{
-            margin: 0;
-            padding: 1.5rem;
-            background: var(--bg);
-            color: var(--ink);
-            font-family: "Noto Sans Devanagari", "Mukta", system-ui, sans-serif;
-            font-size: 17px;
-            line-height: 1.6;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            box-sizing: border-box;
-        }}
-        .login-box {{
-            background: var(--surface);
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            width: 100%;
-            max-width: 440px;
-            padding: 2rem;
-            box-sizing: border-box;
-        }}
-        .brand-header {{
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }}
-        .brand-title {{
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--brand);
-            margin: 0;
-        }}
-        .brand-subtitle {{
-            color: var(--muted);
-            font-size: 0.95rem;
-            margin-top: 0.25rem;
-        }}
-        .form-group {{
-            margin-bottom: 1.25rem;
-        }}
-        label {{
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-        }}
-        input[type="text"], input[type="password"] {{
-            width: 100%;
-            padding: 0.75rem 1rem;
-            border: 1px solid #D0D7D3;
-            border-radius: 8px;
-            font-size: 1rem;
-            box-sizing: border-box;
-            min-height: 48px;
-        }}
-        input:focus {{
-            outline: 2px solid var(--brand);
-            border-color: var(--brand);
-        }}
-        .btn-submit {{
-            width: 100%;
-            background: var(--brand);
-            color: var(--brand-ink);
-            border: none;
-            border-radius: 8px;
-            padding: 0.85rem;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            min-height: 48px;
-            margin-top: 0.5rem;
-        }}
-        .btn-submit:hover {{
-            background: #175446;
-        }}
-        .error-banner {{
-            background: #FDF2F2;
-            color: var(--danger);
-            border: 1px solid var(--danger);
-            border-radius: 8px;
-            padding: 0.75rem 1rem;
-            margin-bottom: 1.25rem;
-            font-size: 0.95rem;
-        }}
-        .lang-row {{ margin: 0.5rem 0 0; font-size: 0.9rem; }}
-        .lang-link {{ color: var(--brand); text-decoration: none; padding: 0.4rem 0.5rem; display: inline-block; }}
-        .lang-link.active {{ font-weight: 700; text-decoration: underline; }}
-        .shared-note {{ background: #FFF7DD; border: 1px solid var(--accent); border-radius: 8px; padding: 0.6rem 0.9rem; margin: 0 0 1.25rem; font-size: 0.9rem; }}
-        .demo-card {{
-            margin-top: 1.75rem;
-            padding-top: 1.25rem;
-            border-top: 1px dashed #D0D7D3;
-        }}
-        .demo-card h3 {{
-            margin: 0 0 0.75rem 0;
-            font-size: 0.95rem;
-            color: var(--muted);
-        }}
-        .demo-chips {{
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }}
-        .demo-chips button {{
-            background: #EDEAE4;
-            border: 1px solid #D8D4CC;
-            border-radius: 20px;
-            padding: 0.4rem 0.8rem;
-            font-size: 0.85rem;
-            cursor: pointer;
-            color: var(--ink);
-        }}
-        .demo-chips button:hover {{
-            background: #DFDBD3;
-        }}
-    </style>
+:root {{
+--bg: #FAF7F2;
+--surface: #FFFFFF;
+--ink: #1F2421;
+--muted: #5E6662;
+--brand: #1F6F5C;
+--brand-ink: #FFFFFF;
+--accent: #E0A100;
+--danger: #B3261E;
+}}
+body {{
+margin: 0;
+padding: 1.5rem;
+background: var(--bg);
+color: var(--ink);
+font-family: "Noto Sans Devanagari", "Mukta", system-ui, sans-serif;
+font-size: 17px;
+line-height: 1.6;
+display: flex;
+justify-content: center;
+align-items: center;
+min-height: 100vh;
+box-sizing: border-box;
+}}
+.login-box {{
+background: var(--surface);
+border-radius: 12px;
+box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+width: 100%;
+max-width: 440px;
+padding: 2rem;
+box-sizing: border-box;
+}}
+.brand-header {{
+text-align: center;
+margin-bottom: 1.5rem;
+}}
+.brand-title {{
+font-size: 2rem;
+font-weight: 700;
+color: var(--brand);
+margin: 0;
+}}
+.brand-subtitle {{
+color: var(--muted);
+font-size: 0.95rem;
+margin-top: 0.25rem;
+}}
+.form-group {{
+margin-bottom: 1.25rem;
+}}
+label {{
+display: block;
+margin-bottom: 0.5rem;
+font-weight: 600;
+}}
+input[type="text"], input[type="password"] {{
+width: 100%;
+padding: 0.75rem 1rem;
+border: 1px solid #D0D7D3;
+border-radius: 8px;
+font-size: 1rem;
+box-sizing: border-box;
+min-height: 48px;
+}}
+input:focus {{
+outline: 2px solid var(--brand);
+border-color: var(--brand);
+}}
+.btn-submit {{
+width: 100%;
+background: var(--brand);
+color: var(--brand-ink);
+border: none;
+border-radius: 8px;
+padding: 0.85rem;
+font-size: 1.1rem;
+font-weight: 600;
+cursor: pointer;
+min-height: 48px;
+margin-top: 0.5rem;
+}}
+.btn-submit:hover {{
+background: #175446;
+}}
+.error-banner {{
+background: #FDF2F2;
+color: var(--danger);
+border: 1px solid var(--danger);
+border-radius: 8px;
+padding: 0.75rem 1rem;
+margin-bottom: 1.25rem;
+font-size: 0.95rem;
+}}
+.lang-row {{ margin: 0.5rem 0 0; font-size: 0.9rem; }}
+.lang-link {{ color: var(--brand); text-decoration: none; padding: 0.4rem 0.5rem; display: inline-block; }}
+.lang-link.active {{ font-weight: 700; text-decoration: underline; }}
+.shared-note {{ background: #FFF7DD; border: 1px solid var(--accent); border-radius: 8px; padding: 0.6rem 0.9rem; margin: 0 0 1.25rem; font-size: 0.9rem; }}
+.demo-card {{
+margin-top: 1.75rem;
+padding-top: 1.25rem;
+border-top: 1px dashed #D0D7D3;
+}}
+.demo-card h3 {{
+margin: 0 0 0.75rem 0;
+font-size: 0.95rem;
+color: var(--muted);
+}}
+.demo-chips {{
+display: flex;
+flex-wrap: wrap;
+gap: 0.5rem;
+}}
+.demo-chips button {{
+background: #EDEAE4;
+border: 1px solid #D8D4CC;
+border-radius: 20px;
+padding: 0.4rem 0.8rem;
+font-size: 0.85rem;
+cursor: pointer;
+color: var(--ink);
+}}
+.demo-chips button:hover {{
+background: #DFDBD3;
+}}
+</style>
 </head>
 <body>
     <main class="login-box">

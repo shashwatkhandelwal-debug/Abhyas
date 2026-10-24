@@ -39,6 +39,9 @@
         <button type="button" class="menu-item" id="lite-mode-menu-btn" onclick="toggleLiteMode()">
           {{ get_message('ui_chat_lite_on') if lite_mode else get_message('ui_chat_lite_off') }}
         </button>
+        <button type="button" class="menu-item" id="share-scores-menu-btn" onclick="toggleShareScores()" data-shared="{{ 'true' if consent_share_scores else 'false' }}" data-on-text="{{ get_message('ui_menu_share_scores_on') }}" data-off-text="{{ get_message('ui_menu_share_scores_off') }}">
+          {{ get_message('ui_menu_share_scores_on') if consent_share_scores else get_message('ui_menu_share_scores_off') }}
+        </button>
         <button type="button" class="menu-item" onclick="openHelpModal()">{{ get_message('ui_chat_menu_help') }}</button>
         <div class="menu-item lang-item">{{ lang_switch() }}</div>
         <a href="/logout" class="menu-item danger">{{ get_message('ui_logout') }}</a>
