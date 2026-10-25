@@ -754,19 +754,32 @@ Source: "team test" (the founder's test of the hosted site on 2026-10-24).
 ### Real cause of A2
 `_learn_intro` in `service.py` and demo3's seeded message in `seed.py` constructed outbound messages with `audio_ref=None` and `audio: false` in the catalog. No learn script audio was ever synthesized, cached, or attached to `learn_intro`. Render did not fail audio generation; audio was simply never attached to that message. Fixed by providing variants without voice note mention when no audio attached, and ensuring play button appears only when audio can play.
 
+### Review findings fixes (2026-10-25)
+1. **Consent off from forms**: Added hidden fields with value `false` before checkboxes (`consent_share_scores` and `consent_research`) and `form_source` markers in `class.html` and `progress.html`. In `update_teacher_consent`, form parsing detects form sources and evaluates checkbox lists (`_parse_checkbox`), ensuring unchecked boxes set `False` and record a `ConsentLog` entry. Unit tests: `test_consent_uncheck_on_class_form_turns_sharing_off_and_writes_consent_log` and `test_consent_uncheck_on_progress_form_turns_sharing_off_and_writes_consent_log`.
+2. **Consent text truth**:
+   - Removed "chosen skill" from what ARP sees in `consent_details`, `consent_share_scores`, and `ui_class_share_scores_desc` in English and Hindi.
+   - Replaced "ARP never sees your chat messages" with truthful wording: questions the handbook cannot answer are sent to the ARP, and nothing else from chat or recordings is sent.
+   - Added unit test `test_arp_page_renders_escalated_questions_only_and_never_chat_messages` in `test_arp_digest.py` ensuring chat messages are never rendered on the ARP page.
+3. **Safe redirect**: In `update_teacher_consent`, added `safe_consent_redirect_url` restricting `redirect_to` to local paths starting with a single `/` and rejecting `//`, schemes (`http:`, `https:`), and backslashes (`\\`), defaulting to `/teacher/progress?saved=1`. Added unit test `test_consent_redirect_restriction`.
+4. **Test suite count explanation**:
+   - `fix/chat-clarity` recorded 1664 passed because it ran the full suite against a live PostgreSQL+pgvector database with `TEST_DATABASE_URL` set and Chromium installed.
+   - `5be8c68` recorded 1489 passed because only the unit test suite (`backend/tests/unit`) was executed without `TEST_DATABASE_URL`.
+   - The repository currently collects 1672 tests (1493 unit + 17 content + 126 integration + 36 e2e). Without a running PostgreSQL instance, `TEST_DATABASE_URL` is omitted, cleanly skipping 129 database-dependent integration and e2e tests via `skipif(not TEST_DATABASE_URL)`. Running the full suite locally yields 1547 passed, 129 skipped, 0 failed.
+
 ### Gate totals
 - **ruff**: clean (`All checks passed!`)
 - **ruff format --check**: 326 files clean
 - **mypy --strict backend/app**: 169 source files clean (0 issues)
-- **pytest**: 1489 passed, 0 failed, 1 skipped (`test_evaluator_samples.py::test_evaluator_sample_audio_files_exist`: requires rendered audio on disk with live speech key)
-- **Node tests** (`chat.test.mjs`, `sw.test.mjs`): 68 / 68 passed (407ms)
+- **pytest (unit)**: 1496 passed, 0 failed, 1 skipped (`test_evaluator_samples.py::test_evaluator_sample_audio_files_exist`: requires rendered audio on disk with live speech key)
+- **pytest (full suite, no live DB)**: 1547 passed, 0 failed, 129 skipped
+- **Node tests** (`chat.test.mjs`, `sw.test.mjs`): 68 / 68 passed (402ms)
 - **Catalogue parity** (`test_messages_en.py`): 11 / 11 passed (Hindi and English catalogs in exact parity)
 - **Page weight** (`scripts/check_first_load.py`):
   - Teacher Chat first load: 128.25 KB raw / 33.03 KB gzip (< 150 KB budget)
   - All offline assets: 149.61 KB raw / 40.64 KB gzip (< 150 KB budget)
   - Status: PASS
 - **Freeze check** (`scripts/freeze_check.py --skip-gates --any-branch`):
-  - No secret-looking strings: PASS (851 tracked text files)
+  - No secret-looking strings: PASS (852 tracked text files)
   - Docs placeholders listed: PASS (11 uses, all listed in PROGRESS.md)
   - Git tree clean: PASS after commit
 

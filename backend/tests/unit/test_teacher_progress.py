@@ -595,3 +595,208 @@ async def test_post_delete_without_csrf_returns_403_and_purges_nothing() -> None
         assert teacher not in session.deleted
         assert user not in session.deleted
         assert len(session.entities) == 2
+
+
+@pytest.mark.asyncio
+async def test_consent_uncheck_on_class_form_turns_sharing_off_and_writes_consent_log() -> None:
+    """Unchecking consent on class form saves False and writes a ConsentLog row."""
+    teacher_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    teacher = Teacher(
+        id=teacher_id,
+        name="सुमन शर्मा",
+        consent_share_scores=True,
+        consent_research=True,
+        is_demo=True,
+    )
+    user = AppUser(
+        id=uuid.uuid4(),
+        username="teacher.demo1",
+        role="teacher",
+        teacher_id=teacher_id,
+        password_hash="hash",
+    )
+
+    session = InMemoryProgressSession(entities=[teacher, user])
+    app = create_test_progress_app(session, user=user)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        # Case A: Browser submits hidden false input because checkbox was unchecked
+        resp = await client.post(
+            "/teacher/consent",
+            data={
+                "form_source": "class",
+                "redirect_to": "/teacher/class",
+                "consent_share_scores": "false",
+            },
+            headers={"Authorization": "Bearer test-token"},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        assert resp.headers["location"] == "/teacher/class"
+        assert teacher.consent_share_scores is False
+        # Research consent must NOT be touched by class form
+        assert teacher.consent_research is True
+
+        # Verify ConsentLog entry created with value False
+        logs = [
+            obj
+            for obj in session.added
+            if isinstance(obj, ConsentLog) and obj.field == "consent_share_scores"
+        ]
+        assert len(logs) == 1
+        assert logs[0].value is False
+        assert logs[0].teacher_id == teacher_id
+        assert logs[0].channel == "web"
+
+        # Case B: Re-enable sharing, then uncheck where checkbox is omitted completely
+        teacher.consent_share_scores = True
+        resp2 = await client.post(
+            "/teacher/consent",
+            data={
+                "form_source": "class",
+                "redirect_to": "/teacher/class",
+            },
+            headers={"Authorization": "Bearer test-token"},
+            follow_redirects=False,
+        )
+        assert resp2.status_code == 303
+        assert resp2.headers["location"] == "/teacher/class"
+        assert teacher.consent_share_scores is False
+        latest_log = [
+            obj
+            for obj in session.added
+            if isinstance(obj, ConsentLog) and obj.field == "consent_share_scores"
+        ][-1]
+        assert latest_log.value is False
+
+
+@pytest.mark.asyncio
+async def test_consent_uncheck_on_progress_form_turns_sharing_off_and_writes_consent_log() -> None:
+    """Unchecking consent on progress form saves False and writes a ConsentLog row."""
+    teacher_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    teacher = Teacher(
+        id=teacher_id,
+        name="सुमन शर्मा",
+        consent_share_scores=True,
+        consent_research=True,
+        is_demo=True,
+    )
+    user = AppUser(
+        id=uuid.uuid4(),
+        username="teacher.demo1",
+        role="teacher",
+        teacher_id=teacher_id,
+        password_hash="hash",
+    )
+
+    session = InMemoryProgressSession(entities=[teacher, user])
+    app = create_test_progress_app(session, user=user)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        # Uncheck score sharing, keep research consent
+        resp = await client.post(
+            "/teacher/consent",
+            data={
+                "form_source": "progress",
+                "redirect_to": "/teacher/progress?saved=1",
+                "consent_share_scores": "false",
+                "consent_research": "true",
+            },
+            headers={"Authorization": "Bearer test-token"},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        assert resp.headers["location"] == "/teacher/progress?saved=1"
+        assert teacher.consent_share_scores is False
+        assert teacher.consent_research is True
+
+        share_log = next(
+            log
+            for log in session.added
+            if isinstance(log, ConsentLog) and log.field == "consent_share_scores"
+        )
+        assert share_log.value is False
+
+        # Uncheck BOTH
+        teacher.consent_share_scores = True
+        resp2 = await client.post(
+            "/teacher/consent",
+            data={
+                "form_source": "progress",
+                "redirect_to": "/teacher/progress?saved=1",
+                "consent_share_scores": "false",
+                "consent_research": "false",
+            },
+            headers={"Authorization": "Bearer test-token"},
+            follow_redirects=False,
+        )
+        assert resp2.status_code == 303
+        assert teacher.consent_share_scores is False
+        assert teacher.consent_research is False
+
+        latest_share = [
+            log
+            for log in session.added
+            if isinstance(log, ConsentLog) and log.field == "consent_share_scores"
+        ][-1]
+        assert latest_share.value is False
+
+        latest_research = [
+            log
+            for log in session.added
+            if isinstance(log, ConsentLog) and log.field == "consent_research"
+        ][-1]
+        assert latest_research.value is False
+
+
+@pytest.mark.asyncio
+async def test_consent_redirect_restriction() -> None:
+    """Restricts redirect_to to local paths starting with a single '/' and rejects '//', schemes, backslashes."""
+    teacher_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    teacher = Teacher(id=teacher_id, name="सुमन शर्मा", is_demo=True)
+    user = AppUser(
+        id=uuid.uuid4(),
+        username="teacher.demo1",
+        role="teacher",
+        teacher_id=teacher_id,
+        password_hash="hash",
+    )
+
+    session = InMemoryProgressSession(entities=[teacher, user])
+    app = create_test_progress_app(session, user=user)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        # Valid local paths
+        for path in ["/teacher/class", "/teacher/progress?saved=1", "/teacher"]:
+            res = await client.post(
+                "/teacher/consent",
+                data={"redirect_to": path, "consent_share_scores": "true"},
+                headers={"Authorization": "Bearer test-token"},
+                follow_redirects=False,
+            )
+            assert res.status_code == 303
+            assert res.headers["location"] == path
+
+        # Dangerous/open redirects that MUST be rejected and default to /teacher/progress?saved=1
+        invalid_redirects = [
+            "//evil.com",
+            "///evil.com",
+            "https://evil.com/phish",
+            "http://evil.com",
+            "javascript:alert(1)",
+            r"\evil.com",
+            r"/\evil.com",
+            r"/teacher\class",
+            "ftp://files.example.com",
+            "",
+            "   ",
+        ]
+        for bad_url in invalid_redirects:
+            res = await client.post(
+                "/teacher/consent",
+                data={"redirect_to": bad_url, "consent_share_scores": "true"},
+                headers={"Authorization": "Bearer test-token"},
+                follow_redirects=False,
+            )
+            assert res.status_code == 303
+            assert res.headers["location"] == "/teacher/progress?saved=1", f"Failed for {bad_url}"

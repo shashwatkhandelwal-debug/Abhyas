@@ -129,12 +129,15 @@
         <h2 class="section-heading">{{ get_message('ui_progress_consent_heading') }}</h2>
         <form method="POST" action="/teacher/consent" class="consent-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="form_source" value="progress">
+          <input type="hidden" name="redirect_to" value="/teacher/progress?saved=1">
 
           <div class="setting-item">
             <div class="setting-text">
               <label for="consent_share_scores" class="setting-label">{{ get_message('ui_progress_share_scores') }}</label>
               <p class="setting-desc">{{ get_message('ui_progress_share_scores_desc') }}</p>
             </div>
+            <input type="hidden" name="consent_share_scores" value="false">
             <input
               type="checkbox"
               id="consent_share_scores"
@@ -150,6 +153,7 @@
               <label for="consent_research" class="setting-label">{{ get_message('ui_progress_research') }}</label>
               <p class="setting-desc">{{ get_message('ui_progress_research_desc') }}</p>
             </div>
+            <input type="hidden" name="consent_research" value="false">
             <input
               type="checkbox"
               id="consent_research"

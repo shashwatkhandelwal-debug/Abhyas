@@ -846,3 +846,115 @@ async def test_arp_dashboard_renders_suggested_visits(
     assert "विज़िट शिक्षिका अ" in res.text and "विज़िट शिक्षिका ब" in res.text
     assert "— / 2.0" in res.text  # avg_score None
     assert "1.25 / 2.0" in res.text
+
+
+@pytest.mark.asyncio
+async def test_arp_page_renders_escalated_questions_only_and_never_chat_messages(
+    arp_app: FastAPI,
+    arp_user: AppUser,
+) -> None:
+    """Fails if the ARP page renders any message text other than escalated questions (Review item 2b)."""
+    from datetime import date
+
+    from backend.app.reports.arp_digest import (
+        ARPDigestData,
+        EscalatedQuestionItem,
+        TeacherDigestRow,
+    )
+
+    t_id = uuid.uuid4()
+    week = date(2026, 10, 19)
+
+    # Escalated question that SHOULD be rendered
+    escalated_q_text = "हैंडबुक में इसका उत्तर नहीं मिला: क्या 0 सम संख्या है?"
+    escalated_items = [
+        EscalatedQuestionItem(
+            question_id=str(uuid.uuid4()),
+            teacher_id=str(t_id),
+            teacher_display_name="सुमन शर्मा",
+            text=escalated_q_text,
+            category="गणित",
+            created_at=datetime.now(UTC),
+        )
+    ]
+
+    # Regular chat message texts that must NEVER be rendered on the ARP page
+    forbidden_chat_texts = [
+        "नमस्ते बच्चों, आज हम घटाव सीखेंगे",
+        "रवि, तीलियाँ गिनो",
+        "शाबाश रवि!",
+        "यह शिक्षिका की व्यक्तिगत चैट है जो ARP को कभी नहीं दिखनी चाहिए",
+    ]
+
+    digest = ARPDigestData(
+        cluster_id="KNP-C01",
+        cluster_name="कल्याणपुर संकुल",
+        selected_week_start=week,
+        available_weeks=[week],
+        total_teachers=1,
+        active_teachers_count=1,
+        completed_loops_count=0,
+        moves_practised_count=1,
+        consenting_teachers=[
+            TeacherDigestRow(
+                teacher_id=str(t_id),
+                name="सुमन शर्मा",
+                school="प्रा.वि. कल्यानपुर",
+                move_id="NUM_SUB_REGROUP_BUNDLES",
+                move_title="हासिल वाला घटाव",
+                step_reached="REHEARSE",
+                max_evidence_level=2,
+                rubric_dots=[],
+                needs_help=False,
+                avg_score=1.5,
+            )
+        ],
+        non_consenting_count=0,
+        suggested_visits=[],
+        escalated_questions=escalated_items,
+    )
+
+    mock_db = AsyncMock(spec=AsyncSession)
+    arp_app.dependency_overrides[get_current_user] = lambda: arp_user
+    arp_app.dependency_overrides[get_db_session] = lambda: mock_db
+
+    # Also check if Message query is attempted on DB: arp router must not load Message records
+    # Return mock messages if Message model queried to verify template/page never displays them
+    msg_scalars = MagicMock()
+    msg_scalars.all.return_value = [
+        Message(
+            id=uuid.uuid4(),
+            teacher_id=t_id,
+            direction="inbound",
+            kind="text",
+            text=text,
+            created_at=datetime.now(UTC),
+        )
+        for text in forbidden_chat_texts
+    ]
+
+    mock_db.scalars.return_value = msg_scalars
+
+    import backend.app.web.arp as arp_module
+
+    orig_build = arp_module.build_arp_digest
+    arp_module.build_arp_digest = AsyncMock(return_value=digest)
+
+    try:
+        transport = ASGITransport(app=arp_app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            res = await client.get("/arp")
+
+        assert res.status_code == 200
+        html = res.text
+
+        # The escalated question MUST be rendered
+        assert escalated_q_text in html
+
+        # NO regular chat message text may appear anywhere in the rendered page
+        for forbidden in forbidden_chat_texts:
+            assert forbidden not in html, (
+                f"Forbidden chat message rendered on ARP page: {forbidden}"
+            )
+    finally:
+        arp_module.build_arp_digest = orig_build
