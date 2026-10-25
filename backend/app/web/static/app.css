@@ -19,6 +19,11 @@
   --border: #E5E0D8;
   --bubble-in: #DCF4E8;
   --bubble-out: #FFFFFF;
+  --source-excerpt-bg: #E4EFEA;
+  --source-excerpt-ink: #1F2421;
+  --source-excerpt-note: #5E6662;
+  --source-error-bg: #FDE8E7;
+  --source-error-ink: #B3261E;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 18px;
@@ -36,6 +41,11 @@
     --border: #2C3530;
     --bubble-in: #194D40;
     --bubble-out: #232B27;
+    --source-excerpt-bg: #19382E;
+    --source-excerpt-ink: #F0EDE8;
+    --source-excerpt-note: #A3ACA7;
+    --source-error-bg: #5A1A16;
+    --source-error-ink: #FFB4AB;
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
   }
@@ -433,13 +443,14 @@ body {
 .source-chip[aria-expanded="true"] { background: var(--brand); color: var(--brand-ink); }
 .source-excerpt, .source-error {
   flex-basis: 100%; margin: 0; padding: 8px 10px; border-radius: var(--radius-sm);
-  font-size: 0.85rem; background: var(--brand-light); max-height: 40vh; overflow-y: auto;
+  font-size: 0.85rem; max-height: 40vh; overflow-y: auto;
 }
+.source-excerpt { background: var(--source-excerpt-bg); color: var(--source-excerpt-ink); }
 .source-excerpt p { margin: 0 0 6px; }
-.source-excerpt-head { font-weight: 600; }
-.source-excerpt-gloss { font-style: italic; }
-.source-excerpt-note { font-size: 0.78rem; color: var(--muted); }
-.source-error { color: var(--danger); background: var(--danger-light); }
+.source-excerpt-head { font-weight: 600; color: var(--source-excerpt-ink); }
+.source-excerpt-gloss { font-style: italic; color: var(--source-excerpt-ink); }
+.source-excerpt-note { font-size: 0.78rem; color: var(--source-excerpt-note); }
+.source-error { color: var(--source-error-ink); background: var(--source-error-bg); }
 .reply-chip {
   background-color: var(--surface);
   border: 1.5px solid var(--brand);
@@ -530,7 +541,12 @@ body {
   overflow-x: auto;
   gap: 0.4rem;
   padding-bottom: 0.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
+.sample-list::-webkit-scrollbar, .handbook-chips::-webkit-scrollbar { height: 4px; }
+.sample-list::-webkit-scrollbar-track, .handbook-chips::-webkit-scrollbar-track { background: transparent; }
+.sample-list::-webkit-scrollbar-thumb, .handbook-chips::-webkit-scrollbar-thumb { background-color: var(--border); border-radius: var(--radius-full); }
 .sample-item { flex: 0 0 15rem; display: flex; flex-direction: column; gap: 0.2rem; }
 .sample-note { font-size: 0.75rem; line-height: 1.3; color: var(--muted); padding: 0 0.3rem; }
 

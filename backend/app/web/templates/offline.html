@@ -17,41 +17,41 @@
   </script>
   <link rel="stylesheet" href="/static/app.css?v={{ asset_v() }}">
   <style>
-    .bi > [lang="en"] { display: none; }
-    html[data-lang="en"] .bi > [lang="hi"] { display: none; }
-    html[data-lang="en"] .bi > [lang="en"] { display: inline; }
-    .offline-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      padding: 1.25rem;
-      margin: 1rem;
-      box-shadow: var(--shadow-sm);
-    }
-    .checklist-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.75rem;
-      margin-bottom: 0.75rem;
-      font-size: 0.95rem;
-    }
-    .checklist-item input[type="checkbox"] {
-      width: 22px;
-      height: 22px;
-      margin-top: 3px;
-      accent-color: var(--brand);
-    }
-    .offline-badge {
-      display: inline-block;
-      background: var(--danger-light);
-      color: var(--danger);
-      font-size: 0.8rem;
-      font-weight: 700;
-      padding: 0.2rem 0.6rem;
-      border-radius: var(--radius-full);
-      margin-bottom: 0.5rem;
-    }
-  </style>
+.bi > [lang="en"] { display: none; }
+html[data-lang="en"] .bi > [lang="hi"] { display: none; }
+html[data-lang="en"] .bi > [lang="en"] { display: inline; }
+.offline-card {
+background: var(--surface);
+border: 1px solid var(--border);
+border-radius: var(--radius-md);
+padding: 1.25rem;
+margin: 1rem;
+box-shadow: var(--shadow-sm);
+}
+.checklist-item {
+display: flex;
+align-items: flex-start;
+gap: 0.75rem;
+margin-bottom: 0.75rem;
+font-size: 0.95rem;
+}
+.checklist-item input[type="checkbox"] {
+width: 22px;
+height: 22px;
+margin-top: 3px;
+accent-color: var(--brand);
+}
+.offline-badge {
+display: inline-block;
+background: var(--danger-light);
+color: var(--danger);
+font-size: 0.8rem;
+font-weight: 700;
+padding: 0.2rem 0.6rem;
+border-radius: var(--radius-full);
+margin-bottom: 0.5rem;
+}
+</style>
 </head>
 <body>
   <div class="app-container">

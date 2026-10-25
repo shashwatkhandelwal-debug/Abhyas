@@ -141,6 +141,15 @@ class SessionRepository:
         await self.session.commit()
         return entry
 
+    async def has_consent_decision(self, teacher_id: UUID, field: str) -> bool:
+        """Returns True if teacher has logged a decision for the given consent field."""
+        stmt = select(ConsentLog).where(
+            ConsentLog.teacher_id == teacher_id,
+            ConsentLog.field == field,
+        )
+        res = await self.session.execute(stmt)
+        return res.first() is not None
+
     async def record_adoption_evidence(
         self,
         teacher_id: UUID,

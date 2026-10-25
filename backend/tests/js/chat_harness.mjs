@@ -193,6 +193,9 @@ export function loadChat({ strings = {}, online = true } = {}) {
   byId['status-bar'].hidden = true;
   add('sr-live');
   add('chat-input', 'input');
+  const netBanner = add('network-banner');
+  netBanner.setAttribute('data-slow-text', 'नेटवर्क धीमा है — लाइट मोड चालू करें?');
+  netBanner.setAttribute('data-offline-text', 'आप ऑफ़लाइन हैं');
 
   const findById = (node, id) => {
     for (const c of node.children) {
@@ -322,7 +325,8 @@ export function loadChat({ strings = {}, online = true } = {}) {
         TYPING_TIMEOUT_MS, COLD_START_HINT_MS, AUDIO_WAIT_MS, MAX_AUTO_RETRIES, BACKOFF_STEPS,
         pollMessages, updateOnlineStatus, upgradeServerAudio,
         toggleTranslation, buildTranslateControl, TRANSLATABLE_SPEAKERS, getSpeakerLabel,
-        renderSceneHeader, addressChild, renderHint, hintSent, applyView, setupSceneEnd, setupHandbookChips, recorderErrorText, toggleLiteMode, flashStatus })`,
+        renderSceneHeader, addressChild, renderHint, hintSent, applyView, setupSceneEnd, setupHandbookChips, recorderErrorText, toggleLiteMode, flashStatus,
+        recordRequestLatency, isSlowNetwork, showSlowNetworkWarning })`,
     sandbox
   );
   api.setUiStrings(strings);

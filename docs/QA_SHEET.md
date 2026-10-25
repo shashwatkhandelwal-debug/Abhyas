@@ -43,7 +43,7 @@ have **not** done: a bias audit of the Hindi output across dialects, or of the s
 is reviewed only by us so far (see question 11).
 
 **5. Privacy and consent?**
-Private by default: `consent_share_scores` is false unless the teacher agrees. The ARP digest lists only
+Private by default: `consent_share_scores` is false unless the teacher agrees (asked once after the first completed rehearsal feedback, not during setup; togglable anytime from My class or menu). The ARP digest lists only
 consenting teachers (`test_non_consenting_teacher_never_appears_by_name_or_score`,
 `test_arp_access_in_own_cluster_consenting_vs_non_consenting`). Trainer views hide any group under
 `AGGREGATION_SUPPRESSION_N` = 10 (`config.py`; `test_trainer_suppression_n_less_than_10`,

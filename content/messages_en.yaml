@@ -5,7 +5,7 @@
 # ingest time stay Hindi on purpose (see KEEP_HINDI in that test).
 welcome: {text: "Hello! I am Abhyas — your practice partner. Each week, in about 15 minutes, we will learn one classroom move and practise it by voice with three children."}
 consent_service: {text: "Before we start: your voice is turned into text and the audio is deleted straight away. Your scores are visible only to you unless you yourself allow sharing with your ARP. You can erase everything at any time by writing 'delete my data'. Do you agree?"}
-consent_details: {text: "What we keep: your name, class, experience, the text of what you say, your practice scores and, if you tell us, the struggles you pick in 'My class' (from a fixed list, at most 3) and the teaching skill you want to get better at (from a fixed list, at most 2). What we do not keep: recordings of your voice, any information about children. Trainers (DIET/SCERT) only see totals for groups of 10 or more teachers, never anyone's name; your ARP does not see your class struggles or this choice."}
+consent_details: {text: "What we keep: your name, class, experience, the text of what you say, your practice scores and, if you tell us, the struggles you pick in 'My class' (from a fixed list, at most 3) and the teaching skill you want to get better at (from a fixed list, at most 2). What we do not keep: recordings of your voice (deleted immediately), any information about children. If you choose to share with your ARP, they see the move you practised and your scores so they can prepare help before visiting. A question the handbook cannot answer is sent to the ARP, and nothing else from the chat is. Your ARP never sees your recordings. Trainers (DIET/SCERT) only see totals for groups of 10 or more teachers, never anyone's name."}
 consent_declined: {text: "No problem. Whenever you want to start, send 'hello'."}
 ask_join_code: {text: "Send the code your ARP gave you. If you do not have a code, write 'no'."}
 join_code_invalid: {text: "That code was not found. Please send it again, or write 'no'."}
@@ -15,11 +15,12 @@ btn_female: {text: "Teacher (she)"}
 btn_male: {text: "Teacher (he)"}
 ask_experience: {text: "{name}, how many years have you been teaching?"}
 ask_classes: {text: "Which class do you teach this year?"}
-consent_share_scores: {text: "Would you like your ARP to see your practice scores, so they can support you during classroom visits? You can change this at any time."}
+consent_share_scores: {text: "Would you like to share your practice scores with your ARP? If you share, your ARP will see the move you practised and your scores so they can prepare help on exactly this before their next visit. A question the handbook cannot answer is sent to the ARP, and nothing else from the chat is. Your ARP will not see your voice recordings. You can change this at any time in My class."}
 placement_intro: {text: "Let's do a short practice. This is not a test. The board says: 52 − 17. Ravi from Class 2 says: '45!' Talk to Ravi the way you would in class — by voice or by typing."}
 placement_done: {text: "Very good! Now I know where to start for you."}
 ready_first_move: {text: "Your first move is: {move_title}. Let's begin!"}
-learn_intro: {text: "This week's move: {move_title}. First listen to this 2-minute voice note. The key points are written below:"}
+learn_intro: {text: "This week's move: {move_title}. The key points are written below:"}
+learn_intro_audio: {text: "This week's move: {move_title}. First listen to this 2-minute voice note. The key points are written below:"}
 explain_back_prompt: {text: "Now, in 1 minute, tell me in your own words: what is the most important thing in this move? Send it by voice or by typing."}
 explain_back_reply: {text: "Thank you! You mentioned {covered} of {total} key points."}
 explain_back_missing: {text: "One more thing to remember:\n{point}"}
@@ -792,3 +793,12 @@ coach_outcome_relapse: {text: "You gave a new problem after telling the answer, 
 coach_outcome_checked: {text: "You checked on a new problem, and {child} solved it by explaining the method: it stuck."}
 coach_outcome_concrete: {text: "You used something concrete (bundles and sticks), so {child} could see what to do where."}
 coach_outcome_explain: {text: "You asked {child} to explain, so their own method came out."}
+btn_share_arp: {text: "Share with my ARP"}
+btn_share_not_now: {text: "Not now"}
+consent_share_saved_yes: {text: "Thank you! Your scores will be shared with your ARP. You can change this at any time in My class."}
+consent_share_saved_no: {text: "Okay, your scores will not be shared. You can change this at any time in My class."}
+ui_arp_share_ratio: {text: "{shared} of {total} teachers share scores with you"}
+ui_menu_share_scores_on: {text: "Sharing with ARP: On (Turn off)"}
+ui_menu_share_scores_off: {text: "Sharing with ARP: Off (Turn on)"}
+ui_class_share_scores_title: {text: "Share scores with ARP"}
+ui_class_share_scores_desc: {text: "Your ARP will see your practised move and scores to prepare help before their visit. A question the handbook cannot answer is sent to the ARP, and nothing else from the chat is. They never see your recordings."}

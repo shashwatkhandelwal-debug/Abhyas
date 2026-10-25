@@ -133,7 +133,7 @@ Abhyas implements explicit data-minimisation and privacy safeguards, noting the 
    - Reversible phone numbers for WhatsApp delivery are encrypted at rest using **Fernet symmetric encryption** (`cryptography.fernet.Fernet`, AES-128-CBC with PKCS7 padding and HMAC-SHA256 authentication). Reversible keys are never stored in git.
    - Synthesized child audio references (`audio_ref`) are deterministic SHA-256 cache keys (`hashlib.sha256`) of normalized text and voice parameters, protected by session ownership checks on `/api/audio/{audio_ref}.ogg`.
 5. **Consent & Aggregation:**
-   - Individual teacher rehearsal scores and fidelity metrics reach mentors (ARPs) only when the teacher explicitly opts in (`consent_share_scores == True`).
+   - Individual teacher rehearsal scores and fidelity metrics reach mentors (ARPs) only when the teacher explicitly opts in (`consent_share_scores == True`). Setup only asks service consent (`consent_service`); score sharing is asked once after the teacher's first completed practice scene, defaulting to opt-in False, and can be toggled anytime from My class or the menu.
    - District and trainer consoles enforce **$n < 10$ suppression**: any school cohort or training batch with fewer than 10 teachers displays aggregate statistics only, redacting individual teacher records.
 6. **Data Retention & Right to Erasure:**
    - Automated retention purge job deletes inactive session transcripts after `DATA_RETENTION_DAYS` (default: 90 days).

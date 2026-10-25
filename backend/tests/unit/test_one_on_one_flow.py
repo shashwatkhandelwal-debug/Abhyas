@@ -382,8 +382,10 @@ async def test_one_on_one_below_threshold_offers_continue_or_skip_then_gives_fee
     (score,) = h.service.repo._rehearsal_scores
     assert score.strength_hi
     # the realism question names the child
-    assert out[-1].text_hi == get_message(
-        "realism_prompt_one_on_one", "f", child=get_message("speaker_ravi")
+    assert any(
+        m.text_hi
+        == get_message("realism_prompt_one_on_one", "f", child=get_message("speaker_ravi"))
+        for m in out
     )
 
 

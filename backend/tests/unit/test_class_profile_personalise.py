@@ -351,7 +351,6 @@ async def test_invite_after_onboarding_then_the_choice_reorders_her_path() -> No
         ("शिक्षिका", "btn_female"),
         ("0-1 साल", None),
         ("कक्षा 1-2", None),
-        ("हाँ", "btn_yes"),
         ("रवि, 52 में से 17 घटाना है।", None),
     ]
     for text, button in steps:

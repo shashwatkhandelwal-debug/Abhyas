@@ -168,8 +168,6 @@ def test_demo1_first_time_teacher_from_hello_to_feedback(open_chat: Any, server:
     assert "तकनीकी" not in page.inner_text("#chat-messages")
     has_next_action(page, "classes")
     say(page, "2")
-    has_next_action(page, "share")
-    tap_reply(page, _t("btn_yes"))
     has_next_action(page, "placement")
     say(page, "रवि, तुमने 52 में से 17 कैसे घटाया?")
     say(page, "तुमने बंडल खोलकर देखा क्या?")

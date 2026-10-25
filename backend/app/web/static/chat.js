@@ -27,6 +27,8 @@ const CHIP_CONFIRM_MS = 1400; // how long a tapped chip shows its inline ✓
 const FOLLOW_UP_POLL_MS = 1200; // one more poll after a reply, so the step line catches up
 const MAX_AUTO_RETRIES = 3; // network/5xx attempts before a bubble shows the red "!"
 const BACKOFF_STEPS = [2000, 4000, 8000, 16000, 30000];
+const SLOW_REQUEST_THRESHOLD_MS = 8000; // latency above this across several requests triggers slow banner
+const SLOW_REQUEST_COUNT_THRESHOLD = 3; // consecutive slow requests before prompting lite mode
 
 // ── CSRF Protection ────────────────────────────────────────────────────────
 function getCsrfToken() {
@@ -366,6 +368,8 @@ const state = {
   net: 'ok',
   serverSkewMs: 0, // server clock minus client clock, from poll responses
   lastAcceptedAt: 0, // when a POST was last accepted (guards against stale poll replies)
+  requestCount: 0, // total completed requests, to ignore cold start on first load
+  slowRequestCount: 0, // consecutive slow requests (> 8000ms)
 };
 
 function isChildSpeaker(speaker) {
@@ -603,9 +607,7 @@ async function drainOnce() {
       console.warn('Upload error for item', id, err);
       result = { outcome: 'retry' };
     }
-    if (Date.now() - startTime > 8000) {
-      showSlowNetworkWarning();
-    }
+    recordRequestLatency(Date.now() - startTime);
 
     if (result.outcome === 'accepted') {
       if (result.body && result.body.message_id) {
@@ -777,9 +779,7 @@ async function pollMessages() {
 
     const res = await netFetch(url);
     const duration = Date.now() - startTime;
-    if (duration > 8000) {
-      showSlowNetworkWarning();
-    }
+    recordRequestLatency(duration);
 
     if (res.ok) {
       const data = await res.json();
@@ -950,7 +950,12 @@ function upgradeServerAudio() {
   document.querySelectorAll('.bubble-audio').forEach((el) => {
     const btn = el.querySelector('.btn-play[data-audio-ref]');
     if (!btn || !el.parentNode) return;
-    el.parentNode.replaceChild(buildAudioWrap(btn.getAttribute('data-audio-ref'), 'ready'), el);
+    const ref = (btn.getAttribute('data-audio-ref') || '').trim();
+    if (!ref || ref === 'null' || ref === 'undefined') {
+      el.parentNode.removeChild(el);
+      return;
+    }
+    el.parentNode.replaceChild(buildAudioWrap(ref, 'ready'), el);
   });
 }
 
@@ -1448,6 +1453,30 @@ function updateOnlineStatus() {
   }
 }
 
+function isSlowNetwork() {
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (conn) {
+    if (conn.saveData) return true;
+    if (conn.effectiveType === '2g' || conn.effectiveType === 'slow-2g') return true;
+  }
+  return state.slowRequestCount >= SLOW_REQUEST_COUNT_THRESHOLD;
+}
+
+function recordRequestLatency(durationMs) {
+  state.requestCount++;
+  // Never treat the very first request (often server cold start on free hosting) as slow network
+  if (state.requestCount > 1) {
+    if (durationMs > SLOW_REQUEST_THRESHOLD_MS) {
+      state.slowRequestCount++;
+    } else {
+      state.slowRequestCount = 0;
+    }
+  }
+  if (isSlowNetwork()) {
+    showSlowNetworkWarning();
+  }
+}
+
 function showSlowNetworkWarning() {
   const banner = document.getElementById('network-banner');
   if (!banner || !navigator.onLine) return;
@@ -1494,6 +1523,32 @@ async function toggleLiteMode(forceValue = null) {
   }
 }
 window.toggleLiteMode = toggleLiteMode;
+
+async function toggleShareScores() {
+  const btn = document.getElementById('share-scores-menu-btn');
+  if (!btn) return;
+  const current = btn.getAttribute('data-shared') === 'true';
+  const target = !current;
+  const csrfToken = getCsrfToken();
+  const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+  if (csrfToken) {
+    headers['x-csrf-token'] = csrfToken;
+  }
+  try {
+    const res = await netFetch('/teacher/consent', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ consent_share_scores: target }),
+    });
+    if (res.ok) {
+      btn.setAttribute('data-shared', target ? 'true' : 'false');
+      btn.textContent = target ? btn.getAttribute('data-on-text') : btn.getAttribute('data-off-text');
+    }
+  } catch (err) {
+    console.warn('Failed to update consent_share_scores', err);
+  }
+}
+window.toggleShareScores = toggleShareScores;
 
 // ── Mic UI Interaction ──────────────────────────────────────────────────────
 // Two ways to record, one button:
@@ -1890,6 +1945,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (liteBtn) {
       liteBtn.textContent = t('ui_chat_lite_on');
     }
+  }
+
+  if (isSlowNetwork()) {
+    showSlowNetworkWarning();
   }
 
   // 3. Form submission

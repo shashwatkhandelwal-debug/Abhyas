@@ -11,8 +11,7 @@ All teacher-facing strings come from `content/messages_hi.yaml` (seed: `content-
 | `PROFILE_NAME` | `ask_name` | any text/voice → store first 40 chars → `PROFILE_ADDRESS` |
 | `PROFILE_ADDRESS` | `ask_address_form` ("आपको कैसे संबोधित करें?") + buttons [शिक्षिका] [शिक्षक] | → `teacher.address_form` f/m (selects `text_m` message variants) → `PROFILE_EXPERIENCE` |
 | `PROFILE_EXPERIENCE` | `ask_experience` + list [0-1 साल, 2-5, 6-10, 10+] | choice → `experience_band`, `first_year = (0-1)` → `PROFILE_CLASSES` |
-| `PROFILE_CLASSES` | `ask_classes` + list [कक्षा 1, कक्षा 2, कक्षा 3, कक्षा 1-2, कक्षा 2-3, कक्षा 1-3] | → `classes` → `SHARE_CONSENT` |
-| `SHARE_CONSENT` | `consent_share_scores` + buttons [हाँ] [नहीं] | → log → `PLACEMENT_INTRO` |
+| `PROFILE_CLASSES` | `ask_classes` + list [कक्षा 1, कक्षा 2, कक्षा 3, कक्षा 1-2, कक्षा 2-3, कक्षा 1-3] | → `classes` → `PLACEMENT_INTRO` |
 | `PLACEMENT_INTRO` | `placement_intro` (+ Ravi's first line: "45!" via engine/voice for 52−17) | voice/text → `PLACEMENT` turn 1 |
 | `PLACEMENT` | 2 teacher turns with Ravi only (engine placement mode) | after turn 2 → `placement_done` (no score shown, warm message) → compute move path → `READY` |
 | `READY` | `ready_first_move` | starts weekly loop at `LEARN` immediately |
@@ -28,7 +27,7 @@ Add table `invite_code(code text pk, cluster_id, batch_id, district, active bool
 | `MODEL` | `model_offer` ; buttons [`btn_listen` सुनें] [`btn_skip` छोड़ें] | listen → send model rehearsal: text transcript (one message, speaker-labelled) + one concatenated audio (voices per speaker) → then `REHEARSE_INTRO`; skip → `REHEARSE_INTRO` |
 | `REHEARSE_INTRO` | `rehearse_intro` (scene: class, problem on board, "जब तैयार हों, बच्चों से बात करना शुरू करें। खत्म करने के लिए 'बस' बोलें।") + each child's opening line (engine MISCONCEPTION answers, voiced) | first voice/text → `REHEARSE` (that input is turn 1) |
 | `REHEARSE` | — | each input = one teacher turn → SceneRunner (02 §2.2) → child line(s). Stop word / scene end → `FEEDBACK`. Keyword question prefix ("सवाल:", "प्रश्न:") → ASK |
-| `FEEDBACK` | coach output: text (strength, change, exact words) + coach audio; if low confidence prefix `coach_low_conf_prefix`; then realism rating list (1–5) ; buttons [`btn_retry` फिर से अभ्यास] [`btn_continue` आगे बढ़ें] | retry (if `rehearse_attempts < MAX_REHEARSAL_RETRIES_PER_WEEK` (3)) → new scene → `REHEARSE_INTRO`; else `retry_limit` → continue; continue → `TRY_IN_CLASS`. Rating → `realism_rating` |
+| `FEEDBACK` | coach output: text (strength, change, exact words) + coach audio; if low confidence prefix `coach_low_conf_prefix`; then realism rating list (1–5) ; buttons [`btn_retry` फिर से अभ्यास] [`btn_continue` आगे बढ़ें]. On first completed practice scene, appends score-sharing consent buttons [`btn_share_arp` ARP से साझा करें] [`btn_share_not_now` अभी नहीं] (opt-in default: false; togglable anytime from My class or menu). | retry (if `rehearse_attempts < MAX_REHEARSAL_RETRIES_PER_WEEK` (3)) → new scene → `REHEARSE_INTRO`; else `retry_limit` → continue; continue → `TRY_IN_CLASS`. Rating → `realism_rating` |
 | `TRY_IN_CLASS` | `try_in_class` + peer checklist (numbered) + 2 reflection questions ; buttons [`btn_peer` साथी ने देखा] [`btn_self` खुद बताऊँगी] [`btn_later` बाद में] ; schedule `followup_try_in_class` +72 h | peer → `REFLECT_PEER`; self → `REFLECT_SELF`; later → stay (reminder job) |
 | `REFLECT_PEER` | each checklist item with [हाँ] [नहीं] buttons, one at a time | after last → evidence level 3 → `DONE` |
 | `REFLECT_SELF` | reflection Q1, then Q2 (voice/text) | after Q2 → evidence level 2 → `DONE` |

@@ -17,6 +17,7 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
+from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 import yaml
@@ -213,6 +214,7 @@ async def teacher_chat_page(
             "view": view,
             "scene_header": header,
             "lite_mode": teacher.lite_mode,
+            "consent_share_scores": bool(teacher.consent_share_scores),
             "demo_mode": is_demo,
             "demo_banner_text": demo_banner_text,
             "show_demo_divider": bool(
@@ -593,6 +595,22 @@ async def start_teacher_module(
     return RedirectResponse(url="/teacher", status_code=status.HTTP_303_SEE_OTHER)
 
 
+DEFAULT_CONSENT_REDIRECT = "/teacher/progress?saved=1"
+
+
+def safe_consent_redirect_url(url: str | None) -> str:
+    """Restricts redirect_to to local paths starting with a single '/' (rejects '//', schemes, backslashes)."""
+    if not url:
+        return DEFAULT_CONSENT_REDIRECT
+    url = url.strip()
+    if not url.startswith("/") or url.startswith("//") or "\\" in url or "://" in url:
+        return DEFAULT_CONSENT_REDIRECT
+    parsed = urlsplit(url)
+    if parsed.scheme or parsed.netloc:
+        return DEFAULT_CONSENT_REDIRECT
+    return url
+
+
 @router.post("/teacher/consent")
 async def update_teacher_consent(
     request: Request,
@@ -614,37 +632,136 @@ async def update_teacher_consent(
         )
 
     content_type = request.headers.get("content-type", "")
+    redirect_to = DEFAULT_CONSENT_REDIRECT
+    now = datetime.now(UTC)
     if "application/json" in content_type:
         body = await request.json()
-        new_share = bool(body.get("consent_share_scores", False))
-        new_research = bool(body.get("consent_research", False))
+        if "consent_share_scores" in body:
+            teacher.consent_share_scores = bool(body["consent_share_scores"])
+            db.add(
+                ConsentLog(
+                    id=uuid.uuid4(),
+                    teacher_id=teacher.id,
+                    field="consent_share_scores",
+                    value=teacher.consent_share_scores,
+                    channel="web",
+                    created_at=now,
+                )
+            )
+        if "consent_research" in body:
+            teacher.consent_research = bool(body["consent_research"])
+            db.add(
+                ConsentLog(
+                    id=uuid.uuid4(),
+                    teacher_id=teacher.id,
+                    field="consent_research",
+                    value=teacher.consent_research,
+                    channel="web",
+                    created_at=now,
+                )
+            )
     else:
         form = await request.form()
-        new_share = form.get("consent_share_scores") in ("true", "1", "on", True)
-        new_research = form.get("consent_research") in ("true", "1", "on", True)
+        if "redirect_to" in form:
+            redirect_to = safe_consent_redirect_url(str(form["redirect_to"]))
+        else:
+            redirect_to = DEFAULT_CONSENT_REDIRECT
 
-    teacher.consent_share_scores = new_share
-    teacher.consent_research = new_research
+        form_source = str(form.get("form_source", "")).lower()
 
-    now = datetime.now(UTC)
-    log_share = ConsentLog(
-        id=uuid.uuid4(),
-        teacher_id=teacher.id,
-        field="consent_share_scores",
-        value=new_share,
-        channel="web",
-        created_at=now,
-    )
-    log_research = ConsentLog(
-        id=uuid.uuid4(),
-        teacher_id=teacher.id,
-        field="consent_research",
-        value=new_research,
-        channel="web",
-        created_at=now,
-    )
-    db.add(log_share)
-    db.add(log_research)
+        def _parse_checkbox(field_name: str) -> bool:
+            values = form.getlist(field_name)
+            return any(str(v).lower() in ("true", "1", "on", "yes") for v in values)
+
+        # Detect which form posted:
+        is_class_form = (
+            form_source == "class"
+            or redirect_to == "/teacher/class"
+            or (
+                "consent_share_scores" in form
+                and "consent_research" not in form
+                and "progress" not in redirect_to
+            )
+        )
+        is_progress_form = (
+            form_source == "progress" or "progress" in redirect_to or "consent_research" in form
+        )
+
+        if is_class_form:
+            # Class form only controls consent_share_scores
+            new_share = (
+                _parse_checkbox("consent_share_scores") if "consent_share_scores" in form else False
+            )
+            teacher.consent_share_scores = new_share
+            db.add(
+                ConsentLog(
+                    id=uuid.uuid4(),
+                    teacher_id=teacher.id,
+                    field="consent_share_scores",
+                    value=new_share,
+                    channel="web",
+                    created_at=now,
+                )
+            )
+        elif is_progress_form:
+            # Progress form controls both consent_share_scores and consent_research
+            new_share = (
+                _parse_checkbox("consent_share_scores") if "consent_share_scores" in form else False
+            )
+            teacher.consent_share_scores = new_share
+            db.add(
+                ConsentLog(
+                    id=uuid.uuid4(),
+                    teacher_id=teacher.id,
+                    field="consent_share_scores",
+                    value=new_share,
+                    channel="web",
+                    created_at=now,
+                )
+            )
+
+            new_research = (
+                _parse_checkbox("consent_research") if "consent_research" in form else False
+            )
+            teacher.consent_research = new_research
+            db.add(
+                ConsentLog(
+                    id=uuid.uuid4(),
+                    teacher_id=teacher.id,
+                    field="consent_research",
+                    value=new_research,
+                    channel="web",
+                    created_at=now,
+                )
+            )
+        else:
+            if "consent_share_scores" in form:
+                new_share = _parse_checkbox("consent_share_scores")
+                teacher.consent_share_scores = new_share
+                db.add(
+                    ConsentLog(
+                        id=uuid.uuid4(),
+                        teacher_id=teacher.id,
+                        field="consent_share_scores",
+                        value=new_share,
+                        channel="web",
+                        created_at=now,
+                    )
+                )
+            if "consent_research" in form:
+                new_research = _parse_checkbox("consent_research")
+                teacher.consent_research = new_research
+                db.add(
+                    ConsentLog(
+                        id=uuid.uuid4(),
+                        teacher_id=teacher.id,
+                        field="consent_research",
+                        value=new_research,
+                        channel="web",
+                        created_at=now,
+                    )
+                )
+
     await db.commit()
 
     accept = request.headers.get("accept", "")
@@ -652,13 +769,13 @@ async def update_teacher_consent(
         return JSONResponse(
             content={
                 "ok": True,
-                "consent_share_scores": new_share,
-                "consent_research": new_research,
+                "consent_share_scores": teacher.consent_share_scores,
+                "consent_research": teacher.consent_research,
             }
         )
 
     return RedirectResponse(
-        url="/teacher/progress?saved=1",
+        url=redirect_to,
         status_code=status.HTTP_303_SEE_OTHER,
     )
 

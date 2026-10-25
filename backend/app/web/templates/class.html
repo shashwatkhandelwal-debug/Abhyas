@@ -152,6 +152,21 @@
         {% endif %}
       </section>
 
+      <section class="class-consent" id="class-consent" aria-label="{{ get_message('ui_class_share_scores_title') }}" style="margin: 1.5rem 0; padding: 1rem 1.25rem; background: var(--surface, #fff); border: 1px solid var(--border, #ddd); border-radius: 12px;">
+        <h2 class="section-heading" style="margin: 0 0 0.5rem 0; font-size: 1.1rem;">{{ get_message('ui_class_share_scores_title') }}</h2>
+        <p class="class-intro" style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: var(--muted, #5E6662);">{{ get_message('ui_class_share_scores_desc') }}</p>
+        <form method="post" action="/teacher/consent">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="form_source" value="class">
+          <input type="hidden" name="redirect_to" value="/teacher/class">
+          <input type="hidden" name="consent_share_scores" value="false">
+          <label class="class-chip" style="margin-bottom: 0; display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" name="consent_share_scores" value="true" {{ 'checked' if consent_share_scores else '' }} onchange="this.form.submit()">
+            <span>{{ get_message('ui_menu_share_scores_on') if consent_share_scores else get_message('ui_menu_share_scores_off') }}</span>
+          </label>
+        </form>
+      </section>
+
       <p class="class-privacy">{{ get_message('ui_class_privacy') }}</p>
     </main>
   </div>

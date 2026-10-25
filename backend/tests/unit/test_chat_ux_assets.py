@@ -122,6 +122,19 @@ def test_status_text_contrast_is_at_least_4_5_in_light_and_dark() -> None:
         assert _contrast("#FFFFFF", theme["--danger"]) >= 4.5
 
 
+def test_source_excerpt_contrast_is_at_least_4_5_in_light_and_dark() -> None:
+    """A1: cited-source excerpt and error panels meet WCAG AA contrast in both themes."""
+    pairs = [
+        ("--source-excerpt-ink", "--source-excerpt-bg"),
+        ("--source-excerpt-note", "--source-excerpt-bg"),
+        ("--source-error-ink", "--source-error-bg"),
+    ]
+    for name, theme in zip(("light", "dark"), _themes(), strict=True):
+        for fg, bg in pairs:
+            ratio = _contrast(theme[fg], theme[bg])
+            assert ratio >= 4.5, f"{name}: {fg} on {bg} = {ratio:.2f}:1"
+
+
 def test_reduced_motion_and_tap_targets() -> None:
     assert "@media (prefers-reduced-motion: reduce)" in APP_CSS
     reduced = APP_CSS.split("@media (prefers-reduced-motion: reduce)", 1)[1]
