@@ -30,7 +30,6 @@ const BACKOFF_STEPS = [2000, 4000, 8000, 16000, 30000];
 const SLOW_REQUEST_THRESHOLD_MS = 8000; // latency above this across several requests triggers slow banner
 const SLOW_REQUEST_COUNT_THRESHOLD = 3; // consecutive slow requests before prompting lite mode
 
-// ── CSRF Protection ────────────────────────────────────────────────────────
 function getCsrfToken() {
   const meta = document.querySelector('meta[name="csrf-token"]');
   if (meta && meta.content) {
@@ -115,7 +114,6 @@ async function getCachedMessages() {
   });
 }
 
-// ── Logout: wipe this browser's chat state so the next login never sees stale bubbles ──────
 const LOGOUT_CLEAR_TIMEOUT_MS = 1500; // never let a stuck IndexedDB delete block the logout
 
 function deleteChatDatabase() {
@@ -154,7 +152,6 @@ function setupLogoutCleanup() {
   });
 }
 
-// ── Localised strings (catalog keys ui_chat_*, served as JSON in the page) ───
 let UI = {};
 
 function setUiStrings(obj) {
@@ -177,14 +174,11 @@ function fillTemplate(str, vars) {
   return out;
 }
 
-// Returns '' (never an English fallback) for an unknown key; a pytest keeps keys and catalog in sync.
 function t(key, vars) {
   const s = UI[key];
   return s === undefined ? '' : fillTemplate(s, vars);
 }
 
-// ── Pure state machines ─────────────────────────────────────────────────────
-// Message bubble: sending -> sent | failed; failed -> (tap) sending. `sent` is final.
 const MSG_SENDING = 'sending';
 const MSG_SENT = 'sent';
 const MSG_FAILED = 'failed';
@@ -202,8 +196,6 @@ function nextMsgState(cur, ev) {
   }
 }
 
-// Typing indicator. `replied` stops the indicator coming back for the audio-rendering tail
-// of a turn whose text already arrived (server `pending` stays true until TTS is done).
 const TYPING_OFF = Object.freeze({ visible: false, timedOut: false, replied: false, speaker: null, label: null, since: 0 });
 
 function typingNext(st, ev) {
@@ -240,7 +232,6 @@ const SPEAKER_NAMES = {
   aman: ['अमन', 'aman'],
 };
 
-// Which child the teacher is talking to (earliest name in the text), or null.
 function guessSpeaker(text) {
   const s = (text || '').toLowerCase();
   let best = null;
@@ -257,7 +248,6 @@ function guessSpeaker(text) {
   return best;
 }
 
-// Audio bubble. `loading` = waiting for the audio file to exist, or buffering after a tap.
 function audioNext(cur, ev) {
   switch (cur) {
     case 'loading':
@@ -284,7 +274,6 @@ function audioNext(cur, ev) {
   }
 }
 
-// Mic / voice note: idle -> recording -> uploading -> transcribing -> done
 function micNext(cur, ev) {
   switch (cur) {
     case 'idle':
@@ -308,7 +297,6 @@ function micNext(cur, ev) {
   }
 }
 
-// Connection status bar: ok | cold (server waking / unreachable) | offline | reconnecting
 function netNext(cur, ev) {
   switch (ev) {
     case 'success':
@@ -332,7 +320,6 @@ function formatTimer(sec) {
   return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
-// Recorder limits come from the server (REC_* in config.py) through #rec-config.
 const REC_CONFIG = (() => {
   try {
     const el = document.getElementById('rec-config');
@@ -343,7 +330,6 @@ const REC_CONFIG = (() => {
 })();
 const REC_HOLD_MS = REC_CONFIG.holdMs || 400; // press longer than this = hold-to-talk
 
-// ── State Management ────────────────────────────────────────────────────────
 const state = {
   lastMessageId: null,
   isPending: false,
@@ -385,7 +371,6 @@ function announce(text) {
   if (live && text) live.textContent = text;
 }
 
-// ── Connection status (cold start / reconnecting) ───────────────────────────
 function renderNetStatus() {
   const bar = document.getElementById('status-bar');
   if (!bar) return;
@@ -408,8 +393,6 @@ function netEvent(ev) {
   renderNetStatus();
 }
 
-// fetch() that reports to the status bar: no answer for COLD_START_HINT_MS shows the
-// "server is waking up" hint; any successful response (or a 5xx while waking) updates it.
 async function netFetch(url, opts) {
   const timer = setTimeout(() => netEvent('slow'), COLD_START_HINT_MS);
   try {
@@ -424,7 +407,6 @@ async function netFetch(url, opts) {
   }
 }
 
-// ── Message bubble state ────────────────────────────────────────────────────
 function paintStatus(el, st, clientMsgId) {
   el.className = `status-icon ${st}`;
   el.setAttribute('data-state', st);
@@ -449,7 +431,6 @@ function setMessageState(clientMsgId, ev) {
   return next;
 }
 
-// Kept for the render path: a polled/adopted copy of an optimistic bubble means "accepted".
 function updateMessageStatus(clientMsgId) {
   setMessageState(clientMsgId, 'accepted');
 }
@@ -462,8 +443,6 @@ function failMessage(clientMsgId, reason) {
   flashStatus(failureNoticeText(reason));
 }
 
-// What the teacher is told when a send gives up: network (kept on the phone, tap ! later) vs
-// rejected by the server (refresh or type instead).
 function failureNoticeText(reason) {
   return reason === 'network' ? t('ui_chat_send_failed_network') : t('ui_chat_send_failed_rejected');
 }
@@ -485,7 +464,6 @@ async function retryMessage(clientMsgId) {
   drainOutbox();
 }
 
-// ── Voice note phases (uploading -> transcribing -> transcript) ─────────────
 function setMicPhase(clientMsgId, ev) {
   const row = state.rows.get(clientMsgId);
   if (!row || !row._phaseEl) return;
@@ -505,7 +483,6 @@ function applyTranscript(row, text) {
   if (row._textEl) row._textEl.textContent = text;
 }
 
-// ── Typing indicator ────────────────────────────────────────────────────────
 function typingLabel(speaker) {
   return t(`ui_chat_typing_${speaker}`) || t('ui_chat_typing_generic');
 }
@@ -535,7 +512,6 @@ function typingEvent(ev) {
   renderTyping();
 }
 
-// ── Outbox Drainer & Backoff Retrier ────────────────────────────────────────
 function audioFileName(blob) {
   const type = (blob && blob.type) || '';
   if (type.includes('mp4')) return 'voice.m4a';
@@ -579,7 +555,6 @@ async function sendOutboxItem(item) {
     const body = await resp.json().catch(() => null);
     return { outcome: 'accepted', body };
   }
-  // 4xx (other than timeout / rate-limit) will not succeed by retrying the same request
   if (resp.status >= 400 && resp.status < 500 && resp.status !== 408 && resp.status !== 429) {
     return { outcome: 'rejected' };
   }
@@ -617,7 +592,6 @@ async function drainOnce() {
       setMessageState(id, 'accepted');
       setMicPhase(id, 'accepted');
       typingEvent({ type: 'accepted', speaker: item.kind === 'text' ? guessSpeaker(item.text) : null });
-      // The server now owes a reply: poll at the fast cadence until it says it is done
       state.lastAcceptedAt = Date.now();
       state.isPending = true;
       scheduleNextPoll();
@@ -657,14 +631,11 @@ async function drainOutbox() {
   if (wakeAt) setTimeout(drainOutbox, Math.max(0, wakeAt - Date.now()) + 50);
 }
 
-// ── Scrolling: the thread is the one scrolling part of the page ──────────────
 function scrollChatToEnd() {
   const container = document.getElementById('chat-messages');
   if (container) container.scrollTop = container.scrollHeight;
 }
 
-// After new bubbles: show their end, unless that would push the first one's top out of sight
-// (a long answer is read from its first line).
 function scrollChatToNew(firstRow) {
   const container = document.getElementById('chat-messages');
   if (!container) return;
@@ -674,8 +645,6 @@ function scrollChatToNew(firstRow) {
   if (offset < 0) container.scrollTop += offset - 8;
 }
 
-// ── Polling Loop (§7.3) ─────────────────────────────────────────────────────
-// Scene bar: every field comes from the server (title, turn, board, who can be addressed)
 function addressChild(name) {
   const input = document.getElementById('chat-input');
   if (!input || !name) return;
@@ -714,7 +683,6 @@ function renderSceneHeader(sc) {
   kids.hidden = list.length === 0;
 }
 
-// What to do now: hidden once she has sent something in this step (until the guidance changes)
 function renderHint(h) {
   const card = document.getElementById('next-card');
   if (!card) return;
@@ -740,7 +708,6 @@ function hintSent() {
   card.hidden = true;
 }
 
-// Header: the move title and "Step 4 of 7: Practice" follow the weekly loop
 function applyView(view) {
   if (!view) return;
   renderHint(view.hint);
@@ -788,8 +755,6 @@ async function pollMessages() {
         const skew = Date.parse(data.server_time) - Date.now();
         if (!Number.isNaN(skew)) state.serverSkewMs = skew;
       }
-      // A poll that left before the last POST was accepted cannot say whether that turn is done,
-      // and neither can any poll while a message is still on its way
       const stale = startTime <= state.lastAcceptedAt || [...state.msgStates.values()].includes(MSG_SENDING);
       state.isPending = data.pending || stale;
 
@@ -812,7 +777,6 @@ async function pollMessages() {
       if (gotReply) {
         typingEvent({ type: 'reply' });
         scrollChatToNew(firstNewReply);
-        // The step (header, what-to-do line) may be saved just after the reply: look again soon
         setTimeout(pollMessages, FOLLOW_UP_POLL_MS);
       }
       if (!stale) typingEvent({ type: data.pending ? 'pending' : 'idle' });
@@ -828,7 +792,6 @@ async function pollMessages() {
 
 function scheduleNextPoll() {
   if (state.pollTimer) clearTimeout(state.pollTimer);
-  // 1.5s while pending, else 20s (§7.3)
   const delay = state.isPending ? 1500 : 20000;
   state.pollTimer = setTimeout(pollMessages, delay);
 }
@@ -838,10 +801,8 @@ function triggerImmediatePoll() {
   pollMessages();
 }
 
-// ── Audio bubble ────────────────────────────────────────────────────────────
 function setAudioState(wrap, st) {
   if (st === 'none') {
-    // audio never arrived: leave the text bubble on its own, no dead player
     if (wrap._giveupTimer) clearTimeout(wrap._giveupTimer);
     if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
     wrap._audioState = 'none';
@@ -906,7 +867,6 @@ function onAudioButton(wrap) {
   if ((st === 'ready' || st === 'error') && wrap._ref) startAudio(wrap, false);
 }
 
-// One builder for every audio bubble: waiting (no file yet), ready, playing, error.
 function buildAudioWrap(audioRef, initialState) {
   const wrap = document.createElement('div');
   wrap.className = 'bubble-audio';
@@ -934,7 +894,6 @@ function buildAudioWrap(audioRef, initialState) {
   return wrap;
 }
 
-// The file for a text-first reply has landed: turn the "आवाज़ आ रही है…" placeholder into a player.
 function attachAudioRef(wrap, audioRef, autoplay) {
   if (wrap._giveupTimer) clearTimeout(wrap._giveupTimer);
   wrap._ref = audioRef;
@@ -945,7 +904,6 @@ function attachAudioRef(wrap, audioRef, autoplay) {
   }
 }
 
-// Server-rendered history bubbles carry a bare ▶ button: swap in the stateful player.
 function upgradeServerAudio() {
   document.querySelectorAll('.bubble-audio').forEach((el) => {
     const btn = el.querySelector('.btn-play[data-audio-ref]');
@@ -959,9 +917,6 @@ function upgradeServerAudio() {
   });
 }
 
-// ── UI Rendering ────────────────────────────────────────────────────────────
-// The optimistic bubble is keyed by client_msg_id; the server copy of the same
-// message (POST response / poll) carries the server id. Re-key the bubble so the
 function adoptServerMessageId(clientMsgId, serverId) {
   if (!clientMsgId || !serverId || clientMsgId === serverId) return;
   if (!state.renderedMsgIds.has(clientMsgId)) return;
@@ -973,7 +928,6 @@ function adoptServerMessageId(clientMsgId, serverId) {
   }
 }
 
-// A spoken reply (child / model teacher) whose audio is being synthesised right now.
 function expectsAudio(msg) {
   if (msg.direction !== 'out' || msg.audio_ref || state.liteMode) return false;
   if (!isChildSpeaker(msg.speaker) && msg.speaker !== 'model_teacher') return false;
@@ -982,7 +936,6 @@ function expectsAudio(msg) {
   return Date.now() + state.serverSkewMs - created < AUDIO_WAIT_MS;
 }
 
-// Returns true when a new bubble was added (false for a re-sent copy of an existing one).
 function renderMessage(msg, isLocalOptimistic = false) {
   if (msg.id && msg.client_msg_id && state.renderedMsgIds.has(msg.client_msg_id)) {
     adoptServerMessageId(msg.client_msg_id, msg.id);
