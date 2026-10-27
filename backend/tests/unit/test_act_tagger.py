@@ -447,3 +447,10 @@ def test_literacy_real_word_still_posed_as_read_word() -> None:
         assert res.problem.type == "read_word"
         assert res.problem.word == "मेला"
         assert TeachingAct.GIVE_NEW_PROBLEM in res.acts
+
+
+def test_literacy_read_verb_is_not_the_word() -> None:
+    """"शब्द पढ़ो" must not capture the verb itself as the word to read."""
+    res = fallback_tag_act("शाबाश! अब अगला शब्द पढ़ो: मछली")
+    assert res.problem is None
+    assert TeachingAct.GIVE_NEW_PROBLEM not in res.acts
