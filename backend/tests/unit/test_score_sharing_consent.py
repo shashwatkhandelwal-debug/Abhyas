@@ -19,10 +19,26 @@ import pytest
 from backend.app.config import settings
 from backend.app.core.types import InboundMessage
 from backend.app.db.models import ModuleProgress, Teacher
+from backend.app.rehearsal.scene_store import InMemorySceneStore
 from backend.app.reports.module_progress import module_progress_summary
 from backend.app.sessions.service import SessionService
 from backend.app.sessions.state_machine import OnboardingStateEnum, SessionStateEnum
 from backend.tests.unit.test_state_machine import FakeSessionRepository
+
+
+@pytest.fixture(autouse=True)
+def _in_memory_scene_store(monkeypatch: pytest.MonkeyPatch) -> None:
+    """These teachers are fakes with no Postgres row, so scene rows could never be saved.
+
+    Without this the default DATABASE_URL (a local Postgres, when one is running) makes the
+    scene vanish between turns.
+    """
+    from backend.app.rehearsal import scene_runner as runner_module
+    from backend.app.sessions import service as service_module
+
+    store = InMemorySceneStore()
+    monkeypatch.setattr(service_module, "scene_store", store)
+    monkeypatch.setattr(runner_module, "scene_store", store)
 
 
 def _inbound(
