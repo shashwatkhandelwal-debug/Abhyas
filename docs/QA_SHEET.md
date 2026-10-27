@@ -21,7 +21,9 @@ tests in `test_child_voice.py`, `test_guards.py`). The engine is tested for dete
 tags what the *teacher* did (`act_tagger`), but that only selects which engine rule applies, and a quote the tagger
 cites must appear in the teacher's words (`guard_act_tagger`). Residual risk: a mis-tagged act changes which rule
 fires. We measured tagger fallbacks (0 of 41 in `eval/one_on_one/LIVE_REPORT.md`), not tagger accuracy against
-coaches **[UNVERIFIED]**.
+coaches **[UNVERIFIED]**. A tagger fault was fixed this sprint and pinned with tests in
+`test_act_tagger.py`: Hindi instruction words (for example "मिलाकर", "पढ़ो") were being read as a new word posed to
+the children in literacy scenes. The fix is checked on the keyword fallback path; the live Claude tagger was **not** re-run (no key this session).
 
 **3. What happens when the model is down or slow?**
 Every role has a deterministic fallback after one retry: child lines use `template_line`, the coach uses
