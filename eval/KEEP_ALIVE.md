@@ -41,7 +41,7 @@ python scripts/keep_alive.py --url https://abhyas.onrender.com/healthz --once
 If an evaluator accesses the application while the container is spinning up:
 1. **PWA Shell Instant Render**: The HTML shell and UI assets render immediately from browser cache / service worker (under 150 KB budget).
 2. **5-Second Waking Hint**: In `backend/app/web/static/chat.js` (`netInit`), if an initial poll or request does not respond within 5,000 ms, the UI automatically displays:
-   - *"सर्वर शुरू हो रहा है, कृपया प्रतीक्षा करें…"* ("Server is starting, please wait...")
+   - *"सर्वर जाग रहा है — इसमें करीब एक मिनट लग सकता है…"* (catalogue key `ui_chat_cold_start`: "The server is waking up; it can take about a minute")
 3. **HTTP 502 / Spin-Up Handling**:
    - If Render returns an HTTP `502 Bad Gateway` or `503 Service Unavailable` while booting, the client keeps the waking hint active and retries transparently using exponential backoff without dropping the teacher's input or showing an ugly crash.
    - Once the first HTTP `200` response arrives, the waking hint immediately disappears and normal messaging resumes.
