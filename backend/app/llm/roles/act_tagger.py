@@ -97,6 +97,16 @@ FALLBACK_PATTERNS: list[tuple[re.Pattern[str], TeachingAct]] = [
     ),
 ]
 
+# Instruction words that can sit next to "शब्द"/"पढ़ो" without being the word to read.
+LITERACY_STOPWORDS: frozenset[str] = frozenset(
+    unicodedata.normalize("NFC", w)
+    for w in (
+        "करो", "देखो", "यह", "ये", "अब", "सब", "से", "फिर", "को", "भी", "ही", "मत", "ना",
+        "नहीं", "जोर", "ज़ोर", "धीरे", "एक", "साथ", "मिलाकर", "पूरा", "पहला", "दूसरा",
+        "बार", "दोबारा",
+    )
+)
+
 NAME_TO_PERSONA_ID: dict[str, str] = {
     "रवि": "ravi",
     "ravi": "ravi",
@@ -187,11 +197,11 @@ def detect_problem_in_fallback(
     # 4. Literacy: a Devanagari word after "पढ़ो"/"शब्द"
     if candidate is None:
         lit_pat = r"(?:शब्द\s+([\u0900-\u097F]+)|([\u0900-\u097F]+)\s+पढ़ो)"
-        m = re.search(lit_pat, clean_text)
-        if m:
+        for m in re.finditer(lit_pat, clean_text):
             w = m.group(1) or m.group(2)
-            if w and w not in {"करो", "देखो", "यह", "ये", "अब", "सब"}:
+            if w and unicodedata.normalize("NFC", w) not in LITERACY_STOPWORDS:
                 candidate = Problem(type="read_word", word=unicodedata.normalize("NFC", w))
+                break
 
     # Validate against the scene domain (use current_item.type)
     if candidate is not None and current_item is not None:
