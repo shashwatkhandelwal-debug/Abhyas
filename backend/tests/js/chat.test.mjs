@@ -738,14 +738,17 @@ test('the what-to-do line shows its text and a suggested line', () => {
   assert.equal(n.card.hidden, true);
 });
 
-test('tapping the suggested line fills the input and sends nothing', async () => {
+test('tapping the suggested line sends on tap like sample chips', async () => {
   const c = load();
   const n = withNextCard(c);
+  c.net.handler = async () => ({ status: 202, ok: true, json: async () => ({ message_id: 'srv' }) });
   c.renderHint(HINT);
   c.documentListeners.click({ target: n.suggest });
-  assert.equal(c.sandbox.document.getElementById('chat-input').value, HINT.suggest);
   await c.flush();
-  assert.equal(c.fetchCalls.filter((f) => f.url === '/api/chat/text').length, 0);
+  const textCalls = c.fetchCalls.filter((f) => f.url === '/api/chat/text');
+  assert.equal(textCalls.length, 1);
+  assert.deepEqual(JSON.parse(textCalls[0].opts.body).text, HINT.suggest);
+  assert.equal(n.card.hidden, true);
 });
 
 test('once she has sent something the line stays hidden until the guidance changes', async () => {
@@ -881,4 +884,40 @@ test('slow network banner appears on genuinely slow network (3 slow requests or 
 
   c.navigator.connection = { effectiveType: '4g', saveData: true };
   assert.equal(c.isSlowNetwork(), true);
+});
+
+
+test('btn_replay is hidden unless audio is attached to the message', async () => {
+  const c = load();
+  const msgNoAudio = {
+    id: 'msg-1',
+    direction: 'out',
+    kind: 'buttons',
+    text: 'तरीका सीखें',
+    audio_ref: null,
+    buttons: [
+      { id: 'btn_understood', title_hi: 'समझ गई, आगे' },
+      { id: 'btn_replay', title_hi: 'फिर से सुनें' },
+    ],
+  };
+  c.renderMessage(msgNoAudio);
+  const chipsNoAudio = c.sandbox.document.querySelectorAll('.reply-chip');
+  assert.equal(chipsNoAudio.length, 1);
+  assert.equal(chipsNoAudio[0].textContent, 'समझ गई, आगे');
+
+  const msgWithAudio = {
+    id: 'msg-2',
+    direction: 'out',
+    kind: 'buttons',
+    text: 'तरीका सीखें',
+    audio_ref: 'audio_123',
+    buttons: [
+      { id: 'btn_understood', title_hi: 'समझ गई, आगे' },
+      { id: 'btn_replay', title_hi: 'फिर से सुनें' },
+    ],
+  };
+  c.renderMessage(msgWithAudio);
+  const allChips = c.sandbox.document.querySelectorAll('.reply-chip');
+  // 1 from first message + 2 from second message = 3
+  assert.equal(allChips.length, 3);
 });

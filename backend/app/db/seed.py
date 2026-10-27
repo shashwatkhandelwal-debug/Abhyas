@@ -364,6 +364,8 @@ async def _seed_demo3_learn_step(session: AsyncSession) -> None:
         if reason is not None:
             line = get_message("ui_class_chosen_because", lang="hi", label=reason.label_hi)
             intro = f"{line}\n\n{intro}"
+        kp_lines = [f"{i}. {kp.text_hi}" for i, kp in enumerate(move.key_points[:4], 1)]
+        intro = f"{intro}\n\n" + "\n".join(kp_lines)
         buttons = [
             Button(id="btn_understood", title_hi=get_message("btn_understood", lang="hi")),
             Button(id="btn_replay", title_hi=get_message("btn_replay", lang="hi")),

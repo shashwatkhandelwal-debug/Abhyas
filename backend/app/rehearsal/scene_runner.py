@@ -334,6 +334,12 @@ class SceneRunner:
         )
         child_lines: list[ChildLineRecord] = [r for r in voiced_records if r is not None]
         voice_ms = int((time.perf_counter() - t_stage3) * 1000)
+        logger.info(
+            "child_voice_turn_latency turn=%d stage=child_voice latency_ms=%d count=%d",
+            scene_state.teacher_turns,
+            voice_ms,
+            len(child_lines),
+        )
 
         # Deliver text immediately before TTS (spec/06 §6.4: perceived latency optimisation)
         if on_text_ready and child_lines:

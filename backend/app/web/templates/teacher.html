@@ -109,13 +109,21 @@
         </div>
 
         {% if msg.direction == 'out' and msg.buttons %}
+        {% set visible_btns = [] %}
+        {% for btn in msg.buttons %}
+          {% if not (btn.id == 'btn_replay' and not msg.audio_ref) %}
+            {% set _ = visible_btns.append(btn) %}
+          {% endif %}
+        {% endfor %}
+        {% if visible_btns %}
         <div class="quick-replies">
-          {% for btn in msg.buttons %}
+          {% for btn in visible_btns %}
           <button type="button" class="reply-chip" data-btn-id="{{ btn.id }}" data-btn-title="{{ btn.title_hi }}">
             {{ btn.title_hi }}
           </button>
           {% endfor %}
         </div>
+        {% endif %}
         {% endif %}
       </div>
       {% endfor %}

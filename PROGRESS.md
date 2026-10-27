@@ -29,6 +29,10 @@ providers; screenshots before and after in `docs/screens/`), the change, and the
 | B3 | team test | Teacher needs to be able to change score-sharing choice anytime from My class or menu | No single-tap menu toggle existed to toggle score sharing dynamically outside settings. | Added score-sharing toggle item in teacher chat menu dropdown and instant toggle checkbox in `/teacher/class` ("My class"). Toggling off immediately removes teacher from ARP page. | `04f743c` | `backend/app/web/templates/teacher.html`, `backend/app/web/templates/class.html`, `backend/app/web/teacher.py`, `backend/app/web/static/chat.js` |
 | B4 | team test | ARP page needs honest ratio of consenting teachers and cluster suppression below 10 | ARP page lacked clear disclosure of how many cluster teachers shared scores, and cluster progress patterns needed n<10 privacy protection. | Added honest summary line ("X of Y teachers share scores with you"). Cluster-level module progress card is shown only when consenting group >= 10 (`AGGREGATION_SUPPRESSION_N`); below 10, nothing is shown (not zero). | `04f743c` | `backend/app/web/templates/arp.html`, `backend/app/web/arp.py`, `backend/tests/unit/test_score_sharing_consent.py` |
 | B5 | team test | Documentation and test suite must agree with post-rehearsal score sharing consent behaviour | Docs previously described score sharing as part of onboarding setup. | Updated `README.md`, `spec/08_conversation_flow.md`, `docs/QA_SHEET.md`, `docs/EVALUATOR_GUIDE.md`, `docs/JUDGE_QUICKSTART.md`. Added unit test suite in `test_score_sharing_consent.py`. | `04f743c` | `test_score_sharing_consent.py`, updated docs |
+| C1 | team test, 2026-10-26 | Learn step does not show key points of the move before handbook tip, and says "voice note" even when audio is not attached | `_build_learn_messages` only built the move intro sentence and handbook tip without key points; intro text needed 3-4 key points extracted from move card in the active UI language. | Extracted 3-4 key points from `move.key_points` on the move card in the active UI language (added English `text_en` to key points and `KeyPoint` model). Never mentions voice note unless `audio_ref` is truthy. In English UI, Bubble 1 has 0 Devanagari characters. | pending | `backend/tests/unit/test_learn_step_content.py::test_learn_step_shows_3_to_4_key_points_in_hindi`, `backend/tests/unit/test_learn_step_content.py::test_learn_step_shows_key_points_in_english_with_no_devanagari_in_bubble1` |
+| C2 | team test, 2026-10-26 | Learn step displays two "समझ गई, आगे" buttons (one per bubble) and shows "फिर से सुनें" when no audio is attached | `_build_learn_messages` assigned `buttons=[btn_understood, btn_replay]` to both Bubble 1 and Bubble 2; `btn_replay` was rendered regardless of `msg.audio_ref`. | Set `buttons=[]` on Bubble 1 so only the last bubble holds buttons (one "समझ गई, आगे" button per learn step). In `chat.js`, `teacher.html`, and `channel.py`, hide `btn_replay` ("फिर से सुनें") unless `msg.audio_ref` is attached. | pending | `backend/tests/unit/test_learn_step_content.py::test_learn_step_has_one_understood_button_on_last_bubble_when_no_audio`, `backend/tests/js/chat.test.mjs` (`btn_replay is hidden unless audio is attached to the message`) |
+| C3 | team test, 2026-10-26 | Tapping suggestion chip (`#next-suggest`) fills input instead of sending directly on tap like sample chips | `chat.js` click listener on `#next-suggest` assigned `input.value = text` without dispatching `handleSendText`. | Updated `#next-suggest` click handler in `chat.js` to send immediately on tap via `handleSendText(text)` with pressed animation and screen reader announcement, matching sample chips. | pending | `backend/tests/js/chat.test.mjs` (`tapping the suggested line sends on tap like sample chips`), `backend/tests/e2e/test_e2e_next_action.py` |
+| C4 | team test, 2026-10-26 | Per-turn reply latency for child-voice LLM call was not explicitly logged with turn and persona context | `voice_child_line` only called `log_role_call` without per-turn structured logging; `SceneRunner` did not log per-turn stage latency for child voice. | Added structured INFO logging `child_voice_reply_latency turn=T persona=P latency_ms=M fallback_used=B` and `child_voice_turn_latency turn=T stage=child_voice latency_ms=M`. Claude 3.5 Haiku model unchanged. Benchmarked child-voice p50: 1236 ms, p95: 1938 ms (41 turns across 10 scenes in `eval/measure_latency.py`, 0% fallback). | pending | `backend/app/llm/roles/child_voice.py`, `backend/app/rehearsal/scene_runner.py` |
 
 ### Parts
 
@@ -788,3 +792,27 @@ Source: "team test" (the founder's test of the hosted site on 2026-10-24).
 - **Real speech generation on Sarvam/Gemini**: Live audio synthesis requires valid cloud API keys (`SARVAM_API_KEY`, `GEMINI_API_KEY`).
 - **Physical mobile devices**: Headless Chromium with touch emulation and 360x740 viewport was used, not physical Android handsets on 2G/3G telecom networks.
 
+
+## Learn step content, suggestion chip send-on-tap, and child voice latency (`fix/learn-step-content`, 2026-10-26)
+
+Source: "team test, 2026-10-26"
+
+### Changes
+1. **Learn step key points and voice note condition**:
+   - `_build_learn_messages` in `backend/app/sessions/service.py` extracts first 3-4 key points from `move.key_points` formatted as numbered points `1. ...\n2. ...` in the active UI language (`get_ui_lang()`), appended to `intro` text before the handbook tip.
+   - Added `text_en` to `KeyPoint` in `backend/app/content_models.py` and `content/schemas/move.json`, and added natural English translations for all key points across all 4 moves in `content/moves/` and `content-seed/moves/`.
+   - Never says "voice note" unless `audio_ref` is attached. In English UI, Bubble 1 has 0 Devanagari characters.
+2. **Single "समझ गई, आगे" button on last bubble & hide "फिर से सुनें" without audio**:
+   - `_build_learn_messages` passes `buttons=[]` on Bubble 1 and attaches `buttons=[btn_understood]` (and `btn_replay` if audio present) to the last bubble (Bubble 2 if handbook guide tip present, Bubble 1 if not).
+   - In `backend/app/web/static/chat.js`, `backend/app/web/templates/teacher.html`, and `backend/app/channels/whatsapp/channel.py`, `btn_replay` ("फिर से सुनें") is hidden unless `msg.audio_ref` is present.
+3. **Suggestion chips send on tap**:
+   - In `backend/app/web/static/chat.js`, `#next-suggest` click listener triggers `handleSendText(text)` immediately on tap with `.pressed` visual feedback and accessibility announcement (`ui_chat_chip_done`), matching `.demo-chip` behavior.
+   - Added test in `backend/tests/js/chat.test.mjs` verifying immediate dispatch on tap.
+4. **Child-voice LLM per-turn reply latency**:
+   - In `backend/app/llm/roles/child_voice.py`, added structured INFO logging: `child_voice_reply_latency turn={turn_idx} persona={persona.id} latency_ms={latency_ms} fallback_used={fallback_used}`.
+   - In `backend/app/rehearsal/scene_runner.py`, added per-turn latency logging: `child_voice_turn_latency turn={scene_state.teacher_turns} stage=child_voice latency_ms={voice_ms} count={len(child_lines)}`.
+   - Model remains `settings.CLAUDE_MODEL_FAST` (Claude 3.5 Haiku, unchanged).
+   - Benchmarked child-voice reply latency (measured over 41 turns across 10 rehearsal scenes in `eval/measure_latency.py`):
+     - **p50**: 1236 ms
+     - **p95**: 1938 ms
+     - Fallback rate: 0.0%

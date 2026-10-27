@@ -17,21 +17,25 @@ sankul_month: October
 key_points:
   - id: kp1
     text_hi: "बच्चे तीन तरह से अटकते हैं: मात्रा छोड़ देते हैं (मेला को 'मल'), पहले अक्षर से अंदाज़ा लगाते हैं (मेला को 'मछली'), या अक्षर-अक्षर बोलते हैं पर मिला नहीं पाते ('मे… ला')।"
+    text_en: "Children get stuck in three ways: dropping the matra ('mal'), guessing from the first letter ('machhli'), or reading letter-by-letter without blending ('me... la')."
     must_have: true
     keywords_hi: [मात्रा, अंदाज़ा, मिला, अक्षर, छोड़]
     source_chunk_ids: []
   - id: kp2
     text_hi: "हर अक्षर पर उँगली रखकर पहले व्यंजन और मात्रा की ध्वनि बुलवाएँ: म + े = मे।"
+    text_en: "Place a finger on each letter and have them sound out consonant and matra: m + e = me."
     must_have: true
     keywords_hi: [उँगली, ध्वनि, मात्रा, मे]
     source_chunk_ids: []
   - id: kp3
     text_hi: "फिर धीरे-धीरे अक्षरों को मिलाकर बुलवाएँ: मे… ला… मेला। पहले शिक्षक करके दिखाएँ, फिर बच्चे साथ में।"
+    text_en: "Then blend sounds together slowly: me... la... mela. Model it first, then have children read together."
     must_have: true
     keywords_hi: [मिला, धीरे, करके दिखा, साथ]
     source_chunk_ids: []
   - id: kp4
     text_hi: "अंदाज़े से गलत पढ़ने पर डाँटें नहीं; कहें 'पहला अक्षर फिर से देखो, कौन-सी मात्रा है?'"
+    text_en: "Do not scold when they guess wrongly; ask them to look at the first letter and matra again."
     must_have: false
     keywords_hi: [डाँट, फिर से देखो, मात्रा]
     source_chunk_ids: []

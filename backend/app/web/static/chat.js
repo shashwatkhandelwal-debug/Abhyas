@@ -1126,6 +1126,7 @@ function renderMessage(msg, isLocalOptimistic = false) {
     const qrContainer = document.createElement('div');
     qrContainer.className = 'quick-replies';
     msg.buttons.forEach((btn) => {
+      if (btn.id === 'btn_replay' && !msg.audio_ref) return;
       const chip = document.createElement('button');
       chip.type = 'button';
       chip.className = 'reply-chip';
@@ -1137,7 +1138,7 @@ function renderMessage(msg, isLocalOptimistic = false) {
       };
       qrContainer.appendChild(chip);
     });
-    row.appendChild(qrContainer);
+    if (qrContainer.children.length > 0) row.appendChild(qrContainer);
   }
 
   const pendingEl = document.getElementById('pending-bubble');
@@ -1835,11 +1836,16 @@ document.addEventListener('click', (e) => {
     return;
   }
 
-  if (target.closest('#next-suggest')) {
-    const input = document.getElementById('chat-input');
-    if (input) {
-      input.value = target.closest('#next-suggest').textContent.trim();
-      if (input.focus) input.focus();
+  const suggestBtn = target.closest('#next-suggest');
+  if (suggestBtn) {
+    if (suggestBtn.disabled || suggestBtn.classList.contains('pressed')) return;
+    const text = suggestBtn.textContent.trim();
+    if (text) {
+      suggestBtn.classList.add('pressed');
+      announce(t('ui_chat_chip_done'));
+      handleSendText(text).finally(() => {
+        setTimeout(() => suggestBtn.classList.remove('pressed'), CHIP_CONFIRM_MS);
+      });
     }
     return;
   }

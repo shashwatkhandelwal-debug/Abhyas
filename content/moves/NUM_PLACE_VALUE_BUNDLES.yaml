@@ -17,21 +17,25 @@ sankul_month: September
 key_points:
   - id: kp1
     text_hi: "एक बंडल में 10 तीलियाँ होती हैं; बच्चे से खुद गिनकर बंडल बनवाएँ ताकि वह जाने कि एक बंडल 10 के बराबर है।"
+    text_en: "There are 10 sticks in one bundle; have the child count and tie it to know one bundle equals 10."
     must_have: true
     keywords_hi: [बंडल, 10, गिन, बराबर]
     source_chunk_ids: []
   - id: kp2
     text_hi: "4 बंडल और 7 तीलियाँ = 40 और 7 = 47। बंडल दहाई के घर में, खुली तीलियाँ इकाई के घर में।"
+    text_en: "4 bundles and 7 sticks = 40 and 7 = 47. Bundles go to the tens place, loose sticks to the units place."
     must_have: true
     keywords_hi: [दहाई, इकाई, घर, 47, 40]
     source_chunk_ids: []
   - id: kp3
     text_hi: "आम गलतियाँ: बंडल को 1 गिनना (11), 'चालीस-सात' सुनकर 407 लिखना, या अंक उल्टे लिखना (74)। बच्चे से पूछें कि उसने कैसे लिखा।"
+    text_en: "Common mistakes: counting a bundle as 1 (11), writing 407, or reversing digits (74). Ask the child how they wrote it."
     must_have: true
     keywords_hi: [गलती, 407, 74, 11, पूछें]
     source_chunk_ids: []
   - id: kp4
     text_hi: "बच्चे से बोलकर गिनवाएँ: 10, 20, 30, 40 … फिर 41 से 47 तक।"
+    text_en: "Have the child count aloud: 10, 20, 30, 40 ... then 41 to 47."
     must_have: false
     keywords_hi: [10, 20, 30, 40, गिनवाएँ]
     source_chunk_ids: []

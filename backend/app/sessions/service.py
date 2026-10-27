@@ -24,7 +24,7 @@ from backend.app.core.intents import (
     extract_ask_query,
     match_intent,
 )
-from backend.app.core.messages import get_message
+from backend.app.core.messages import get_message, get_ui_lang
 from backend.app.core.types import Button, Citation, InboundMessage, OutboundMessage
 from backend.app.db.models import Message
 from backend.app.handbook.fallback import fallback_reply, match_handbook_question
@@ -116,6 +116,14 @@ class SessionService:
             )
             intro = f"{because_line}\n\n{intro}"
 
+        ui_lang = get_ui_lang()
+        kp_lines: list[str] = []
+        for idx, kp in enumerate(move.key_points[:4], 1):
+            pt_text = (kp.text_en or kp.text_hi) if ui_lang == "en" else kp.text_hi
+            kp_lines.append(f"{idx}. {pt_text}")
+        if kp_lines:
+            intro = f"{intro}\n\n" + "\n".join(kp_lines)
+
         buttons = [
             Button(
                 id="btn_understood",
@@ -164,10 +172,10 @@ class SessionService:
             guide_body = "\n\n".join(guide_parts)
             return [
                 OutboundMessage(
-                    kind="buttons",
+                    kind="audio" if audio_ref else "text",
                     text_hi=intro,
                     audio_ref=audio_ref,
-                    buttons=buttons,
+                    buttons=[],
                 ),
                 OutboundMessage(
                     kind="buttons",
