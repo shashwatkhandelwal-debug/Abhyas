@@ -681,36 +681,44 @@ function renderManipulatives(m) {
 
 let currentSceneHeader = null;
 
-function getChipA1Text(sc) {
+function getSubItem(sc) {
   const s = sc || currentSceneHeader;
   const item = s && s.item;
   if (item && item.type === 'sub' && typeof item.a === 'number' && typeof item.b === 'number') {
-    return '\u0930\u0935\u093f, \u0938\u0939\u0940 \u0909\u0924\u094d\u0924\u0930 ' + (item.a - item.b) + ' \u0939\u0948';
+    return { a: item.a, b: item.b };
   }
   const boardEl = document.getElementById('sb-board');
-  const boardText = boardEl ? boardEl.textContent.trim() : '';
-  const m = boardText.match(/^(\d+)\s*[\u2212\-]\s*(\d+)$/);
-  if (m) {
-    const a = parseInt(m[1], 10);
-    const b = parseInt(m[2], 10);
-    return '\u0930\u0935\u093f, \u0938\u0939\u0940 \u0909\u0924\u094d\u0924\u0930 ' + (a - b) + ' \u0939\u0948';
+  const m = (boardEl ? boardEl.textContent.trim() : '').match(/^(\d+)\s*[\u2212\-]\s*(\d+)$/);
+  return m ? { a: parseInt(m[1], 10), b: parseInt(m[2], 10) } : null;
+}
+
+function getChipA1Text(sc) {
+  const p = getSubItem(sc);
+  return p ? '\u0930\u0935\u093f, \u0938\u0939\u0940 \u0909\u0924\u094d\u0924\u0930 ' + (p.a - p.b) + ' \u0939\u0948' : null;
+}
+
+function getChipBText(sc) {
+  const p = getSubItem(sc);
+  if (!p || p.a % 10 >= p.b % 10) return null;
+  return '\u091a\u0932\u094b ' + p.a + ' \u092e\u0947\u0902 \u0938\u0947 ' + p.b + ' \u092b\u093f\u0930 \u0938\u0947 \u0915\u0930\u0924\u0947 \u0939\u0948\u0902: \u0926\u0947\u0916\u094b, ' + Math.floor(p.a / 10) + ' \u092c\u0902\u0921\u0932 \u0914\u0930 ' + (p.a % 10) + ' \u0916\u0941\u0932\u0940 \u0924\u0940\u0932\u093f\u092f\u093e\u0901 \u0939\u0948\u0902, ' + (p.a % 10) + ' \u092e\u0947\u0902 \u0938\u0947 ' + (p.b % 10) + ' \u0928\u0939\u0940\u0902 \u0928\u093f\u0915\u0932\u0924\u0940\u0902, \u0924\u094b \u090f\u0915 \u092c\u0902\u0921\u0932 \u0916\u094b\u0932\u094b\u0964';
+}
+
+function setDynamicChip(btn, text) {
+  if (!btn) return;
+  if (text) {
+    btn.setAttribute('data-text', text);
+    if (btn.dataset) btn.dataset.text = text;
+    if (!state.fastTrackInFlight) btn.disabled = false;
+  } else {
+    btn.removeAttribute('data-text');
+    if (btn.dataset) delete btn.dataset.text;
+    btn.disabled = true;
   }
-  return null;
 }
 
 function updateFastTrackChips(sc) {
-  const a1Btn = document.getElementById('ft-chip-a1');
-  if (!a1Btn) return;
-  const a1Text = getChipA1Text(sc);
-  if (a1Text) {
-    a1Btn.setAttribute('data-text', a1Text);
-    if (a1Btn.dataset) a1Btn.dataset.text = a1Text;
-    if (!state.fastTrackInFlight) a1Btn.disabled = false;
-  } else {
-    a1Btn.removeAttribute('data-text');
-    if (a1Btn.dataset) delete a1Btn.dataset.text;
-    a1Btn.disabled = true;
-  }
+  setDynamicChip(document.getElementById('ft-chip-a1'), getChipA1Text(sc));
+  setDynamicChip(document.getElementById('ft-chip-b'), getChipBText(sc));
 }
 
 function disableFastTrackChips() {
@@ -732,7 +740,7 @@ function enableFastTrackChips() {
   if (!tray) return;
   const chips = tray.querySelectorAll('.ft-chip');
   chips.forEach((c) => {
-    if (c.id === 'ft-chip-a1') {
+    if (c.id === 'ft-chip-a1' || c.id === 'ft-chip-b') {
       const txt = (c.dataset && c.dataset.text) || c.getAttribute('data-text');
       c.disabled = !txt;
     } else {
@@ -746,8 +754,6 @@ function setupFastTrackTray() {
   if (!tray) return;
   const bA2 = document.getElementById('ft-chip-a2');
   if (bA2 && !bA2.dataset.text) bA2.dataset.text = '\u0905\u092c 61 \u092e\u0947\u0902 \u0938\u0947 28 \u0918\u091f\u093e\u0913';
-  const bB = document.getElementById('ft-chip-b');
-  if (bB && !bB.dataset.text) bB.dataset.text = '\u091a\u0932\u094b 43 \u092e\u0947\u0902 \u0938\u0947 27 \u092b\u093f\u0930 \u0938\u0947 \u0915\u0930\u0924\u0947 \u0939\u0948\u0902: \u0926\u0947\u0916\u094b, 4 \u092c\u0902\u0921\u0932 \u0914\u0930 3 \u0916\u0941\u0932\u0940 \u0924\u0940\u0932\u093f\u092f\u093e\u0901 \u0939\u0948\u0902, 3 \u092e\u0947\u0902 \u0938\u0947 7 \u0928\u0939\u0940\u0902 \u0928\u093f\u0915\u0932\u0924\u0940\u0902, \u0924\u094b \u090f\u0915 \u092c\u0902\u0921\u0932 \u0916\u094b\u0932\u094b\u0964';
   const bC = document.getElementById('ft-chip-c');
   if (bC && !bC.dataset.text) bC.dataset.text = '\u0938\u0935\u093e\u0932: \u0909\u0932\u094d\u091f\u0940 \u0917\u093f\u0928\u0924\u0940 \u0915\u0930\u0915\u0947 \u0918\u091f\u093e\u0935 \u0915\u0948\u0938\u0947 \u0938\u093f\u0916\u093e\u090f\u0901?';
   updateFastTrackChips();
@@ -756,10 +762,8 @@ function setupFastTrackTray() {
     if (!btn || btn.disabled || state.fastTrackInFlight) return;
     const action = btn.dataset ? btn.dataset.action : btn.getAttribute('data-action');
     let text = (btn.dataset && btn.dataset.text) || btn.getAttribute('data-text');
-    if (action === 'a1') {
-      text = text || getChipA1Text();
-      if (!text) return;
-    }
+    if (action === 'a1') text = text || getChipA1Text();
+    if (action === 'b') text = text || getChipBText();
     if (!text) return;
 
     if (!navigator.onLine) {

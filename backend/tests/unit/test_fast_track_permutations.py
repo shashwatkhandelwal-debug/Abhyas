@@ -182,3 +182,50 @@ async def test_fast_track_repeat_taps() -> None:
     s_r6 = await runner.store.get(scene_id)
     assert s_r6 is not None and s_r6.scene_state.current_item.key() == "sub:43-27"
     assert s_r6.scene_state.children[0].state == ChildState.PARTIAL
+
+
+def _chip_b_text(a: int, b: int) -> str:
+    """Python twin of getChipBText() in chat.js (the Python and JS tests pin the same strings)."""
+    return (
+        f"चलो {a} में से {b} फिर से करते हैं: देखो, {a // 10} बंडल और {a % 10} खुली तीलियाँ हैं, "
+        f"{a % 10} में से {b % 10} नहीं निकलतीं, तो एक बंडल खोलो।"
+    )
+
+
+@pytest.mark.asyncio
+async def test_fast_track_a2_then_b_when_tagger_returns_no_problem(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Claude path: the real tagger returns problem=None for chip B's text.
+
+    Chip B is built from the board (61-28 after chip A2), so with problem=None the board stays
+    on the problem the teacher line talks about, and Ravi works that same problem.
+    """
+    from backend.app.llm.roles import act_tagger
+    from backend.app.llm.schemas import ActTaggerOutput
+    from backend.app.rehearsal import scene_runner
+
+    chip_b = _chip_b_text(61, 28)
+
+    async def claude_like_tag_act(*args: object, **kwargs: object) -> ActTaggerOutput:
+        out = await act_tagger.tag_act(*args, **kwargs)  # type: ignore[arg-type]
+        return (
+            out.model_copy(update={"problem": None}) if kwargs.get("transcript") == chip_b else out
+        )
+
+    monkeypatch.setattr(scene_runner, "tag_act", claude_like_tag_act)
+
+    runner = _create_runner()
+    scene_id = await _init_ravi_scene(runner, 43, 27)
+
+    t1 = await runner.turn(scene_id=scene_id, transcript="अब 61 में से 28 घटाओ")
+    assert TeachingAct.GIVE_NEW_PROBLEM.value in t1.turn.acts
+
+    t2 = await runner.turn(scene_id=scene_id, transcript=chip_b)
+    assert TeachingAct.CONCRETE_REPRESENTATION.value in t2.turn.acts
+    s2 = await runner.store.get(scene_id)
+    assert s2 is not None and s2.scene_state.current_item.key() == "sub:61-28"
+    # teacher line and child line are about the same problem: 61-28 = 33, never 43-27 = 16
+    assert "43" not in chip_b and "27" not in chip_b
+    assert any("33" in line.line_hi for line in t2.turn.child_lines)
+    assert not any("16" in line.line_hi for line in t2.turn.child_lines)

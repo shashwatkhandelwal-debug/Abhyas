@@ -1077,7 +1077,6 @@ function withFastTrackTray(c) {
   const b = mk('ft-chip-b');
   b.className = 'ft-chip';
   b.dataset.action = 'b';
-  b.dataset.text = 'चलो 43 में से 27 फिर से करते हैं: देखो, 4 बंडल और 3 खुली तीलियाँ हैं, 3 में से 7 नहीं निकलतीं, तो एक बंडल खोलो।';
 
   const ch_c = mk('ft-chip-c');
   ch_c.className = 'ft-chip';
@@ -1128,6 +1127,49 @@ test('Fast-Track chip A1 computes dynamic answer from subtraction problem and di
   assert.equal(c.getChipA1Text(), null);
   assert.equal(t.a1.disabled, true);
   assert.equal(t.a1.dataset.text, undefined);
+});
+
+test('Fast-Track chip B text is built from the current board and disables when no regroup is needed', () => {
+  const c = load();
+  const t = withFastTrackTray(c);
+  const b = (a, bb) => ({ ...SCENE, item: { type: 'sub', a, b: bb } });
+
+  c.renderSceneHeader(b(43, 27));
+  assert.equal(
+    c.getChipBText(),
+    'चलो 43 में से 27 फिर से करते हैं: देखो, 4 बंडल और 3 खुली तीलियाँ हैं, 3 में से 7 नहीं निकलतीं, तो एक बंडल खोलो।'
+  );
+  assert.equal(t.b.disabled, false);
+  assert.equal(t.b.dataset.text, c.getChipBText());
+
+  c.renderSceneHeader(b(61, 28));
+  assert.equal(
+    c.getChipBText(),
+    'चलो 61 में से 28 फिर से करते हैं: देखो, 6 बंडल और 1 खुली तीलियाँ हैं, 1 में से 8 नहीं निकलतीं, तो एक बंडल खोलो।'
+  );
+  assert.equal(t.b.disabled, false);
+
+  c.renderSceneHeader(b(80, 35));
+  assert.equal(
+    c.getChipBText(),
+    'चलो 80 में से 35 फिर से करते हैं: देखो, 8 बंडल और 0 खुली तीलियाँ हैं, 0 में से 5 नहीं निकलतीं, तो एक बंडल खोलो।'
+  );
+
+  // no regroup needed: units(a) >= units(b)
+  c.renderSceneHeader(b(58, 23));
+  assert.equal(c.getChipBText(), null);
+  assert.equal(t.b.disabled, true);
+  assert.equal(t.b.dataset.text, undefined);
+
+  // literacy scene (no sub item, board is not a subtraction)
+  c.renderSceneHeader({ ...SCENE, board: 'क + ा', item: { type: 'word', text: 'का' } });
+  assert.equal(c.getChipBText(), null);
+  assert.equal(t.b.disabled, true);
+
+  // no scene
+  c.renderSceneHeader(null);
+  assert.equal(c.getChipBText(), null);
+  assert.equal(t.b.disabled, true);
 });
 
 test('Fast-Track chips disable on tap, re-enable on reply or failure or 90s timeout', async () => {
