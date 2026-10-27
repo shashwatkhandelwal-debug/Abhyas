@@ -93,7 +93,7 @@ def compose_fidelity_reply(move: MoveCard, output: FidelityCheckerOutput) -> str
     """Composes teacher-facing feedback message from fidelity evaluation (§5.7).
 
     Templates loaded from content/messages_hi.yaml:
-    - fidelity_reply_summary: "धन्यवाद! आपने {n_covered} में से {n_total} मुख्य बातें कहीं।"
+    - fidelity_reply_summary: "धन्यवाद! आपने {n_total} में से {n_covered} मुख्य बातें कहीं।"
     - fidelity_reply_missing: "एक बात और याद रखें: {text}"
     - fidelity_reply_misconception: "ध्यान दें: {text}"
     """

@@ -68,7 +68,7 @@ explain_back_prompt:
   text: "अब 1 मिनट में अपने शब्दों में बताइए: इस तरीके में सबसे ज़रूरी क्या है? बोलकर या लिखकर भेजें।"
   audio: true
 explain_back_reply:
-  text: "धन्यवाद! आपने {covered} में से {total} मुख्य बातें कहीं।"
+  text: "धन्यवाद! आपने {total} में से {covered} मुख्य बातें कहीं।"
   audio: true
 explain_back_missing:
   text: "एक बात और याद रखें: {point}"
@@ -77,7 +77,7 @@ explain_back_misconception:
   text: "ध्यान दें: {note}"
   audio: false
 fidelity_reply_summary:
-  text: "धन्यवाद! आपने {n_covered} में से {n_total} मुख्य बातें कहीं।"
+  text: "धन्यवाद! आपने {n_total} में से {n_covered} मुख्य बातें कहीं।"
   audio: false
 fidelity_reply_missing:
   text: "एक बात और याद रखें: {text}"
