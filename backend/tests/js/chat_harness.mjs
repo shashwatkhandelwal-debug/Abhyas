@@ -32,7 +32,7 @@ export class El {
     this.attrs = {};
     this.dataset = {};
     this.style = {};
-    this.textContent = '';
+    this._textContent = '';
     this.innerHTML = '';
     this.hidden = false;
     this.disabled = false;
@@ -51,6 +51,16 @@ export class El {
       },
       contains: (c) => self._cls.has(c),
     };
+  }
+  get textContent() {
+    if (this.children.length > 0) {
+      return this.children.map((c) => c.textContent).join('');
+    }
+    return this._textContent || '';
+  }
+  set textContent(v) {
+    this._textContent = String(v);
+    this.children = [];
   }
   get className() {
     return [...this._cls].join(' ');
@@ -283,6 +293,11 @@ export function loadChat({ strings = {}, online = true } = {}) {
   const document = {
     getElementById: (id) => byId[id] || findById(body, id),
     createElement: (tag) => new El(tag),
+    createTextNode: (text) => {
+      const el = new El('#text');
+      el.textContent = String(text);
+      return el;
+    },
     addEventListener: (t, fn) => (documentListeners[t] = fn),
     querySelector: (s) => (s.startsWith('meta') ? null : body.querySelector(s)),
     querySelectorAll: (s) => body.querySelectorAll(s),
@@ -326,7 +341,8 @@ export function loadChat({ strings = {}, online = true } = {}) {
         pollMessages, updateOnlineStatus, upgradeServerAudio,
         toggleTranslation, buildTranslateControl, TRANSLATABLE_SPEAKERS, getSpeakerLabel,
         renderSceneHeader, addressChild, renderHint, hintSent, applyView, setupSceneEnd, setupHandbookChips, recorderErrorText, toggleLiteMode, flashStatus,
-        recordRequestLatency, isSlowNetwork, showSlowNetworkWarning })`,
+        recordRequestLatency, isSlowNetwork, showSlowNetworkWarning,
+        formatCoachEvidenceText, upgradeCoachEvidenceQuotes })`,
     sandbox
   );
   api.setUiStrings(strings);

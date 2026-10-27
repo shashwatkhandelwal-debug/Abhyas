@@ -363,6 +363,7 @@ ui_chat_source_original_en: {text: "यह अंश मूल दस्ता�
 ui_chat_source_ocr: {text: "यह अंश स्कैन किए गए पन्ने से मशीन द्वारा पढ़ा गया है, इसमें छोटी-मोटी गलतियाँ हो सकती हैं।", text_m: "यह अंश स्कैन किए गए पन्ने से मशीन द्वारा पढ़ा गया है, इसमें छोटी-मोटी गलतियाँ हो सकती हैं।", audio: false}
 ui_chat_source_error: {text: "स्रोत नहीं खुल सका — दोबारा छुएँ", audio: false}
 ui_chat_reconnecting: {text: "इंटरनेट लौट आया — दोबारा जुड़ रहे हैं…", audio: false}
+ui_chat_quote_tag: {text: "आपकी कही बात", audio: false}
 
 # ── Speaker labels ───────────────────────────────────────────
 speaker_abhyas: {text: "अभ्यास", audio: false}

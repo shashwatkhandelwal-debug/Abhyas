@@ -168,6 +168,7 @@ ui_chat_source_original_en: {text: "This passage is in English, from the origina
 ui_chat_source_ocr: {text: "This passage was read from a scanned page by a machine, so it may contain small errors."}
 ui_chat_source_error: {text: "Could not open the source — tap to try again"}
 ui_chat_reconnecting: {text: "The internet is back — reconnecting…"}
+ui_chat_quote_tag: {text: "Your words"}
 speaker_abhyas: {text: "Abhyas"}
 speaker_coach: {text: "Coach"}
 speaker_model_teacher: {text: "Model teacher"}

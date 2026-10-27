@@ -366,6 +366,50 @@ body {
   font-size: 1rem;
   line-height: 1.5;
   margin: 0;
+  white-space: pre-wrap;
+}
+
+.evidence-quote-badge {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  background: var(--brand-light);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius-sm);
+  padding: 0.1rem 0.35rem;
+  margin: 0.15rem 0;
+  vertical-align: baseline;
+}
+
+.evidence-quote-badge .quote-tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--brand);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding-right: 0.2rem;
+  border-right: 1px solid rgba(31, 111, 92, 0.3);
+}
+
+.evidence-quote-badge .quote-content {
+  font-size: 0.92rem;
+  font-style: italic;
+  color: var(--ink);
+}
+
+@media (prefers-color-scheme: dark) {
+  .evidence-quote-badge {
+    background: rgba(31, 111, 92, 0.25);
+    border-color: rgba(31, 111, 92, 0.6);
+  }
+  .evidence-quote-badge .quote-tag {
+    color: #58C5A8;
+    border-right-color: rgba(88, 197, 168, 0.4);
+  }
+  .evidence-quote-badge .quote-content {
+    color: var(--ink);
+  }
 }
 
 /* Audio Player Component in Bubble */

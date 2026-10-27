@@ -20,15 +20,15 @@ const STORE_OUTBOX = 'outbox';
 const STORE_MESSAGES = 'messages_cache';
 
 // ── Tunables (UI feedback timings) ──────────────────────────────────────────
-const TYPING_TIMEOUT_MS = 60000; // give up the typing indicator, show the Hindi failure hint
-const COLD_START_HINT_MS = 5000; // no response for this long -> "server is waking up"
-const AUDIO_WAIT_MS = 25000; // how long a spoken reply may wait for its audio before text-only
-const CHIP_CONFIRM_MS = 1400; // how long a tapped chip shows its inline ✓
-const FOLLOW_UP_POLL_MS = 1200; // one more poll after a reply, so the step line catches up
-const MAX_AUTO_RETRIES = 3; // network/5xx attempts before a bubble shows the red "!"
+const TYPING_TIMEOUT_MS = 60000;
+const COLD_START_HINT_MS = 5000;
+const AUDIO_WAIT_MS = 25000;
+const CHIP_CONFIRM_MS = 1400;
+const FOLLOW_UP_POLL_MS = 1200;
+const MAX_AUTO_RETRIES = 3;
 const BACKOFF_STEPS = [2000, 4000, 8000, 16000, 30000];
-const SLOW_REQUEST_THRESHOLD_MS = 8000; // latency above this across several requests triggers slow banner
-const SLOW_REQUEST_COUNT_THRESHOLD = 3; // consecutive slow requests before prompting lite mode
+const SLOW_REQUEST_THRESHOLD_MS = 8000;
+const SLOW_REQUEST_COUNT_THRESHOLD = 3;
 
 function getCsrfToken() {
   const meta = document.querySelector('meta[name="csrf-token"]');
@@ -114,12 +114,12 @@ async function getCachedMessages() {
   });
 }
 
-const LOGOUT_CLEAR_TIMEOUT_MS = 1500; // never let a stuck IndexedDB delete block the logout
+const LOGOUT_CLEAR_TIMEOUT_MS = 1500;
 
 function deleteChatDatabase() {
   return new Promise((resolve) => {
     try {
-      const req = indexedDB.deleteDatabase(DB_NAME); // outbox + rendered-message cache
+      const req = indexedDB.deleteDatabase(DB_NAME);
       req.onsuccess = () => resolve();
       req.onerror = () => resolve();
       req.onblocked = () => resolve();
@@ -132,7 +132,7 @@ function deleteChatDatabase() {
 async function clearLocalState() {
   const wipes = [deleteChatDatabase()];
   if (window.caches) {
-    wipes.push(caches.delete('abhyas-audio-v1').catch(() => false)); // played voice replies
+    wipes.push(caches.delete('abhyas-audio-v1').catch(() => false));
   }
   await Promise.race([
     Promise.all(wipes),
@@ -200,7 +200,7 @@ const TYPING_OFF = Object.freeze({ visible: false, timedOut: false, replied: fal
 
 function typingNext(st, ev) {
   switch (ev.type) {
-    case 'accepted': // a POST was accepted, or the teacher just tapped send (`label` = what we are doing)
+    case 'accepted':
       return {
         visible: true,
         timedOut: false,
@@ -209,12 +209,12 @@ function typingNext(st, ev) {
         label: ev.label || (st.visible ? st.label : null),
         since: ev.now,
       };
-    case 'pending': // poll says the server is still working
+    case 'pending':
       if (st.visible || st.replied) return st;
       return { visible: true, timedOut: false, replied: false, speaker: st.speaker, label: null, since: ev.now };
-    case 'reply': // a new bot bubble rendered
+    case 'reply':
       return st.visible || !st.replied ? { ...TYPING_OFF, replied: true } : st;
-    case 'idle': // poll says nothing is pending
+    case 'idle':
       return st.visible || st.replied ? TYPING_OFF : st;
     case 'tick':
       if (st.visible && !st.timedOut && ev.now - st.since >= TYPING_TIMEOUT_MS) {
@@ -328,7 +328,7 @@ const REC_CONFIG = (() => {
     return {};
   }
 })();
-const REC_HOLD_MS = REC_CONFIG.holdMs || 400; // press longer than this = hold-to-talk
+const REC_HOLD_MS = REC_CONFIG.holdMs || 400;
 
 const state = {
   lastMessageId: null,
@@ -345,17 +345,17 @@ const state = {
   autoPlayDone: false,
   lastAudioPollAt: null,
   lastMessageCreated: null,
-  msgStates: new Map(), // client_msg_id -> sending | sent | failed
-  hintDone: null, // key of the what-to-do line she has already acted on
-  failedIds: new Map(), // client_msg_id -> 'network' | 'rejected'
-  rows: new Map(), // client_msg_id | server id -> bubble row element
+  msgStates: new Map(),
+  hintDone: null,
+  failedIds: new Map(),
+  rows: new Map(),
   typing: TYPING_OFF,
   typingTimer: null,
   net: 'ok',
-  serverSkewMs: 0, // server clock minus client clock, from poll responses
-  lastAcceptedAt: 0, // when a POST was last accepted (guards against stale poll replies)
-  requestCount: 0, // total completed requests, to ignore cold start on first load
-  slowRequestCount: 0, // consecutive slow requests (> 8000ms)
+  serverSkewMs: 0,
+  lastAcceptedAt: 0,
+  requestCount: 0,
+  slowRequestCount: 0,
 };
 
 function isChildSpeaker(speaker) {
@@ -438,7 +438,7 @@ function updateMessageStatus(clientMsgId) {
 function failMessage(clientMsgId, reason) {
   state.failedIds.set(clientMsgId, reason);
   setMessageState(clientMsgId, 'failed');
-  typingEvent({ type: 'idle' }); // nothing is coming for a message that never arrived
+  typingEvent({ type: 'idle' });
   setMicPhase(clientMsgId, 'failed');
   flashStatus(failureNoticeText(reason));
 }
@@ -460,7 +460,7 @@ async function retryMessage(clientMsgId) {
   }
   item.retryCount = 0;
   item.nextAttemptAt = 0;
-  await saveToOutbox(item); // same client_msg_id: the server dedupes if the first try did land
+  await saveToOutbox(item);
   drainOutbox();
 }
 
@@ -614,7 +614,7 @@ async function drainOnce() {
 
 async function drainOutbox() {
   if (state.outboxRunning) {
-    state.drainAgain = true; // an item was queued mid-run: go round again
+    state.drainAgain = true;
     return;
   }
   if (!navigator.onLine) return;
@@ -936,6 +936,65 @@ function expectsAudio(msg) {
   return Date.now() + state.serverSkewMs - created < AUDIO_WAIT_MS;
 }
 
+function formatCoachEvidenceText(textEl, rawText) {
+  textEl.textContent = '';
+  const quoteRegex = /(?:(?:आपके शब्द|Your words)\s*[:\-–—]\s*)?«([^»]+)»/gu;
+  let lastIdx = 0;
+  let match;
+  let hasQuote = false;
+
+  while ((match = quoteRegex.exec(rawText)) !== null) {
+    hasQuote = true;
+    if (match.index > lastIdx) {
+      const preText = rawText.slice(lastIdx, match.index);
+      const preNode = document.createTextNode ? document.createTextNode(preText) : document.createElement('span');
+      if (!document.createTextNode) preNode.textContent = preText;
+      textEl.appendChild(preNode);
+    }
+    const badge = document.createElement('span');
+    badge.className = 'evidence-quote-badge';
+
+    const tag = document.createElement('span');
+    tag.className = 'quote-tag';
+    tag.textContent = t('ui_chat_quote_tag') || 'आपकी कही बात';
+
+    const content = document.createElement('span');
+    content.className = 'quote-content';
+    content.textContent = `«${match[1]}»`;
+
+    badge.appendChild(tag);
+    badge.appendChild(content);
+    textEl.appendChild(badge);
+
+    lastIdx = quoteRegex.lastIndex;
+  }
+
+  if (lastIdx < rawText.length) {
+    const postText = rawText.slice(lastIdx);
+    const postNode = document.createTextNode ? document.createTextNode(postText) : document.createElement('span');
+    if (!document.createTextNode) postNode.textContent = postText;
+    textEl.appendChild(postNode);
+  }
+
+  if (!hasQuote) {
+    textEl.textContent = rawText;
+  }
+}
+
+function upgradeCoachEvidenceQuotes(container) {
+  const root = container || document.getElementById('chat-messages');
+  if (!root) return;
+  const coachRows = root.querySelectorAll('.msg-row.outbound');
+  coachRows.forEach((row) => {
+    const speakerTag = row.querySelector('.speaker-tag.coach');
+    if (!speakerTag) return;
+    const textEl = row.querySelector('.bubble-text');
+    if (textEl && textEl.textContent.includes('«') && !textEl.querySelector('.evidence-quote-badge')) {
+      formatCoachEvidenceText(textEl, textEl.textContent);
+    }
+  });
+}
+
 function renderMessage(msg, isLocalOptimistic = false) {
   if (msg.id && msg.client_msg_id && state.renderedMsgIds.has(msg.client_msg_id)) {
     adoptServerMessageId(msg.client_msg_id, msg.id);
@@ -945,7 +1004,6 @@ function renderMessage(msg, isLocalOptimistic = false) {
   if (state.renderedMsgIds.has(msgKey)) {
     const existing = state.rows.get(msgKey) || (msg.client_msg_id && state.rows.get(msg.client_msg_id));
     if (existing && msg.text) applyTranscript(existing, msg.text);
-    // Text-first delivery support: attach audio to a previously rendered text bubble
     if (existing && msg.audio_ref && existing._audioWrap) {
       if (!existing._audioWrap._ref) {
         attachAudioRef(existing._audioWrap, msg.audio_ref, isChildSpeaker(msg.speaker) && existing._fresh);
@@ -972,7 +1030,6 @@ function renderMessage(msg, isLocalOptimistic = false) {
   bubble.className = 'bubble';
   row._bubble = bubble;
 
-  // Speaker Tag (bot messages)
   if (msg.direction === 'out' && msg.speaker) {
     const speakerEl = document.createElement('div');
     speakerEl.className = `speaker-tag ${msg.speaker.toLowerCase()}`;
@@ -980,16 +1037,18 @@ function renderMessage(msg, isLocalOptimistic = false) {
     bubble.appendChild(speakerEl);
   }
 
-  // Text Content
   if (msg.text || msg.awaitingTranscript) {
     const textEl = document.createElement('p');
     textEl.className = 'bubble-text';
-    textEl.textContent = msg.text || '';
+    if (msg.direction === 'out' && msg.speaker && msg.speaker.toLowerCase() === 'coach' && msg.text && msg.text.includes('«')) {
+      formatCoachEvidenceText(textEl, msg.text);
+    } else {
+      textEl.textContent = msg.text || '';
+    }
     bubble.appendChild(textEl);
     row._textEl = textEl;
   }
 
-  // Voice note being uploaded / transcribed: one-line Hindi status under the label
   if (msg.awaitingTranscript) {
     const phaseEl = document.createElement('p');
     phaseEl.className = 'bubble-phase';
@@ -1000,7 +1059,6 @@ function renderMessage(msg, isLocalOptimistic = false) {
     row.setAttribute('data-phase', 'uploading');
     phaseEl.textContent = t('ui_chat_rec_uploading');
   } else if (msg.direction === 'in' && msg.kind === 'audio' && !msg.text && !isLocalOptimistic) {
-    // a voice note from history/poll whose transcript has not landed yet
     const phaseEl = document.createElement('p');
     phaseEl.className = 'bubble-phase';
     phaseEl.setAttribute('role', 'status');
@@ -1015,7 +1073,6 @@ function renderMessage(msg, isLocalOptimistic = false) {
     row.setAttribute('data-phase', 'transcribing');
   }
 
-  // Audio player, or a "voice is coming" placeholder while the reply's audio is synthesised
   if (msg.audio_ref || expectsAudio(msg)) {
     const wrap = buildAudioWrap(msg.audio_ref || null, msg.audio_ref ? 'ready' : 'loading');
     row._audioWrap = wrap;
@@ -1024,7 +1081,6 @@ function renderMessage(msg, isLocalOptimistic = false) {
     if (!msg.audio_ref) {
       wrap._giveupTimer = setTimeout(() => transitionAudio(wrap, 'giveup'), AUDIO_WAIT_MS);
     } else if (!state.liteMode && !state.autoPlayDone && isChildSpeaker(msg.speaker)) {
-      // Auto-play newest child line once in normal mode if not played
       state.autoPlayDone = true;
       setTimeout(() => startAudio(wrap, true), 300);
     }
@@ -1045,12 +1101,10 @@ function renderMessage(msg, isLocalOptimistic = false) {
     bubble.appendChild(sources);
   }
 
-  // On-demand English translation under child / coach / guide bubbles
   if (msg.direction === 'out' && msg.id && msg.text && TRANSLATABLE_SPEAKERS.has(msg.speaker)) {
     bubble.appendChild(buildTranslateControl(msg.id));
   }
 
-  // Metadata / Status Tick
   const meta = document.createElement('div');
   meta.className = 'bubble-meta';
   row._meta = meta;
@@ -1074,7 +1128,6 @@ function renderMessage(msg, isLocalOptimistic = false) {
 
   row.appendChild(bubble);
 
-  // Quick-reply Buttons (chips under last bot message)
   if (msg.direction === 'out' && msg.buttons && msg.buttons.length > 0) {
     const qrContainer = document.createElement('div');
     qrContainer.className = 'quick-replies';
@@ -1096,7 +1149,7 @@ function renderMessage(msg, isLocalOptimistic = false) {
 
   const pendingEl = document.getElementById('pending-bubble');
   if (pendingEl && pendingEl.parentNode === container) {
-    container.insertBefore(row, pendingEl); // new bubbles stay above the typing indicator
+    container.insertBefore(row, pendingEl);
   } else {
     container.appendChild(row);
   }
@@ -1105,7 +1158,6 @@ function renderMessage(msg, isLocalOptimistic = false) {
 }
 
 // ── On-demand translation: "Translate" under child / coach / guide bubbles ─────
-// The Hindi stays; the English text appears below it. The server caches per (message, 'en').
 const TRANSLATABLE_SPEAKERS = new Set(['ravi', 'priya', 'aman', 'coach', 'guide', 'model_teacher']);
 
 function buildTranslateControl(messageId) {
@@ -1259,7 +1311,6 @@ document.addEventListener('click', (ev) => {
   if (chip) toggleSourceExcerpt(chip);
 });
 
-// Speaker display names come from the catalog (speaker_<id>), in the user's UI language.
 function getSpeakerLabel(speaker) {
   return t(`speaker_${speaker}`) || speaker;
 }
@@ -1284,18 +1335,15 @@ function lockChips(container, chip) {
 }
 
 // ── Sending Handlers ────────────────────────────────────────────────────────
-// `typingLabel` (optional): what the typing bubble says at once, before the server has answered.
 async function handleSendText(text, typingLabel = null) {
   if (!text || !text.trim()) return null;
   hintSent();
   const clientMsgId = crypto.randomUUID();
   const cleanText = text.trim();
 
-  // 1. Clear the input first (synchronously): a second tap/Enter cannot resend the same text
   const input = document.getElementById('chat-input');
   if (input) input.value = '';
 
-  // 2. Optimistic render in UI (clock until the POST is accepted)
   const optimisticMsg = {
     client_msg_id: clientMsgId,
     direction: 'in',
@@ -1306,7 +1354,6 @@ async function handleSendText(text, typingLabel = null) {
   renderMessage(optimisticMsg, true);
   if (typingLabel) typingEvent({ type: 'accepted', label: typingLabel });
 
-  // 3. Save to IndexedDB Outbox
   await saveToOutbox({
     client_msg_id: clientMsgId,
     kind: 'text',
@@ -1315,7 +1362,6 @@ async function handleSendText(text, typingLabel = null) {
     retryCount: 0,
   });
 
-  // 4. Trigger Outbox upload & fast poll
   drainOutbox();
   triggerImmediatePoll();
   return clientMsgId;
@@ -1325,7 +1371,6 @@ async function handleSendButton(buttonId, buttonTitle) {
   hintSent();
   const clientMsgId = crypto.randomUUID();
 
-  // Optimistic render
   const optimisticMsg = {
     client_msg_id: clientMsgId,
     direction: 'in',
@@ -1335,7 +1380,6 @@ async function handleSendButton(buttonId, buttonTitle) {
   };
   renderMessage(optimisticMsg, true);
 
-  // Save to Outbox
   await saveToOutbox({
     client_msg_id: clientMsgId,
     kind: 'button',
@@ -1352,7 +1396,6 @@ async function handleSendAudio(audioBlob, durationSec) {
   hintSent();
   const clientMsgId = crypto.randomUUID();
 
-  // Optimistic render: voice-note label + "uploading…" line (becomes the transcript later)
   const optimisticMsg = {
     client_msg_id: clientMsgId,
     direction: 'in',
@@ -1363,7 +1406,6 @@ async function handleSendAudio(audioBlob, durationSec) {
   };
   renderMessage(optimisticMsg, true);
 
-  // Save to Outbox
   await saveToOutbox({
     client_msg_id: clientMsgId,
     kind: 'audio',
@@ -1392,13 +1434,12 @@ function updateOnlineStatus() {
       console.warn('Network banner element missing data-offline-text attribute');
     }
   } else {
-    netEvent('online'); // offline -> "reconnecting…" until the next request succeeds
+    netEvent('online');
     if (banner) {
       banner.className = 'network-banner';
       banner.textContent = '';
       banner.style.display = 'none';
     }
-    // Bubbles that gave up for lack of network try again now
     for (const [id, reason] of [...state.failedIds]) {
       if (reason === 'network') retryMessage(id);
     }
@@ -1418,7 +1459,6 @@ function isSlowNetwork() {
 
 function recordRequestLatency(durationMs) {
   state.requestCount++;
-  // Never treat the very first request (often server cold start on free hosting) as slow network
   if (state.requestCount > 1) {
     if (durationMs > SLOW_REQUEST_THRESHOLD_MS) {
       state.slowRequestCount++;
@@ -1452,7 +1492,6 @@ async function toggleLiteMode(forceValue = null) {
   try {
     localStorage.setItem('abhyas_lite_mode', target ? 'true' : 'false');
   } catch (e) {
-    // ignore storage quota / sandbox errors
   }
 
   const btn = document.getElementById('lite-mode-menu-btn');
@@ -1505,8 +1544,6 @@ async function toggleShareScores() {
 window.toggleShareScores = toggleShareScores;
 
 // ── Mic UI Interaction ──────────────────────────────────────────────────────
-// Two ways to record, one button:
-//   tap  (press < REC_HOLD_MS): recording starts; tap the big Stop/Send button to send.
 function setupMicEvents() {
   const micBtn = document.getElementById('btn-mic');
   const overlay = document.getElementById('recording-overlay');
@@ -1581,8 +1618,6 @@ function setupMicEvents() {
     stopRecUI();
   };
 
-  // Pointer events cover mouse, touch and pen. Capturing the pointer keeps pointerup coming to
-  // the mic button after the overlay appears on top of it.
   micBtn.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.preventDefault();
@@ -1605,16 +1640,14 @@ function setupMicEvents() {
     pressedAt = 0;
     clearTimeout(holdTimer);
     if (heldMs >= REC_HOLD_MS) {
-      stopAndSend(); // hold-to-talk: release sends
+      stopAndSend();
     } else {
-      // quick tap: keep recording until Stop/Send
       setStatus('ui_chat_rec_recording_tap');
     }
   };
   micBtn.addEventListener('pointerup', onRelease);
   micBtn.addEventListener('pointercancel', onRelease);
 
-  // Keyboard / assistive tech activate the button with a click event that has no pointer
   micBtn.addEventListener('click', (e) => {
     if (e.detail === 0 && !state.isRecording) startRec();
   });
@@ -1626,7 +1659,6 @@ function setupMicEvents() {
   });
 }
 
-// A short notice in the slim status bar (e.g. microphone denied), replaced by the next net event.
 function flashStatus(text) {
   const bar = document.getElementById('status-bar');
   if (!bar || !text) return;
@@ -1642,14 +1674,13 @@ const SAMPLE_BOX_ID = 'sample-list';
 function setupDemoChips() {
   const box = document.getElementById(SAMPLE_BOX_ID);
   const tray = document.getElementById('sample-tray');
-  // Open on a wide screen, folded on a phone (the sample lines are a judge's helper)
   if (tray && window.matchMedia && window.matchMedia('(min-width: 641px)').matches) tray.open = true;
   if (!box) return;
   let busy = false;
   box.addEventListener('click', async (e) => {
     const c = e.target && e.target.closest ? e.target.closest('.demo-chip') : null;
     if (!c || busy) return;
-    busy = true; // locked while the sample loads: no double sends
+    busy = true;
     c.classList.add('pressed');
     announce(t('ui_chat_chip_done'));
     try {
@@ -1674,7 +1705,6 @@ function setupDemoChips() {
   });
 }
 
-// The poll carries the samples that make sense now (null outside demo mode: leave the list alone)
 function renderSamples(list) {
   const box = document.getElementById(SAMPLE_BOX_ID);
   if (!box || !Array.isArray(list)) return;
@@ -1721,8 +1751,6 @@ function setupDemoBanner() {
 }
 
 // ── Ask the handbook chips: a tap sends the question through the normal text path ──
-// The chip says "Sending…", then a tick; the question bubble and a "Looking in the handbook…"
-// typing bubble show at once. One question at a time; the chips come back when the send settles.
 const CHIP_SETTLE_MAX_MS = 8000;
 
 function whenSettled(clientMsgId, maxMs) {
@@ -1745,7 +1773,7 @@ function setupHandbookChips() {
   chips.forEach((c) => {
     c.onclick = async () => {
       if (c.disabled) return;
-      busy(true); // one question at a time. Hindi UI: the label is the question; English: data-text
+      busy(true);
       const label = c.textContent;
       c.classList.add('sending');
       c.textContent = t('ui_chat_msg_sending');
@@ -1768,7 +1796,7 @@ function setupHandbookChips() {
       }
     };
   });
-  const auto = sec && sec.getAttribute('data-autosend'); // ?ask=hb03 from Modules
+  const auto = sec && sec.getAttribute('data-autosend');
   if (auto) {
     try {
       history.replaceState(null, '', location.pathname);
@@ -1876,6 +1904,8 @@ function initRenderedMessagesFromDom() {
     }
   });
 
+  upgradeCoachEvidenceQuotes(container);
+
   if (cachedBatch.length > 0) {
     cacheMessages(cachedBatch).catch((err) => console.warn('Cache initial msgs error:', err));
   }
@@ -1885,12 +1915,10 @@ function initRenderedMessagesFromDom() {
 document.addEventListener('DOMContentLoaded', async () => {
   loadUiStrings();
 
-  // 1. Online / Offline listeners
   window.addEventListener('online', updateOnlineStatus);
   window.addEventListener('offline', updateOnlineStatus);
   updateOnlineStatus();
 
-  // 2. Sync Lite Mode from button or localStorage
   const liteBtn = document.getElementById('lite-mode-menu-btn');
   let savedLite = false;
   try {
@@ -1910,7 +1938,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     showSlowNetworkWarning();
   }
 
-  // 3. Form submission
   const form = document.getElementById('composer-form');
   const input = document.getElementById('chat-input');
   if (form && input) {
@@ -1920,7 +1947,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
   }
 
-  // 4. Setup Mic & Demo Chips
   setupMicEvents();
   setupDemoChips();
   setupDemoBanner();
@@ -1929,16 +1955,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   setupLogoutCleanup();
 
-  // 5. Register SW
   registerServiceWorker();
 
-  // 6. Seed rendered messages into IndexedDB & state; give history audio the stateful player
   initRenderedMessagesFromDom();
   upgradeServerAudio();
   scrollChatToEnd();
   window.addEventListener('load', scrollChatToEnd);
 
-  // 7. Initial poll and outbox drain
   await drainOutbox();
   pollMessages();
 });

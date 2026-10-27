@@ -921,3 +921,75 @@ test('btn_replay is hidden unless audio is attached to the message', async () =>
   // 1 from first message + 2 from second message = 3
   assert.equal(allChips.length, 3);
 });
+
+// ── coach evidence quote badge ──────────────────────────────────────────────
+test('coach evidence quote badge strips prefix and displays badge', () => {
+  const c = load();
+  const text = 'शानदार! आपके शब्द: «रवि, 10 के बंडल बनाओ» से बच्चे को समझ आया।';
+  c.renderMessage({
+    id: 'coach-1',
+    direction: 'out',
+    speaker: 'coach',
+    text: text,
+  });
+  const row = c.container.querySelector('#msg-coach-1');
+  const badge = row.querySelector('.evidence-quote-badge');
+  assert.ok(badge, 'Badge should be present');
+  const tag = badge.querySelector('.quote-tag');
+  assert.equal(tag.textContent, strings.ui_chat_quote_tag || 'आपकी कही बात');
+  const content = badge.querySelector('.quote-content');
+  assert.equal(content.textContent, '«रवि, 10 के बंडल बनाओ»');
+
+  // Verify "आपके शब्द:" was stripped and not duplicated in bubble text before badge
+  const textEl = row.querySelector('.bubble-text');
+  assert.ok(!textEl.textContent.includes('आपके शब्द:'), 'Preceding prefix should be consumed');
+});
+
+test('coach evidence quote badge escapes XSS payloads like <img onerror=...>', () => {
+  const c = load();
+  const text = 'बहुत बढ़िया! आपके शब्द: «रवि, <img onerror=alert(1)> बंडल बनाओ» सही थे।';
+  c.renderMessage({
+    id: 'coach-2',
+    direction: 'out',
+    speaker: 'coach',
+    text: text,
+  });
+  const row = c.container.querySelector('#msg-coach-2');
+  const badge = row.querySelector('.evidence-quote-badge');
+  assert.ok(badge);
+  const content = badge.querySelector('.quote-content');
+  assert.equal(content.textContent, '«रवि, <img onerror=alert(1)> बंडल बनाओ»');
+  assert.equal(row.querySelector('img'), null, 'No <img> tag should be created in the DOM');
+});
+
+test('coach evidence quote preserves newlines and citation chips', () => {
+  const c = load();
+  const text = 'लाइन 1\nलाइन 2 आपके शब्द: «बंडल बनाओ»\nलाइन 3';
+  c.renderMessage({
+    id: 'coach-3',
+    direction: 'out',
+    speaker: 'coach',
+    text: text,
+    citations: [{ chunk_id: 'c1', line_hi: 'हैंडबुक पृष्ठ 24' }],
+  });
+  const row = c.container.querySelector('#msg-coach-3');
+  const textEl = row.querySelector('.bubble-text');
+  assert.ok(textEl.textContent.includes('\n'), 'Newlines must be preserved in text content');
+  const chip = row.querySelector('.source-chip');
+  assert.ok(chip, 'Citation chip must be rendered');
+  assert.equal(chip.textContent, 'हैंडबुक पृष्ठ 24');
+});
+
+test('evidence quote badge only applies to coach messages', () => {
+  const c = load();
+  const text = 'मैं कहता हूँ «रवि, सही उत्तर 16 है»';
+  c.renderMessage({
+    id: 'child-1',
+    direction: 'out',
+    speaker: 'ravi',
+    text: text,
+  });
+  const row = c.container.querySelector('#msg-child-1');
+  const badge = row.querySelector('.evidence-quote-badge');
+  assert.equal(badge, null, 'Non-coach messages must NOT have quote badge');
+});
