@@ -1,36 +1,20 @@
-/**
- * Abhyas Chat Application (spec/09 §9.2).
- * Features:
- * - IndexedDB Outbox with retry backoff (2, 4, 8s) and a visible failed state (tap to retry)
- * - Message deduplication with client_msg_id
- * - Polling (1.5s while pending, 20s while idle)
- * - Visible acknowledgment for every action: bubble states, typing indicator, audio states,
- *   mic flow, pressed/locked chips, cold-start / reconnecting status bar
- * - Lite mode toggle & audio playback
- *
- * All Hindi shown by the acknowledgment UI comes from content/messages_hi.yaml (ui_chat_*),
- * delivered as JSON in #ui-strings. The state machines below are pure so they can be tested
- * under Node (backend/tests/js).
- */
+// Abhyas Chat Client (spec/09)
 
-// ── IndexedDB Storage ───────────────────────────────────────────────────────
 const DB_NAME = 'abhyas_chat_db';
 const DB_VERSION = 1;
 const STORE_OUTBOX = 'outbox';
 const STORE_MESSAGES = 'messages_cache';
 
-// ── Tunables (UI feedback timings) ──────────────────────────────────────────
-const TYPING_TIMEOUT_MS = 60000; // give up the typing indicator, show the Hindi failure hint
-const COLD_START_HINT_MS = 5000; // no response for this long -> "server is waking up"
-const AUDIO_WAIT_MS = 25000; // how long a spoken reply may wait for its audio before text-only
-const CHIP_CONFIRM_MS = 1400; // how long a tapped chip shows its inline ✓
-const FOLLOW_UP_POLL_MS = 1200; // one more poll after a reply, so the step line catches up
-const MAX_AUTO_RETRIES = 3; // network/5xx attempts before a bubble shows the red "!"
+const TYPING_TIMEOUT_MS = 60000;
+const COLD_START_HINT_MS = 5000;
+const AUDIO_WAIT_MS = 25000;
+const CHIP_CONFIRM_MS = 1400;
+const FOLLOW_UP_POLL_MS = 1200;
+const MAX_AUTO_RETRIES = 3;
 const BACKOFF_STEPS = [2000, 4000, 8000, 16000, 30000];
-const SLOW_REQUEST_THRESHOLD_MS = 8000; // latency above this across several requests triggers slow banner
-const SLOW_REQUEST_COUNT_THRESHOLD = 3; // consecutive slow requests before prompting lite mode
+const SLOW_REQUEST_THRESHOLD_MS = 8000;
+const SLOW_REQUEST_COUNT_THRESHOLD = 3;
 
-// ── CSRF Protection ────────────────────────────────────────────────────────
 function getCsrfToken() {
   const meta = document.querySelector('meta[name="csrf-token"]');
   if (meta && meta.content) {
@@ -115,13 +99,12 @@ async function getCachedMessages() {
   });
 }
 
-// ── Logout: wipe this browser's chat state so the next login never sees stale bubbles ──────
-const LOGOUT_CLEAR_TIMEOUT_MS = 1500; // never let a stuck IndexedDB delete block the logout
+const LOGOUT_CLEAR_TIMEOUT_MS = 1500;
 
 function deleteChatDatabase() {
   return new Promise((resolve) => {
     try {
-      const req = indexedDB.deleteDatabase(DB_NAME); // outbox + rendered-message cache
+      const req = indexedDB.deleteDatabase(DB_NAME);
       req.onsuccess = () => resolve();
       req.onerror = () => resolve();
       req.onblocked = () => resolve();
@@ -134,7 +117,7 @@ function deleteChatDatabase() {
 async function clearLocalState() {
   const wipes = [deleteChatDatabase()];
   if (window.caches) {
-    wipes.push(caches.delete('abhyas-audio-v1').catch(() => false)); // played voice replies
+    wipes.push(caches.delete('abhyas-audio-v1').catch(() => false));
   }
   await Promise.race([
     Promise.all(wipes),
@@ -154,7 +137,6 @@ function setupLogoutCleanup() {
   });
 }
 
-// ── Localised strings (catalog keys ui_chat_*, served as JSON in the page) ───
 let UI = {};
 
 function setUiStrings(obj) {
@@ -177,14 +159,11 @@ function fillTemplate(str, vars) {
   return out;
 }
 
-// Returns '' (never an English fallback) for an unknown key; a pytest keeps keys and catalog in sync.
 function t(key, vars) {
   const s = UI[key];
   return s === undefined ? '' : fillTemplate(s, vars);
 }
 
-// ── Pure state machines ─────────────────────────────────────────────────────
-// Message bubble: sending -> sent | failed; failed -> (tap) sending. `sent` is final.
 const MSG_SENDING = 'sending';
 const MSG_SENT = 'sent';
 const MSG_FAILED = 'failed';
@@ -202,13 +181,11 @@ function nextMsgState(cur, ev) {
   }
 }
 
-// Typing indicator. `replied` stops the indicator coming back for the audio-rendering tail
-// of a turn whose text already arrived (server `pending` stays true until TTS is done).
 const TYPING_OFF = Object.freeze({ visible: false, timedOut: false, replied: false, speaker: null, label: null, since: 0 });
 
 function typingNext(st, ev) {
   switch (ev.type) {
-    case 'accepted': // a POST was accepted, or the teacher just tapped send (`label` = what we are doing)
+    case 'accepted':
       return {
         visible: true,
         timedOut: false,
@@ -217,12 +194,12 @@ function typingNext(st, ev) {
         label: ev.label || (st.visible ? st.label : null),
         since: ev.now,
       };
-    case 'pending': // poll says the server is still working
+    case 'pending':
       if (st.visible || st.replied) return st;
       return { visible: true, timedOut: false, replied: false, speaker: st.speaker, label: null, since: ev.now };
-    case 'reply': // a new bot bubble rendered
+    case 'reply':
       return st.visible || !st.replied ? { ...TYPING_OFF, replied: true } : st;
-    case 'idle': // poll says nothing is pending
+    case 'idle':
       return st.visible || st.replied ? TYPING_OFF : st;
     case 'tick':
       if (st.visible && !st.timedOut && ev.now - st.since >= TYPING_TIMEOUT_MS) {
@@ -240,7 +217,6 @@ const SPEAKER_NAMES = {
   aman: ['अमन', 'aman'],
 };
 
-// Which child the teacher is talking to (earliest name in the text), or null.
 function guessSpeaker(text) {
   const s = (text || '').toLowerCase();
   let best = null;
@@ -257,7 +233,6 @@ function guessSpeaker(text) {
   return best;
 }
 
-// Audio bubble. `loading` = waiting for the audio file to exist, or buffering after a tap.
 function audioNext(cur, ev) {
   switch (cur) {
     case 'loading':
@@ -284,7 +259,6 @@ function audioNext(cur, ev) {
   }
 }
 
-// Mic / voice note: idle -> recording -> uploading -> transcribing -> done
 function micNext(cur, ev) {
   switch (cur) {
     case 'idle':
@@ -308,7 +282,6 @@ function micNext(cur, ev) {
   }
 }
 
-// Connection status bar: ok | cold (server waking / unreachable) | offline | reconnecting
 function netNext(cur, ev) {
   switch (ev) {
     case 'success':
@@ -332,7 +305,6 @@ function formatTimer(sec) {
   return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
-// Recorder limits come from the server (REC_* in config.py) through #rec-config.
 const REC_CONFIG = (() => {
   try {
     const el = document.getElementById('rec-config');
@@ -341,9 +313,8 @@ const REC_CONFIG = (() => {
     return {};
   }
 })();
-const REC_HOLD_MS = REC_CONFIG.holdMs || 400; // press longer than this = hold-to-talk
+const REC_HOLD_MS = REC_CONFIG.holdMs || 400;
 
-// ── State Management ────────────────────────────────────────────────────────
 const state = {
   lastMessageId: null,
   isPending: false,
@@ -359,17 +330,19 @@ const state = {
   autoPlayDone: false,
   lastAudioPollAt: null,
   lastMessageCreated: null,
-  msgStates: new Map(), // client_msg_id -> sending | sent | failed
-  hintDone: null, // key of the what-to-do line she has already acted on
-  failedIds: new Map(), // client_msg_id -> 'network' | 'rejected'
-  rows: new Map(), // client_msg_id | server id -> bubble row element
+  msgStates: new Map(),
+  hintDone: null,
+  failedIds: new Map(),
+  rows: new Map(),
   typing: TYPING_OFF,
   typingTimer: null,
   net: 'ok',
-  serverSkewMs: 0, // server clock minus client clock, from poll responses
-  lastAcceptedAt: 0, // when a POST was last accepted (guards against stale poll replies)
-  requestCount: 0, // total completed requests, to ignore cold start on first load
-  slowRequestCount: 0, // consecutive slow requests (> 8000ms)
+  serverSkewMs: 0,
+  lastAcceptedAt: 0,
+  requestCount: 0,
+  slowRequestCount: 0,
+  fastTrackInFlight: false,
+  fastTrackTimer: null,
 };
 
 function isChildSpeaker(speaker) {
@@ -385,7 +358,6 @@ function announce(text) {
   if (live && text) live.textContent = text;
 }
 
-// ── Connection status (cold start / reconnecting) ───────────────────────────
 function renderNetStatus() {
   const bar = document.getElementById('status-bar');
   if (!bar) return;
@@ -408,8 +380,6 @@ function netEvent(ev) {
   renderNetStatus();
 }
 
-// fetch() that reports to the status bar: no answer for COLD_START_HINT_MS shows the
-// "server is waking up" hint; any successful response (or a 5xx while waking) updates it.
 async function netFetch(url, opts) {
   const timer = setTimeout(() => netEvent('slow'), COLD_START_HINT_MS);
   try {
@@ -424,7 +394,6 @@ async function netFetch(url, opts) {
   }
 }
 
-// ── Message bubble state ────────────────────────────────────────────────────
 function paintStatus(el, st, clientMsgId) {
   el.className = `status-icon ${st}`;
   el.setAttribute('data-state', st);
@@ -449,7 +418,6 @@ function setMessageState(clientMsgId, ev) {
   return next;
 }
 
-// Kept for the render path: a polled/adopted copy of an optimistic bubble means "accepted".
 function updateMessageStatus(clientMsgId) {
   setMessageState(clientMsgId, 'accepted');
 }
@@ -457,13 +425,12 @@ function updateMessageStatus(clientMsgId) {
 function failMessage(clientMsgId, reason) {
   state.failedIds.set(clientMsgId, reason);
   setMessageState(clientMsgId, 'failed');
-  typingEvent({ type: 'idle' }); // nothing is coming for a message that never arrived
+  typingEvent({ type: 'idle' });
   setMicPhase(clientMsgId, 'failed');
   flashStatus(failureNoticeText(reason));
+  if (state.fastTrackInFlight) enableFastTrackChips();
 }
 
-// What the teacher is told when a send gives up: network (kept on the phone, tap ! later) vs
-// rejected by the server (refresh or type instead).
 function failureNoticeText(reason) {
   return reason === 'network' ? t('ui_chat_send_failed_network') : t('ui_chat_send_failed_rejected');
 }
@@ -481,11 +448,10 @@ async function retryMessage(clientMsgId) {
   }
   item.retryCount = 0;
   item.nextAttemptAt = 0;
-  await saveToOutbox(item); // same client_msg_id: the server dedupes if the first try did land
+  await saveToOutbox(item);
   drainOutbox();
 }
 
-// ── Voice note phases (uploading -> transcribing -> transcript) ─────────────
 function setMicPhase(clientMsgId, ev) {
   const row = state.rows.get(clientMsgId);
   if (!row || !row._phaseEl) return;
@@ -505,7 +471,6 @@ function applyTranscript(row, text) {
   if (row._textEl) row._textEl.textContent = text;
 }
 
-// ── Typing indicator ────────────────────────────────────────────────────────
 function typingLabel(speaker) {
   return t(`ui_chat_typing_${speaker}`) || t('ui_chat_typing_generic');
 }
@@ -535,7 +500,6 @@ function typingEvent(ev) {
   renderTyping();
 }
 
-// ── Outbox Drainer & Backoff Retrier ────────────────────────────────────────
 function audioFileName(blob) {
   const type = (blob && blob.type) || '';
   if (type.includes('mp4')) return 'voice.m4a';
@@ -579,7 +543,6 @@ async function sendOutboxItem(item) {
     const body = await resp.json().catch(() => null);
     return { outcome: 'accepted', body };
   }
-  // 4xx (other than timeout / rate-limit) will not succeed by retrying the same request
   if (resp.status >= 400 && resp.status < 500 && resp.status !== 408 && resp.status !== 429) {
     return { outcome: 'rejected' };
   }
@@ -617,7 +580,6 @@ async function drainOnce() {
       setMessageState(id, 'accepted');
       setMicPhase(id, 'accepted');
       typingEvent({ type: 'accepted', speaker: item.kind === 'text' ? guessSpeaker(item.text) : null });
-      // The server now owes a reply: poll at the fast cadence until it says it is done
       state.lastAcceptedAt = Date.now();
       state.isPending = true;
       scheduleNextPoll();
@@ -640,7 +602,7 @@ async function drainOnce() {
 
 async function drainOutbox() {
   if (state.outboxRunning) {
-    state.drainAgain = true; // an item was queued mid-run: go round again
+    state.drainAgain = true;
     return;
   }
   if (!navigator.onLine) return;
@@ -657,14 +619,11 @@ async function drainOutbox() {
   if (wakeAt) setTimeout(drainOutbox, Math.max(0, wakeAt - Date.now()) + 50);
 }
 
-// ── Scrolling: the thread is the one scrolling part of the page ──────────────
 function scrollChatToEnd() {
   const container = document.getElementById('chat-messages');
   if (container) container.scrollTop = container.scrollHeight;
 }
 
-// After new bubbles: show their end, unless that would push the first one's top out of sight
-// (a long answer is read from its first line).
 function scrollChatToNew(firstRow) {
   const container = document.getElementById('chat-messages');
   if (!container) return;
@@ -674,8 +633,6 @@ function scrollChatToNew(firstRow) {
   if (offset < 0) container.scrollTop += offset - 8;
 }
 
-// ── Polling Loop (§7.3) ─────────────────────────────────────────────────────
-// Scene bar: every field comes from the server (title, turn, board, who can be addressed)
 function addressChild(name) {
   const input = document.getElementById('chat-input');
   if (!input || !name) return;
@@ -683,10 +640,153 @@ function addressChild(name) {
   if (input.focus) input.focus();
 }
 
+function renderManipulatives(m) {
+  const el = document.getElementById('sb-manipulatives');
+  if (!el) return;
+  if (!m || (m.bundles === undefined && m.sticks === undefined)) {
+    el.hidden = true;
+    el.textContent = '';
+    return;
+  }
+  el.hidden = false;
+  el.setAttribute('role', 'img');
+  el.setAttribute('aria-label', m.aria_label || '');
+  if (m.regrouped) {
+    el.classList.add('regrouped');
+  } else {
+    el.classList.remove('regrouped');
+  }
+
+  el.textContent = '';
+  const bundlesWrap = document.createElement('span');
+  bundlesWrap.className = 'manip-bundles';
+  bundlesWrap.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < (m.bundles || 0); i++) {
+    const b = document.createElement('span');
+    b.className = 'drawn-bundle';
+    bundlesWrap.appendChild(b);
+  }
+  el.appendChild(bundlesWrap);
+
+  const sticksWrap = document.createElement('span');
+  sticksWrap.className = 'manip-sticks';
+  sticksWrap.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < (m.sticks || 0); i++) {
+    const s = document.createElement('span');
+    s.className = 'drawn-stick';
+    sticksWrap.appendChild(s);
+  }
+  el.appendChild(sticksWrap);
+}
+
+let currentSceneHeader = null;
+
+function getSubItem(sc) {
+  const s = sc || currentSceneHeader;
+  const item = s && s.item;
+  if (item && item.type === 'sub' && typeof item.a === 'number' && typeof item.b === 'number') {
+    return { a: item.a, b: item.b };
+  }
+  const boardEl = document.getElementById('sb-board');
+  const m = (boardEl ? boardEl.textContent.trim() : '').match(/^(\d+)\s*[\u2212\-]\s*(\d+)$/);
+  return m ? { a: parseInt(m[1], 10), b: parseInt(m[2], 10) } : null;
+}
+
+function getChipA1Text(sc) {
+  const p = getSubItem(sc);
+  return p ? '\u0930\u0935\u093f, \u0938\u0939\u0940 \u0909\u0924\u094d\u0924\u0930 ' + (p.a - p.b) + ' \u0939\u0948' : null;
+}
+
+function getChipBText(sc) {
+  const p = getSubItem(sc);
+  if (!p || p.a % 10 >= p.b % 10) return null;
+  return '\u091a\u0932\u094b ' + p.a + ' \u092e\u0947\u0902 \u0938\u0947 ' + p.b + ' \u092b\u093f\u0930 \u0938\u0947 \u0915\u0930\u0924\u0947 \u0939\u0948\u0902: \u0926\u0947\u0916\u094b, ' + Math.floor(p.a / 10) + ' \u092c\u0902\u0921\u0932 \u0914\u0930 ' + (p.a % 10) + ' \u0916\u0941\u0932\u0940 \u0924\u0940\u0932\u093f\u092f\u093e\u0901 \u0939\u0948\u0902, ' + (p.a % 10) + ' \u092e\u0947\u0902 \u0938\u0947 ' + (p.b % 10) + ' \u0928\u0939\u0940\u0902 \u0928\u093f\u0915\u0932\u0924\u0940\u0902, \u0924\u094b \u090f\u0915 \u092c\u0902\u0921\u0932 \u0916\u094b\u0932\u094b\u0964';
+}
+
+function setDynamicChip(btn, text) {
+  if (!btn) return;
+  if (text) {
+    btn.setAttribute('data-text', text);
+    if (btn.dataset) btn.dataset.text = text;
+    if (!state.fastTrackInFlight) btn.disabled = false;
+  } else {
+    btn.removeAttribute('data-text');
+    if (btn.dataset) delete btn.dataset.text;
+    btn.disabled = true;
+  }
+}
+
+function updateFastTrackChips(sc) {
+  setDynamicChip(document.getElementById('ft-chip-a1'), getChipA1Text(sc));
+  setDynamicChip(document.getElementById('ft-chip-b'), getChipBText(sc));
+}
+
+function disableFastTrackChips() {
+  const tray = document.getElementById('fast-track-tray');
+  if (!tray) return;
+  const chips = tray.querySelectorAll('.ft-chip');
+  chips.forEach((c) => {
+    c.disabled = true;
+  });
+}
+
+function enableFastTrackChips() {
+  state.fastTrackInFlight = false;
+  if (state.fastTrackTimer) {
+    clearTimeout(state.fastTrackTimer);
+    state.fastTrackTimer = null;
+  }
+  const tray = document.getElementById('fast-track-tray');
+  if (!tray) return;
+  const chips = tray.querySelectorAll('.ft-chip');
+  chips.forEach((c) => {
+    if (c.id === 'ft-chip-a1' || c.id === 'ft-chip-b') {
+      const txt = (c.dataset && c.dataset.text) || c.getAttribute('data-text');
+      c.disabled = !txt;
+    } else {
+      c.disabled = false;
+    }
+  });
+}
+
+function setupFastTrackTray() {
+  const tray = document.getElementById('fast-track-tray');
+  if (!tray) return;
+  const bA2 = document.getElementById('ft-chip-a2');
+  if (bA2 && !bA2.dataset.text) bA2.dataset.text = '\u0905\u092c 61 \u092e\u0947\u0902 \u0938\u0947 28 \u0918\u091f\u093e\u0913';
+  const bC = document.getElementById('ft-chip-c');
+  if (bC && !bC.dataset.text) bC.dataset.text = '\u0938\u0935\u093e\u0932: \u0909\u0932\u094d\u091f\u0940 \u0917\u093f\u0928\u0924\u0940 \u0915\u0930\u0915\u0947 \u0918\u091f\u093e\u0935 \u0915\u0948\u0938\u0947 \u0938\u093f\u0916\u093e\u090f\u0901?';
+  updateFastTrackChips();
+  tray.addEventListener('click', (e) => {
+    const btn = e.target && e.target.closest ? e.target.closest('.ft-chip') : null;
+    if (!btn || btn.disabled || state.fastTrackInFlight) return;
+    const action = btn.dataset ? btn.dataset.action : btn.getAttribute('data-action');
+    let text = (btn.dataset && btn.dataset.text) || btn.getAttribute('data-text');
+    if (action === 'a1') text = text || getChipA1Text();
+    if (action === 'b') text = text || getChipBText();
+    if (!text) return;
+
+    if (!navigator.onLine) {
+      handleSendText(text);
+      return;
+    }
+
+    disableFastTrackChips();
+    state.fastTrackInFlight = true;
+    if (state.fastTrackTimer) clearTimeout(state.fastTrackTimer);
+    state.fastTrackTimer = setTimeout(() => {
+      enableFastTrackChips();
+    }, 90000);
+
+    handleSendText(text);
+  });
+}
+
 function renderSceneHeader(sc) {
+  currentSceneHeader = sc;
   const bar = document.getElementById('scene-bar');
-  if (!bar) return;
-  bar.hidden = !sc;
+  if (bar) bar.hidden = !sc;
+  updateFastTrackChips(sc);
   if (!sc) return;
   const set = (id, text) => {
     const el = document.getElementById(id);
@@ -695,6 +795,7 @@ function renderSceneHeader(sc) {
   set('sb-title', sc.title);
   set('sb-turn', sc.turn_label);
   set('sb-board', sc.board);
+  renderManipulatives(sc.manipulatives);
   const kids = document.getElementById('sb-children');
   if (!kids) return;
   const list = sc.children || [];
@@ -714,7 +815,6 @@ function renderSceneHeader(sc) {
   kids.hidden = list.length === 0;
 }
 
-// What to do now: hidden once she has sent something in this step (until the guidance changes)
 function renderHint(h) {
   const card = document.getElementById('next-card');
   if (!card) return;
@@ -740,7 +840,6 @@ function hintSent() {
   card.hidden = true;
 }
 
-// Header: the move title and "Step 4 of 7: Practice" follow the weekly loop
 function applyView(view) {
   if (!view) return;
   renderHint(view.hint);
@@ -788,8 +887,6 @@ async function pollMessages() {
         const skew = Date.parse(data.server_time) - Date.now();
         if (!Number.isNaN(skew)) state.serverSkewMs = skew;
       }
-      // A poll that left before the last POST was accepted cannot say whether that turn is done,
-      // and neither can any poll while a message is still on its way
       const stale = startTime <= state.lastAcceptedAt || [...state.msgStates.values()].includes(MSG_SENDING);
       state.isPending = data.pending || stale;
 
@@ -812,7 +909,7 @@ async function pollMessages() {
       if (gotReply) {
         typingEvent({ type: 'reply' });
         scrollChatToNew(firstNewReply);
-        // The step (header, what-to-do line) may be saved just after the reply: look again soon
+        if (state.fastTrackInFlight) enableFastTrackChips();
         setTimeout(pollMessages, FOLLOW_UP_POLL_MS);
       }
       if (!stale) typingEvent({ type: data.pending ? 'pending' : 'idle' });
@@ -828,7 +925,6 @@ async function pollMessages() {
 
 function scheduleNextPoll() {
   if (state.pollTimer) clearTimeout(state.pollTimer);
-  // 1.5s while pending, else 20s (§7.3)
   const delay = state.isPending ? 1500 : 20000;
   state.pollTimer = setTimeout(pollMessages, delay);
 }
@@ -838,10 +934,8 @@ function triggerImmediatePoll() {
   pollMessages();
 }
 
-// ── Audio bubble ────────────────────────────────────────────────────────────
 function setAudioState(wrap, st) {
   if (st === 'none') {
-    // audio never arrived: leave the text bubble on its own, no dead player
     if (wrap._giveupTimer) clearTimeout(wrap._giveupTimer);
     if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
     wrap._audioState = 'none';
@@ -906,7 +1000,6 @@ function onAudioButton(wrap) {
   if ((st === 'ready' || st === 'error') && wrap._ref) startAudio(wrap, false);
 }
 
-// One builder for every audio bubble: waiting (no file yet), ready, playing, error.
 function buildAudioWrap(audioRef, initialState) {
   const wrap = document.createElement('div');
   wrap.className = 'bubble-audio';
@@ -934,7 +1027,6 @@ function buildAudioWrap(audioRef, initialState) {
   return wrap;
 }
 
-// The file for a text-first reply has landed: turn the "आवाज़ आ रही है…" placeholder into a player.
 function attachAudioRef(wrap, audioRef, autoplay) {
   if (wrap._giveupTimer) clearTimeout(wrap._giveupTimer);
   wrap._ref = audioRef;
@@ -945,7 +1037,6 @@ function attachAudioRef(wrap, audioRef, autoplay) {
   }
 }
 
-// Server-rendered history bubbles carry a bare ▶ button: swap in the stateful player.
 function upgradeServerAudio() {
   document.querySelectorAll('.bubble-audio').forEach((el) => {
     const btn = el.querySelector('.btn-play[data-audio-ref]');
@@ -959,9 +1050,6 @@ function upgradeServerAudio() {
   });
 }
 
-// ── UI Rendering ────────────────────────────────────────────────────────────
-// The optimistic bubble is keyed by client_msg_id; the server copy of the same
-// message (POST response / poll) carries the server id. Re-key the bubble so the
 function adoptServerMessageId(clientMsgId, serverId) {
   if (!clientMsgId || !serverId || clientMsgId === serverId) return;
   if (!state.renderedMsgIds.has(clientMsgId)) return;
@@ -973,7 +1061,6 @@ function adoptServerMessageId(clientMsgId, serverId) {
   }
 }
 
-// A spoken reply (child / model teacher) whose audio is being synthesised right now.
 function expectsAudio(msg) {
   if (msg.direction !== 'out' || msg.audio_ref || state.liteMode) return false;
   if (!isChildSpeaker(msg.speaker) && msg.speaker !== 'model_teacher') return false;
@@ -982,7 +1069,65 @@ function expectsAudio(msg) {
   return Date.now() + state.serverSkewMs - created < AUDIO_WAIT_MS;
 }
 
-// Returns true when a new bubble was added (false for a re-sent copy of an existing one).
+function formatCoachEvidenceText(textEl, rawText) {
+  textEl.textContent = '';
+  const quoteRegex = /(?:(?:\u0906\u092a\u0915\u0947 \u0936\u092c\u094d\u0926|Your words)\s*[:\-–—]\s*)?«([^»]+)»/gu;
+  let lastIdx = 0;
+  let match;
+  let hasQuote = false;
+
+  while ((match = quoteRegex.exec(rawText)) !== null) {
+    hasQuote = true;
+    if (match.index > lastIdx) {
+      const preText = rawText.slice(lastIdx, match.index);
+      const preNode = document.createTextNode ? document.createTextNode(preText) : document.createElement('span');
+      if (!document.createTextNode) preNode.textContent = preText;
+      textEl.appendChild(preNode);
+    }
+    const badge = document.createElement('span');
+    badge.className = 'evidence-quote-badge';
+
+    const tag = document.createElement('span');
+    tag.className = 'quote-tag';
+    tag.textContent = t('ui_chat_quote_tag');
+
+    const content = document.createElement('span');
+    content.className = 'quote-content';
+    content.textContent = `«${match[1]}»`;
+
+    badge.appendChild(tag);
+    badge.appendChild(content);
+    textEl.appendChild(badge);
+
+    lastIdx = quoteRegex.lastIndex;
+  }
+
+  if (lastIdx < rawText.length) {
+    const postText = rawText.slice(lastIdx);
+    const postNode = document.createTextNode ? document.createTextNode(postText) : document.createElement('span');
+    if (!document.createTextNode) postNode.textContent = postText;
+    textEl.appendChild(postNode);
+  }
+
+  if (!hasQuote) {
+    textEl.textContent = rawText;
+  }
+}
+
+function upgradeCoachEvidenceQuotes(container) {
+  const root = container || document.getElementById('chat-messages');
+  if (!root) return;
+  const coachRows = root.querySelectorAll('.msg-row.outbound');
+  coachRows.forEach((row) => {
+    const speakerTag = row.querySelector('.speaker-tag.coach');
+    if (!speakerTag) return;
+    const textEl = row.querySelector('.bubble-text');
+    if (textEl && textEl.textContent.includes('«') && !textEl.querySelector('.evidence-quote-badge')) {
+      formatCoachEvidenceText(textEl, textEl.textContent);
+    }
+  });
+}
+
 function renderMessage(msg, isLocalOptimistic = false) {
   if (msg.id && msg.client_msg_id && state.renderedMsgIds.has(msg.client_msg_id)) {
     adoptServerMessageId(msg.client_msg_id, msg.id);
@@ -992,7 +1137,6 @@ function renderMessage(msg, isLocalOptimistic = false) {
   if (state.renderedMsgIds.has(msgKey)) {
     const existing = state.rows.get(msgKey) || (msg.client_msg_id && state.rows.get(msg.client_msg_id));
     if (existing && msg.text) applyTranscript(existing, msg.text);
-    // Text-first delivery support: attach audio to a previously rendered text bubble
     if (existing && msg.audio_ref && existing._audioWrap) {
       if (!existing._audioWrap._ref) {
         attachAudioRef(existing._audioWrap, msg.audio_ref, isChildSpeaker(msg.speaker) && existing._fresh);
@@ -1019,7 +1163,6 @@ function renderMessage(msg, isLocalOptimistic = false) {
   bubble.className = 'bubble';
   row._bubble = bubble;
 
-  // Speaker Tag (bot messages)
   if (msg.direction === 'out' && msg.speaker) {
     const speakerEl = document.createElement('div');
     speakerEl.className = `speaker-tag ${msg.speaker.toLowerCase()}`;
@@ -1027,16 +1170,18 @@ function renderMessage(msg, isLocalOptimistic = false) {
     bubble.appendChild(speakerEl);
   }
 
-  // Text Content
   if (msg.text || msg.awaitingTranscript) {
     const textEl = document.createElement('p');
     textEl.className = 'bubble-text';
-    textEl.textContent = msg.text || '';
+    if (msg.direction === 'out' && msg.speaker && msg.speaker.toLowerCase() === 'coach' && msg.text && msg.text.includes('«')) {
+      formatCoachEvidenceText(textEl, msg.text);
+    } else {
+      textEl.textContent = msg.text || '';
+    }
     bubble.appendChild(textEl);
     row._textEl = textEl;
   }
 
-  // Voice note being uploaded / transcribed: one-line Hindi status under the label
   if (msg.awaitingTranscript) {
     const phaseEl = document.createElement('p');
     phaseEl.className = 'bubble-phase';
@@ -1047,7 +1192,6 @@ function renderMessage(msg, isLocalOptimistic = false) {
     row.setAttribute('data-phase', 'uploading');
     phaseEl.textContent = t('ui_chat_rec_uploading');
   } else if (msg.direction === 'in' && msg.kind === 'audio' && !msg.text && !isLocalOptimistic) {
-    // a voice note from history/poll whose transcript has not landed yet
     const phaseEl = document.createElement('p');
     phaseEl.className = 'bubble-phase';
     phaseEl.setAttribute('role', 'status');
@@ -1062,7 +1206,6 @@ function renderMessage(msg, isLocalOptimistic = false) {
     row.setAttribute('data-phase', 'transcribing');
   }
 
-  // Audio player, or a "voice is coming" placeholder while the reply's audio is synthesised
   if (msg.audio_ref || expectsAudio(msg)) {
     const wrap = buildAudioWrap(msg.audio_ref || null, msg.audio_ref ? 'ready' : 'loading');
     row._audioWrap = wrap;
@@ -1071,7 +1214,6 @@ function renderMessage(msg, isLocalOptimistic = false) {
     if (!msg.audio_ref) {
       wrap._giveupTimer = setTimeout(() => transitionAudio(wrap, 'giveup'), AUDIO_WAIT_MS);
     } else if (!state.liteMode && !state.autoPlayDone && isChildSpeaker(msg.speaker)) {
-      // Auto-play newest child line once in normal mode if not played
       state.autoPlayDone = true;
       setTimeout(() => startAudio(wrap, true), 300);
     }
@@ -1092,12 +1234,10 @@ function renderMessage(msg, isLocalOptimistic = false) {
     bubble.appendChild(sources);
   }
 
-  // On-demand English translation under child / coach / guide bubbles
   if (msg.direction === 'out' && msg.id && msg.text && TRANSLATABLE_SPEAKERS.has(msg.speaker)) {
     bubble.appendChild(buildTranslateControl(msg.id));
   }
 
-  // Metadata / Status Tick
   const meta = document.createElement('div');
   meta.className = 'bubble-meta';
   row._meta = meta;
@@ -1121,11 +1261,11 @@ function renderMessage(msg, isLocalOptimistic = false) {
 
   row.appendChild(bubble);
 
-  // Quick-reply Buttons (chips under last bot message)
   if (msg.direction === 'out' && msg.buttons && msg.buttons.length > 0) {
     const qrContainer = document.createElement('div');
     qrContainer.className = 'quick-replies';
     msg.buttons.forEach((btn) => {
+      if (btn.id === 'btn_replay' && !msg.audio_ref) return;
       const chip = document.createElement('button');
       chip.type = 'button';
       chip.className = 'reply-chip';
@@ -1137,12 +1277,12 @@ function renderMessage(msg, isLocalOptimistic = false) {
       };
       qrContainer.appendChild(chip);
     });
-    row.appendChild(qrContainer);
+    if (qrContainer.children.length > 0) row.appendChild(qrContainer);
   }
 
   const pendingEl = document.getElementById('pending-bubble');
   if (pendingEl && pendingEl.parentNode === container) {
-    container.insertBefore(row, pendingEl); // new bubbles stay above the typing indicator
+    container.insertBefore(row, pendingEl);
   } else {
     container.appendChild(row);
   }
@@ -1150,8 +1290,6 @@ function renderMessage(msg, isLocalOptimistic = false) {
   return true;
 }
 
-// ── On-demand translation: "Translate" under child / coach / guide bubbles ─────
-// The Hindi stays; the English text appears below it. The server caches per (message, 'en').
 const TRANSLATABLE_SPEAKERS = new Set(['ravi', 'priya', 'aman', 'coach', 'guide', 'model_teacher']);
 
 function buildTranslateControl(messageId) {
@@ -1221,7 +1359,6 @@ document.addEventListener('click', (ev) => {
   if (btn) toggleTranslation(btn);
 });
 
-// ── Source citations: tap the chip to read the excerpt behind an answer ───────
 function buildExcerptPanel(src) {
   const panel = document.createElement('div');
   panel.className = 'source-excerpt';
@@ -1305,7 +1442,6 @@ document.addEventListener('click', (ev) => {
   if (chip) toggleSourceExcerpt(chip);
 });
 
-// Speaker display names come from the catalog (speaker_<id>), in the user's UI language.
 function getSpeakerLabel(speaker) {
   return t(`speaker_${speaker}`) || speaker;
 }
@@ -1319,7 +1455,6 @@ function recorderErrorText(code, detail) {
   return t('ui_chat_rec_start_failed', { error: detail || t('ui_chat_rec_unknown_error') });
 }
 
-// ── Chips: pressed state, locked while the request runs, inline ✓ ────────────
 function lockChips(container, chip) {
   container.querySelectorAll('.reply-chip').forEach((c) => {
     c.disabled = true;
@@ -1329,19 +1464,15 @@ function lockChips(container, chip) {
   announce(t('ui_chat_chip_done'));
 }
 
-// ── Sending Handlers ────────────────────────────────────────────────────────
-// `typingLabel` (optional): what the typing bubble says at once, before the server has answered.
 async function handleSendText(text, typingLabel = null) {
   if (!text || !text.trim()) return null;
   hintSent();
   const clientMsgId = crypto.randomUUID();
   const cleanText = text.trim();
 
-  // 1. Clear the input first (synchronously): a second tap/Enter cannot resend the same text
   const input = document.getElementById('chat-input');
   if (input) input.value = '';
 
-  // 2. Optimistic render in UI (clock until the POST is accepted)
   const optimisticMsg = {
     client_msg_id: clientMsgId,
     direction: 'in',
@@ -1352,7 +1483,6 @@ async function handleSendText(text, typingLabel = null) {
   renderMessage(optimisticMsg, true);
   if (typingLabel) typingEvent({ type: 'accepted', label: typingLabel });
 
-  // 3. Save to IndexedDB Outbox
   await saveToOutbox({
     client_msg_id: clientMsgId,
     kind: 'text',
@@ -1361,7 +1491,6 @@ async function handleSendText(text, typingLabel = null) {
     retryCount: 0,
   });
 
-  // 4. Trigger Outbox upload & fast poll
   drainOutbox();
   triggerImmediatePoll();
   return clientMsgId;
@@ -1371,7 +1500,6 @@ async function handleSendButton(buttonId, buttonTitle) {
   hintSent();
   const clientMsgId = crypto.randomUUID();
 
-  // Optimistic render
   const optimisticMsg = {
     client_msg_id: clientMsgId,
     direction: 'in',
@@ -1381,7 +1509,6 @@ async function handleSendButton(buttonId, buttonTitle) {
   };
   renderMessage(optimisticMsg, true);
 
-  // Save to Outbox
   await saveToOutbox({
     client_msg_id: clientMsgId,
     kind: 'button',
@@ -1398,7 +1525,6 @@ async function handleSendAudio(audioBlob, durationSec) {
   hintSent();
   const clientMsgId = crypto.randomUUID();
 
-  // Optimistic render: voice-note label + "uploading…" line (becomes the transcript later)
   const optimisticMsg = {
     client_msg_id: clientMsgId,
     direction: 'in',
@@ -1409,7 +1535,6 @@ async function handleSendAudio(audioBlob, durationSec) {
   };
   renderMessage(optimisticMsg, true);
 
-  // Save to Outbox
   await saveToOutbox({
     client_msg_id: clientMsgId,
     kind: 'audio',
@@ -1422,7 +1547,6 @@ async function handleSendAudio(audioBlob, durationSec) {
   triggerImmediatePoll();
 }
 
-// ── Network & Offline Handling ──────────────────────────────────────────────
 function updateOnlineStatus() {
   const banner = document.getElementById('network-banner');
 
@@ -1438,13 +1562,12 @@ function updateOnlineStatus() {
       console.warn('Network banner element missing data-offline-text attribute');
     }
   } else {
-    netEvent('online'); // offline -> "reconnecting…" until the next request succeeds
+    netEvent('online');
     if (banner) {
       banner.className = 'network-banner';
       banner.textContent = '';
       banner.style.display = 'none';
     }
-    // Bubbles that gave up for lack of network try again now
     for (const [id, reason] of [...state.failedIds]) {
       if (reason === 'network') retryMessage(id);
     }
@@ -1464,7 +1587,6 @@ function isSlowNetwork() {
 
 function recordRequestLatency(durationMs) {
   state.requestCount++;
-  // Never treat the very first request (often server cold start on free hosting) as slow network
   if (state.requestCount > 1) {
     if (durationMs > SLOW_REQUEST_THRESHOLD_MS) {
       state.slowRequestCount++;
@@ -1490,7 +1612,6 @@ function showSlowNetworkWarning() {
   }
 }
 
-// ── Lite Mode Toggle (§9.2) ─────────────────────────────────────────────────
 async function toggleLiteMode(forceValue = null) {
   const target = forceValue !== null ? forceValue : !state.liteMode;
   state.liteMode = target;
@@ -1498,7 +1619,6 @@ async function toggleLiteMode(forceValue = null) {
   try {
     localStorage.setItem('abhyas_lite_mode', target ? 'true' : 'false');
   } catch (e) {
-    // ignore storage quota / sandbox errors
   }
 
   const btn = document.getElementById('lite-mode-menu-btn');
@@ -1550,9 +1670,6 @@ async function toggleShareScores() {
 }
 window.toggleShareScores = toggleShareScores;
 
-// ── Mic UI Interaction ──────────────────────────────────────────────────────
-// Two ways to record, one button:
-//   tap  (press < REC_HOLD_MS): recording starts; tap the big Stop/Send button to send.
 function setupMicEvents() {
   const micBtn = document.getElementById('btn-mic');
   const overlay = document.getElementById('recording-overlay');
@@ -1627,8 +1744,6 @@ function setupMicEvents() {
     stopRecUI();
   };
 
-  // Pointer events cover mouse, touch and pen. Capturing the pointer keeps pointerup coming to
-  // the mic button after the overlay appears on top of it.
   micBtn.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.preventDefault();
@@ -1636,7 +1751,7 @@ function setupMicEvents() {
     try {
       micBtn.setPointerCapture(e.pointerId);
     } catch (err) {
-      /* capture is best-effort */
+
     }
     pressedAt = Date.now();
     startRec();
@@ -1651,16 +1766,14 @@ function setupMicEvents() {
     pressedAt = 0;
     clearTimeout(holdTimer);
     if (heldMs >= REC_HOLD_MS) {
-      stopAndSend(); // hold-to-talk: release sends
+      stopAndSend();
     } else {
-      // quick tap: keep recording until Stop/Send
       setStatus('ui_chat_rec_recording_tap');
     }
   };
   micBtn.addEventListener('pointerup', onRelease);
   micBtn.addEventListener('pointercancel', onRelease);
 
-  // Keyboard / assistive tech activate the button with a click event that has no pointer
   micBtn.addEventListener('click', (e) => {
     if (e.detail === 0 && !state.isRecording) startRec();
   });
@@ -1672,7 +1785,6 @@ function setupMicEvents() {
   });
 }
 
-// A short notice in the slim status bar (e.g. microphone denied), replaced by the next net event.
 function flashStatus(text) {
   const bar = document.getElementById('status-bar');
   if (!bar || !text) return;
@@ -1682,20 +1794,18 @@ function flashStatus(text) {
   setTimeout(renderNetStatus, 6000);
 }
 
-// ── Sample lines (demo): one delegated handler, the list follows the step she is on ──
 const SAMPLE_BOX_ID = 'sample-list';
 
 function setupDemoChips() {
   const box = document.getElementById(SAMPLE_BOX_ID);
   const tray = document.getElementById('sample-tray');
-  // Open on a wide screen, folded on a phone (the sample lines are a judge's helper)
   if (tray && window.matchMedia && window.matchMedia('(min-width: 641px)').matches) tray.open = true;
   if (!box) return;
   let busy = false;
   box.addEventListener('click', async (e) => {
     const c = e.target && e.target.closest ? e.target.closest('.demo-chip') : null;
     if (!c || busy) return;
-    busy = true; // locked while the sample loads: no double sends
+    busy = true;
     c.classList.add('pressed');
     announce(t('ui_chat_chip_done'));
     try {
@@ -1720,7 +1830,6 @@ function setupDemoChips() {
   });
 }
 
-// The poll carries the samples that make sense now (null outside demo mode: leave the list alone)
 function renderSamples(list) {
   const box = document.getElementById(SAMPLE_BOX_ID);
   if (!box || !Array.isArray(list)) return;
@@ -1747,7 +1856,6 @@ function renderSamples(list) {
   });
 }
 
-// ── Demo banner: one small line, dismissed for the session ──────────────────
 function setupDemoBanner() {
   const banner = document.getElementById('demo-banner');
   if (!banner) return;
@@ -1766,9 +1874,6 @@ function setupDemoBanner() {
     });
 }
 
-// ── Ask the handbook chips: a tap sends the question through the normal text path ──
-// The chip says "Sending…", then a tick; the question bubble and a "Looking in the handbook…"
-// typing bubble show at once. One question at a time; the chips come back when the send settles.
 const CHIP_SETTLE_MAX_MS = 8000;
 
 function whenSettled(clientMsgId, maxMs) {
@@ -1791,7 +1896,7 @@ function setupHandbookChips() {
   chips.forEach((c) => {
     c.onclick = async () => {
       if (c.disabled) return;
-      busy(true); // one question at a time. Hindi UI: the label is the question; English: data-text
+      busy(true);
       const label = c.textContent;
       c.classList.add('sending');
       c.textContent = t('ui_chat_msg_sending');
@@ -1814,7 +1919,7 @@ function setupHandbookChips() {
       }
     };
   });
-  const auto = sec && sec.getAttribute('data-autosend'); // ?ask=hb03 from Modules
+  const auto = sec && sec.getAttribute('data-autosend');
   if (auto) {
     try {
       history.replaceState(null, '', location.pathname);
@@ -1823,7 +1928,6 @@ function setupHandbookChips() {
   }
 }
 
-// ── Delegated Event Handlers for Server-Rendered Buttons ──────────────────
 document.addEventListener('click', (e) => {
   const target = e.target;
   if (!target || !(target instanceof Element)) return;
@@ -1835,11 +1939,16 @@ document.addEventListener('click', (e) => {
     return;
   }
 
-  if (target.closest('#next-suggest')) {
-    const input = document.getElementById('chat-input');
-    if (input) {
-      input.value = target.closest('#next-suggest').textContent.trim();
-      if (input.focus) input.focus();
+  const suggestBtn = target.closest('#next-suggest');
+  if (suggestBtn) {
+    if (suggestBtn.disabled || suggestBtn.classList.contains('pressed')) return;
+    const text = suggestBtn.textContent.trim();
+    if (text) {
+      suggestBtn.classList.add('pressed');
+      announce(t('ui_chat_chip_done'));
+      handleSendText(text).finally(() => {
+        setTimeout(() => suggestBtn.classList.remove('pressed'), CHIP_CONFIRM_MS);
+      });
     }
     return;
   }
@@ -1876,7 +1985,6 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// ── Service Worker Registration ────────────────────────────────────────────
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker
@@ -1886,7 +1994,6 @@ function registerServiceWorker() {
   }
 }
 
-// ── DOM Message Seeding & Offline Cache Population ─────────────────────────
 function initRenderedMessagesFromDom() {
   const container = document.getElementById('chat-messages');
   if (!container) return;
@@ -1917,21 +2024,20 @@ function initRenderedMessagesFromDom() {
     }
   });
 
+  upgradeCoachEvidenceQuotes(container);
+
   if (cachedBatch.length > 0) {
     cacheMessages(cachedBatch).catch((err) => console.warn('Cache initial msgs error:', err));
   }
 }
 
-// ── Initialization ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   loadUiStrings();
 
-  // 1. Online / Offline listeners
   window.addEventListener('online', updateOnlineStatus);
   window.addEventListener('offline', updateOnlineStatus);
   updateOnlineStatus();
 
-  // 2. Sync Lite Mode from button or localStorage
   const liteBtn = document.getElementById('lite-mode-menu-btn');
   let savedLite = false;
   try {
@@ -1951,7 +2057,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     showSlowNetworkWarning();
   }
 
-  // 3. Form submission
   const form = document.getElementById('composer-form');
   const input = document.getElementById('chat-input');
   if (form && input) {
@@ -1961,25 +2066,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
   }
 
-  // 4. Setup Mic & Demo Chips
   setupMicEvents();
   setupDemoChips();
   setupDemoBanner();
+  setupFastTrackTray();
   setupHandbookChips();
   setupSceneEnd();
 
   setupLogoutCleanup();
 
-  // 5. Register SW
   registerServiceWorker();
 
-  // 6. Seed rendered messages into IndexedDB & state; give history audio the stateful player
   initRenderedMessagesFromDom();
   upgradeServerAudio();
   scrollChatToEnd();
   window.addEventListener('load', scrollChatToEnd);
 
-  // 7. Initial poll and outbox drain
   await drainOutbox();
   pollMessages();
 });

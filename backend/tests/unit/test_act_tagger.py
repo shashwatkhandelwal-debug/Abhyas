@@ -426,3 +426,31 @@ def test_feedback_items_and_evaluator_samples() -> None:
     )
     res_s5 = fallback_tag_act(s5_text)
     assert TeachingAct.ASK_TO_EXPLAIN in res_s5.acts
+
+
+def test_literacy_instruction_phrases_pose_no_new_problem() -> None:
+    """Grammar words next to "शब्द"/"पढ़ो" (मिलाकर, से) are not words to read."""
+    for text in (
+        "प्रिया, बहुत बढ़िया! अब पूरा शब्द मिलाकर फिर से पढ़ो।",
+        "शब्द मिलाकर पढ़ो",
+        "फिर से पढ़ो",
+    ):
+        res = fallback_tag_act(text)
+        assert res.problem is None, text
+        assert TeachingAct.GIVE_NEW_PROBLEM not in res.acts, text
+
+
+def test_literacy_real_word_still_posed_as_read_word() -> None:
+    for text in ("शब्द मेला", "मेला पढ़ो"):
+        res = fallback_tag_act(text)
+        assert res.problem is not None, text
+        assert res.problem.type == "read_word"
+        assert res.problem.word == "मेला"
+        assert TeachingAct.GIVE_NEW_PROBLEM in res.acts
+
+
+def test_literacy_read_verb_is_not_the_word() -> None:
+    """"शब्द पढ़ो" must not capture the verb itself as the word to read."""
+    res = fallback_tag_act("शाबाश! अब अगला शब्द पढ़ो: मछली")
+    assert res.problem is None
+    assert TeachingAct.GIVE_NEW_PROBLEM not in res.acts

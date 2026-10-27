@@ -101,7 +101,7 @@ async def test_picker_start_then_steps_are_tracked_through_the_check(
     h = harness()
     await h.start(SUB)
     out = await h.service.start_module(h.teacher_id, SUB)
-    assert out[0].buttons and out[0].buttons[0].id == "btn_understood"
+    assert out[-1].buttons and out[-1].buttons[0].id == "btn_understood"
     ctx = await h.ctx()
     assert ctx.module_mode and ctx.current_state == SessionStateEnum.LEARN
     assert not await h.service.repo.get_module_progress(h.teacher_id)

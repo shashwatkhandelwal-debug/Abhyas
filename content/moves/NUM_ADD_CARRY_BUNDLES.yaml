@@ -17,26 +17,31 @@ sankul_month: November
 key_points:
   - id: kp1
     text_hi: "38 + 45 में इकाई का जोड़ 13 आता है। बच्चे अक्सर 13 पूरा लिख देते हैं या हासिल भूल जाते हैं। पहले बच्चे से उसका तरीका पूछें।"
+    text_en: "In 38 + 45, the units add to 13. Children often write 13 or forget to carry. First ask the child for their method."
     must_have: true
     keywords_hi: [पूछें, तरीका, 13, हासिल, भूल]
     source_chunk_ids: []
   - id: kp2
     text_hi: "दोनों संख्याएँ बंडल-तीली से बनवाएँ: 38 = 3 बंडल 8 तीलियाँ, 45 = 4 बंडल 5 तीलियाँ।"
+    text_en: "Build both numbers with bundles and sticks: 38 is 3 bundles 8 sticks, 45 is 4 bundles 5 sticks."
     must_have: true
     keywords_hi: [बंडल, तीली, बनवा, दहाई, इकाई]
     source_chunk_ids: []
   - id: kp3
     text_hi: "खुली तीलियाँ मिलाने पर 13 हो जाती हैं। इनमें से 10 का एक नया बंडल बाँधें: अब 3 खुली तीलियाँ और 1 नया बंडल।"
+    text_en: "Combining loose sticks gives 13. Tie 10 of them into a new bundle: now 3 loose sticks and 1 new bundle."
     must_have: true
     keywords_hi: [10, नया बंडल, बाँध, 13, 3]
     source_chunk_ids: []
   - id: kp4
     text_hi: "नया बंडल बाकी बंडलों में मिलाएँ: 3 + 4 + 1 = 8 बंडल। उत्तर 8 बंडल और 3 तीलियाँ, यानी 83।"
+    text_en: "Add the new bundle to the tens: 3 + 4 + 1 = 8 bundles. The answer is 8 bundles and 3 sticks, 83."
     must_have: false
     keywords_hi: [8 बंडल, 83, मिलाएँ]
     source_chunk_ids: []
   - id: kp5
     text_hi: "उत्तर खुद न बताएँ; बच्चों के अलग-अलग उत्तरों की तुलना करवाएँ।"
+    text_en: "Do not tell the answer yourself; have children compare different answers."
     must_have: true
     keywords_hi: [न बताएँ, तुलना, उत्तर]
     source_chunk_ids: []

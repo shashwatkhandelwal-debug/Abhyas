@@ -27,6 +27,7 @@ class ModuleRef(BaseModel):
 class KeyPoint(BaseModel):
     id: str
     text_hi: str
+    text_en: str = ""
     must_have: bool = False
     keywords_hi: list[str] = Field(default_factory=list)
     source_chunk_ids: list[str] = Field(default_factory=list)

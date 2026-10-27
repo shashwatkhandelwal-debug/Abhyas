@@ -168,6 +168,13 @@ ui_chat_source_original_en: {text: "This passage is in English, from the origina
 ui_chat_source_ocr: {text: "This passage was read from a scanned page by a machine, so it may contain small errors."}
 ui_chat_source_error: {text: "Could not open the source — tap to try again"}
 ui_chat_reconnecting: {text: "The internet is back — reconnecting…"}
+ui_chat_quote_tag: {text: "Your words"}
+ui_fast_track_title: {text: "Fast-Track Tests"}
+ui_fast_track_hint: {text: "Write 'Question:' for handbook"}
+ui_fast_track_chip_a1: {text: "A1: Tell Answer"}
+ui_fast_track_chip_a2: {text: "A2: New Problem (61-28)"}
+ui_fast_track_chip_b: {text: "B: Bundles Remediation"}
+ui_fast_track_chip_c: {text: "C: Handbook Query (RAG)"}
 speaker_abhyas: {text: "Abhyas"}
 speaker_coach: {text: "Coach"}
 speaker_model_teacher: {text: "Model teacher"}
@@ -792,6 +799,7 @@ coach_outcome_told: {text: "You told {child} the answer, so they repeated it wit
 coach_outcome_relapse: {text: "You gave a new problem after telling the answer, so {child} went back to the old mistake. Telling the answer does not teach the method."}
 coach_outcome_checked: {text: "You checked on a new problem, and {child} solved it by explaining the method: it stuck."}
 coach_outcome_concrete: {text: "You used something concrete (bundles and sticks), so {child} could see what to do where."}
+coach_outcome_concrete_literacy: {text: "With your help {child} read the word correctly: the sounds gave them something to hold on to."}
 coach_outcome_explain: {text: "You asked {child} to explain, so their own method came out."}
 btn_share_arp: {text: "Share with my ARP"}
 btn_share_not_now: {text: "Not now"}

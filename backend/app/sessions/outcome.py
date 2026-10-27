@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from backend.app.content_models import Domain
 from backend.app.core.messages import get_message
 from backend.app.rehearsal.scene_store import TurnRecord
 from backend.app.rule_engine.domain import ResponseKind
@@ -22,12 +23,20 @@ _PRIORITY: tuple[tuple[ResponseKind, str], ...] = (
 )
 
 
-def outcome_line(turns: Sequence[TurnRecord], address_form: str = "f") -> str:
+# Where the numeracy wording (bundles and sticks) would be wrong for the move's domain
+_LITERACY_KEYS = {"coach_outcome_concrete": "coach_outcome_concrete_literacy"}
+
+
+def outcome_line(
+    turns: Sequence[TurnRecord], address_form: str = "f", domain: Domain | None = None
+) -> str:
     """One sentence naming the main thing that happened, or "" when nothing stands out."""
     for kind, key in _PRIORITY:
         for turn in turns:
             for response in turn.child_responses:
                 if response.kind == kind:
                     child = get_message(f"speaker_{response.persona_id}", address_form)
+                    if domain == Domain.LITERACY:
+                        key = _LITERACY_KEYS.get(key, key)
                     return get_message(key, address_form, child=child)
     return ""

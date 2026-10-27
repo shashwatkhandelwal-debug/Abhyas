@@ -10,11 +10,11 @@ class AudioRecorder {
     this.stream = null;
     this.startTime = 0;
     this.timerInterval = null;
-    this.maxDurationSec = c.maxSec; // auto-stop and send
-    this.minDurationSec = c.minSec; // shorter recordings are discarded
-    this.phase = 'idle'; // idle -> starting (mic opening) -> recording -> idle
-    this.pendingAction = null; // stop()/cancel() that arrived while 'starting'
-    this.cancelled = false; // cancel(): onstop must not send
+    this.maxDurationSec = c.maxSec; 
+    this.minDurationSec = c.minSec; 
+    this.phase = 'idle'; 
+    this.pendingAction = null; 
+    this.cancelled = false; 
     this.autoStopped = false;
   }
 
@@ -30,11 +30,11 @@ class AudioRecorder {
     for (const type of ['audio/webm;codecs=opus', 'audio/mp4']) {
       if (MediaRecorder.isTypeSupported(type)) return type;
     }
-    return ''; // let the browser choose its default container
+    return ''; 
   }
 
-  // handlers: onTick(sec), onComplete(blob, sec, reason), onTooShort(), onError(code, detail)
-  // codes: insecure | unsupported | permission | no_mic | busy | start_failed
+  
+  
   async start(handlers) {
     const h = handlers || {};
     if (this.phase !== 'idle') return;
@@ -101,7 +101,7 @@ class AudioRecorder {
         const durationSec = (Date.now() - this.startTime) / 1000;
         const wasCancelled = this.cancelled;
         const reason = this.autoStopped ? 'auto' : 'user';
-        // Blob BEFORE cleanup(): cleanup() empties audioChunks (a 0-byte upload got HTTP 400).
+        
         const actualMime =
           (this.mediaRecorder && this.mediaRecorder.mimeType) || mimeType || 'audio/webm';
         const audioBlob = new Blob(this.audioChunks, { type: actualMime });
@@ -109,7 +109,7 @@ class AudioRecorder {
         this.phase = 'idle';
         this.cancelled = false;
 
-        if (wasCancelled) return; // user pressed cancel: discard, never upload
+        if (wasCancelled) return; 
         if (durationSec < this.minDurationSec || audioBlob.size === 0) {
           if (h.onTooShort) h.onTooShort();
           return;
@@ -119,7 +119,7 @@ class AudioRecorder {
 
       this.startTime = Date.now();
       this.phase = 'recording';
-      this.mediaRecorder.start(250); // slice every 250 ms
+      this.mediaRecorder.start(250); 
 
       this.timerInterval = setInterval(() => {
         const elapsed = (Date.now() - this.startTime) / 1000;
@@ -153,7 +153,7 @@ class AudioRecorder {
     if (this.phase !== 'recording') return;
     this.cancelled = true;
     if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
-      this.mediaRecorder.stop(); // onstop sees `cancelled`, cleans up and stays silent
+      this.mediaRecorder.stop(); 
     } else {
       this.cleanup();
       this.phase = 'idle';

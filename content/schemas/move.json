@@ -41,6 +41,11 @@
           "title": "Text Hi",
           "type": "string"
         },
+        "text_en": {
+          "default": "",
+          "title": "Text En",
+          "type": "string"
+        },
         "must_have": {
           "default": false,
           "title": "Must Have",

@@ -260,6 +260,13 @@ async def voice_child_line(
             is_valid, err_msg = guard_child_line(parsed.line_hi, response)
             record_guard_event("child_voice", attempt, is_valid, err_msg)
             if is_valid:
+                latency_ms = int((time.perf_counter() - started) * 1000)
+                logger.info(
+                    "child_voice_reply_latency turn=%d persona=%s latency_ms=%d fallback_used=false",
+                    turn_idx,
+                    persona.id,
+                    latency_ms,
+                )
                 log_role_call("child_voice", settings.CLAUDE_MODEL_FAST, started, False)
                 return parsed.line_hi
 
@@ -291,11 +298,25 @@ async def voice_child_line(
     # 3. Keep the model's own words (cut at a sentence boundary) before any template
     if shortened is not None:
         logger.info("Truncated over-long child voice line at sentence boundary")
+        latency_ms = int((time.perf_counter() - started) * 1000)
+        logger.info(
+            "child_voice_reply_latency turn=%d persona=%s latency_ms=%d fallback_used=false",
+            turn_idx,
+            persona.id,
+            latency_ms,
+        )
         log_role_call("child_voice", settings.CLAUDE_MODEL_FAST, started, False)
         return shortened
 
     # 4. Deterministic template fallback
     logger.info("Using template fallback for child voice line")
+    latency_ms = int((time.perf_counter() - started) * 1000)
+    logger.info(
+        "child_voice_reply_latency turn=%d persona=%s latency_ms=%d fallback_used=true",
+        turn_idx,
+        persona.id,
+        latency_ms,
+    )
     log_role_call("child_voice", settings.CLAUDE_MODEL_FAST, started, True)
     return template_line(
         response=response,

@@ -24,11 +24,42 @@ whose answers come from a rule engine, never from the language model, and gets c
 |---|---|---|---|
 | `teacher.demo1` | `<DEMO_PASSWORD>` | `/teacher` | **A new teacher.** Nothing done yet: the first message starts the welcome, the service consent question (with a "more" button; score sharing is asked later after first rehearsal) and the short onboarding, then the first move. Tap the buttons or type/speak. |
 | `teacher.demo2` | `<DEMO_PASSWORD>` | `/teacher` | **Mid-rehearsal, one-on-one with Ravi.** Already inside a 1-1 scene of "हासिल वाला घटाव" (subtraction with regrouping, 43 − 27): the diagnosis is done and one question asked, so the header shows "रवि से 1-1 बात", the board (43 − 27), a progress cue ("अपना तरीका बता रहा है"), the turn counter (1/10) and an **end practice** button. Use the sample chips or type, e.g. "देखो, ये 4 बंडल और 3 खुली तीलियाँ हैं, 3 में से 7 नहीं निकलतीं, तो एक बंडल खोलो।" and then give a new problem ("अब 52 में से 17 करो"): the cue moves, and when Ravi gets the new problem right the scene ends. Finish the scene to get coach feedback (strength with your own words quoted, one change, an exact sentence) on the **one-on-one rubric**, and the retry. After the reflection step you are asked to **rate the training**: a 1–5 usefulness score (say or type it, or tap 1 / 3 / 5) and an optional one-line comment (voice or text, or *Skip*). |
-| `teacher.demo3` | `<DEMO_PASSWORD>` | `/teacher` | **Three modules completed, on the learning step of the next weekly move** (reading matra words by blending letter sounds, `LIT_MATRA_BLENDING`). The chat already shows the learning-step message with its **two buttons**, labelled in Hindi: "समझ गई, आगे" (Got it, next: continues to the explain-back step) and "फिर से सुनें" (Listen again: repeats the step). Typing other text does not advance it; the reply reminds you of the two buttons. ☰ → **Modules** shows the three completed numeracy modules. This login has *not* agreed to share scores, so it never appears in the ARP digest or trainer counts. |
+| `teacher.demo3` | `<DEMO_PASSWORD>` | `/teacher` | **Three modules completed, on the learning step of the next weekly move** (reading matra words by blending letter sounds, `LIT_MATRA_BLENDING`). The chat already shows the learning-step message with its **two buttons**, labelled in Hindi: "समझ गई, आगे" (Got it, next: continues to the explain-back step) and "फिर से सुनें" (Listen again: repeats the step). Typing other text does not advance it; the reply reminds you of the two buttons. ☰ → **Modules** shows the three completed numeracy modules. This login has *not* agreed to share scores, so it never appears in the ARP digest or trainer counts. **Literacy group scene: 3 actions from the start:** (1) tap "समझ गई, आगे"; (2) send one sentence in your own words (the explain-back step); (3) tap the listen button ("सुनना चाहेंगी…" prompt, `btn_listen`). The group scene (Ravi, Priya, Aman; board word "मेला") then opens at turn 0/8; speak or type to the children, e.g. "प्रिया, बोर्ड पर क्या लिखा है? पढ़ो।", then say "बस" to end and get feedback (at least 3 teacher turns are needed for advice). |
 | `arp.demo` | `<DEMO_PASSWORD>` | `/arp` | **Cluster resource person**, cluster KNP-C01: weekly digest of *consenting* teachers only, questions escalated from the chat (answer them here), classroom-observation form. |
 | `trainer.demo` | `<DEMO_PASSWORD>` | `/trainer` | **DIET/SCERT trainer**, district Kanpur Nagar: module × batch table (completion, most-missed key point, rubric and ladder distributions). Also the **training ratings** card: average, count and latest comments from consenting teachers in the district (hidden below 10 ratings). Groups with fewer than 10 teachers are suppressed (batch KNP-B3 has 8 and shows the privacy notice); `/trainer/export.csv` follows the same rule. No teacher names appear. |
 | `coach.demo` | `<DEMO_PASSWORD>` | `/review` | **Coach review console**: queue of AI scores and escalations that need a human look, per-item resolve, calibration labelling, move-card review. |
 | `admin` | `<ADMIN_PASSWORD>` | `/admin` | **Admin dashboard**: latency, token use, guard results, scheduler jobs, WhatsApp templates, the **training ratings** card (all teachers, no suppression) and the demo controls (*Reset demo*, *fast-forward*). |
+
+## Shared accounts and the first visit
+
+- **One judge per account.** `teacher.demo1`, `teacher.demo2` and `teacher.demo3` are shared logins with one state
+  each. Two judges on the same account will interfere with each other's chat and scene. **Logging in or out resets that
+  demo teacher** to its starting state, so a second person logging in wipes the first person's session. Pick one that is
+  not in use.
+- **First visit after idle.** On Render's free plan the service sleeps when idle. The first request can take roughly a
+  minute (Render's documented free-tier behaviour is a 40–60 s spin-up; we did not time it on the hosted site, so treat
+  "about 50 s" as an estimate). Open `<HOSTED URL>/healthz` first and wait for `"status": "ok"`. If the page is
+  requested while the server is still waking, it says **"सर्वर जाग रहा है — इसमें करीब एक मिनट लग सकता है…"** and
+  retries by itself. The service worker only helps **after** a first successful load (it then serves the shell and the
+  last messages offline); it cannot make the very first cold start faster. A keep-alive pinger
+  (`eval/KEEP_ALIVE.md`) is the recommended mitigation.
+
+## The Fast-Track tray (demo logins only)
+
+On the demo teacher logins, a **"फास्ट-ट्रैक परीक्षण"** tray above the chat gives four one-tap inputs for the
+one-on-one subtraction scene (so you can test the core claim without typing Hindi). Each chip sends the text as if
+you had said it. While a chip is in flight, all chips are locked (they re-enable on the reply, on a failure, or after
+90 s).
+
+| Chip | Sends | What you should see |
+|---|---|---|
+| **A1: उत्तर बताना** | "रवि, सही उत्तर N है", N computed from the problem on the board | The teacher *tells the answer*. Ravi repeats it without understanding. Disabled when the board is not a subtraction. |
+| **A2: नया सवाल (61-28)** | "अब 61 में से 28 घटाओ" | A new problem. The board changes to 61 − 28; Ravi answers it with his old mistake (47 for 61 − 28). |
+| **B: बंडल-तीली सुधार** | "चलो {a} में से {b} फिर से करते हैं: देखो, … बंडल और … खुली तीलियाँ हैं, … तो एक बंडल खोलो।", built from the **current board** | Bundles-and-sticks scaffolding on the problem on the board (on 61 − 28, Ravi reaches 33). Disabled when no regrouping is needed (units of the first number are not smaller) or there is no subtraction. |
+| **C: हैंडबुक सवाल (RAG)** | "सवाल: उल्टी गिनती करके घटाव कैसे सिखाएँ?" | A handbook answer with a source chip, not a child reply. |
+
+To ask your own handbook question, start the message with **"सवाल:"** (the tray hint says this); without the prefix the
+text is treated as something said to the child.
 
 ## Modules
 

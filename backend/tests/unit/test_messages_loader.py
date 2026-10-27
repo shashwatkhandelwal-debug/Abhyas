@@ -36,7 +36,7 @@ def test_load_catalog_message_with_kwargs_formatting() -> None:
         n_covered=2,
         n_total=3,
     )
-    assert msg == "धन्यवाद! आपने 2 में से 3 मुख्य बातें कहीं।"
+    assert msg == "धन्यवाद! आपने 3 में से 2 मुख्य बातें कहीं।"
 
 
 def test_load_catalog_message_missing_key_raises_key_error() -> None:
@@ -113,3 +113,11 @@ def test_loading_the_hindi_catalogue_logs_no_missing_variant_warning(
     with caplog.at_level(logging.WARNING, logger="abhyas.core.messages"):
         MessageCatalog(HI_CATALOG, lang="hi")
     assert "missing text_m" not in caplog.text
+
+
+def test_explain_back_reply_reads_total_then_covered() -> None:
+    """Hindi 'N में से M' means M out of N: the total comes first (2 covered of 3 -> '3 में से 2')."""
+    clear_catalog_cache()
+    expected = "धन्यवाद! आपने 3 में से 2 मुख्य बातें कहीं।"
+    assert load_catalog_message("explain_back_reply", covered=2, total=3) == expected
+    assert load_catalog_message("fidelity_reply_summary", n_covered=2, n_total=3) == expected

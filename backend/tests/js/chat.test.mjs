@@ -606,6 +606,7 @@ function withSceneBar(c) {
     title: mk('sb-title'),
     turn: mk('sb-turn'),
     board: mk('sb-board'),
+    manip: mk('sb-manipulatives', 'span'),
     kids: mk('sb-children'),
     end: mk('sh-end'),
     input: c.sandbox.document.getElementById('chat-input'),
@@ -738,14 +739,17 @@ test('the what-to-do line shows its text and a suggested line', () => {
   assert.equal(n.card.hidden, true);
 });
 
-test('tapping the suggested line fills the input and sends nothing', async () => {
+test('tapping the suggested line sends on tap like sample chips', async () => {
   const c = load();
   const n = withNextCard(c);
+  c.net.handler = async () => ({ status: 202, ok: true, json: async () => ({ message_id: 'srv' }) });
   c.renderHint(HINT);
   c.documentListeners.click({ target: n.suggest });
-  assert.equal(c.sandbox.document.getElementById('chat-input').value, HINT.suggest);
   await c.flush();
-  assert.equal(c.fetchCalls.filter((f) => f.url === '/api/chat/text').length, 0);
+  const textCalls = c.fetchCalls.filter((f) => f.url === '/api/chat/text');
+  assert.equal(textCalls.length, 1);
+  assert.deepEqual(JSON.parse(textCalls[0].opts.body).text, HINT.suggest);
+  assert.equal(n.card.hidden, true);
 });
 
 test('once she has sent something the line stays hidden until the guidance changes', async () => {
@@ -881,4 +885,339 @@ test('slow network banner appears on genuinely slow network (3 slow requests or 
 
   c.navigator.connection = { effectiveType: '4g', saveData: true };
   assert.equal(c.isSlowNetwork(), true);
+});
+
+
+test('btn_replay is hidden unless audio is attached to the message', async () => {
+  const c = load();
+  const msgNoAudio = {
+    id: 'msg-1',
+    direction: 'out',
+    kind: 'buttons',
+    text: 'तरीका सीखें',
+    audio_ref: null,
+    buttons: [
+      { id: 'btn_understood', title_hi: 'समझ गई, आगे' },
+      { id: 'btn_replay', title_hi: 'फिर से सुनें' },
+    ],
+  };
+  c.renderMessage(msgNoAudio);
+  const chipsNoAudio = c.sandbox.document.querySelectorAll('.reply-chip');
+  assert.equal(chipsNoAudio.length, 1);
+  assert.equal(chipsNoAudio[0].textContent, 'समझ गई, आगे');
+
+  const msgWithAudio = {
+    id: 'msg-2',
+    direction: 'out',
+    kind: 'buttons',
+    text: 'तरीका सीखें',
+    audio_ref: 'audio_123',
+    buttons: [
+      { id: 'btn_understood', title_hi: 'समझ गई, आगे' },
+      { id: 'btn_replay', title_hi: 'फिर से सुनें' },
+    ],
+  };
+  c.renderMessage(msgWithAudio);
+  const allChips = c.sandbox.document.querySelectorAll('.reply-chip');
+  // 1 from first message + 2 from second message = 3
+  assert.equal(allChips.length, 3);
+});
+
+// ── coach evidence quote badge ──────────────────────────────────────────────
+test('coach evidence quote badge strips prefix and displays badge', () => {
+  const c = load();
+  const text = 'शानदार! आपके शब्द: «रवि, 10 के बंडल बनाओ» से बच्चे को समझ आया।';
+  c.renderMessage({
+    id: 'coach-1',
+    direction: 'out',
+    speaker: 'coach',
+    text: text,
+  });
+  const row = c.container.querySelector('#msg-coach-1');
+  const badge = row.querySelector('.evidence-quote-badge');
+  assert.ok(badge, 'Badge should be present');
+  const tag = badge.querySelector('.quote-tag');
+  assert.equal(tag.textContent, strings.ui_chat_quote_tag || 'आपकी कही बात');
+  const content = badge.querySelector('.quote-content');
+  assert.equal(content.textContent, '«रवि, 10 के बंडल बनाओ»');
+
+  // Verify "आपके शब्द:" was stripped and not duplicated in bubble text before badge
+  const textEl = row.querySelector('.bubble-text');
+  assert.ok(!textEl.textContent.includes('आपके शब्द:'), 'Preceding prefix should be consumed');
+});
+
+test('coach evidence quote badge escapes XSS payloads like <img onerror=...>', () => {
+  const c = load();
+  const text = 'बहुत बढ़िया! आपके शब्द: «रवि, <img onerror=alert(1)> बंडल बनाओ» सही थे।';
+  c.renderMessage({
+    id: 'coach-2',
+    direction: 'out',
+    speaker: 'coach',
+    text: text,
+  });
+  const row = c.container.querySelector('#msg-coach-2');
+  const badge = row.querySelector('.evidence-quote-badge');
+  assert.ok(badge);
+  const content = badge.querySelector('.quote-content');
+  assert.equal(content.textContent, '«रवि, <img onerror=alert(1)> बंडल बनाओ»');
+  assert.equal(row.querySelector('img'), null, 'No <img> tag should be created in the DOM');
+});
+
+test('coach evidence quote preserves newlines and citation chips', () => {
+  const c = load();
+  const text = 'लाइन 1\nलाइन 2 आपके शब्द: «बंडल बनाओ»\nलाइन 3';
+  c.renderMessage({
+    id: 'coach-3',
+    direction: 'out',
+    speaker: 'coach',
+    text: text,
+    citations: [{ chunk_id: 'c1', line_hi: 'हैंडबुक पृष्ठ 24' }],
+  });
+  const row = c.container.querySelector('#msg-coach-3');
+  const textEl = row.querySelector('.bubble-text');
+  assert.ok(textEl.textContent.includes('\n'), 'Newlines must be preserved in text content');
+  const chip = row.querySelector('.source-chip');
+  assert.ok(chip, 'Citation chip must be rendered');
+  assert.equal(chip.textContent, 'हैंडबुक पृष्ठ 24');
+});
+
+test('evidence quote badge only applies to coach messages', () => {
+  const c = load();
+  const text = 'मैं कहता हूँ «रवि, सही उत्तर 16 है»';
+  c.renderMessage({
+    id: 'child-1',
+    direction: 'out',
+    speaker: 'ravi',
+    text: text,
+  });
+  const row = c.container.querySelector('#msg-child-1');
+  const badge = row.querySelector('.evidence-quote-badge');
+  assert.equal(badge, null, 'Non-coach messages must NOT have quote badge');
+});
+
+// ── board manipulatives ─────────────────────────────────────────────────────
+test('board manipulatives render drawn bundles and sticks with aria-label', () => {
+  const c = load();
+  const h = withSceneBar(c);
+  c.renderSceneHeader({
+    ...SCENE,
+    manipulatives: {
+      bundles: 4,
+      sticks: 3,
+      regrouped: false,
+      aria_label: '4 बंडल और 3 तीलियाँ',
+    },
+  });
+  assert.equal(h.manip.hidden, false);
+  assert.equal(h.manip.getAttribute('role'), 'img');
+  assert.equal(h.manip.getAttribute('aria-label'), '4 बंडल और 3 तीलियाँ');
+  const bundles = h.manip.querySelectorAll('.drawn-bundle');
+  const sticks = h.manip.querySelectorAll('.drawn-stick');
+  assert.equal(bundles.length, 4);
+  assert.equal(sticks.length, 3);
+  assert.equal(h.manip.classList.contains('regrouped'), false);
+});
+
+test('board manipulatives render regrouped state (unpacked bundle into 10 sticks)', () => {
+  const c = load();
+  const h = withSceneBar(c);
+  c.renderSceneHeader({
+    ...SCENE,
+    manipulatives: {
+      bundles: 3,
+      sticks: 13,
+      regrouped: true,
+      aria_label: '3 बंडल और 13 तीलियाँ (1 बंडल खुला)',
+    },
+  });
+  assert.equal(h.manip.hidden, false);
+  assert.equal(h.manip.getAttribute('aria-label'), '3 बंडल और 13 तीलियाँ (1 बंडल खुला)');
+  const bundles = h.manip.querySelectorAll('.drawn-bundle');
+  const sticks = h.manip.querySelectorAll('.drawn-stick');
+  assert.equal(bundles.length, 3);
+  assert.equal(sticks.length, 13);
+  assert.equal(h.manip.classList.contains('regrouped'), true);
+});
+
+test('board manipulatives hide when problem has no manipulatives (null)', () => {
+  const c = load();
+  const h = withSceneBar(c);
+  c.renderSceneHeader({
+    ...SCENE,
+    manipulatives: null,
+  });
+  assert.equal(h.manip.hidden, true);
+});
+
+// ── evaluator fast-track tray ───────────────────────────────────────────────
+function withFastTrackTray(c) {
+  const doc = c.sandbox.document;
+  const mk = (id, tag = 'button') => {
+    const el = doc.createElement(tag);
+    el.id = id;
+    c.byId[id] = el;
+    return el;
+  };
+  const tray = doc.createElement('details');
+  tray.className = 'fast-track-tray';
+  tray.id = 'fast-track-tray';
+  tray.open = true;
+  c.byId['fast-track-tray'] = tray;
+
+  const a1 = mk('ft-chip-a1');
+  a1.className = 'ft-chip';
+  a1.dataset.action = 'a1';
+  a1.disabled = true;
+
+  const a2 = mk('ft-chip-a2');
+  a2.className = 'ft-chip';
+  a2.dataset.action = 'a2';
+  a2.dataset.text = 'अब 61 में से 28 घटाओ';
+
+  const b = mk('ft-chip-b');
+  b.className = 'ft-chip';
+  b.dataset.action = 'b';
+
+  const ch_c = mk('ft-chip-c');
+  ch_c.className = 'ft-chip';
+  ch_c.dataset.action = 'c';
+  ch_c.dataset.text = 'सवाल: उल्टी गिनती करके घटाव कैसे सिखाएँ?';
+
+  tray.appendChild(a1);
+  tray.appendChild(a2);
+  tray.appendChild(b);
+  tray.appendChild(ch_c);
+  return { tray, a1, a2, b, c: ch_c };
+}
+
+test('Fast-Track chip A1 computes dynamic answer from subtraction problem and disables when not subtraction', () => {
+  const c = load();
+  const t = withFastTrackTray(c);
+
+  // 1. Subtraction 43 - 27
+  c.renderSceneHeader({
+    ...SCENE,
+    item: { type: 'sub', a: 43, b: 27 },
+  });
+  assert.equal(c.getChipA1Text(), 'रवि, सही उत्तर 16 है');
+  assert.equal(t.a1.disabled, false);
+  assert.equal(t.a1.dataset.text, 'रवि, सही उत्तर 16 है');
+
+  // 2. Subtraction 61 - 28
+  c.renderSceneHeader({
+    ...SCENE,
+    item: { type: 'sub', a: 61, b: 28 },
+  });
+  assert.equal(c.getChipA1Text(), 'रवि, सही उत्तर 33 है');
+  assert.equal(t.a1.disabled, false);
+
+  // 3. Subtraction 80 - 35
+  c.renderSceneHeader({
+    ...SCENE,
+    item: { type: 'sub', a: 80, b: 35 },
+  });
+  assert.equal(c.getChipA1Text(), 'रवि, सही उत्तर 45 है');
+  assert.equal(t.a1.disabled, false);
+
+  // 4. Non-subtraction problem (e.g. addition, place_value or literacy)
+  c.renderSceneHeader({
+    ...SCENE,
+    item: { type: 'add', a: 28, b: 15 },
+  });
+  assert.equal(c.getChipA1Text(), null);
+  assert.equal(t.a1.disabled, true);
+  assert.equal(t.a1.dataset.text, undefined);
+});
+
+test('Fast-Track chip B text is built from the current board and disables when no regroup is needed', () => {
+  const c = load();
+  const t = withFastTrackTray(c);
+  const b = (a, bb) => ({ ...SCENE, item: { type: 'sub', a, b: bb } });
+
+  c.renderSceneHeader(b(43, 27));
+  assert.equal(
+    c.getChipBText(),
+    'चलो 43 में से 27 फिर से करते हैं: देखो, 4 बंडल और 3 खुली तीलियाँ हैं, 3 में से 7 नहीं निकलतीं, तो एक बंडल खोलो।'
+  );
+  assert.equal(t.b.disabled, false);
+  assert.equal(t.b.dataset.text, c.getChipBText());
+
+  c.renderSceneHeader(b(61, 28));
+  assert.equal(
+    c.getChipBText(),
+    'चलो 61 में से 28 फिर से करते हैं: देखो, 6 बंडल और 1 खुली तीलियाँ हैं, 1 में से 8 नहीं निकलतीं, तो एक बंडल खोलो।'
+  );
+  assert.equal(t.b.disabled, false);
+
+  c.renderSceneHeader(b(80, 35));
+  assert.equal(
+    c.getChipBText(),
+    'चलो 80 में से 35 फिर से करते हैं: देखो, 8 बंडल और 0 खुली तीलियाँ हैं, 0 में से 5 नहीं निकलतीं, तो एक बंडल खोलो।'
+  );
+
+  // no regroup needed: units(a) >= units(b)
+  c.renderSceneHeader(b(58, 23));
+  assert.equal(c.getChipBText(), null);
+  assert.equal(t.b.disabled, true);
+  assert.equal(t.b.dataset.text, undefined);
+
+  // literacy scene (no sub item, board is not a subtraction)
+  c.renderSceneHeader({ ...SCENE, board: 'क + ा', item: { type: 'word', text: 'का' } });
+  assert.equal(c.getChipBText(), null);
+  assert.equal(t.b.disabled, true);
+
+  // no scene
+  c.renderSceneHeader(null);
+  assert.equal(c.getChipBText(), null);
+  assert.equal(t.b.disabled, true);
+});
+
+test('Fast-Track chips disable on tap, re-enable on reply or failure or 90s timeout', async () => {
+  const c = load();
+  const t = withFastTrackTray(c);
+  const activeScene = {
+    ...SCENE,
+    item: { type: 'sub', a: 43, b: 27 },
+  };
+  c.net.handler = async () => ({
+    status: 200,
+    ok: true,
+    json: async () => ({ messages: [], pending: false, scene: activeScene }),
+  });
+  c.renderSceneHeader(activeScene);
+  c.setupFastTrackTray();
+
+  // Tap chip A1
+  t.tray._listeners.click({ target: t.a1 });
+  await c.flush();
+  assert.equal(t.a1.disabled, true);
+  assert.equal(t.a2.disabled, true);
+  assert.equal(t.b.disabled, true);
+  assert.equal(t.c.disabled, true);
+
+  // Outbound reply lands -> re-enables chips
+  c.renderMessage({ id: 'msg-reply-1', direction: 'out', speaker: 'ravi', text: '16... ?' });
+  c.enableFastTrackChips();
+  assert.equal(t.a1.disabled, false);
+  assert.equal(t.a2.disabled, false);
+  assert.equal(t.b.disabled, false);
+  assert.equal(t.c.disabled, false);
+
+  // Tap chip A2
+  t.tray._listeners.click({ target: t.a2 });
+  await c.flush();
+  assert.equal(t.a1.disabled, true);
+  assert.equal(t.a2.disabled, true);
+
+  // Failure occurs -> re-enables chips
+  c.failMessage('dummy-id', 'network');
+  assert.equal(t.a1.disabled, false);
+  assert.equal(t.a2.disabled, false);
+
+  // Tap chip B, test 90s hard-cap timeout
+  t.tray._listeners.click({ target: t.b });
+  await c.flush();
+  assert.equal(t.b.disabled, true);
+  await c.advance(90001);
+  assert.equal(t.b.disabled, false);
 });

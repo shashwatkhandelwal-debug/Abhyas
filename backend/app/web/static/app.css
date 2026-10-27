@@ -1,7 +1,7 @@
-/* Abhyas (अभ्यास) main stylesheet, the single CSS file (spec/09). Budget: < 150 KB first load */
+
 
 :root {
-  /* Color Tokens (spec/09 §9.1) */
+  
   --bg: #FAF7F2;
   --surface: #FFFFFF;
   --ink: #1F2421;
@@ -51,7 +51,6 @@
   }
 }
 
-/* Base Typography & Reset */
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -70,7 +69,6 @@ body {
   justify-content: center;
 }
 
-/* App Container (mobile first, max 640px centered on desktop) */
 .app-container {
   width: 100%;
   max-width: 640px;
@@ -82,7 +80,6 @@ body {
   box-shadow: 0 0 24px rgba(0, 0, 0, 0.04);
 }
 
-/* Header (spec/09 §9.2) */
 .chat-header {
   position: sticky;
   top: 0;
@@ -172,7 +169,6 @@ body {
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-/* Menu Dropdown */
 .menu-dropdown {
   position: absolute;
   top: 56px;
@@ -216,7 +212,6 @@ body {
   color: var(--danger);
 }
 
-/* Demo Data Banner (spec/03 §3.5) */
 .demo-banner {
   background-color: var(--accent-light, #FFF3CD);
   color: #7A5300;
@@ -231,7 +226,55 @@ body {
   display: none;
 }
 
-/* Network Banners */
+.fast-track-tray {
+  margin: 6px 12px;
+  background: var(--surface-2, #F8F9FA);
+  border: 1px solid var(--border, #E2E8F0);
+  border-radius: var(--radius, 8px);
+  font-size: 0.82rem;
+}
+
+.ft-summary {
+  padding: 6px 10px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+}
+
+.ft-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted, #64748B);
+  font-weight: normal;
+}
+
+.ft-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 10px 8px;
+  border-top: 1px solid var(--border, #E2E8F0);
+}
+
+.ft-chip {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 12px;
+  border: 1px solid var(--primary, #0D9488);
+  background: #FFF;
+  color: var(--primary, #0D9488);
+  cursor: pointer;
+}
+
+.ft-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: var(--border, #E2E8F0);
+  color: var(--text-muted, #64748B);
+}
+
 .network-banner {
   padding: 0.5rem 1rem;
   font-size: 0.85rem;
@@ -254,7 +297,6 @@ body {
   border-bottom: 1px solid var(--accent);
 }
 
-/* Scene bar: who she is talking to, her turn, and one board card */
 .scene-bar {
   background-color: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -286,6 +328,50 @@ body {
   font-size: 0.95rem;
   white-space: nowrap;
 }
+.board-manipulatives {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: 0.45rem;
+  vertical-align: middle;
+}
+.board-manipulatives[hidden] { display: none; }
+.manip-bundles, .manip-sticks {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.drawn-bundle {
+  display: inline-block;
+  width: 12px;
+  height: 18px;
+  background: repeating-linear-gradient(90deg, #58C5A8 0, #58C5A8 1.5px, transparent 1.5px, transparent 2.8px);
+  border: 1px solid #58C5A8;
+  border-radius: 2px;
+  position: relative;
+}
+.drawn-bundle::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: -1px;
+  right: -1px;
+  height: 3px;
+  background: #FFD56B;
+  border-radius: 1px;
+}
+.drawn-stick {
+  display: inline-block;
+  width: 2px;
+  height: 16px;
+  background-color: #FAF7F2;
+  border-radius: 1px;
+}
+.board-manipulatives.regrouped .manip-sticks {
+  background: rgba(255, 213, 107, 0.18);
+  padding: 1px 3px;
+  border-radius: 3px;
+}
 .sb-board-label { font-weight: 500; font-size: 0.8rem; opacity: 0.8; margin-right: 0.3rem; }
 .sb-children { display: inline-flex; gap: 0.35rem; }
 .sb-children[hidden] { display: none; }
@@ -304,7 +390,6 @@ body {
 .child-pill.priya { background-color: var(--child-priya); }
 .child-pill.aman { background-color: var(--child-aman); }
 
-/* Chat Message Thread */
 .chat-messages {
   flex: 1;
   padding: 1rem;
@@ -366,9 +451,52 @@ body {
   font-size: 1rem;
   line-height: 1.5;
   margin: 0;
+  white-space: pre-wrap;
 }
 
-/* Audio Player Component in Bubble */
+.evidence-quote-badge {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  background: var(--brand-light);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius-sm);
+  padding: 0.1rem 0.35rem;
+  margin: 0.15rem 0;
+  vertical-align: baseline;
+}
+
+.evidence-quote-badge .quote-tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--brand);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding-right: 0.2rem;
+  border-right: 1px solid rgba(31, 111, 92, 0.3);
+}
+
+.evidence-quote-badge .quote-content {
+  font-size: 0.92rem;
+  font-style: italic;
+  color: var(--ink);
+}
+
+@media (prefers-color-scheme: dark) {
+  .evidence-quote-badge {
+    background: rgba(31, 111, 92, 0.25);
+    border-color: rgba(31, 111, 92, 0.6);
+  }
+  .evidence-quote-badge .quote-tag {
+    color: #58C5A8;
+    border-right-color: rgba(88, 197, 168, 0.4);
+  }
+  .evidence-quote-badge .quote-content {
+    color: var(--ink);
+  }
+}
+
 .bubble-audio {
   display: flex;
   align-items: center;
@@ -399,7 +527,6 @@ body {
   color: var(--muted);
 }
 
-/* Meta Timestamp and Status */
 .bubble-meta {
   display: flex;
   align-items: center;
@@ -414,7 +541,6 @@ body {
   font-size: 0.8rem;
 }
 
-/* Quick-reply Button Chips */
 .quick-replies {
   display: flex;
   flex-wrap: wrap;
@@ -477,7 +603,6 @@ body {
   color: var(--muted);
 }
 
-/* Pending Indicator Bubble */
 .pending-bubble {
   display: none;
   align-self: flex-start;
@@ -517,7 +642,6 @@ body {
   100% { opacity: 1; transform: scale(1.1); }
 }
 
-/* Helper tray: the handbook questions, and (demo only) sample lines */
 .handbook-section,
 .sample-tray {
   padding: 0.3rem 0.8rem;
@@ -568,7 +692,6 @@ body {
   text-decoration: none;
 }
 
-/* Hover only where a pointer exists: on a phone the last tapped chip would stay "hovered" (a */
 @media (hover: hover) {
   .demo-chip:hover,
   .handbook-chip:hover {
@@ -580,7 +703,6 @@ body {
 .handbook-card .handbook-chips { flex-wrap: wrap; overflow-x: visible; }
 .handbook-card .handbook-chip { flex: 1 1 15rem; }
 
-/* Composer Section */
 .composer-wrapper {
   position: sticky;
   bottom: 0;
@@ -653,7 +775,6 @@ body {
   animation: pulse 1s infinite alternate;
 }
 
-/* Recording Overlay */
 .recording-overlay {
   display: none;
   position: absolute;
@@ -705,7 +826,6 @@ body {
   align-items: center;
 }
 
-/* Big Stop/Send button shown while recording (tap mode and hold mode) */
 .btn-stop-rec {
   min-height: 52px;
   min-width: 52px;
@@ -727,8 +847,6 @@ body {
 .recording-overlay {
   gap: 0.4rem;
 }
-
-/* Progress & deletion pages (spec/09) */
 
 .progress-main {
   flex: 1;
@@ -788,7 +906,6 @@ body {
   letter-spacing: 0.5px;
 }
 
-/* Evidence Ladder (5 steps) */
 .ladder-container {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -827,7 +944,6 @@ body {
   line-height: 1.2;
 }
 
-/* Rubric Score History */
 .history-list {
   display: flex;
   flex-direction: column;
@@ -876,7 +992,6 @@ body {
   margin: 0.25rem 0;
 }
 
-/* Explain Key Points */
 .kp-list {
   list-style: none;
   padding: 0;
@@ -914,7 +1029,6 @@ body {
   color: var(--brand);
 }
 
-/* Consent Settings */
 .consent-section, .delete-section {
   background-color: var(--surface);
   border: 1px solid var(--border);
@@ -980,7 +1094,6 @@ body {
   opacity: 0.9;
 }
 
-/* Delete Section & Dialog */
 .delete-desc {
   font-size: 0.9rem;
   color: var(--muted);
@@ -1081,9 +1194,6 @@ body {
   background-color: var(--border);
 }
 
-
-/* Visible acknowledgment states (chat.js): ticks, typing, audio, mic, chips, status bar. Motion <= 200 ms, */
-
 :root {
   --status-meta: #4B5450;
   --status-ink: #2B332F;
@@ -1118,7 +1228,7 @@ body {
   border: 0;
 }
 
-/* Slim status bar: zero-height slot, the bar overlays the top of the thread (no layout shift) */
+/* Visible acknowledgment states */
 .status-slot {
   position: relative;
   height: 0;
@@ -1156,7 +1266,6 @@ body {
   border-bottom-color: var(--danger);
 }
 
-/* Sender bubble ticks: clock (sending) -> check (sent) | red ! (failed, tap to retry) */
 .bubble-meta {
   color: var(--status-meta);
 }
@@ -1201,7 +1310,6 @@ body {
   cursor: pointer;
 }
 
-/* 18px glyph, 44px touch target, no layout change */
 .status-icon.failed::after {
   content: "";
   position: absolute;
@@ -1213,7 +1321,6 @@ body {
   outline-offset: 2px;
 }
 
-/* Voice note status line (uploading / transcribing) */
 .bubble-phase {
   margin: 0.15rem 0 0;
   font-size: 0.8rem;
@@ -1224,7 +1331,6 @@ body {
   display: none;
 }
 
-/* Typing indicator: received-bubble placeholder with the speaker's name */
 .pending-bubble {
   color: var(--status-ink);
 }
@@ -1239,7 +1345,6 @@ body {
   display: none;
 }
 
-/* Audio bubble: loading -> play -> playing (bars) -> error (retry) */
 .bubble-audio {
   position: relative;
 }
@@ -1301,7 +1406,6 @@ body {
   animation: audio-spin 0.8s linear infinite;
 }
 
-/* Waiting for the file to exist: spinner sits in the (hidden) button's slot, so nothing shifts */
 .bubble-audio[data-has-audio="false"] .btn-play {
   visibility: hidden;
 }
@@ -1337,7 +1441,6 @@ body {
   to { transform: rotate(360deg); }
 }
 
-/* Pressed states and locked chips */
 .reply-chip,
 .demo-chip,
 .btn-send,
@@ -1372,7 +1475,6 @@ body {
   border-color: var(--brand);
 }
 
-/* Inline "भेज दिया ✓" confirmation: a badge on the chip, absolutely placed (no reflow) */
 .reply-chip.pressed::after,
 .demo-chip.pressed::after {
   content: "\2713";
@@ -1398,7 +1500,6 @@ body {
   cursor: not-allowed;
 }
 
-/* Mic: pulsing dot, mm:ss timer, one-line status */
 .rec-blip {
   animation: pulse 1s infinite alternate;
 }
@@ -1432,7 +1533,6 @@ body {
 
 .nav-ack{position:fixed;top:0;left:0;right:0;z-index:1000;padding:.5rem .75rem;background:#1f2937;color:#fff;text-align:center}.nav-ack[hidden]{display:none}
 
-/* My class (page, card) */
 .class-page { gap: 1rem; }
 .class-card { margin: 0 0 1rem 0; padding: 1rem; background: var(--surface, #fff); border: 1px solid var(--border, #ddd); border-radius: 12px; }
 .class-list { margin: 0.25rem 0 0.75rem 1.25rem; padding: 0; }
@@ -1447,7 +1547,6 @@ body {
 .class-text textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 0.5rem; border: 1px solid var(--border, #ddd); border-radius: 8px; margin: 0.4rem 0; }
 .class-nomatch { padding: 0.75rem 1rem; border-left: 4px solid var(--border, #ddd); background: var(--surface, #fff); }
 
-/* Chat shell: the thread is the one scrolling part, so a new bubble can be scrolled into view */
 .chat-page { height: 100vh; height: 100dvh; overflow: hidden; }
 .chat-page .app-container { height: 100%; min-height: 0; }
 .chat-page .app-container > * { flex: none; }
@@ -1457,7 +1556,7 @@ body {
 .helper-tray .handbook-section { border-top: 0; }
 .handbook-chip.sending, .handbook-chip.sent { border-color: var(--brand); color: var(--brand); opacity: 1; }
 .handbook-chip.sent { background-color: var(--bubble-in); color: var(--ink); }
-/* What to do now: one highlighted sentence and, where it helps, a line she can tap */
+
 .next-card {
   display: flex;
   flex-direction: column;
@@ -1494,7 +1593,7 @@ body {
 .header-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 0.1rem 0.5rem; }
 .header-logout { color: var(--muted); font-size: 0.75rem; text-decoration: underline; padding: 0.35rem 0.2rem; white-space: nowrap; }
 .demo-divider { align-self: stretch; text-align: center; font-size: 0.75rem; color: var(--muted); padding: 0.3rem 0.5rem; border: 1px dashed var(--border); border-radius: var(--radius-sm); background: var(--surface); }
-/* Start here: three lines and one large button */
+
 .start-main { display: flex; flex-direction: column; gap: 1.2rem; padding: 2rem 1.2rem; min-height: 100vh; justify-content: center; }
 .start-title { margin: 0; color: var(--brand); font-size: 1.6rem; }
 .start-lines { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.7rem; font-size: 1.05rem; }

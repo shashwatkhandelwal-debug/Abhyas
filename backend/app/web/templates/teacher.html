@@ -50,6 +50,15 @@
 
     {% if demo_mode %}
     <div class="demo-banner" id="demo-banner" role="status" aria-label="{{ get_message('ui_demo_notice_label') }}"><span>{{ demo_banner_text or get_message('ui_demo_banner') }}</span><a href="/logout" class="demo-logout">{{ get_message('ui_logout') }}</a><button type="button" class="demo-dismiss" id="demo-dismiss" aria-label="{{ get_message('ui_demo_dismiss') }}">&times;</button></div>
+    <details class="fast-track-tray" id="fast-track-tray" open>
+      <summary class="ft-summary"><span>⚡ {{ get_message('ui_fast_track_title') }}</span><span class="ft-hint">{{ get_message('ui_fast_track_hint') }}</span></summary>
+      <div class="ft-chips" role="toolbar" aria-label="{{ get_message('ui_fast_track_title') }}">
+        <button type="button" class="ft-chip" id="ft-chip-a1" data-action="a1" disabled aria-label="{{ get_message('ui_fast_track_chip_a1') }}">{{ get_message('ui_fast_track_chip_a1') }}</button>
+        <button type="button" class="ft-chip" id="ft-chip-a2" data-action="a2" aria-label="{{ get_message('ui_fast_track_chip_a2') }}">{{ get_message('ui_fast_track_chip_a2') }}</button>
+        <button type="button" class="ft-chip" id="ft-chip-b" data-action="b" aria-label="{{ get_message('ui_fast_track_chip_b') }}">{{ get_message('ui_fast_track_chip_b') }}</button>
+        <button type="button" class="ft-chip" id="ft-chip-c" data-action="c" aria-label="{{ get_message('ui_fast_track_chip_c') }}">{{ get_message('ui_fast_track_chip_c') }}</button>
+      </div>
+    </details>
     {% endif %}
 
     <div id="network-banner" class="network-banner" role="status" aria-live="polite" data-offline-text="{{ get_message('ui_offline_banner') }}" data-slow-text="{{ get_message('ui_slow_banner') }}">{% if not is_online and is_online is defined %}{{ get_message('ui_offline_banner') }}{% endif %}</div>
@@ -62,7 +71,7 @@
         <span class="sb-turn" id="sb-turn">{{ scene_header.turn_label if scene_header else '' }}</span>
       </div>
       <div class="sb-row">
-        <span class="board-problem"><span class="sb-board-label">{{ get_message('ui_scene_board') }}</span> <span id="sb-board">{{ scene_header.board if scene_header else '' }}</span></span>
+        <span class="board-problem"><span class="sb-board-label">{{ get_message('ui_scene_board') }}</span> <span id="sb-board">{{ scene_header.board if scene_header else '' }}</span><span class="board-manipulatives" id="sb-manipulatives" role="img" aria-label="{{ scene_header.manipulatives.aria_label if (scene_header and scene_header.manipulatives) else '' }}"{% if not (scene_header and scene_header.manipulatives) %} hidden{% endif %}></span></span>
         <span class="sb-children" id="sb-children" title="{{ get_message('ui_scene_pick_child') }}"{% if not (scene_header and scene_header.children) %} hidden{% endif %}>{% if scene_header %}{% for c in scene_header.children %}<button type="button" class="child-pill {{ c.id }}" data-name="{{ c.name }}">{{ c.name }}</button>{% endfor %}{% endif %}</span>
         <button type="button" class="sh-end" id="sh-end">{{ get_message('ui_chat_scene_end') }}</button>
       </div>
@@ -109,13 +118,21 @@
         </div>
 
         {% if msg.direction == 'out' and msg.buttons %}
+        {% set visible_btns = [] %}
+        {% for btn in msg.buttons %}
+          {% if not (btn.id == 'btn_replay' and not msg.audio_ref) %}
+            {% set _ = visible_btns.append(btn) %}
+          {% endif %}
+        {% endfor %}
+        {% if visible_btns %}
         <div class="quick-replies">
-          {% for btn in msg.buttons %}
+          {% for btn in visible_btns %}
           <button type="button" class="reply-chip" data-btn-id="{{ btn.id }}" data-btn-title="{{ btn.title_hi }}">
             {{ btn.title_hi }}
           </button>
           {% endfor %}
         </div>
+        {% endif %}
         {% endif %}
       </div>
       {% endfor %}

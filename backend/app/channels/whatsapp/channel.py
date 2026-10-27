@@ -95,7 +95,11 @@ class WhatsAppChannel:
                         delivered = True
 
                     if msg.buttons:
-                        button_tuples = [(b.id, b.title_hi) for b in msg.buttons]
+                        button_tuples = [
+                            (b.id, b.title_hi)
+                            for b in msg.buttons
+                            if not (b.id == "btn_replay" and not msg.audio_ref)
+                        ]
                         if len(button_tuples) <= 3:
                             await whatsapp_client.send_interactive_buttons(
                                 to_phone,

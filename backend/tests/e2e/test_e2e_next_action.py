@@ -46,8 +46,6 @@ def test_scene_line_says_how_to_keep_going_then_goes_once_she_speaks(open_chat: 
     assert suggest.inner_text().strip() == line
     assert page.evaluate(LINES_IN_TEXT) <= 2.05
     suggest.click()
-    assert page.input_value("#chat-input") == line
-    page.press("#chat-input", "Enter")
     page.wait_for_selector("#next-card", state="hidden", timeout=2000)
     page.wait_for_function(
         "() => [...document.querySelectorAll('.msg-row.outbound')].pop().innerText.includes('Ravi')",
@@ -61,8 +59,6 @@ def test_a_new_teacher_is_told_to_say_hello_then_what_to_tap(open_chat: Any) -> 
     page = open_chat("teacher.demo1", lang="en").page
     assert page.locator("#next-text").inner_text().strip() == _text("en", "hint_start")
     page.locator("#next-suggest").click()
-    assert page.input_value("#chat-input") == _text("en", "hint_start_suggest")
-    page.press("#chat-input", "Enter")
     agree = _text("en", "btn_agree")
     page.wait_for_function(
         "(t) => document.getElementById('next-text').innerText.includes(t)",

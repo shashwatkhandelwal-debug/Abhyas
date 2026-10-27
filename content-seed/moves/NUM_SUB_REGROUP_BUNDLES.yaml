@@ -18,26 +18,31 @@ sankul_month: October
 key_points:
   - id: kp1
     text_hi: "जब इकाई में ऊपर की संख्या छोटी हो, तो बच्चे अक्सर बड़ी संख्या में से छोटी घटा देते हैं। सबसे पहले बच्चे से पूछें कि उसने कैसे किया।"
+    text_en: "When the top units digit is smaller, children often subtract smaller from larger. First ask the child how they did it."
     must_have: true
     keywords_hi: [पूछें, कैसे, तरीका, बड़ी, छोटी, उल्टा]
     source_chunk_ids: []
   - id: kp2
     text_hi: "10-10 तीलियों के बंडल से संख्या बनवाएँ: 43 यानी 4 बंडल और 3 खुली तीलियाँ।"
+    text_en: "Build numbers with bundles of 10 and loose sticks: 43 is 4 bundles and 3 loose sticks."
     must_have: true
     keywords_hi: [बंडल, तीली, दहाई, इकाई, 10]
     source_chunk_ids: []
   - id: kp3
     text_hi: "3 तीलियों में से 7 नहीं निकलतीं, इसलिए एक बंडल खोलें: अब 13 खुली तीलियाँ और 3 बंडल हैं।"
+    text_en: "Cannot take 7 sticks from 3, so open one bundle: now 13 loose sticks and 3 bundles."
     must_have: true
     keywords_hi: [खोल, बंडल, 13, हासिल, उधार]
     source_chunk_ids: []
   - id: kp4
     text_hi: "खुली तीलियों में से 7 और बंडलों में से 2 हटाएँ; बचा 1 बंडल और 6 तीलियाँ, यानी 16।"
+    text_en: "Remove 7 loose sticks and 2 bundles: 1 bundle and 6 sticks remain, making 16."
     must_have: false
     keywords_hi: [हटाएँ, बचा, गिन, 16]
     source_chunk_ids: []
   - id: kp5
     text_hi: "उत्तर खुद न बताएँ। दो उत्तरों की तुलना करवाएँ और बच्चे को ही सही उत्तर तक पहुँचने दें।"
+    text_en: "Do not tell the answer yourself. Compare two answers and let the child reach the correct answer."
     must_have: true
     keywords_hi: [न बताएँ, तुलना, दोनों, खुद, सोच]
     source_chunk_ids: []

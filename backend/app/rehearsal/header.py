@@ -12,7 +12,8 @@ from typing import Any
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
 from backend.app.core.messages import get_message
-from backend.app.rule_engine.domain import Problem, SceneState
+from backend.app.rule_engine.child_state import ChildState
+from backend.app.rule_engine.domain import ChildRuntime, Problem, SceneState
 
 
 def item_dict(item: Problem) -> dict[str, Any]:
@@ -24,6 +25,48 @@ def item_dict(item: Problem) -> dict[str, Any]:
         "tens": item.tens,
         "ones": item.ones,
         "word": item.word,
+    }
+
+
+def manipulatives_dict(
+    item: Problem, children: list[ChildRuntime] | None = None
+) -> dict[str, Any] | None:
+    """Manipulatives (bundles and sticks) for CRA concrete representation.
+
+    Rendered strictly for subtraction problems when a < 100 and a >= 10.
+    Regrouping applies only when units(a) < units(b) and a child in the scene
+    has reached PARTIAL or CORRECT specifically on this item.
+    """
+    if item.type != "sub" or item.a is None or item.a >= 100 or item.a < 10:
+        return None
+
+    tens = item.a // 10
+    ones = item.a % 10
+    b_ones = (item.b % 10) if item.b is not None else 0
+    needs_regroup = ones < b_ones
+
+    item_key = item.key()
+    is_regrouped = False
+    if needs_regroup and children:
+        is_regrouped = any(
+            c.state in (ChildState.PARTIAL, ChildState.CORRECT)
+            and c.partial_item_key == item_key
+            for c in children
+        )
+
+    display_bundles = (tens - 1) if is_regrouped else tens
+    display_sticks = (ones + 10) if is_regrouped else ones
+
+    if is_regrouped:
+        aria_label = f"{display_bundles} बंडल और {display_sticks} तीलियाँ (1 बंडल खुला)"
+    else:
+        aria_label = f"{display_bundles} बंडल और {display_sticks} तीलियाँ"
+
+    return {
+        "bundles": display_bundles,
+        "sticks": display_sticks,
+        "regrouped": is_regrouped,
+        "aria_label": aria_label,
     }
 
 
@@ -55,6 +98,7 @@ def scene_header(
         "turn_label": get_message("ui_scene_turn", turn=turn, max=state.max_turns),
         "board": board_text(state.current_item),
         "item": item_dict(state.current_item),
+        "manipulatives": manipulatives_dict(state.current_item, state.children),
     }
     if state.one_on_one or len(state.children) == 1:
         child = state.children[0]
@@ -96,6 +140,7 @@ def preview_header(move: MoveCard) -> dict[str, Any]:
         "turn_label": get_message("ui_scene_turn", turn=0, max=settings.MAX_TURNS_PER_REHEARSAL),
         "board": board_text(item),
         "item": item_dict(item),
+        "manipulatives": manipulatives_dict(item, None),
         "title": get_message("ui_scene_group_title"),
         "children": [
             {"id": c.persona_id, "name": get_message(f"speaker_{c.persona_id}")}
