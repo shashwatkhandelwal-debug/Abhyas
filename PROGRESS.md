@@ -835,7 +835,8 @@ Only items measured or run in this sprint are listed; the earlier gate totals ab
 - **Node:** `chat.test.mjs` 66 / 66 passed. `sw.test.mjs` was **not** run in this pass.
 - **Page weight** (`scripts/check_first_load.py`, local, mock providers): teacher chat first load 127.59 KB raw /
   29.93 KB gzip; all offline assets 148.23 KB raw / 37.15 KB gzip; PASS (< 150 KB). Exact bytes: all assets 151,790
-  (script, CRLF working tree) against the 153,600 limit = 1,810 B headroom as measured; the Windows CRLF working tree adds
-  2,439 B (one byte per line in `chat.js` 2,087, `recorder.js` 209, `sw.js` 143), so LF-equivalent headroom is 4,249 B.
+  (script, CRLF working tree on the feature branch) against the 153,600 limit = 1,810 B headroom as measured; the Windows
+  CRLF working tree added 2,296 B (one byte per line: `chat.js` 2,087 + `recorder.js` 209), so LF headroom is 4,106 B.
+  After the merge to `main` the working tree is LF and the script itself reports 149,494 B = 4,106 B headroom.
 - **Not run this sprint:** `ruff format --check` on the whole repo, `scripts/freeze_check.py`, any live-provider test,
   latency on the hosted site, kappa against coaches. Nothing here states a kappa value or curriculum codes.
