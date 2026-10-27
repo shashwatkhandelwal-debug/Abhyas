@@ -293,7 +293,7 @@ class PostgresSceneStore:
                 active_id = res.scalar_one_or_none()
                 if active_id is not None:
                     return await self.get(active_id)
-                return None
+                return await self._memory.get_active_for_teacher(teacher_id)
         except Exception as exc:
             logger.warning(
                 "Failed querying active scene for teacher %s from Postgres: %s", teacher_id, exc

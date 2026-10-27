@@ -342,7 +342,8 @@ export function loadChat({ strings = {}, online = true } = {}) {
         toggleTranslation, buildTranslateControl, TRANSLATABLE_SPEAKERS, getSpeakerLabel,
         renderSceneHeader, addressChild, renderHint, hintSent, applyView, setupSceneEnd, setupHandbookChips, recorderErrorText, toggleLiteMode, flashStatus,
         recordRequestLatency, isSlowNetwork, showSlowNetworkWarning,
-        formatCoachEvidenceText, upgradeCoachEvidenceQuotes })`,
+        formatCoachEvidenceText, upgradeCoachEvidenceQuotes,
+        getChipA1Text, updateFastTrackChips, disableFastTrackChips, enableFastTrackChips, setupFastTrackTray })`,
     sandbox
   );
   api.setUiStrings(strings);

@@ -1048,3 +1048,134 @@ test('board manipulatives hide when problem has no manipulatives (null)', () => 
   });
   assert.equal(h.manip.hidden, true);
 });
+
+// ── evaluator fast-track tray ───────────────────────────────────────────────
+function withFastTrackTray(c) {
+  const doc = c.sandbox.document;
+  const mk = (id, tag = 'button') => {
+    const el = doc.createElement(tag);
+    el.id = id;
+    c.byId[id] = el;
+    return el;
+  };
+  const tray = doc.createElement('details');
+  tray.className = 'fast-track-tray';
+  tray.id = 'fast-track-tray';
+  tray.open = true;
+  c.byId['fast-track-tray'] = tray;
+
+  const a1 = mk('ft-chip-a1');
+  a1.className = 'ft-chip';
+  a1.dataset.action = 'a1';
+  a1.disabled = true;
+
+  const a2 = mk('ft-chip-a2');
+  a2.className = 'ft-chip';
+  a2.dataset.action = 'a2';
+  a2.dataset.text = 'अब 61 में से 28 घटाओ';
+
+  const b = mk('ft-chip-b');
+  b.className = 'ft-chip';
+  b.dataset.action = 'b';
+  b.dataset.text = 'चलो 43 में से 27 फिर से करते हैं: देखो, 4 बंडल और 3 खुली तीलियाँ हैं, 3 में से 7 नहीं निकलतीं, तो एक बंडल खोलो।';
+
+  const ch_c = mk('ft-chip-c');
+  ch_c.className = 'ft-chip';
+  ch_c.dataset.action = 'c';
+  ch_c.dataset.text = 'सवाल: उल्टी गिनती करके घटाव कैसे सिखाएँ?';
+
+  tray.appendChild(a1);
+  tray.appendChild(a2);
+  tray.appendChild(b);
+  tray.appendChild(ch_c);
+  return { tray, a1, a2, b, c: ch_c };
+}
+
+test('Fast-Track chip A1 computes dynamic answer from subtraction problem and disables when not subtraction', () => {
+  const c = load();
+  const t = withFastTrackTray(c);
+
+  // 1. Subtraction 43 - 27
+  c.renderSceneHeader({
+    ...SCENE,
+    item: { type: 'sub', a: 43, b: 27 },
+  });
+  assert.equal(c.getChipA1Text(), 'रवि, सही उत्तर 16 है');
+  assert.equal(t.a1.disabled, false);
+  assert.equal(t.a1.dataset.text, 'रवि, सही उत्तर 16 है');
+
+  // 2. Subtraction 61 - 28
+  c.renderSceneHeader({
+    ...SCENE,
+    item: { type: 'sub', a: 61, b: 28 },
+  });
+  assert.equal(c.getChipA1Text(), 'रवि, सही उत्तर 33 है');
+  assert.equal(t.a1.disabled, false);
+
+  // 3. Subtraction 80 - 35
+  c.renderSceneHeader({
+    ...SCENE,
+    item: { type: 'sub', a: 80, b: 35 },
+  });
+  assert.equal(c.getChipA1Text(), 'रवि, सही उत्तर 45 है');
+  assert.equal(t.a1.disabled, false);
+
+  // 4. Non-subtraction problem (e.g. addition, place_value or literacy)
+  c.renderSceneHeader({
+    ...SCENE,
+    item: { type: 'add', a: 28, b: 15 },
+  });
+  assert.equal(c.getChipA1Text(), null);
+  assert.equal(t.a1.disabled, true);
+  assert.equal(t.a1.dataset.text, undefined);
+});
+
+test('Fast-Track chips disable on tap, re-enable on reply or failure or 90s timeout', async () => {
+  const c = load();
+  const t = withFastTrackTray(c);
+  const activeScene = {
+    ...SCENE,
+    item: { type: 'sub', a: 43, b: 27 },
+  };
+  c.net.handler = async () => ({
+    status: 200,
+    ok: true,
+    json: async () => ({ messages: [], pending: false, scene: activeScene }),
+  });
+  c.renderSceneHeader(activeScene);
+  c.setupFastTrackTray();
+
+  // Tap chip A1
+  t.tray._listeners.click({ target: t.a1 });
+  await c.flush();
+  assert.equal(t.a1.disabled, true);
+  assert.equal(t.a2.disabled, true);
+  assert.equal(t.b.disabled, true);
+  assert.equal(t.c.disabled, true);
+
+  // Outbound reply lands -> re-enables chips
+  c.renderMessage({ id: 'msg-reply-1', direction: 'out', speaker: 'ravi', text: '16... ?' });
+  c.enableFastTrackChips();
+  assert.equal(t.a1.disabled, false);
+  assert.equal(t.a2.disabled, false);
+  assert.equal(t.b.disabled, false);
+  assert.equal(t.c.disabled, false);
+
+  // Tap chip A2
+  t.tray._listeners.click({ target: t.a2 });
+  await c.flush();
+  assert.equal(t.a1.disabled, true);
+  assert.equal(t.a2.disabled, true);
+
+  // Failure occurs -> re-enables chips
+  c.failMessage('dummy-id', 'network');
+  assert.equal(t.a1.disabled, false);
+  assert.equal(t.a2.disabled, false);
+
+  // Tap chip B, test 90s hard-cap timeout
+  t.tray._listeners.click({ target: t.b });
+  await c.flush();
+  assert.equal(t.b.disabled, true);
+  await c.advance(90001);
+  assert.equal(t.b.disabled, false);
+});

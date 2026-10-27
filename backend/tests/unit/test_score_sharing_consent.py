@@ -102,6 +102,9 @@ async def test_consent_question_not_asked_during_setup_and_appears_after_first_s
     # Turn 3
     await service.handle_inbound(_inbound(t_id, text="शाबाश, अब बंडल बनाओ"))
 
+    # Turn 4 (satisfies MIN_TURNS_FOR_COACH_GROUP = 3 in scene)
+    await service.handle_inbound(_inbound(t_id, text="अब बताओ कुल कितनी तीलियाँ हुईं?"))
+
     # Finish rehearsal with stop intent or natural conclusion
     out_feedback = await service.handle_inbound(_inbound(t_id, text="बस"))
 

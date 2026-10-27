@@ -1,4 +1,4 @@
-/* Abhyas Service Worker (spec/09 §9.2). */
+
 
 const BUILD_VERSION = '__BUILD_VERSION__';
 const STATIC_CACHE_PREFIX = 'abhyas-static-';
@@ -6,8 +6,6 @@ const CACHE_NAME_STATIC = STATIC_CACHE_PREFIX + BUILD_VERSION;
 const CACHE_NAME_AUDIO = 'abhyas-audio-v1';
 const MAX_AUDIO_CACHE_ITEMS = 30;
 
-// Pages ask for these as `?v=<BUILD_VERSION>` (the same stamp), so a new build's pages never match
-// an older build's cached copy of the same file.
 const STATIC_ASSETS = [
   '/static/app.css?v=' + BUILD_VERSION,
   '/static/chat.js?v=' + BUILD_VERSION,
@@ -21,7 +19,7 @@ const STATIC_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME_STATIC).then((cache) => {
-      // cache:'reload' bypasses the HTTP cache so a new build never precaches stale files.
+      
       return cache.addAll(STATIC_ASSETS.map((url) => new Request(url, { cache: 'reload' })));
     })
   );
@@ -56,7 +54,7 @@ async function trimCache(cacheName, maxItems) {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // 1. Audio Cache (/api/audio/*) - Cache-first + LRU 30
+  
   if (url.pathname.startsWith('/api/audio/')) {
     event.respondWith(
       caches.open(CACHE_NAME_AUDIO).then(async (cache) => {
@@ -79,12 +77,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. HTML navigation requests - Network-first with offline.html fallback
+  
   if (event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html')) {
     event.respondWith(
       fetch(event.request).then(async (response) => {
-        // Hosting answers 502/503/504 while the sleeping server boots: show the "waking up" page,
-        // which polls /healthz and reloads this URL once the server is back.
+        
+        
         if ([502, 503, 504].includes(response.status)) {
           const cache = await caches.open(CACHE_NAME_STATIC);
           const waking = await cache.match('/waking');
@@ -100,7 +98,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3a. Scripts and styles - stale-while-revalidate: instant from cache, refreshed in background
+  
   if (url.pathname.startsWith('/static/') && /\.(js|css)$/.test(url.pathname)) {
     event.respondWith(
       caches.open(CACHE_NAME_STATIC).then(async (cache) => {
@@ -121,7 +119,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3b. Other static assets (/static/*) - Cache-first
+  
   if (url.pathname.startsWith('/static/')) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
@@ -140,6 +138,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Default: Network fetch
+  
   event.respondWith(fetch(event.request));
 });

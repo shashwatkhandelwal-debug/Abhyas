@@ -1,25 +1,10 @@
-/**
- * Abhyas Chat Application (spec/09 §9.2).
- * Features:
- * - IndexedDB Outbox with retry backoff (2, 4, 8s) and a visible failed state (tap to retry)
- * - Message deduplication with client_msg_id
- * - Polling (1.5s while pending, 20s while idle)
- * - Visible acknowledgment for every action: bubble states, typing indicator, audio states,
- *   mic flow, pressed/locked chips, cold-start / reconnecting status bar
- * - Lite mode toggle & audio playback
- *
- * All Hindi shown by the acknowledgment UI comes from content/messages_hi.yaml (ui_chat_*),
- * delivered as JSON in #ui-strings. The state machines below are pure so they can be tested
- * under Node (backend/tests/js).
- */
+// Abhyas Chat Client (spec/09)
 
-// ── IndexedDB Storage ───────────────────────────────────────────────────────
 const DB_NAME = 'abhyas_chat_db';
 const DB_VERSION = 1;
 const STORE_OUTBOX = 'outbox';
 const STORE_MESSAGES = 'messages_cache';
 
-// ── Tunables (UI feedback timings) ──────────────────────────────────────────
 const TYPING_TIMEOUT_MS = 60000;
 const COLD_START_HINT_MS = 5000;
 const AUDIO_WAIT_MS = 25000;
@@ -356,6 +341,8 @@ const state = {
   lastAcceptedAt: 0,
   requestCount: 0,
   slowRequestCount: 0,
+  fastTrackInFlight: false,
+  fastTrackTimer: null,
 };
 
 function isChildSpeaker(speaker) {
@@ -441,6 +428,7 @@ function failMessage(clientMsgId, reason) {
   typingEvent({ type: 'idle' });
   setMicPhase(clientMsgId, 'failed');
   flashStatus(failureNoticeText(reason));
+  if (state.fastTrackInFlight) enableFastTrackChips();
 }
 
 function failureNoticeText(reason) {
@@ -691,10 +679,110 @@ function renderManipulatives(m) {
   el.appendChild(sticksWrap);
 }
 
+let currentSceneHeader = null;
+
+function getChipA1Text(sc) {
+  const s = sc || currentSceneHeader;
+  const item = s && s.item;
+  if (item && item.type === 'sub' && typeof item.a === 'number' && typeof item.b === 'number') {
+    return '\u0930\u0935\u093f, \u0938\u0939\u0940 \u0909\u0924\u094d\u0924\u0930 ' + (item.a - item.b) + ' \u0939\u0948';
+  }
+  const boardEl = document.getElementById('sb-board');
+  const boardText = boardEl ? boardEl.textContent.trim() : '';
+  const m = boardText.match(/^(\d+)\s*[\u2212\-]\s*(\d+)$/);
+  if (m) {
+    const a = parseInt(m[1], 10);
+    const b = parseInt(m[2], 10);
+    return '\u0930\u0935\u093f, \u0938\u0939\u0940 \u0909\u0924\u094d\u0924\u0930 ' + (a - b) + ' \u0939\u0948';
+  }
+  return null;
+}
+
+function updateFastTrackChips(sc) {
+  const a1Btn = document.getElementById('ft-chip-a1');
+  if (!a1Btn) return;
+  const a1Text = getChipA1Text(sc);
+  if (a1Text) {
+    a1Btn.setAttribute('data-text', a1Text);
+    if (a1Btn.dataset) a1Btn.dataset.text = a1Text;
+    if (!state.fastTrackInFlight) a1Btn.disabled = false;
+  } else {
+    a1Btn.removeAttribute('data-text');
+    if (a1Btn.dataset) delete a1Btn.dataset.text;
+    a1Btn.disabled = true;
+  }
+}
+
+function disableFastTrackChips() {
+  const tray = document.getElementById('fast-track-tray');
+  if (!tray) return;
+  const chips = tray.querySelectorAll('.ft-chip');
+  chips.forEach((c) => {
+    c.disabled = true;
+  });
+}
+
+function enableFastTrackChips() {
+  state.fastTrackInFlight = false;
+  if (state.fastTrackTimer) {
+    clearTimeout(state.fastTrackTimer);
+    state.fastTrackTimer = null;
+  }
+  const tray = document.getElementById('fast-track-tray');
+  if (!tray) return;
+  const chips = tray.querySelectorAll('.ft-chip');
+  chips.forEach((c) => {
+    if (c.id === 'ft-chip-a1') {
+      const txt = (c.dataset && c.dataset.text) || c.getAttribute('data-text');
+      c.disabled = !txt;
+    } else {
+      c.disabled = false;
+    }
+  });
+}
+
+function setupFastTrackTray() {
+  const tray = document.getElementById('fast-track-tray');
+  if (!tray) return;
+  const bA2 = document.getElementById('ft-chip-a2');
+  if (bA2 && !bA2.dataset.text) bA2.dataset.text = '\u0905\u092c 61 \u092e\u0947\u0902 \u0938\u0947 28 \u0918\u091f\u093e\u0913';
+  const bB = document.getElementById('ft-chip-b');
+  if (bB && !bB.dataset.text) bB.dataset.text = '\u091a\u0932\u094b 43 \u092e\u0947\u0902 \u0938\u0947 27 \u092b\u093f\u0930 \u0938\u0947 \u0915\u0930\u0924\u0947 \u0939\u0948\u0902: \u0926\u0947\u0916\u094b, 4 \u092c\u0902\u0921\u0932 \u0914\u0930 3 \u0916\u0941\u0932\u0940 \u0924\u0940\u0932\u093f\u092f\u093e\u0901 \u0939\u0948\u0902, 3 \u092e\u0947\u0902 \u0938\u0947 7 \u0928\u0939\u0940\u0902 \u0928\u093f\u0915\u0932\u0924\u0940\u0902, \u0924\u094b \u090f\u0915 \u092c\u0902\u0921\u0932 \u0916\u094b\u0932\u094b\u0964';
+  const bC = document.getElementById('ft-chip-c');
+  if (bC && !bC.dataset.text) bC.dataset.text = '\u0938\u0935\u093e\u0932: \u0909\u0932\u094d\u091f\u0940 \u0917\u093f\u0928\u0924\u0940 \u0915\u0930\u0915\u0947 \u0918\u091f\u093e\u0935 \u0915\u0948\u0938\u0947 \u0938\u093f\u0916\u093e\u090f\u0901?';
+  updateFastTrackChips();
+  tray.addEventListener('click', (e) => {
+    const btn = e.target && e.target.closest ? e.target.closest('.ft-chip') : null;
+    if (!btn || btn.disabled || state.fastTrackInFlight) return;
+    const action = btn.dataset ? btn.dataset.action : btn.getAttribute('data-action');
+    let text = (btn.dataset && btn.dataset.text) || btn.getAttribute('data-text');
+    if (action === 'a1') {
+      text = text || getChipA1Text();
+      if (!text) return;
+    }
+    if (!text) return;
+
+    if (!navigator.onLine) {
+      handleSendText(text);
+      return;
+    }
+
+    disableFastTrackChips();
+    state.fastTrackInFlight = true;
+    if (state.fastTrackTimer) clearTimeout(state.fastTrackTimer);
+    state.fastTrackTimer = setTimeout(() => {
+      enableFastTrackChips();
+    }, 90000);
+
+    handleSendText(text);
+  });
+}
+
 function renderSceneHeader(sc) {
+  currentSceneHeader = sc;
   const bar = document.getElementById('scene-bar');
-  if (!bar) return;
-  bar.hidden = !sc;
+  if (bar) bar.hidden = !sc;
+  updateFastTrackChips(sc);
   if (!sc) return;
   const set = (id, text) => {
     const el = document.getElementById(id);
@@ -817,6 +905,7 @@ async function pollMessages() {
       if (gotReply) {
         typingEvent({ type: 'reply' });
         scrollChatToNew(firstNewReply);
+        if (state.fastTrackInFlight) enableFastTrackChips();
         setTimeout(pollMessages, FOLLOW_UP_POLL_MS);
       }
       if (!stale) typingEvent({ type: data.pending ? 'pending' : 'idle' });
@@ -978,7 +1067,7 @@ function expectsAudio(msg) {
 
 function formatCoachEvidenceText(textEl, rawText) {
   textEl.textContent = '';
-  const quoteRegex = /(?:(?:आपके शब्द|Your words)\s*[:\-–—]\s*)?«([^»]+)»/gu;
+  const quoteRegex = /(?:(?:\u0906\u092a\u0915\u0947 \u0936\u092c\u094d\u0926|Your words)\s*[:\-–—]\s*)?«([^»]+)»/gu;
   let lastIdx = 0;
   let match;
   let hasQuote = false;
@@ -996,7 +1085,7 @@ function formatCoachEvidenceText(textEl, rawText) {
 
     const tag = document.createElement('span');
     tag.className = 'quote-tag';
-    tag.textContent = t('ui_chat_quote_tag') || 'आपकी कही बात';
+    tag.textContent = t('ui_chat_quote_tag');
 
     const content = document.createElement('span');
     content.className = 'quote-content';
@@ -1197,7 +1286,6 @@ function renderMessage(msg, isLocalOptimistic = false) {
   return true;
 }
 
-// ── On-demand translation: "Translate" under child / coach / guide bubbles ─────
 const TRANSLATABLE_SPEAKERS = new Set(['ravi', 'priya', 'aman', 'coach', 'guide', 'model_teacher']);
 
 function buildTranslateControl(messageId) {
@@ -1267,7 +1355,6 @@ document.addEventListener('click', (ev) => {
   if (btn) toggleTranslation(btn);
 });
 
-// ── Source citations: tap the chip to read the excerpt behind an answer ───────
 function buildExcerptPanel(src) {
   const panel = document.createElement('div');
   panel.className = 'source-excerpt';
@@ -1364,7 +1451,6 @@ function recorderErrorText(code, detail) {
   return t('ui_chat_rec_start_failed', { error: detail || t('ui_chat_rec_unknown_error') });
 }
 
-// ── Chips: pressed state, locked while the request runs, inline ✓ ────────────
 function lockChips(container, chip) {
   container.querySelectorAll('.reply-chip').forEach((c) => {
     c.disabled = true;
@@ -1374,7 +1460,6 @@ function lockChips(container, chip) {
   announce(t('ui_chat_chip_done'));
 }
 
-// ── Sending Handlers ────────────────────────────────────────────────────────
 async function handleSendText(text, typingLabel = null) {
   if (!text || !text.trim()) return null;
   hintSent();
@@ -1458,7 +1543,6 @@ async function handleSendAudio(audioBlob, durationSec) {
   triggerImmediatePoll();
 }
 
-// ── Network & Offline Handling ──────────────────────────────────────────────
 function updateOnlineStatus() {
   const banner = document.getElementById('network-banner');
 
@@ -1524,7 +1608,6 @@ function showSlowNetworkWarning() {
   }
 }
 
-// ── Lite Mode Toggle (§9.2) ─────────────────────────────────────────────────
 async function toggleLiteMode(forceValue = null) {
   const target = forceValue !== null ? forceValue : !state.liteMode;
   state.liteMode = target;
@@ -1583,7 +1666,6 @@ async function toggleShareScores() {
 }
 window.toggleShareScores = toggleShareScores;
 
-// ── Mic UI Interaction ──────────────────────────────────────────────────────
 function setupMicEvents() {
   const micBtn = document.getElementById('btn-mic');
   const overlay = document.getElementById('recording-overlay');
@@ -1665,7 +1747,7 @@ function setupMicEvents() {
     try {
       micBtn.setPointerCapture(e.pointerId);
     } catch (err) {
-      /* capture is best-effort */
+
     }
     pressedAt = Date.now();
     startRec();
@@ -1708,7 +1790,6 @@ function flashStatus(text) {
   setTimeout(renderNetStatus, 6000);
 }
 
-// ── Sample lines (demo): one delegated handler, the list follows the step she is on ──
 const SAMPLE_BOX_ID = 'sample-list';
 
 function setupDemoChips() {
@@ -1771,7 +1852,6 @@ function renderSamples(list) {
   });
 }
 
-// ── Demo banner: one small line, dismissed for the session ──────────────────
 function setupDemoBanner() {
   const banner = document.getElementById('demo-banner');
   if (!banner) return;
@@ -1790,7 +1870,6 @@ function setupDemoBanner() {
     });
 }
 
-// ── Ask the handbook chips: a tap sends the question through the normal text path ──
 const CHIP_SETTLE_MAX_MS = 8000;
 
 function whenSettled(clientMsgId, maxMs) {
@@ -1845,7 +1924,6 @@ function setupHandbookChips() {
   }
 }
 
-// ── Delegated Event Handlers for Server-Rendered Buttons ──────────────────
 document.addEventListener('click', (e) => {
   const target = e.target;
   if (!target || !(target instanceof Element)) return;
@@ -1903,7 +1981,6 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// ── Service Worker Registration ────────────────────────────────────────────
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker
@@ -1913,7 +1990,6 @@ function registerServiceWorker() {
   }
 }
 
-// ── DOM Message Seeding & Offline Cache Population ─────────────────────────
 function initRenderedMessagesFromDom() {
   const container = document.getElementById('chat-messages');
   if (!container) return;
@@ -1951,7 +2027,6 @@ function initRenderedMessagesFromDom() {
   }
 }
 
-// ── Initialization ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   loadUiStrings();
 
@@ -1990,6 +2065,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupMicEvents();
   setupDemoChips();
   setupDemoBanner();
+  setupFastTrackTray();
   setupHandbookChips();
   setupSceneEnd();
 
