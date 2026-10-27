@@ -1120,6 +1120,7 @@ coach_outcome_told: {text: "आपने {child} को उत्तर बत�
 coach_outcome_relapse: {text: "उत्तर बताने के बाद नया सवाल दिया, तो {child} की पुरानी गलती फिर दिखी। उत्तर बताने से तरीका नहीं सीखा जाता।", audio: false}
 coach_outcome_checked: {text: "आपने नए सवाल पर जाँचा, और {child} ने तरीका समझाकर उसे हल किया: तरीका समझ में आया है।", audio: false}
 coach_outcome_concrete: {text: "आपने ठोस चीज़ (बंडल और तीलियाँ) इस्तेमाल की, इसलिए {child} को दिखा कि कहाँ क्या करना है।", audio: false}
+coach_outcome_concrete_literacy: {text: "आपकी मदद से {child} ने शब्द सही पढ़ा: ध्वनि को पकड़ने में उसे सहारा मिला।", audio: false}
 coach_outcome_explain: {text: "आपने {child} से समझाने को कहा, इसलिए उसका अपना तरीका सामने आया।", audio: false}
 btn_share_arp:
   text: "ARP से साझा करें"

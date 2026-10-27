@@ -1810,7 +1810,7 @@ class SessionService:
                     else ""
                 )
                 # What happened, from the tagged acts and the engine's recorded answers (no model)
-                happened = outcome_line(scene.turns, address_form)
+                happened = outcome_line(scene.turns, address_form, move.domain)
                 if happened:
                     prefix = f"{happened}\n\n{prefix}"
                 feedback_body = get_message(

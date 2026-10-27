@@ -101,3 +101,32 @@ def test_no_line_when_nothing_stands_out() -> None:
     from backend.app.sessions.outcome import outcome_line
 
     assert outcome_line([]) == ""
+
+
+def _scaffolded_turn() -> list:  # type: ignore[type-arg]
+    from backend.app.rehearsal.scene_store import TurnRecord
+    from backend.app.rule_engine.domain import ChildResponse
+
+    response = ChildResponse(
+        persona_id="ravi",
+        kind=ResponseKind.SCAFFOLDED_CORRECT,
+        prior_state=ChildState.MISCONCEPTION,
+        new_state=ChildState.PARTIAL,
+        affect="encouraged",
+        item=Problem(type="sub", a=43, b=27),
+    )
+    return [TurnRecord(turn_index=1, transcript="x", acts=[], child_responses=[response])]
+
+
+def test_a_literacy_scene_never_gets_the_bundles_and_sticks_wording() -> None:
+    from backend.app.content_models import Domain
+    from backend.app.sessions.outcome import outcome_line
+
+    turns = _scaffolded_turn()
+    literacy = outcome_line(turns, "f", Domain.LITERACY)
+    assert literacy == get_message("coach_outcome_concrete_literacy", "f", child=RAVI)
+    assert "बंडल" not in literacy and "तीलियाँ" not in literacy
+    # numeracy (and callers that pass no domain) keep the bundles-and-sticks line
+    expected = get_message("coach_outcome_concrete", "f", child=RAVI)
+    assert outcome_line(turns, "f", Domain.NUMERACY) == expected
+    assert outcome_line(turns, "f") == expected
