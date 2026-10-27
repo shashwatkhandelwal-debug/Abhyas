@@ -652,6 +652,45 @@ function addressChild(name) {
   if (input.focus) input.focus();
 }
 
+function renderManipulatives(m) {
+  const el = document.getElementById('sb-manipulatives');
+  if (!el) return;
+  if (!m || (m.bundles === undefined && m.sticks === undefined)) {
+    el.hidden = true;
+    el.textContent = '';
+    return;
+  }
+  el.hidden = false;
+  el.setAttribute('role', 'img');
+  el.setAttribute('aria-label', m.aria_label || '');
+  if (m.regrouped) {
+    el.classList.add('regrouped');
+  } else {
+    el.classList.remove('regrouped');
+  }
+
+  el.textContent = '';
+  const bundlesWrap = document.createElement('span');
+  bundlesWrap.className = 'manip-bundles';
+  bundlesWrap.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < (m.bundles || 0); i++) {
+    const b = document.createElement('span');
+    b.className = 'drawn-bundle';
+    bundlesWrap.appendChild(b);
+  }
+  el.appendChild(bundlesWrap);
+
+  const sticksWrap = document.createElement('span');
+  sticksWrap.className = 'manip-sticks';
+  sticksWrap.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < (m.sticks || 0); i++) {
+    const s = document.createElement('span');
+    s.className = 'drawn-stick';
+    sticksWrap.appendChild(s);
+  }
+  el.appendChild(sticksWrap);
+}
+
 function renderSceneHeader(sc) {
   const bar = document.getElementById('scene-bar');
   if (!bar) return;
@@ -664,6 +703,7 @@ function renderSceneHeader(sc) {
   set('sb-title', sc.title);
   set('sb-turn', sc.turn_label);
   set('sb-board', sc.board);
+  renderManipulatives(sc.manipulatives);
   const kids = document.getElementById('sb-children');
   if (!kids) return;
   const list = sc.children || [];

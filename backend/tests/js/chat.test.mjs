@@ -606,6 +606,7 @@ function withSceneBar(c) {
     title: mk('sb-title'),
     turn: mk('sb-turn'),
     board: mk('sb-board'),
+    manip: mk('sb-manipulatives', 'span'),
     kids: mk('sb-children'),
     end: mk('sh-end'),
     input: c.sandbox.document.getElementById('chat-input'),
@@ -992,4 +993,58 @@ test('evidence quote badge only applies to coach messages', () => {
   const row = c.container.querySelector('#msg-child-1');
   const badge = row.querySelector('.evidence-quote-badge');
   assert.equal(badge, null, 'Non-coach messages must NOT have quote badge');
+});
+
+// ── board manipulatives ─────────────────────────────────────────────────────
+test('board manipulatives render drawn bundles and sticks with aria-label', () => {
+  const c = load();
+  const h = withSceneBar(c);
+  c.renderSceneHeader({
+    ...SCENE,
+    manipulatives: {
+      bundles: 4,
+      sticks: 3,
+      regrouped: false,
+      aria_label: '4 बंडल और 3 तीलियाँ',
+    },
+  });
+  assert.equal(h.manip.hidden, false);
+  assert.equal(h.manip.getAttribute('role'), 'img');
+  assert.equal(h.manip.getAttribute('aria-label'), '4 बंडल और 3 तीलियाँ');
+  const bundles = h.manip.querySelectorAll('.drawn-bundle');
+  const sticks = h.manip.querySelectorAll('.drawn-stick');
+  assert.equal(bundles.length, 4);
+  assert.equal(sticks.length, 3);
+  assert.equal(h.manip.classList.contains('regrouped'), false);
+});
+
+test('board manipulatives render regrouped state (unpacked bundle into 10 sticks)', () => {
+  const c = load();
+  const h = withSceneBar(c);
+  c.renderSceneHeader({
+    ...SCENE,
+    manipulatives: {
+      bundles: 3,
+      sticks: 13,
+      regrouped: true,
+      aria_label: '3 बंडल और 13 तीलियाँ (1 बंडल खुला)',
+    },
+  });
+  assert.equal(h.manip.hidden, false);
+  assert.equal(h.manip.getAttribute('aria-label'), '3 बंडल और 13 तीलियाँ (1 बंडल खुला)');
+  const bundles = h.manip.querySelectorAll('.drawn-bundle');
+  const sticks = h.manip.querySelectorAll('.drawn-stick');
+  assert.equal(bundles.length, 3);
+  assert.equal(sticks.length, 13);
+  assert.equal(h.manip.classList.contains('regrouped'), true);
+});
+
+test('board manipulatives hide when problem has no manipulatives (null)', () => {
+  const c = load();
+  const h = withSceneBar(c);
+  c.renderSceneHeader({
+    ...SCENE,
+    manipulatives: null,
+  });
+  assert.equal(h.manip.hidden, true);
 });

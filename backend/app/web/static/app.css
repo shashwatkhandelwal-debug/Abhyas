@@ -286,6 +286,50 @@ body {
   font-size: 0.95rem;
   white-space: nowrap;
 }
+.board-manipulatives {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: 0.45rem;
+  vertical-align: middle;
+}
+.board-manipulatives[hidden] { display: none; }
+.manip-bundles, .manip-sticks {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.drawn-bundle {
+  display: inline-block;
+  width: 12px;
+  height: 18px;
+  background: repeating-linear-gradient(90deg, #58C5A8 0, #58C5A8 1.5px, transparent 1.5px, transparent 2.8px);
+  border: 1px solid #58C5A8;
+  border-radius: 2px;
+  position: relative;
+}
+.drawn-bundle::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: -1px;
+  right: -1px;
+  height: 3px;
+  background: #FFD56B;
+  border-radius: 1px;
+}
+.drawn-stick {
+  display: inline-block;
+  width: 2px;
+  height: 16px;
+  background-color: #FAF7F2;
+  border-radius: 1px;
+}
+.board-manipulatives.regrouped .manip-sticks {
+  background: rgba(255, 213, 107, 0.18);
+  padding: 1px 3px;
+  border-radius: 3px;
+}
 .sb-board-label { font-weight: 500; font-size: 0.8rem; opacity: 0.8; margin-right: 0.3rem; }
 .sb-children { display: inline-flex; gap: 0.35rem; }
 .sb-children[hidden] { display: none; }
