@@ -144,3 +144,92 @@ A local Postgres from `pgserver` in `%TEMP%\abhyas_pg_run5` is still running on 
 - Untracked scratch left in the working tree because deletes were forbidden: `docs/ux/_scratch_unused/` (duplicate
   screenshots), `backend/tests/js/_dbg.mjs` and `.tmp_fasttrack_tests.mjs.txt` (both one-line stubs); all three are
   excluded locally through `.git/info/exclude`, not committed.
+
+## Follow-up: quote badge on the live path, pytest summary, handbook check
+
+Run on the same branch. Everything here was run in this session unless marked **assumed**.
+
+### 1a. Real SessionService path, "बस" at the end
+`backend/tests/unit/test_coach_feedback_speaker.py` drives `SessionService` (in-memory scene store and fake repository,
+mock LLM, scripted act tagger; the children's answers still come from the rule engine). Payloads before the fix
+(`speaker`, text), subtraction (demo2 flow: ask to explain, concrete representation, "बस"):
+```
+#0 kind=text speaker='coach' 'चलिए, अब फीडबैक देखते हैं।'
+#1 kind=text speaker=None    'आपके अभ्यास पर सुझाव:'
+#2 kind=text speaker=None    'आपने ठोस चीज़ (बंडल और तीलियाँ) इस्तेमाल की, ... \n\n(यह सुझाव एक विशेषज्ञ भी देखेंगे।)\n\n👍 आपने बच्चे से उसका तरीका पूछा, ... आपके शब्द: «रवि, तुमने 43 में से 27 कैसे घटाया? मुझे एक-एक कदम बताओ।»\n🔁 ...\n🗣️ ...'
+#3 kind=buttons speaker=None 'रवि असली कक्षा के बच्चे जैसा लगा? 1 ... चुनें।'
+#4 kind=buttons speaker=None 'क्या आप अपने अभ्यास के अंक अपने ARP से साझा करना चाहती हैं? ...'
+```
+So on the real path the «quote» (`coach_quote_suffix`) is in bubble #2, which had no speaker. Literacy (group scene, LIT_MATRA_BLENDING):
+same five messages, bubble #2 is `speaker=None` and has **no «quote»**: `coach.py` adds the quote only for one-on-one scenes
+(`one_on_one and strength_is_evidenced`), so a group or literacy scene never has a badge, by existing design. I did not change that.
+
+### 1b. The change and what else it does in the UI
+`service.py`: the advice bubble is now `OutboundMessage(..., speaker="coach")`. Header line and the buttons stay `None`.
+For that one bubble the UI now also: shows the amber "कोच" speaker tag above it (server-rendered on reload and by
+`chat.js` when live); shows the "अंग्रेज़ी में देखें" translate button (coach is in `TRANSLATABLE_SPEAKERS`; the endpoint
+limit is 2000 characters, this text is about 600; the translation call uses the LLM, not exercised here); draws the badge.
+No audio change (coach text has no audio ref and autoplay is for children only), no change to ARP or trainer views
+(nothing filters on speaker, by grep), no change on WhatsApp (the speaker is only stored). One cosmetic side effect found
+by reading `offline.html`: the offline page prints the raw speaker word ("coach") above cached messages, so this bubble now
+gets that label offline too, as the other coach bubbles already do (**assumed**, not rendered).
+
+### 1c. Tests
+Backend (`test_coach_feedback_speaker.py`, 2 tests): the only bubble with « » is `speaker == "coach"` and contains
+`coach_quote_suffix` for the teacher's line; header and buttons have no speaker; the literacy feedback has no quote and only
+the advice bubble is coach. JS (`chat.test.mjs`, 2 new tests, 75 pass): the exact live text with `speaker: 'coach'` gets the
+badge, prefix consumed, other lines kept; the same text with `speaker: null` gets no badge; the existing XSS, newline and
+"non-coach has no badge" tests still pass. The e2e artifact test now asserts at least one badge on the live page.
+
+### 1d. Screenshots from the real path (not injected)
+`docs/ux/task5/coach_feedback_quote_badge_{light,dark}.png` and the board images were re-rendered by
+`test_e2e_run5_artifacts.py` on the seeded Postgres app at 393x852: "quote badges on the page: 1" in both themes.
+The two earlier harness-injected files (`coach_quote_badge_harness_*`) are still in the folder (deletes were forbidden);
+ignore them. A flaky wait in that test (board header arrives with the next poll) was fixed.
+
+### 2. Full pytest
+The earlier run had no summary line because `pyproject.toml` already has `addopts = "-ra -q"` and I added a second `-q`.
+This run uses no extra flags and a local pgserver Postgres in `TEST_DATABASE_URL` (the shared `postgres` database, which the
+earlier runs had already written to). Exact final line of `python -m pytest`:
+
+    9 failed, 1725 passed, 2 skipped in 1744.86s (0:29:04)
+
+The 9 failures: 5 integration tests (admin, review console, trainer role guard, 2 WhatsApp send tests) hit
+`UniqueViolationError ... teacher_phone_hash_key`, i.e. rows left in the reused database by my earlier runs; 4 e2e tests
+(`test_sample_lines_are_folded...`, `test_chip_tap_shows_question_typing_and_cited_answer[demo1-en-desktop]`,
+`test_learn_step_says_what_to_tap[en]`, `test_skip_opens_the_chat_and_a_new_login_shows_the_screen_again`) timed out after 30 s
+waiting for `#chat-input`. I re-ran exactly those 9 plus their files on a fresh database `abhyas_test_fresh`: `31 passed in 147.80s`,
+no failures. So they pass in isolation; the integration failures are explained by the reused database, but I have **no proven
+cause for the 4 e2e timeouts** (they passed earlier in the same session too, at the first e2e run and in the artifact runs; I
+suspect load during the 29-minute run, **assumed**). Skips (2): the destructive migration test refuses a database named `postgres`;
+no sample audio on disk. Honest reading: the suite is not clean in one single run on this machine, it is clean on a fresh database
+file-by-file for the affected tests.
+
+### 3. Layout check and payload
+`composer_layout_check.py` (3 sizes x dark/light x start/consent/learn/scene): 0 failures, and 0 failures with `--keyboard 250`.
+`check_first_load.py`: teacher first load 127.6 KB (130,659 B), all assets 148.24 KB = 151,796 B, headroom to 153,600 B =
+1,804 B (the stop line is 1,000 B). No JS/CSS changed in this follow-up, so the bytes equal the earlier run. The working tree
+is LF, so LF-equivalent equals measured.
+
+### 4. Does any path render the English original passage inline?
+No path I found does, by default. `fallback_reply` (`backend/app/handbook/fallback.py`) builds the text from the stored Hindi gloss only:
+```python
+summary = str(stored.get("gloss_hi") or "").strip()      # returns None when empty
+...
+text = get_message("handbook_fallback", address_form, summary=summary, citation=line)
+```
+The chunk's English `text` goes into `RetrievedChunk(text=...)`, used for the LLM prompt, the guards and the citation record, never into
+message text. The other message builders use `gloss_hi` (`learn_reference`, `_learn_tip`) or guarded `*_hi` model output
+(`compose_guide_reply` uses `answer.answer_hi`; `_source_suggestion` uses `suggestion_hi`). The original English passage
+is returned only by `GET /api/source/{chunk_id}` (`chat_api.py`, field `text`). It opens on a tap or click on a `.source-chip` button
+under a bubble: `chat.js` has `document.addEventListener('click', ...closest('.source-chip') -> toggleSourceExcerpt(chip))`, which fetches
+`/api/source/<chunk_id>` and appends the panel (Hindi summary first, then the English passage with the note "This passage is in English,
+from the original document."). A second tap closes it. So the long English passage you saw is, as far as I can tell, that panel having been
+opened, or a data set I do not have (**assumed**: I did not look at the hosted site). The test `test_handbook_fallback_language.py` already
+asserts the original is absent from the fallback in both languages.
+
+### Verified vs assumed, undone
+- Verified (run): items 1a to 1d, 3 and 4 above; Chromium emulation only.
+- Assumed: translate button behaviour with a real LLM, the offline page label, anything on real Android or the hosted site.
+- Not done: no change to when the coach quotes (group and literacy scenes still have no quote); `placement_done` untouched.
+- Leftovers (deletes forbidden): `docs/ux/task5/coach_quote_badge_harness_*` and the earlier scratch items listed above.
