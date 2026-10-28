@@ -6,7 +6,9 @@ without TEST_DATABASE_URL or a launchable Playwright Chromium. No test here call
 service: the LLM, speech and WhatsApp providers are mocks.
 """
 
+import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -87,12 +89,16 @@ def server() -> Iterator[str]:
                 timeout=SEED_TIMEOUT_S,
             )
             assert done.returncode == 0, done.stderr[-1500:]
+        server_log = None
+        if DIAG_DIR:  # the server's own log, to line up with a failure
+            Path(DIAG_DIR).mkdir(parents=True, exist_ok=True)
+            server_log = (Path(DIAG_DIR) / "server.log").open("wb")
         proc = subprocess.Popen(  # noqa: S603
             [sys.executable, "-m", "uvicorn", "backend.app.main:app", "--port", str(port)],
             cwd=REPO_ROOT,
             env=env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stdout=server_log or subprocess.DEVNULL,
+            stderr=subprocess.STDOUT if server_log else subprocess.DEVNULL,
         )
         base = f"http://127.0.0.1:{port}"
         deadline = time.time() + 90
@@ -134,6 +140,26 @@ def browser() -> Iterator[Any]:
         pw.stop()
 
 
+DIAG_DIR = os.environ.get("E2E_DIAG_DIR", "")
+
+# What the page looks like right now: is the composer in the DOM, where, what is above it
+LAYOUT_STATE = """() => {
+  const box = (e) => { const b = e.getBoundingClientRect();
+    return {top: Math.round(b.top), bottom: Math.round(b.bottom), left: Math.round(b.left), right: Math.round(b.right), h: Math.round(b.height)}; };
+  const el = document.getElementById('chat-input');
+  const cs = (e) => { const c = getComputedStyle(e); return {display: c.display, visibility: c.visibility, height: c.height, overflow: c.overflowY, flex: c.flex, position: c.position}; };
+  const app = document.querySelector('.app-container');
+  return {
+    url: location.href, readyState: document.readyState, title: document.title,
+    viewport: {w: innerWidth, h: innerHeight, docClientH: document.documentElement.clientHeight},
+    chatInputInDom: !!el, chatInputBox: el ? box(el) : null, chatInputStyle: el ? cs(el) : null,
+    composer: (document.querySelector('.composer-wrapper') || null) && box(document.querySelector('.composer-wrapper')),
+    stripsAbove: app ? [...app.children].map((c) => ({tag: c.tagName.toLowerCase(), cls: c.className.toString().slice(0, 40), id: c.id, hidden: c.hidden, h: Math.round(c.getBoundingClientRect().height), ...cs(c)})) : null,
+    bodyText: (document.body ? document.body.innerText : '').slice(0, 400),
+  };
+}"""
+
+
 class Teacher:
     """One logged-in browser context on the chat page, with console errors recorded."""
 
@@ -161,6 +187,20 @@ class Teacher:
         self.page = self.context.new_page()
         self.errors: list[str] = []
         self.page.on("pageerror", lambda e: self.errors.append(f"pageerror: {e}"))
+        self.net: list[str] = []  # failed or error responses, for the diagnostics only
+        self.page.on(
+            "response",
+            lambda r: self.net.append(f"{r.status} {r.url}") if r.status >= 400 else None,
+        )
+        self.page.on("requestfailed", lambda r: self.net.append(f"FAILED {r.url} {r.failure}"))
+        self.label = f"{username}-{lang}-{viewport['width']}x{viewport['height']}"
+        try:
+            self._open(base, username, lang, skip_start)
+        except Exception:
+            self.capture("init-timeout")  # the test never gets this object, so record it here
+            raise
+
+    def _open(self, base: str, username: str, lang: str, skip_start: bool) -> None:
         self.page.goto(f"{base}/login")
         self.page.fill("#username", username)
         self.page.fill("#password", DEMO_PASSWORD)
@@ -178,12 +218,31 @@ class Teacher:
         self.page.wait_for_selector("#chat-input")
         self.page.wait_for_timeout(600)  # chat.js has attached its handlers; first poll is in
 
+    def capture(self, why: str) -> None:
+        """With E2E_DIAG_DIR set: a screenshot and the layout state of this page, for a failure."""
+        if not DIAG_DIR:
+            return
+        out = Path(DIAG_DIR)
+        out.mkdir(parents=True, exist_ok=True)
+        stem = re.sub(
+            r"[^A-Za-z0-9_.-]+", "_", f"{os.environ.get('PYTEST_CURRENT_TEST', 'x')}-{why}"
+        )[:150]
+        try:
+            self.page.screenshot(path=str(out / f"{stem}.png"))
+            state = self.page.evaluate(LAYOUT_STATE)
+        except Exception as exc:  # the page may be closed or unresponsive
+            state = {"capture_error": repr(exc)}
+        state.update(errors=self.errors, net=self.net[-30:], label=self.label)
+        (out / f"{stem}.json").write_text(
+            json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+
     def close(self) -> None:
         self.context.close()
 
 
 @pytest.fixture
-def open_chat(browser: Any, server: str) -> Iterator[Any]:
+def open_chat(browser: Any, server: str, request: pytest.FixtureRequest) -> Iterator[Any]:
     opened: list[Teacher] = []
 
     def make(username: str, **kwargs: Any) -> Teacher:
@@ -192,8 +251,17 @@ def open_chat(browser: Any, server: str) -> Iterator[Any]:
         return teacher
 
     yield make
+    failed = getattr(request.node, "rep_call", None) is not None and request.node.rep_call.failed
     for teacher in opened:
+        if failed:
+            teacher.capture("test-failed")
         teacher.close()
+
+
+@pytest.hookimpl(hookwrapper=True, tryfirst=True)
+def pytest_runtest_makereport(item: Any, call: Any) -> Any:
+    outcome = yield
+    setattr(item, "rep_" + call.when, outcome.get_result())
 
 
 def tap_reply(page: Any, text: str, timeout: int = 20_000) -> None:
