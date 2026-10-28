@@ -1,0 +1,182 @@
+{
+  "url": "http://127.0.0.1:57275/teacher",
+  "readyState": "complete",
+  "title": "अभ्यास — डेमो सुमन शर्मा",
+  "viewport": {
+    "w": 360,
+    "h": 740,
+    "docClientH": 740
+  },
+  "chatInputInDom": true,
+  "chatInputBox": {
+    "top": 680,
+    "bottom": 728,
+    "left": 13,
+    "right": 231,
+    "h": 48
+  },
+  "chatInputStyle": {
+    "display": "block",
+    "visibility": "visible",
+    "height": "48px",
+    "overflow": "clip",
+    "flex": "1 1 0%",
+    "position": "static"
+  },
+  "composer": {
+    "top": 668,
+    "bottom": 740,
+    "left": 0,
+    "right": 360,
+    "h": 72
+  },
+  "stripsAbove": [
+    {
+      "tag": "header",
+      "cls": "chat-header",
+      "id": "",
+      "hidden": false,
+      "h": 69,
+      "display": "flex",
+      "visibility": "visible",
+      "height": "69.2812px",
+      "overflow": "visible",
+      "flex": "0 0 auto",
+      "position": "static"
+    },
+    {
+      "tag": "div",
+      "cls": "demo-banner",
+      "id": "demo-banner",
+      "hidden": false,
+      "h": 33,
+      "display": "flex",
+      "visibility": "visible",
+      "height": "33px",
+      "overflow": "auto",
+      "flex": "0 1 auto",
+      "position": "static"
+    },
+    {
+      "tag": "details",
+      "cls": "fast-track-tray",
+      "id": "fast-track-tray",
+      "hidden": false,
+      "h": 35,
+      "display": "block",
+      "visibility": "visible",
+      "height": "35px",
+      "overflow": "auto",
+      "flex": "0 1 auto",
+      "position": "static"
+    },
+    {
+      "tag": "div",
+      "cls": "network-banner",
+      "id": "network-banner",
+      "hidden": false,
+      "h": 0,
+      "display": "none",
+      "visibility": "visible",
+      "height": "auto",
+      "overflow": "auto",
+      "flex": "0 1 auto",
+      "position": "static"
+    },
+    {
+      "tag": "div",
+      "cls": "sr-only",
+      "id": "sr-live",
+      "hidden": false,
+      "h": 1,
+      "display": "block",
+      "visibility": "visible",
+      "height": "1px",
+      "overflow": "auto",
+      "flex": "0 1 auto",
+      "position": "absolute"
+    },
+    {
+      "tag": "section",
+      "cls": "scene-bar",
+      "id": "scene-bar",
+      "hidden": true,
+      "h": 0,
+      "display": "none",
+      "visibility": "visible",
+      "height": "auto",
+      "overflow": "auto",
+      "flex": "0 1 auto",
+      "position": "static"
+    },
+    {
+      "tag": "div",
+      "cls": "status-slot",
+      "id": "",
+      "hidden": false,
+      "h": 0,
+      "display": "block",
+      "visibility": "visible",
+      "height": "0px",
+      "overflow": "auto",
+      "flex": "0 1 auto",
+      "position": "relative"
+    },
+    {
+      "tag": "main",
+      "cls": "chat-messages",
+      "id": "chat-messages",
+      "hidden": false,
+      "h": 319,
+      "display": "flex",
+      "visibility": "visible",
+      "height": "319.359px",
+      "overflow": "auto",
+      "flex": "1 1 0px",
+      "position": "static"
+    },
+    {
+      "tag": "div",
+      "cls": "helper-tray",
+      "id": "helper-tray",
+      "hidden": false,
+      "h": 120,
+      "display": "block",
+      "visibility": "visible",
+      "height": "120px",
+      "overflow": "auto",
+      "flex": "0 1 auto",
+      "position": "static"
+    },
+    {
+      "tag": "div",
+      "cls": "next-card",
+      "id": "next-card",
+      "hidden": false,
+      "h": 79,
+      "display": "flex",
+      "visibility": "visible",
+      "height": "79.1719px",
+      "overflow": "auto",
+      "flex": "0 1 auto",
+      "position": "static"
+    },
+    {
+      "tag": "footer",
+      "cls": "composer-wrapper",
+      "id": "",
+      "hidden": false,
+      "h": 72,
+      "display": "block",
+      "visibility": "visible",
+      "height": "72.1875px",
+      "overflow": "visible",
+      "flex": "0 0 auto",
+      "position": "static"
+    }
+  ],
+  "bodyText": "अभ्यास\nशुरुआत\nलॉग आउट\nडेमो: लॉगिन/लॉगआउट पर चैट रीसेट\nलॉग आउट\n×\n⚡ डेमो शॉर्टकट\nहैंडबुक से पूछें\nबच्चों को कहानी सुनाने (Story Telling) के लिए क्या सुझाव हैं?\nगिनती सिखाते समय एक-एक वस्तु से एक संख्या मिलाना (one-to-one correspondence) क्यों ज़रूरी है?\nदिव्यांग बच्चों की ज़रूरतों के लिए कक्षा में क्या करें?\nबच्चों को स्वतंत्र लेखन (independent writing) के लिए कैसे प्रोत्साहित करें?\nनमूना पंक्ति आज़",
+  "errors": [],
+  "net": [],
+  "label": "teacher.demo1-hi-360x740"
+}

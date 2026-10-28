@@ -1,0 +1,182 @@
+{
+  "url": "http://127.0.0.1:54618/teacher",
+  "readyState": "complete",
+  "title": "अभ्यास — डेमो रेखा कुमारी",
+  "viewport": {
+    "w": 360,
+    "h": 740,
+    "docClientH": 740
+  },
+  "chatInputInDom": true,
+  "chatInputBox": {
+    "top": 680,
+    "bottom": 728,
+    "left": 13,
+    "right": 231,
+    "h": 48
+  },
+  "chatInputStyle": {
+    "display": "block",
+    "visibility": "visible",
+    "height": "48px",
+    "overflow": "clip",
+    "flex": "1 1 0%",
+    "position": "static"
+  },
+  "composer": {
+    "top": 668,
+    "bottom": 740,
+    "left": 0,
+    "right": 360,
+    "h": 72
+  },
+  "stripsAbove": [
+    {
+      "tag": "header",
+      "cls": "chat-header",
+      "id": "",
+      "hidden": false,
+      "h": 88,
+      "display": "flex",
+      "visibility": "visible",
+      "height": "88px",
+      "overflow": "visible",
+      "flex": "0 0 auto",
+      "position": "static"
+    },
+    {
+      "tag": "div",
+      "cls": "demo-banner",
+      "id": "demo-banner",
+      "hidden": false,
+      "h": 33,
+      "display": "flex",
+      "visibility": "visible",
+      "height": "33px",
+      "overflow": "auto",
+      "flex": "0 1 auto",
+      "position": "static"
+    },
+    {
+      "tag": "details",
+      "cls": "fast-track-tray",
+      "id": "fast-track-tray",
+      "hidden": false,
+      "h": 35,
+      "display": "block",
+      "visibility": "visible",
+      "height": "35px",
+      "overflow": "auto",
+      "flex": "0 1 auto",
+      "position": "static"
+    },
+    {
+      "tag": "div",
+      "cls": "network-banner",
+      "id": "network-banner",
+      "hidden": false,
+      "h": 0,
+      "display": "none",
+      "visibility": "visible",
+      "height": "auto",
+      "overflow": "auto",
+      "flex": "0 1 auto",
+      "position": "static"
+    },
+    {
+      "tag": "div",
+      "cls": "sr-only",
+      "id": "sr-live",
+      "hidden": false,
+      "h": 1,
+      "display": "block",
+      "visibility": "visible",
+      "height": "1px",
+      "overflow": "auto",
+      "flex": "0 1 auto",
+      "position": "absolute"
+    },
+    {
+      "tag": "section",
+      "cls": "scene-bar",
+      "id": "scene-bar",
+      "hidden": true,
+      "h": 0,
+      "display": "none",
+      "visibility": "visible",
+      "height": "auto",
+      "overflow": "auto",
+      "flex": "0 1 auto",
+      "position": "static"
+    },
+    {
+      "tag": "div",
+      "cls": "status-slot",
+      "id": "",
+      "hidden": false,
+      "h": 0,
+      "display": "block",
+      "visibility": "visible",
+      "height": "0px",
+      "overflow": "auto",
+      "flex": "0 1 auto",
+      "position": "relative"
+    },
+    {
+      "tag": "main",
+      "cls": "chat-messages",
+      "id": "chat-messages",
+      "hidden": false,
+      "h": 345,
+      "display": "flex",
+      "visibility": "visible",
+      "height": "345.438px",
+      "overflow": "auto",
+      "flex": "1 1 0px",
+      "position": "static"
+    },
+    {
+      "tag": "div",
+      "cls": "helper-tray",
+      "id": "helper-tray",
+      "hidden": false,
+      "h": 120,
+      "display": "block",
+      "visibility": "visible",
+      "height": "120px",
+      "overflow": "auto",
+      "flex": "0 1 auto",
+      "position": "static"
+    },
+    {
+      "tag": "div",
+      "cls": "next-card",
+      "id": "next-card",
+      "hidden": false,
+      "h": 34,
+      "display": "flex",
+      "visibility": "visible",
+      "height": "34.375px",
+      "overflow": "auto",
+      "flex": "0 1 auto",
+      "position": "static"
+    },
+    {
+      "tag": "footer",
+      "cls": "composer-wrapper",
+      "id": "",
+      "hidden": false,
+      "h": 72,
+      "display": "block",
+      "visibility": "visible",
+      "height": "72.1875px",
+      "overflow": "visible",
+      "flex": "0 0 auto",
+      "position": "static"
+    }
+  ],
+  "bodyText": "अभ्यास\nमात्रा वाले शब्द: अक्षर की ध्वनि मिलाकर पढ़ना\nचरण 1 / 7: सीखना\nलॉग आउट\nडेमो: लॉगिन/लॉगआउट पर चैट रीसेट\nलॉग आउट\n×\n⚡ डेमो शॉर्टकट\nडेमो यहाँ से शुरू होता है: यह चैट पहले से तैयार है, ताकि आप यहीं से आगे बढ़ सकें।\n\nआपकी कक्षा के लिए चुना गया: बच्चे यहाँ अटकते हैं — मात्रा छोड़ देते हैं या मात्रा वाले शब्द नहीं पढ़ पाते\n\nइस हफ्ते का तरीका: मात्रा वाले शब्द: अक्षर की ध्वनि मिलाकर पढ़ना। मुख्य बात",
+  "errors": [],
+  "net": [],
+  "label": "teacher.demo3-hi-360x740"
+}
