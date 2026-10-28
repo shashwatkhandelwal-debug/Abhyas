@@ -995,6 +995,35 @@ test('evidence quote badge only applies to coach messages', () => {
   assert.equal(badge, null, 'Non-coach messages must NOT have quote badge');
 });
 
+// The end-of-scene feedback exactly as SessionService sends it (speaker "coach", from the real path in
+// test_coach_feedback_speaker.py): the quote becomes a badge and the other lines stay text.
+const LIVE_FEEDBACK =
+  'आपने ठोस चीज़ (बंडल और तीलियाँ) इस्तेमाल की, इसलिए रवि को दिखा कि कहाँ क्या करना है।\n\n(यह सुझाव एक विशेषज्ञ भी देखेंगे।)\n\n👍 आपने बच्चे से उसका तरीका पूछा, इससे उसकी असली उलझन सामने आई। आपके शब्द: «रवि, तुमने 43 में से 27 कैसे घटाया? मुझे एक-एक कदम बताओ।»\n🔁 उत्तर बताने के बजाय दो उत्तर सामने रखकर पूछिए कि कौन-सा सही है।';
+
+test('live end-of-scene feedback from the coach gets the quote badge, without the prefix and with the other lines kept', () => {
+  const c = load();
+  c.renderMessage({ id: 'fb-1', direction: 'out', speaker: 'coach', text: LIVE_FEEDBACK });
+  const row = c.container.querySelector('#msg-fb-1');
+  assert.ok(row.querySelector('.speaker-tag.coach'));
+  const badge = row.querySelector('.evidence-quote-badge');
+  assert.ok(badge, 'the feedback bubble must have the badge');
+  assert.equal(badge.querySelector('.quote-content').textContent, '«रवि, तुमने 43 में से 27 कैसे घटाया? मुझे एक-एक कदम बताओ।»');
+  const body = row.querySelector('.bubble-text').textContent;
+  assert.ok(!body.includes('आपके शब्द:'));
+  assert.ok(body.includes('🔁 उत्तर बताने के बजाय'));
+  assert.ok(body.includes('यह सुझाव एक विशेषज्ञ भी देखेंगे'));
+});
+
+test('the same feedback text without the coach speaker (the old live path) gets no badge, and the header line stays plain', () => {
+  const c = load();
+  c.renderMessage({ id: 'fb-2', direction: 'out', speaker: null, text: LIVE_FEEDBACK });
+  assert.equal(c.container.querySelector('#msg-fb-2').querySelector('.evidence-quote-badge'), null);
+  c.renderMessage({ id: 'fb-3', direction: 'out', speaker: null, text: 'आपके अभ्यास पर सुझाव:' });
+  const header = c.container.querySelector('#msg-fb-3');
+  assert.equal(header.querySelector('.evidence-quote-badge'), null);
+  assert.equal(header.querySelector('.speaker-tag'), null);
+});
+
 // ── board manipulatives ─────────────────────────────────────────────────────
 test('board manipulatives render drawn bundles and sticks with aria-label', () => {
   const c = load();

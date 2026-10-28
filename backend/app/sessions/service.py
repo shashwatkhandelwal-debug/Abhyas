@@ -1851,7 +1851,9 @@ class SessionService:
                         OutboundMessage(
                             kind="text", text_hi=get_message("feedback_header", address_form)
                         ),
-                        OutboundMessage(kind="text", text_hi=f"{prefix}{feedback_body}"),
+                        OutboundMessage(
+                            kind="text", text_hi=f"{prefix}{feedback_body}", speaker="coach"
+                        ),
                         *suggestion_msgs,
                         OutboundMessage(
                             kind="buttons",
