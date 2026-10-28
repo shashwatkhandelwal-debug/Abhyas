@@ -1049,136 +1049,280 @@ test('board manipulatives hide when problem has no manipulatives (null)', () => 
   assert.equal(h.manip.hidden, true);
 });
 
-// ── evaluator fast-track tray ───────────────────────────────────────────────
+// ── evaluator fast-track tray (demo mode) ───────────────────────────────────
+// A1, A2 and B exist only in a running subtraction scene (board a < 100) after FAST_TRACK_IDLE_MS of no
+// activity; chip C (handbook) is always there.
+const IDLE = 30000;
+const sub = (a, b) => ({ ...SCENE, item: { type: 'sub', a, b } });
+
 function withFastTrackTray(c) {
   const doc = c.sandbox.document;
-  const mk = (id, tag = 'button') => {
+  const mk = (id, tag = 'button', hidden = false) => {
     const el = doc.createElement(tag);
     el.id = id;
+    el.hidden = hidden;
     c.byId[id] = el;
     return el;
   };
   const tray = doc.createElement('details');
   tray.className = 'fast-track-tray';
   tray.id = 'fast-track-tray';
-  tray.open = true;
   c.byId['fast-track-tray'] = tray;
 
-  const a1 = mk('ft-chip-a1');
+  const idle = mk('ft-idle', 'p');
+  const a1 = mk('ft-chip-a1', 'button', true);
   a1.className = 'ft-chip';
   a1.dataset.action = 'a1';
   a1.disabled = true;
 
-  const a2 = mk('ft-chip-a2');
+  const a2 = mk('ft-chip-a2', 'button', true);
   a2.className = 'ft-chip';
   a2.dataset.action = 'a2';
   a2.dataset.text = 'अब 61 में से 28 घटाओ';
+  a2.disabled = true;
 
-  const b = mk('ft-chip-b');
+  const b = mk('ft-chip-b', 'button', true);
   b.className = 'ft-chip';
   b.dataset.action = 'b';
+  b.disabled = true;
 
   const ch_c = mk('ft-chip-c');
   ch_c.className = 'ft-chip';
   ch_c.dataset.action = 'c';
   ch_c.dataset.text = 'सवाल: उल्टी गिनती करके घटाव कैसे सिखाएँ?';
 
-  tray.appendChild(a1);
-  tray.appendChild(a2);
-  tray.appendChild(b);
-  tray.appendChild(ch_c);
-  return { tray, a1, a2, b, c: ch_c };
+  [idle, a1, a2, b, ch_c].forEach((el) => tray.appendChild(el));
+  return { tray, idle, a1, a2, b, c: ch_c };
 }
 
-test('Fast-Track chip A1 computes dynamic answer from subtraction problem and disables when not subtraction', () => {
+const shown = (chip) => !chip.hidden && !chip.disabled;
+const away = (chip) => chip.hidden && chip.disabled;
+
+test('Fast-Track chip A1 is built from the subtraction board and unavailable outside one', async () => {
   const c = load();
   const t = withFastTrackTray(c);
+  c.setupFastTrackTray();
 
-  // 1. Subtraction 43 - 27
-  c.renderSceneHeader({
-    ...SCENE,
-    item: { type: 'sub', a: 43, b: 27 },
-  });
+  c.renderSceneHeader(sub(43, 27));
+  await c.advance(IDLE);
   assert.equal(c.getChipA1Text(), 'रवि, सही उत्तर 16 है');
-  assert.equal(t.a1.disabled, false);
+  assert.equal(shown(t.a1), true);
   assert.equal(t.a1.dataset.text, 'रवि, सही उत्तर 16 है');
 
-  // 2. Subtraction 61 - 28
-  c.renderSceneHeader({
-    ...SCENE,
-    item: { type: 'sub', a: 61, b: 28 },
-  });
+  c.renderSceneHeader(sub(61, 28));
   assert.equal(c.getChipA1Text(), 'रवि, सही उत्तर 33 है');
-  assert.equal(t.a1.disabled, false);
+  assert.equal(shown(t.a1), true);
 
-  // 3. Subtraction 80 - 35
-  c.renderSceneHeader({
-    ...SCENE,
-    item: { type: 'sub', a: 80, b: 35 },
-  });
+  c.renderSceneHeader(sub(80, 35));
   assert.equal(c.getChipA1Text(), 'रवि, सही उत्तर 45 है');
-  assert.equal(t.a1.disabled, false);
+  assert.equal(shown(t.a1), true);
 
-  // 4. Non-subtraction problem (e.g. addition, place_value or literacy)
-  c.renderSceneHeader({
-    ...SCENE,
-    item: { type: 'add', a: 28, b: 15 },
-  });
+  // not a subtraction scene: gone at once, text cleared
+  c.renderSceneHeader({ ...SCENE, item: { type: 'add', a: 28, b: 15 } });
   assert.equal(c.getChipA1Text(), null);
-  assert.equal(t.a1.disabled, true);
+  assert.equal(away(t.a1), true);
   assert.equal(t.a1.dataset.text, undefined);
 });
 
-test('Fast-Track chip B text is built from the current board and disables when no regroup is needed', () => {
+test('Fast-Track chip B text is built from the current board and needs units(a) < units(b)', async () => {
   const c = load();
   const t = withFastTrackTray(c);
-  const b = (a, bb) => ({ ...SCENE, item: { type: 'sub', a, b: bb } });
+  c.setupFastTrackTray();
 
-  c.renderSceneHeader(b(43, 27));
+  c.renderSceneHeader(sub(43, 27));
+  await c.advance(IDLE);
   assert.equal(
     c.getChipBText(),
     'चलो 43 में से 27 फिर से करते हैं: देखो, 4 बंडल और 3 खुली तीलियाँ हैं, 3 में से 7 नहीं निकलतीं, तो एक बंडल खोलो।'
   );
-  assert.equal(t.b.disabled, false);
+  assert.equal(shown(t.b), true);
   assert.equal(t.b.dataset.text, c.getChipBText());
 
-  c.renderSceneHeader(b(61, 28));
+  c.renderSceneHeader(sub(61, 28));
   assert.equal(
     c.getChipBText(),
     'चलो 61 में से 28 फिर से करते हैं: देखो, 6 बंडल और 1 खुली तीलियाँ हैं, 1 में से 8 नहीं निकलतीं, तो एक बंडल खोलो।'
   );
-  assert.equal(t.b.disabled, false);
+  assert.equal(shown(t.b), true);
 
-  c.renderSceneHeader(b(80, 35));
+  c.renderSceneHeader(sub(80, 35));
   assert.equal(
     c.getChipBText(),
     'चलो 80 में से 35 फिर से करते हैं: देखो, 8 बंडल और 0 खुली तीलियाँ हैं, 0 में से 5 नहीं निकलतीं, तो एक बंडल खोलो।'
   );
 
-  // no regroup needed: units(a) >= units(b)
-  c.renderSceneHeader(b(58, 23));
+  // units(a) >= units(b): B is unavailable, A1 and A2 stay
+  c.renderSceneHeader(sub(58, 23));
   assert.equal(c.getChipBText(), null);
-  assert.equal(t.b.disabled, true);
+  assert.equal(away(t.b), true);
   assert.equal(t.b.dataset.text, undefined);
+  assert.equal(shown(t.a1), true);
+  assert.equal(shown(t.a2), true);
 
-  // literacy scene (no sub item, board is not a subtraction)
-  c.renderSceneHeader({ ...SCENE, board: 'क + ा', item: { type: 'word', text: 'का' } });
+  // literacy scene, then no scene
+  c.renderSceneHeader({ ...SCENE, board: 'क + ा', item: { type: 'word', word: 'का' } });
   assert.equal(c.getChipBText(), null);
-  assert.equal(t.b.disabled, true);
-
-  // no scene
+  assert.equal(away(t.b), true);
   c.renderSceneHeader(null);
-  assert.equal(c.getChipBText(), null);
-  assert.equal(t.b.disabled, true);
+  assert.equal(away(t.b), true);
 });
 
-test('Fast-Track chips disable on tap, re-enable on reply or failure or 90s timeout', async () => {
+test('Fast-Track: A1/A2/B are hidden at 0 s and 29 s and shown at 30 s of a subtraction scene; C is always there', async () => {
   const c = load();
   const t = withFastTrackTray(c);
-  const activeScene = {
-    ...SCENE,
-    item: { type: 'sub', a: 43, b: 27 },
-  };
+  c.setupFastTrackTray();
+  assert.equal(c.FAST_TRACK_IDLE_MS, 30000);
+  assert.equal(shown(t.c), true);
+  assert.equal(t.idle.hidden, false, 'the hint shows while they are unavailable');
+
+  c.renderSceneHeader(sub(43, 27));
+  for (const chip of [t.a1, t.a2, t.b]) assert.equal(away(chip), true);
+  assert.equal(shown(t.c), true);
+  await c.advance(29000);
+  for (const chip of [t.a1, t.a2, t.b]) assert.equal(away(chip), true);
+  assert.equal(shown(t.c), true);
+
+  await c.advance(1000);
+  for (const chip of [t.a1, t.a2, t.b]) assert.equal(shown(chip), true);
+  assert.equal(shown(t.c), true);
+  assert.equal(t.idle.hidden, true);
+});
+
+test('Fast-Track: the 30 s countdown starts only when a subtraction scene is active', async () => {
+  const c = load();
+  const t = withFastTrackTray(c);
+  c.setupFastTrackTray();
+  c.renderSceneHeader(null);
+  await c.advance(IDLE * 3); // no scene for 90 s
+  c.renderSceneHeader(sub(43, 27));
+  assert.equal(away(t.a2), true, 'idle time before the scene does not count');
+  await c.advance(IDLE - 1);
+  assert.equal(away(t.a2), true);
+  await c.advance(1);
+  assert.equal(shown(t.a2), true);
+});
+
+test('Fast-Track: any activity (tap, send, typing, recording) hides them again and restarts the 30 s', async () => {
+  const c = load();
+  const t = withFastTrackTray(c);
+  c.net.handler = async () => ({ status: 200, ok: true, json: async () => ({ messages: [], pending: false, scene: sub(43, 27) }) });
+  c.setupFastTrackTray();
+  c.renderSceneHeader(sub(43, 27));
+
+  await c.advance(20000);
+  c.documentListeners.click({ target: null }); // a tap on any button
+  await c.advance(20000); // 40 s since the scene began, 20 s since the tap
+  assert.equal(away(t.a2), true);
+  await c.advance(10000);
+  assert.equal(shown(t.a2), true);
+
+  c.documentListeners.click({ target: null }); // activity while shown hides them at once
+  assert.equal(away(t.a1), true);
+  assert.equal(away(t.a2), true);
+  assert.equal(away(t.b), true);
+
+  await c.advance(IDLE);
+  assert.equal(shown(t.a2), true);
+  await c.handleSendText('रवि, सही उत्तर 16 है'); // sending a message
+  assert.equal(away(t.a2), true);
+
+  await c.advance(IDLE - 1000);
+  c.ftActivity(); // typing in the input and starting a recording both call this
+  await c.advance(IDLE - 1);
+  assert.equal(away(t.a2), true);
+  await c.advance(1);
+  assert.equal(shown(t.a2), true);
+});
+
+test('Fast-Track: never offered in non-subtraction scenes, onboarding, learn steps or with no scene', async () => {
+  const c = load();
+  const t = withFastTrackTray(c);
+  c.setupFastTrackTray();
+  const scenes = [
+    null, // onboarding, consent, learn steps: no scene at all
+    { ...SCENE, item: { type: 'add', a: 28, b: 15 } },
+    { ...SCENE, board: '4 × 10 + 3', item: { type: 'place_value', tens: 4, ones: 3 } },
+    { ...SCENE, board: 'क + ा', item: { type: 'word', word: 'का' } },
+    { ...SCENE, item: { type: 'sub', a: 143, b: 27 } }, // a >= 100 is not a practice board
+  ];
+  for (const sc of scenes) {
+    c.renderSceneHeader(sc);
+    await c.advance(IDLE * 2);
+    for (const chip of [t.a1, t.a2, t.b]) assert.equal(away(chip), true, JSON.stringify(sc && sc.item));
+    assert.equal(shown(t.c), true);
+    assert.equal(t.idle.hidden, false);
+  }
+});
+
+test('Fast-Track: the timer is cleared at scene end, on page hide and on logout, and pauses while hidden', async () => {
+  const c = load();
+  const t = withFastTrackTray(c);
+  c.setupFastTrackTray();
+
+  // scene ends before 30 s
+  c.renderSceneHeader(sub(43, 27));
+  await c.advance(29000);
+  c.renderSceneHeader(null);
+  assert.equal(c.state.ftIdleTimer, null);
+  await c.advance(IDLE * 2);
+  assert.equal(away(t.a2), true);
+
+  // page hidden: no countdown; on return it starts from zero
+  const doc = c.sandbox.document;
+  c.renderSceneHeader(sub(43, 27));
+  await c.advance(20000);
+  doc.hidden = true;
+  c.documentListeners.visibilitychange();
+  assert.equal(c.state.ftIdleTimer, null);
+  await c.advance(IDLE * 2);
+  assert.equal(away(t.a2), true);
+  doc.hidden = false;
+  c.documentListeners.visibilitychange();
+  await c.advance(IDLE - 1);
+  assert.equal(away(t.a2), true);
+  await c.advance(1);
+  assert.equal(shown(t.a2), true);
+
+  // logout / page teardown
+  c.ftStop();
+  assert.equal(c.state.ftIdleTimer, null);
+  assert.equal(away(t.a2), true);
+});
+
+test('Fast-Track: not offered while a reply is pending', async () => {
+  const c = load();
+  const t = withFastTrackTray(c);
+  c.setupFastTrackTray();
+  c.renderSceneHeader(sub(43, 27));
+  c.state.isPending = true;
+  await c.advance(IDLE * 2);
+  assert.equal(away(t.a2), true);
+  c.state.isPending = false;
+  await c.advance(IDLE);
+  assert.equal(shown(t.a2), true);
+});
+
+test('Fast-Track tray starts collapsed and keeps its open/closed state for the session', () => {
+  const c = load();
+  const t = withFastTrackTray(c);
+  t.tray.open = true;
+  c.setupFastTrackTray();
+  assert.equal(t.tray.open, false);
+  t.tray.open = true;
+  t.tray._listeners.toggle();
+  assert.equal(c.session.get('abhyas_ft_open'), '1');
+
+  const c2 = load();
+  const t2 = withFastTrackTray(c2);
+  c2.session.set('abhyas_ft_open', '1');
+  c2.setupFastTrackTray();
+  assert.equal(t2.tray.open, true);
+});
+
+test('Fast-Track chips lock on tap, and open again on reply, failure or the 90 s cap', async () => {
+  const c = load();
+  const t = withFastTrackTray(c);
+  const activeScene = sub(43, 27);
   c.net.handler = async () => ({
     status: 200,
     ok: true,
@@ -1186,38 +1330,49 @@ test('Fast-Track chips disable on tap, re-enable on reply or failure or 90s time
   });
   c.renderSceneHeader(activeScene);
   c.setupFastTrackTray();
+  const idleUp = async () => {
+    await c.advance(IDLE);
+    assert.equal(shown(t.a2), true);
+  };
+  await idleUp();
 
-  // Tap chip A1
+  // Tap chip A1: everything locks, A1/A2/B go away until the next idle spell
   t.tray._listeners.click({ target: t.a1 });
   await c.flush();
-  assert.equal(t.a1.disabled, true);
-  assert.equal(t.a2.disabled, true);
-  assert.equal(t.b.disabled, true);
-  assert.equal(t.c.disabled, true);
+  for (const chip of [t.a1, t.a2, t.b, t.c]) assert.equal(chip.disabled, true);
+  assert.equal(c.state.fastTrackInFlight, true);
+  const chatCalls = () => c.fetchCalls.filter((f) => String(f.url).includes('/api/chat')).length;
+  const sent = chatCalls();
+  t.tray._listeners.click({ target: t.c }); // a second tap while locked does nothing
+  await c.flush();
+  assert.equal(chatCalls(), sent);
 
-  // Outbound reply lands -> re-enables chips
+  // an in-flight request keeps them away even after 30 s
+  await c.advance(IDLE);
+  assert.equal(away(t.a2), true);
+
+  // reply lands -> C is back at once, the others after the idle spell
   c.renderMessage({ id: 'msg-reply-1', direction: 'out', speaker: 'ravi', text: '16... ?' });
   c.enableFastTrackChips();
-  assert.equal(t.a1.disabled, false);
-  assert.equal(t.a2.disabled, false);
-  assert.equal(t.b.disabled, false);
-  assert.equal(t.c.disabled, false);
+  assert.equal(shown(t.c), true);
+  assert.equal(away(t.a2), true);
+  await idleUp();
+  for (const chip of [t.a1, t.b, t.c]) assert.equal(shown(chip), true);
 
-  // Tap chip A2
+  // Tap chip A2, then a failure frees the lock
   t.tray._listeners.click({ target: t.a2 });
   await c.flush();
-  assert.equal(t.a1.disabled, true);
-  assert.equal(t.a2.disabled, true);
-
-  // Failure occurs -> re-enables chips
+  assert.equal(t.c.disabled, true);
   c.failMessage('dummy-id', 'network');
-  assert.equal(t.a1.disabled, false);
-  assert.equal(t.a2.disabled, false);
+  assert.equal(shown(t.c), true);
+  assert.equal(c.state.fastTrackInFlight, false);
+  await idleUp();
 
-  // Tap chip B, test 90s hard-cap timeout
+  // Tap chip B: the 90 s cap frees the lock
   t.tray._listeners.click({ target: t.b });
   await c.flush();
-  assert.equal(t.b.disabled, true);
+  assert.equal(t.c.disabled, true);
   await c.advance(90001);
-  assert.equal(t.b.disabled, false);
+  assert.equal(shown(t.c), true);
+  assert.equal(c.state.fastTrackInFlight, false);
 });

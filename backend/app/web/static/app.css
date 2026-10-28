@@ -228,51 +228,56 @@ body {
 
 .fast-track-tray {
   margin: 6px 12px;
-  background: var(--surface-2, #F8F9FA);
-  border: 1px solid var(--border, #E2E8F0);
-  border-radius: var(--radius, 8px);
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   font-size: 0.82rem;
 }
 
 .ft-summary {
   padding: 6px 10px;
   cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   font-weight: 600;
+  color: var(--ink);
 }
 
-.ft-hint {
-  font-size: 0.72rem;
-  color: var(--text-muted, #64748B);
-  font-weight: normal;
+.ft-idle {
+  margin: 0;
+  padding: 0 10px 6px;
+  font-size: 0.75rem;
+  color: var(--muted);
 }
+
+.ft-idle[hidden] { display: none; }
 
 .ft-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   padding: 6px 10px 8px;
-  border-top: 1px solid var(--border, #E2E8F0);
+  border-top: 1px solid var(--border);
 }
 
 .ft-chip {
   padding: 4px 8px;
+  font: inherit;
   font-size: 0.75rem;
   font-weight: 500;
   border-radius: 12px;
-  border: 1px solid var(--primary, #0D9488);
-  background: #FFF;
-  color: var(--primary, #0D9488);
+  border: 1px solid var(--brand);
+  background: var(--bg);
+  color: var(--ink);
   cursor: pointer;
 }
+
+.ft-chip[hidden] { display: none; }
 
 .ft-chip:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-  border-color: var(--border, #E2E8F0);
-  color: var(--text-muted, #64748B);
+  border-color: var(--border);
+  color: var(--muted);
 }
 
 .network-banner {

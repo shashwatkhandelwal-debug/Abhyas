@@ -222,6 +222,12 @@ def main() -> int:
     ap.add_argument("--scenarios", nargs="*", default=["start", "consent", "learn", "scene"])
     ap.add_argument("--tag", default="")
     ap.add_argument(
+        "--open-tray", action="store_true", help="open the demo shortcuts tray before measuring"
+    )
+    ap.add_argument(
+        "--wait-idle", type=int, default=0, help="seconds to sit idle first (30+ shows A1/A2/B)"
+    )
+    ap.add_argument(
         "--inject-css", default="", help="extra CSS applied after load (to test what-if layouts)"
     )
     args = ap.parse_args()
@@ -247,6 +253,7 @@ def main() -> int:
                         viewport={"width": w, "height": vh},
                         color_scheme=scheme,
                         is_mobile=True,
+                        service_workers="block",
                         has_touch=True,
                         device_scale_factor=2,
                     )
@@ -269,6 +276,10 @@ def main() -> int:
                         )
                         page.goto(srv.url, wait_until="load")
                         page.wait_for_timeout(900)
+                        if args.open_tray:
+                            page.evaluate("document.getElementById('fast-track-tray').open = true")
+                        if args.wait_idle:
+                            page.wait_for_timeout(args.wait_idle * 1000)
                         if args.inject_css:
                             page.add_style_tag(content=args.inject_css)
                         label = f"{size}-{scheme}-{name}" + (

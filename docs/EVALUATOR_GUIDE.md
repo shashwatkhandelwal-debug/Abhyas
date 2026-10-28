@@ -44,21 +44,29 @@ whose answers come from a rule engine, never from the language model, and gets c
   last messages offline); it cannot make the very first cold start faster. A keep-alive pinger
   (`eval/KEEP_ALIVE.md`) is the recommended mitigation.
 
-## The Fast-Track tray (demo logins only)
+## The demo shortcuts tray (demo logins only)
 
-On the demo teacher logins, a **"फास्ट-ट्रैक परीक्षण"** tray above the chat gives four one-tap inputs for the
-one-on-one subtraction scene (so you can test the core claim without typing Hindi). Each chip sends the text as if
-you had said it. While a chip is in flight, all chips are locked (they re-enable on the reply, on a failure, or after
-90 s).
+On the demo teacher logins, a **"डेमो शॉर्टकट" / "Demo shortcuts"** tray sits above the chat (collapsed at first; tap it
+to open, and it stays as you left it for the session). It gives one-tap inputs so you can test the core claim without
+typing Hindi. Each chip sends the text as if you had said it. While a chip is in flight, all chips are locked (they
+free up on the reply, on a failure, or after 90 s).
+
+- **Chip C (handbook) is always there**, in every step and scene.
+- **A1, A2 and B appear only after 30 seconds of no activity in a subtraction scene** (the board shows a subtraction
+  such as 52 − 17). Typing, tapping any button, sending, recording, or a request in flight resets the 30 seconds and
+  hides them again. They are never sent for you, and they do not appear during onboarding, consent, learn steps, or
+  place-value, addition and literacy scenes. Until then the tray shows one line saying so.
+- **Use `teacher.demo2` for the tray** (it starts inside the 43 − 27 subtraction practice). `teacher.demo1` is the onboarding
+  flow (no scene yet, so only chip C), and `teacher.demo3` is a literacy move (also only chip C).
 
 | Chip | Sends | What you should see |
 |---|---|---|
-| **A1: उत्तर बताना** | "रवि, सही उत्तर N है", N computed from the problem on the board | The teacher *tells the answer*. Ravi repeats it without understanding. Disabled when the board is not a subtraction. |
+| **A1: उत्तर बताना** | "रवि, सही उत्तर N है", N computed from the problem on the board | The teacher *tells the answer*. Ravi repeats it without understanding. Only in a subtraction scene. |
 | **A2: नया सवाल (61-28)** | "अब 61 में से 28 घटाओ" | A new problem. The board changes to 61 − 28; Ravi answers it with his old mistake (47 for 61 − 28). |
-| **B: बंडल-तीली सुधार** | "चलो {a} में से {b} फिर से करते हैं: देखो, … बंडल और … खुली तीलियाँ हैं, … तो एक बंडल खोलो।", built from the **current board** | Bundles-and-sticks scaffolding on the problem on the board (on 61 − 28, Ravi reaches 33). Disabled when no regrouping is needed (units of the first number are not smaller) or there is no subtraction. |
+| **B: बंडल-तीली सुधार** | "चलो {a} में से {b} फिर से करते हैं: देखो, … बंडल और … खुली तीलियाँ हैं, … तो एक बंडल खोलो।", built from the **current board** | Bundles-and-sticks scaffolding on the problem on the board (on 61 − 28, Ravi reaches 33). Only when regrouping is needed (units of the first number are smaller than units of the second). |
 | **C: हैंडबुक सवाल (RAG)** | "सवाल: उल्टी गिनती करके घटाव कैसे सिखाएँ?" | A handbook answer with a source chip, not a child reply. |
 
-To ask your own handbook question, start the message with **"सवाल:"** (the tray hint says this); without the prefix the
+To ask your own handbook question, start the message with **"सवाल:"**; without the prefix the
 text is treated as something said to the child.
 
 ## Modules

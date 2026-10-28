@@ -11,6 +11,7 @@ const AUDIO_WAIT_MS = 25000;
 const CHIP_CONFIRM_MS = 1400;
 const FOLLOW_UP_POLL_MS = 1200;
 const MAX_AUTO_RETRIES = 3;
+const FAST_TRACK_IDLE_MS = 30000;
 const BACKOFF_STEPS = [2000, 4000, 8000, 16000, 30000];
 const SLOW_REQUEST_THRESHOLD_MS = 8000;
 const SLOW_REQUEST_COUNT_THRESHOLD = 3;
@@ -131,6 +132,7 @@ function setupLogoutCleanup() {
     const link = e.target && e.target.closest ? e.target.closest('a[href="/logout"]') : null;
     if (!link) return;
     e.preventDefault();
+    ftStop();
     clearLocalState().finally(() => {
       window.location.href = '/logout';
     });
@@ -343,6 +345,9 @@ const state = {
   slowRequestCount: 0,
   fastTrackInFlight: false,
   fastTrackTimer: null,
+  ftScene: false,
+  ftIdle: false,
+  ftIdleTimer: null,
 };
 
 function isChildSpeaker(speaker) {
@@ -705,6 +710,7 @@ function getChipBText(sc) {
 
 function setDynamicChip(btn, text) {
   if (!btn) return;
+  btn.hidden = !text;
   if (text) {
     btn.setAttribute('data-text', text);
     if (btn.dataset) btn.dataset.text = text;
@@ -716,9 +722,49 @@ function setDynamicChip(btn, text) {
   }
 }
 
+// A1, A2 and B exist only in a running subtraction scene (board a < 100), and only once the teacher has been idle
 function updateFastTrackChips(sc) {
-  setDynamicChip(document.getElementById('ft-chip-a1'), getChipA1Text(sc));
-  setDynamicChip(document.getElementById('ft-chip-b'), getChipBText(sc));
+  if (!document.getElementById('fast-track-tray')) return;
+  const p = sc ? getSubItem(sc) : null;
+  const was = state.ftScene;
+  state.ftScene = !!(p && p.a < 100);
+  const show = state.ftScene && state.ftIdle;
+  setDynamicChip(document.getElementById('ft-chip-a1'), show ? getChipA1Text(sc) : null);
+  setDynamicChip(document.getElementById('ft-chip-b'), show ? getChipBText(sc) : null);
+  const a2 = document.getElementById('ft-chip-a2');
+  if (a2) {
+    a2.hidden = !show;
+    a2.disabled = !show || state.fastTrackInFlight;
+  }
+  const idle = document.getElementById('ft-idle');
+  if (idle) idle.hidden = show;
+  if (state.ftScene !== was) ftActivity();
+}
+
+// Any activity hides A1/A2/B and restarts the countdown; it runs only in a subtraction scene on a visible page
+function ftActivity() {
+  if (state.ftIdleTimer) clearTimeout(state.ftIdleTimer);
+  state.ftIdleTimer = null;
+  const wasIdle = state.ftIdle;
+  state.ftIdle = false;
+  if (wasIdle) updateFastTrackChips(currentSceneHeader);
+  if (state.ftScene && !document.hidden) {
+    state.ftIdleTimer = setTimeout(() => {
+      state.ftIdleTimer = null;
+      if (state.isPending || state.outboxRunning || state.isRecording || state.fastTrackInFlight) return ftActivity();
+      state.ftIdle = true;
+      updateFastTrackChips(currentSceneHeader);
+    }, FAST_TRACK_IDLE_MS);
+  }
+}
+
+function ftStop() {
+  if (state.ftIdleTimer) clearTimeout(state.ftIdleTimer);
+  state.ftIdleTimer = null;
+  if (state.ftIdle) {
+    state.ftIdle = false;
+    updateFastTrackChips(currentSceneHeader);
+  }
 }
 
 function disableFastTrackChips() {
@@ -744,19 +790,26 @@ function enableFastTrackChips() {
       const txt = (c.dataset && c.dataset.text) || c.getAttribute('data-text');
       c.disabled = !txt;
     } else {
-      c.disabled = false;
+      c.disabled = c.hidden;
     }
   });
 }
 
+document.addEventListener('visibilitychange', () => (document.hidden ? ftStop() : ftActivity()));
+window.addEventListener('pagehide', ftStop);
+
 function setupFastTrackTray() {
   const tray = document.getElementById('fast-track-tray');
   if (!tray) return;
+  try {
+    tray.open = sessionStorage.getItem('abhyas_ft_open') === '1';
+    tray.addEventListener('toggle', () => sessionStorage.setItem('abhyas_ft_open', tray.open ? '1' : '0'));
+  } catch (e) {}
   const bA2 = document.getElementById('ft-chip-a2');
   if (bA2 && !bA2.dataset.text) bA2.dataset.text = '\u0905\u092c 61 \u092e\u0947\u0902 \u0938\u0947 28 \u0918\u091f\u093e\u0913';
   const bC = document.getElementById('ft-chip-c');
   if (bC && !bC.dataset.text) bC.dataset.text = '\u0938\u0935\u093e\u0932: \u0909\u0932\u094d\u091f\u0940 \u0917\u093f\u0928\u0924\u0940 \u0915\u0930\u0915\u0947 \u0918\u091f\u093e\u0935 \u0915\u0948\u0938\u0947 \u0938\u093f\u0916\u093e\u090f\u0901?';
-  updateFastTrackChips();
+  updateFastTrackChips(currentSceneHeader);
   tray.addEventListener('click', (e) => {
     const btn = e.target && e.target.closest ? e.target.closest('.ft-chip') : null;
     if (!btn || btn.disabled || state.fastTrackInFlight) return;
@@ -1467,6 +1520,7 @@ function lockChips(container, chip) {
 async function handleSendText(text, typingLabel = null) {
   if (!text || !text.trim()) return null;
   hintSent();
+  ftActivity();
   const clientMsgId = crypto.randomUUID();
   const cleanText = text.trim();
 
@@ -1498,6 +1552,7 @@ async function handleSendText(text, typingLabel = null) {
 
 async function handleSendButton(buttonId, buttonTitle) {
   hintSent();
+  ftActivity();
   const clientMsgId = crypto.randomUUID();
 
   const optimisticMsg = {
@@ -1523,6 +1578,7 @@ async function handleSendButton(buttonId, buttonTitle) {
 
 async function handleSendAudio(audioBlob, durationSec) {
   hintSent();
+  ftActivity();
   const clientMsgId = crypto.randomUUID();
 
   const optimisticMsg = {
@@ -1700,6 +1756,7 @@ function setupMicEvents() {
 
   const startRec = () => {
     if (state.isRecording) return;
+    ftActivity();
     state.isRecording = true;
     state.mic = micNext(state.mic, 'start');
     micBtn.classList.add('recording');
@@ -1929,6 +1986,7 @@ function setupHandbookChips() {
 }
 
 document.addEventListener('click', (e) => {
+  ftActivity();
   const target = e.target;
   if (!target || !(target instanceof Element)) return;
 
@@ -2064,6 +2122,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       e.preventDefault();
       handleSendText(input.value);
     };
+    input.addEventListener('input', ftActivity);
   }
 
   setupMicEvents();

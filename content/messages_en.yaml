@@ -169,8 +169,8 @@ ui_chat_source_ocr: {text: "This passage was read from a scanned page by a machi
 ui_chat_source_error: {text: "Could not open the source — tap to try again"}
 ui_chat_reconnecting: {text: "The internet is back — reconnecting…"}
 ui_chat_quote_tag: {text: "Your words"}
-ui_fast_track_title: {text: "Fast-Track Tests"}
-ui_fast_track_hint: {text: "Write 'Question:' for handbook"}
+ui_fast_track_title: {text: "Demo shortcuts"}
+ui_fast_track_hint: {text: "A1, A2, B appear after 30 seconds of no activity in a subtraction practice."}
 ui_fast_track_chip_a1: {text: "A1: Tell Answer"}
 ui_fast_track_chip_a2: {text: "A2: New Problem (61-28)"}
 ui_fast_track_chip_b: {text: "B: Bundles Remediation"}
