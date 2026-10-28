@@ -678,7 +678,7 @@ learn_handbook_tip: {text: "A tip from the handbook:\n{tip}\n{citation}"}
 ui_handbook_title: {text: "Ask the handbook"}
 ui_handbook_hint: {text: "Tap a question; the answer comes with its source and page."}
 handbook_source_label: {text: "From the FLN training package"}
-handbook_fallback: {text: "The service that writes answers is not running right now. The handbook passage on this topic (summary):\n{summary}\n{citation}"}
+handbook_fallback: {text: "The service that writes answers is not running right now. This is the handbook's own summary of the passage on this topic (in Hindi):\n{summary}\n{citation}\nTap the source below to read the original passage."}
 skill_ask: {text: "What would you like to get better at in your teaching? Say or type it, or give a number from the list (optional, at most {max}):\n{list}"}
 skill_confirm: {text: "I understood:\n{items}\nIs that right?"}
 skill_saved: {text: "Noted. The coach will put these first in its feedback:\n{items}\nYou can change this any time on the My class page."}
