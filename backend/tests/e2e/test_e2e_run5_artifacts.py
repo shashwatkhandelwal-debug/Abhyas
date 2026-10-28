@@ -58,6 +58,10 @@ def test_demo2_subtraction_scene_to_the_end(open_chat: Any, scheme: str) -> None
     _shot(page, f"board_before_regroup_{scheme}")
 
     say(page, REGROUP_LINE)  # concrete representation: Ravi reaches PARTIAL, one bundle opens
+    page.wait_for_function(
+        "() => document.getElementById('sb-manipulatives').classList.contains('regrouped')",
+        timeout=15_000,
+    )  # the scene header arrives with the next poll
     after = page.evaluate(COUNTS)
     assert after == {"bundles": 3, "sticks": 13, "regrouped": True}, after
     print(f"[demo2 {scheme}] board after: {page.evaluate(BOARD)}")
@@ -70,8 +74,8 @@ def test_demo2_subtraction_scene_to_the_end(open_chat: Any, scheme: str) -> None
         print("  | " + text.replace("\n", "\n  | "))
     badges = page.locator(".evidence-quote-badge").count()
     print(f"[demo2 {scheme}] quote badges on the page: {badges}")
-    if badges:
-        page.locator(".evidence-quote-badge").first.scroll_into_view_if_needed()
+    assert badges >= 1, "the live coach feedback has no quote badge"
+    page.locator(".evidence-quote-badge").first.scroll_into_view_if_needed()
     _shot(page, f"coach_feedback_quote_badge_{scheme}")
 
 
