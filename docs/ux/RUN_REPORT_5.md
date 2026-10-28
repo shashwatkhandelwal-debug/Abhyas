@@ -1,0 +1,146 @@
+# Run report 5: composer visibility, demo shortcuts tray, handbook fallback, first feedback
+
+Branch `fix/composer-and-tray` (from `main` 4fdb62e). Commits: T1 ee2cbee, T2 75b925a, T3 bbf1e6c, T1b 4bc725a, T5 65f6f81.
+Everything below was run in this session unless marked **assumed**. No Anthropic API call was made. Real Android
+Chrome was not available: all browser results are Chromium (Playwright 1.62) emulating phone viewports.
+
+## Task 1: input bar always visible
+
+**Reproduction** (`scripts/composer_layout_check.py`, real app + mock providers, dark and light, address-bar height
+56 px removed, keyboard emulated by shrinking the viewport; screenshots in `docs/ux/before_task1/`):
+
+| size | no keyboard | keyboard open (-250 px) |
+|---|---|---|
+| 360x640 | input on screen, chat only 80 to 81 px tall | **input, mic and send pushed below the viewport** (start and scene); chat 32 px |
+| 393x852 | fine | fine |
+| 412x915 | fine | chat 106 px on the start screen |
+
+The exact Android report (input missing with no keyboard) did not reproduce at these sizes; the same mechanism shows
+at 360x640 as a collapsed chat and, with the keyboard up, as a missing composer. Larger Android font scaling, which
+I did not emulate, would make it worse (**assumed**).
+
+**Cause.** `app.css` had `.chat-page .app-container > * { flex: none }`: every strip above the chat (header, demo
+banner, tray, network banner, scene bar, helper tray up to 34vh, hint card) refused to shrink, and the chat was the
+only shrinkable item (`min-height: 0`). When the strips summed to more than the viewport the composer, last in the
+column, was pushed past the bottom of an `overflow: hidden` page. Evidence: with the tray hidden by injected CSS,
+360x640 gives chat 201 px instead of 81 px. Comparison with 896b960 (git show, no checkout): that block, the
+helper-tray rule and the 560 px media query are identical there; the difference is the open tray added by the Step 3
+commit dda0af9 (about 120 px of non-shrinking chrome). Step 0 to 2 (manipulatives, quote badge) and b32d92a
+(suggest-on-tap) did not change the layout rules. So: latent flaw, triggered by the tray.
+
+**Fix.** Header and composer are `flex: none`; every strip between them is `flex: 0 1 auto; min-height: 0;
+overflow-y: auto`; the chat is `flex: 1 1 0; min-height: 6rem` and scrolls inside itself; the helper tray is bounded
+to `min(34vh, 7.5rem)` (handbook row and sample row are single scrolling rows, the sample list is a closed
+`<details>`); the tray, banner and helpers disappear below 560 px of height; `interactive-widget=resizes-content` on
+the chat page's viewport meta makes the keyboard shrink the page (height stays `100vh` then `100dvh`). **T1b**:
+my first version used `flex: 1 1 auto` for the chat, which squeezed the scene bar and hint card even with room; the
+e2e clip checks caught it and `flex: 1 1 0` fixed it.
+
+**Tests.** `backend/tests/unit/test_composer_layout.py` (input outside the scrolling region, chat floor, strips
+shrink, bounded suggestion area, keyboard meta). `scripts/composer_layout_check.py` fails when input, mic or send is
+outside the viewport, when the newest quick reply is not inside the chat region or not tappable, or when the chat is
+under 90 px; run by hand (needs Chromium, not part of `make test`):
+`python scripts/composer_layout_check.py [--keyboard 250] [--shots docs/ux]`. Result after the fix: 0 failures at
+360x640, 393x852, 412x915, both themes, start / consent / learn / scene, with and without a 250 px keyboard. After
+screenshots: `docs/ux/task1_after/`.
+Limits: the keyboard is emulated by viewport height, not by a real soft keyboard; with a 250 px keyboard at 360x640
+the hint card is squeezed to a scrolling strip (still reachable).
+
+## Task 2: demo shortcuts tray
+
+Done as specified: collapsed by default, state kept in `sessionStorage`; title "डेमो शॉर्टकट" / "Demo shortcuts"; the
+title was unreadable because the tray used tokens that do not exist (`--surface-2`, `--text-muted`, `--primary`),
+so in dark mode a white card carried pale text; it now uses the app tokens. Chip C always visible and enabled.
+A1/A2/B are hidden and disabled unless a subtraction scene (board `a` < 100) is active **and** `FAST_TRACK_IDLE_MS`
+(30000, one constant) passed with no activity. Activity: any click, send (text, button, audio), typing, starting a
+recording; a pending reply, outbox drain, recording or in-flight chip also postpone it. Timer starts when a
+subtraction scene appears, cleared at scene end, page hide, pagehide, logout; paused while hidden. Never auto-sent.
+One hint line shows while they are away (`ui_fast_track_hint`, both languages). 90 s cap, in-flight lock, offline
+path unchanged. A side finding: the old code kept A1/B enabled after a scene ended (stale board text); now the gate
+uses the scene header only.
+Tests: 10 Fast-Track tests in `chat.test.mjs` with fake timers (0 s / 29 s / 30 s, activity reset, non-subtraction,
+onboarding/no scene, a >= 100, units rule, scene end, hide/visible, pending, lock, 90 s) and
+`test_fast_track_tray_markup.py`. Existing tests that assumed immediate availability and were updated: the A1 test,
+the B test and the "disable on tap, re-enable" test (all three in `chat.test.mjs`); `test_fast_track_permutations.py`
+unchanged and passing. Screenshots `docs/ux/task2/` (collapsed, open, and after 31 s idle in a scene, both themes).
+Note: a mid-edit slip converted two escaped Hindi strings in `chat.js` into raw Devanagari; the repo's own guard
+`test_templates_and_chat_js_have_no_hardcoded_hindi` caught it and they are back to `\u` escapes (identical to main).
+
+## Task 3: handbook fallback
+
+Code: `backend/app/handbook/fallback.py` using catalog key `handbook_fallback`. **I could not reproduce an English
+passage.** Run before changing anything: Hindi UI gives the Hindi lead-in, the stored Hindi summary and the Hindi
+citation; English UI gives the English lead-in plus the Hindi summary and citation. `fallback_reply` never reads the
+chunk's English `text`; the English original is only returned by `/api/source/...`, the source-chip drawer. The
+English passage the report describes is therefore most likely that drawer being opened, or a different deployed
+data set (**assumed**, not checked on the hosted site). Content-only changes made: both catalogs now say the summary
+is the handbook's own and end with a line sending the reader to the source chip (`मूल अंश पढ़ने के लिए नीचे स्रोत दबाएँ।` /
+"Tap the source below to read the original passage."); the English lead-in says the summary is in Hindi.
+Test `test_handbook_fallback_language.py`: 10 questions x hi/en (lead-in from the catalog, stored summary, citation,
+no original text, length), and the chat flow end to end in both languages. Retriever and guards untouched.
+
+## Task 4: specific first feedback (investigation only, no change)
+
+"Very good! Now I know where to start for you." is catalog key `placement_done` (`content/messages_hi.yaml` line 54,
+`messages_en.yaml` line 20), appended by `backend/app/sessions/service.py` around line 1383 in the
+`PLACEMENT -> READY` branch. That branch runs two scene turns and sends the child's reply plus this fixed text. The
+scene's coach feedback (`coach_feedback()` with evidence quotes, `service.py` ~1739) exists only in the weekly
+REHEARSE end-of-scene branch; the onboarding branch never calls it (no coach call, no `MIN_TURNS` check, and it has no
+move rubric: `current_move_id` is set only after placement). Making it quote the teacher needs code in the service
+(assemble turns/acts, call the coach with a rubric or a short placement rubric, pass a `{quote}` placeholder), so by
+the brief I changed nothing. Options: (a) add `placement_done_quote` and pass the teacher's first placement line,
+verified as a substring of the transcript (smallest change); (b) run the real coach with the onboarding scene; (c)
+leave as is. **Separate finding that matters for the demo:** the live feedback bubble is created without
+`speaker="coach"` (`service.py` ~1854), and `chat.js` only draws the quote badge for coach-speaker messages. In the
+real flow the «quote» therefore shows as plain text (0 badges on the page in both themes). The badge itself works
+(harness screenshot below). One-line fix in `service.py`, but it changes the speaker label and translate button on
+that bubble, so left for a decision.
+
+## Task 5: verification artifacts
+
+Run with real Postgres (`pgserver`) and the seeded app, mock providers: `backend/tests/e2e/test_e2e_run5_artifacts.py`
+(`RUN5_SHOTS_DIR=docs/ux/task5`). Boards: before regroup "4 बंडल और 3 तीलियाँ", after "3 बंडल और 13 तीलियाँ (1 बंडल खुला)".
+
+demo2 (subtraction; one regroup line, then "बस"), identical in light and dark:
+```
+आपके अभ्यास पर सुझाव:
+आपने ठोस चीज़ (बंडल और तीलियाँ) इस्तेमाल की, इसलिए रवि को दिखा कि कहाँ क्या करना है।
+(यह सुझाव एक विशेषज्ञ भी देखेंगे।)
+👍 आपने बच्चे से उसका तरीका पूछा, इससे उसकी असली उलझन सामने आई। आपके शब्द: «रवि, तुमने 43 में से 27 कैसे घटाया? मुझे एक-एक कदम बताओ।»
+🔁 उत्तर बताने के बजाय दो उत्तर सामने रखकर पूछिए कि कौन-सा सही है।
+🗣️ अगली बार ऐसे कहकर देखें: "तुमने पहले एक उत्तर कहा था, अब तीलियाँ गिनकर दूसरा आया। कौन-सा ठीक है, और क्यों?"
+रवि असली कक्षा के बच्चे जैसा लगा? 1 (बिल्कुल नहीं) से 5 (बिल्कुल वैसा ही) चुनें।
+```
+demo3 (literacy; 3 lines to Ravi, Priya, Aman, then "बस"):
+```
+आपके अभ्यास पर सुझाव:
+आपने रवि से समझाने को कहा, इसलिए उसका अपना तरीका सामने आया।
+(यह सुझाव एक विशेषज्ञ भी देखेंगे।)
+👍 अभी आपके शब्दों में इस अभ्यास की कोई ख़ास बात साफ़ नहीं दिखी; नीचे का सुझाव आज़माकर दोबारा कोशिश करें।
+🔁 पूरा शब्द दोहरवाने के बजाय पहले अक्षर पर उँगली रखवाकर उसकी ध्वनि बुलवाइए।
+🗣️ अगली बार ऐसे कहकर देखें: "अमन, पहले अक्षर पर उँगली रखो। म पर कौन-सी मात्रा है? बोलो, म… ए… मे।"
+आपकी कक्षा की दिक्कत (मात्रा छोड़ देते हैं या मात्रा वाले शब्द नहीं पढ़ पाते) इस अभ्यास में अमन की गलती से जुड़ी है। कक्षा में भी इसी तरह पहले बच्चे से उसका तरीका पूछिए, फिर ठोस चीज़ों से दिखाइए।
+ये बच्चे असली कक्षा के बच्चों जैसे लगे? 1 (बिल्कुल नहीं) से 5 (बिल्कुल वैसे ही) चुनें।
+```
+Screenshots (393x852, `docs/ux/task5/`): `board_before_regroup_{light,dark}.png`, `board_after_regroup_{light,dark}.png`,
+`coach_feedback_quote_badge_{light,dark}.png` (live feedback, **no badge**: see Task 4 finding),
+`coach_quote_badge_harness_393x852-{light,dark}-coach.png` (the same sentence delivered as a coach-speaker message
+through a mocked poll: the badge renders; this is a harness injection, not live output).
+The demo3 feedback's thumbs-up line says no standout point was found, which is weak for a first impression; not changed.
+
+## Gates, payload, environment
+
+Gates at the end: `ruff check .` clean; `mypy --strict backend/app scripts/keep_alive.py` clean (170 files); `node --test chat.test.mjs` 73 pass, 0 fail; full `pytest -q` with `TEST_DATABASE_URL` on the local pgserver Postgres (so the e2e and integration tests ran): no failures, 2 skips (destructive migration test refuses database `postgres`; no sample audio on disk). My `tail` cut off the final `N passed` line, so I have no exact total. Numbers: first-load all-assets payload before 149,446 B (4,154 B
+headroom to 153,600), after T1 149,833, after T2/T3/T1b 151,796 B (**1,804 B headroom**; limit for stopping was 1,000).
+The working tree here is LF (`.gitattributes`), not CRLF, so LF-equivalent equals measured. Teacher first load 130,659 B.
+`eval/lowband/REPORT.md` is regenerated by `check_first_load.py` and was not committed.
+A local Postgres from `pgserver` in `%TEMP%\abhyas_pg_run5` is still running on 127.0.0.1:55068 (I did not stop it).
+
+## Not done / undone
+
+- Task 4 change: deliberately not made (needs service code).
+- Quote badge in the live flow: not fixed (see above).
+- Real Android device, real soft keyboard, hosted site, Render: not tested (**assumed**).
+- Untracked scratch left in the working tree because deletes were forbidden: `docs/ux/_scratch_unused/` (duplicate
+  screenshots), `backend/tests/js/_dbg.mjs` and `.tmp_fasttrack_tests.mjs.txt` (both one-line stubs); all three are
+  excluded locally through `.git/info/exclude`, not committed.
