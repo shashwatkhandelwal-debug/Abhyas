@@ -233,3 +233,66 @@ asserts the original is absent from the fallback in both languages.
 - Assumed: translate button behaviour with a real LLM, the offline page label, anything on real Android or the hosted site.
 - Not done: no change to when the coach quotes (group and literacy scenes still have no quote); `placement_done` untouched.
 - Leftovers (deletes forbidden): `docs/ux/task5/coach_quote_badge_harness_*` and the earlier scratch items listed above.
+
+## Follow-up 2: the e2e timeouts, their cause, and a reliable full run
+
+### The four tests (from the 29-minute run)
+1. `test_e2e_demo_helpers.py::test_sample_lines_are_folded_on_a_phone_open_on_a_desktop_and_plainly_labelled`
+2. `test_e2e_handbook_chips.py::test_chip_tap_shows_question_typing_and_cited_answer[demo1-en-desktop]`
+3. `test_e2e_next_action.py::test_learn_step_says_what_to_tap[en]`
+4. `test_e2e_start_here.py::test_skip_opens_the_chat_and_a_new_login_shows_the_screen_again`
+
+### Isolated, 5 runs each, fresh database per run (`scripts/pytest_fresh_db.py`, plus the e2e fixture's own database)
+All 20 passed: test 1: 48.05, 46.04, 46.57, 45.35, 44.96 s; test 2: 41.48, 44.75, 45.55, 47.59, 45.32 s;
+test 3: 39.89, 40.32, 40.66, 40.90, 41.73 s; test 4: 38.28, 36.63, 36.86, 36.09, 36.53 s (each run is mostly the
+server's migrate-and-seed). So these tests do not fail alone.
+
+### Whole e2e directory on fresh databases: flaky, and not because of this branch
+Branch before the fix (4 runs): `4 failed, 35 passed`; `3 failed, 36 passed`; `6 failed, 33 passed`; `8 failed, 31 passed`.
+`main` (git worktree of 4fdb62e, no checkout, its own tests): `6 failed, 30 passed in 450.32s` and `8 failed, 28 passed in 441.78s`.
+Different tests fail each time (the same families: `[en]` learn step, handbook chips en-desktop, start-here, demo1 journey,
+scene header en-mobile). Main flakes as much as the branch, so the layout change is not the cause.
+
+### What the page looked like at the timeout (E2E_DIAG_DIR captures in `docs/ux/e2e_diag/run_a|run_b`)
+- 3 timeouts waiting for `#chat-input`: URL `/teacher/start`, readyState complete, viewport 360x740 or 1280x800,
+  `#chat-input` not in the DOM, no failed network requests, no page errors. The page is the one-time Start here screen,
+  not a broken chat. No layout question arises.
+- The other failures: URL `/teacher` (the chat) when the test expected the Start screen; `#chat-input` in the DOM with box
+  top 680, bottom 728 in a 740 px viewport, i.e. fully on screen. The strips-shrinking layout is not involved.
+
+### Cause (checked)
+The login handler resets a shared demo account (`_reset_demo_teacher`) but the session dependency commits only after the
+response has been sent (FastAPI 0.121 runs yield-dependency exit code after the response). The browser follows the 303 and
+asks for `/teacher` before that commit lands, so it reads the pre-reset rows (Start screen shown when it should not be, or
+not shown when it should). Measured on a live seeded server with a script (login, tap Start, log in again, immediately GET
+`/teacher`; the script is not in the repo): **17 of 25 stale before the fix, 0 of 25 after**. Under load (other processes,
+slow machine) the window gets wider, which is why the failures vary and were more frequent in long runs. This is an app bug
+that also existed on main, and a judge who logs out and back in quickly could meet it (**assumed** for the hosted site).
+
+### Fix
+`backend/app/auth/router.py`: `_reset_demo_teacher` now calls `await db.commit()` right after the reset (login and logout),
+inside the existing try/except, so the redirect target sees the reset. Regression test
+`test_demo_reset_commits_before_redirect.py` (fails without the line, passes with it). No test assertion was changed.
+After the fix, the whole e2e directory twice on fresh databases: `39 passed in 312.72s` and `39 passed in 313.50s`.
+
+### Reliable full run
+`python scripts/pytest_fresh_db.py --server postgresql://USER:PASS@HOST:PORT/postgres` creates `abhyas_test_<random>`, exports
+it as `TEST_DATABASE_URL`, runs `python -m pytest -p no:cacheprovider <args>` and drops the database afterwards (the browser
+tests also create and drop their own). Pass extra pytest args after the server (`backend/tests/e2e`). Do not add `-q`:
+`pyproject.toml` already has `-ra -q`, and a second `-q` removes the summary line. The earlier 5 integration failures
+(`teacher_phone_hash_key`) were a reused database; this wrapper prevents that. For E2E diagnostics set `E2E_DIAG_DIR=some/dir`
+(screenshot, layout state JSON and the server log are written there on a failure).
+
+### Gates (end of this round, fresh database)
+- `ruff check .`: `All checks passed!`
+- `mypy --strict backend/app scripts/keep_alive.py`: `Success: no issues found in 170 source files`
+- `python scripts/pytest_fresh_db.py --server ...` (full): `1739 passed, 1 skipped in 1583.24s (0:26:23)` (skip: no sample audio on disk)
+- `node --test backend/tests/js/chat.test.mjs`: `tests 75`, `pass 75`, `fail 0`
+- `python scripts/composer_layout_check.py`: `0 failure(s)`; with `--keyboard 250`: `0 failure(s)`
+- `python scripts/check_first_load.py`: `Teacher Chat First-Load: 127.63 KB raw / 30.49 KB gzip`, `All Offline Assets: 148.28 KB raw / 37.71 KB gzip`,
+  `Status: PASS (< 150 KB)`; exact bytes: teacher bundle 130,697; all assets 151,834; headroom to 153,600 = 1,766 B (LF equals measured;
+  no JS or CSS changed this round, the 38 B difference from before is the rendered page).
+
+### Left over / not done
+- The git worktree of main stays at `%TEMP%\abhyas_main_wt` (removal is a delete, not done); the local Postgres from `pgserver` is still running on 127.0.0.1:55068.
+- `docs/ux/e2e_diag/*/server.log` (6 MB each) is not committed. Real devices and the hosted site were not tested.
