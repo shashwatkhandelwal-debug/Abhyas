@@ -96,6 +96,19 @@ def build_scenarios() -> dict[str, dict[str, Any]]:
             "scene": None,
             "view": build_view(onboarding=ready, move_id="m01", state="LEARN", with_samples=True),
         },
+        "coach": {
+            "messages": [
+                msg(
+                    "k1",
+                    "👍 आपने बच्चे से उसका तरीका पूछा, इससे उसकी असली उलझन सामने आई। "
+                    "आपके शब्द: «रवि, तुमने 43 में से 27 कैसे घटाया? मुझे एक-एक कदम बताओ।»",
+                    None,
+                    "coach",
+                )
+            ],
+            "scene": None,
+            "view": build_view(onboarding=ready, move_id="m01", state="FEEDBACK", with_samples=True),
+        },
         "scene": {
             "messages": [msg("s1", "रवि: मैं 52 में से 17 घटाता हूँ।", None, "ravi")],
             "scene": scene,

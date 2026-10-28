@@ -32,7 +32,7 @@ def test_input_and_controls_sit_outside_the_scrolling_region() -> None:
 def test_chat_scrolls_inside_itself_and_keeps_a_floor() -> None:
     assert "overflow-y: auto" in _rule(".chat-messages")
     rule = _rule(".chat-page .app-container > .chat-messages")
-    assert "flex: 1 1 auto" in rule
+    assert "flex: 1 1 0" in rule
     assert re.search(r"min-height:\s*6rem", rule)
     assert "overflow: hidden" in _rule(".chat-page .app-container")
 
