@@ -23,3 +23,29 @@
 ## Not done / assumed
 - Full gate green: not achieved (above).
 - Nothing pushed-to-main, merged or deployed. No Anthropic API calls.
+
+## Update: full gate rerun with the project's pgvector database
+- No earlier test run was left using the database (I stopped my unfinished unit-test run, PID 5132; no python processes remained; 0 `abhyas_test*` connections).
+- DB: the repo's docker compose service `abhyas-db-1` (pgvector/pgvector:pg16, port 5432) was already up. `CREATE EXTENSION IF NOT EXISTS vector` succeeded (already present, version 0.8.7).
+- Command: `python scripts/pytest_fresh_db.py --server postgresql://postgres:postgres@127.0.0.1:5432/postgres` (no -q), run once.
+- Summary line: **1751 passed, 1 skipped in 713.52s (0:11:53)**. The one skip is test_evaluator_samples (no audio files on disk, HUMAN INPUT). Raw output: docs/ux/_v2a_full_gate_rerun.txt.
+- So the earlier failures (3 failed, 127 errors) were the missing pgvector extension on the :5433 server, not the commits. The worktree comparison against main was not needed (no failures). The gate is green; this supersedes the "NOT PASSED" lines above.
+
+## git show --stat for the three commits
+```
+c869d94 V2-A2: teacher form of address follows onboarding choice (consent/hint text_m, he/she model-step tagger, tests)
+ backend/app/llm/roles/act_tagger.py        |   2 +-
+ backend/tests/unit/test_teacher_address.py | 126 +++++++++++++++++++++++++++++
+ content/messages_hi.yaml                   |   3 +-
+ 3 files changed, 129 insertions(+), 2 deletions(-)
+
+2c86716 V2-A1: v2 design note (hooks for check-in, child strip, level sorter, talk-move feedback, labels, cluster pack)
+ docs/ux/V2_DESIGN.md | 82 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 82 insertions(+)
+
+41fad82 V2 run A: progress and run report
+ docs/ux/V2_PROGRESS.md     |     9 +
+ docs/ux/V2_RUN_A.md        |    25 +
+ docs/ux/_v2a_full_gate.txt | 27800 +++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 27834 insertions(+)
+```
