@@ -14,7 +14,7 @@ from sqlalchemy import create_engine, inspect, text
 
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 # Tables the newest migration creates (it must step back and forward without touching older ones)
-LAST_MIGRATION_TABLES = {"class_followup", "class_followup_outcome"}
+LAST_MIGRATION_TABLES = {"class_visit_observation"}
 
 
 @pytest.mark.skipif(
@@ -82,6 +82,7 @@ def test_alembic_migrations_round_trip() -> None:
             "class_checkin",
             "class_followup",
             "class_followup_outcome",
+            "class_visit_observation",
             "question",
             "doc_chunk",
             "review_item",
@@ -149,6 +150,15 @@ def test_alembic_migrations_round_trip() -> None:
         uniques = {u["name"] for u in inspector.get_unique_constraints("class_followup_outcome")}
         assert "uq_class_followup_outcome_followup" in uniques
         assert "tomorrow_focus_opt_in" in {c["name"] for c in inspector.get_columns("teacher")}
+
+        # ARP visit checklist: closed lists only (no free-text column), next step checked
+        columns = {c["name"] for c in inspector.get_columns("class_visit_observation")}
+        assert columns == {
+            "id", "teacher_id", "arp_user_id", "talk_moves", "practice_seen", "struggle_id",
+            "next_step", "observed_on", "is_demo", "created_at",
+        }  # fmt: skip
+        checks = {c["name"] for c in inspector.get_check_constraints("class_visit_observation")}
+        assert "check_class_visit_next_step" in checks
 
         # Verify extensions
         with engine.connect() as conn:

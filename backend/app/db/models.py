@@ -779,6 +779,44 @@ class ClassFollowupOutcome(Base):
     )
 
 
+class ClassVisitObservation(Base):
+    """An ARP's closed-list note after a class visit (talk moves seen, practice seen, next step).
+
+    No free text, no child data. `struggle_id` is the struggle of the teacher's last check-in,
+    set by the server (never by the form) and only when the ARP saw that practice.
+    """
+
+    __tablename__ = "class_visit_observation"
+    __table_args__ = (
+        CheckConstraint(
+            "next_step IN ('ask_named', 'ask_why', 'hold_answer', 'wait_time', 'repeat')",
+            name="check_class_visit_next_step",
+        ),
+        Index("idx_class_visit_observation_teacher", "teacher_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    teacher_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("teacher.id", ondelete="CASCADE"), nullable=False
+    )
+    arp_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("app_user.id", ondelete="SET NULL"), nullable=True
+    )
+    talk_moves: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    practice_seen: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    struggle_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    next_step: Mapped[str] = mapped_column(Text, nullable=False)
+    observed_on: Mapped[date] = mapped_column(Date, nullable=False)
+    is_demo: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
 class ARPObservation(Base):
     __tablename__ = "arp_observation"
 

@@ -390,6 +390,8 @@
       </div>
     </section>
 
+    {% if visit_rows is not none %}{% include "_visit_checklist.html" %}{% endif %}
+
     <!-- Section 3: Suggested Visit List -->
     <section class="arp-section section-visits" aria-label="{{ get_message('ui_arp_section_visits') }}">
       <div class="arp-section-title">

@@ -1,0 +1,39 @@
+{# ARP class-visit checklist. Context: visit_rows, visit_labels, csrf_token, get_message. Closed lists only, no free text. #}
+<section class="arp-section" id="visit-checklist" aria-label="{{ get_message('ui_visit_title') }}">
+  <div class="arp-section-title"><span>{{ get_message('ui_visit_title') }}</span></div>
+  <p style="margin: 0.5rem 0 1rem; color: var(--muted); font-size: 0.9rem;">{{ get_message('ui_visit_desc') }}</p>
+  {% for r in visit_rows %}
+  <div class="visit-form-box" id="visit-form-{{ r.teacher_id }}">
+    <details>
+      <summary style="font-size: 0.9rem; font-weight: 600; color: var(--brand); cursor: pointer;">{{ get_message('ui_visit_open', name=r.name) }}{% if r.school %} ({{ r.school }}){% endif %}</summary>
+      <form method="POST" action="/arp/visit" style="margin-top: 0.75rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="teacher_id" value="{{ r.teacher_id }}">
+        <fieldset style="border: 0; padding: 0; margin: 0 0 0.6rem;">
+          <legend style="font-size: 0.8rem; font-weight: 600;">{{ get_message('ui_visit_talk_head') }}</legend>
+          {% for key, text in visit_labels.talk %}
+          <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; margin-bottom: 0.2rem;"><input type="checkbox" name="talk" value="{{ key }}" style="width: 18px; height: 18px;"><span>{{ text }}</span></label>
+          {% endfor %}
+        </fieldset>
+        <div style="margin-bottom: 0.6rem; font-size: 0.85rem;">
+          <div style="font-size: 0.8rem; font-weight: 600;">{{ get_message('ui_visit_practice_head') }}</div>
+          {% if r.struggle_label %}
+          <label style="display: flex; align-items: center; gap: 0.4rem;"><input type="checkbox" name="practice_seen" value="1" style="width: 18px; height: 18px;"><span>{{ get_message('ui_visit_practice_seen', label=r.struggle_label) }}</span></label>
+          {% else %}
+          <span style="color: var(--muted);">{{ get_message('ui_visit_practice_none') }}</span>
+          {% endif %}
+        </div>
+        <fieldset style="border: 0; padding: 0; margin: 0 0 0.6rem;">
+          <legend style="font-size: 0.8rem; font-weight: 600;">{{ get_message('ui_visit_next_head') }}</legend>
+          {% for key, text in visit_labels.next %}
+          <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; margin-bottom: 0.2rem;"><input type="radio" name="next_step" value="{{ key }}" required style="width: 18px; height: 18px;"><span>{{ text }}</span></label>
+          {% endfor %}
+        </fieldset>
+        <button type="submit" class="btn-submit-sm">{{ get_message('ui_visit_save') }}</button>
+      </form>
+    </details>
+  </div>
+  {% else %}
+  <p id="visit-checklist-empty" style="color: var(--muted);">{{ get_message('ui_visit_none') }}</p>
+  {% endfor %}
+</section>

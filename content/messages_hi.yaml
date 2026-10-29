@@ -1311,3 +1311,35 @@ fu_cant_absent: {text: "दर्ज कर लिया। जब बच्च�
 fu_cant_other: {text: "दर्ज कर लिया। जब मौका मिले, इसे आज़माइए। हैंडबुक से भी पूछ सकते हैं।", audio: false}
 fu_already: {text: "यह जवाब दर्ज हो चुका है।", audio: false}
 fu_tomorrow_focus: {text: "कल का एक कदम, '{label}' के लिए:\n{tip}\n{sources}", audio: false}
+
+# ── ARP class-visit checklist and "reported vs observed" (flag OBSERVATION_ENABLED) ──
+ui_visit_title: {text: "कक्षा-भ्रमण सूची", audio: false}
+ui_visit_desc: {text: "कक्षा देखने के बाद सिर्फ़ चुनें: कोई नाम या बच्चे की जानकारी नहीं, कुछ लिखना नहीं। यह सूची उन्हीं शिक्षकों की है जिन्होंने स्कोर साझा करने की सहमति दी है।", audio: false}
+ui_visit_open: {text: "भ्रमण दर्ज करें: {name}", audio: false}
+ui_visit_talk_head: {text: "कौन सी बातचीत दिखी? (जो दिखीं, उन पर निशान लगाएँ)", audio: false}
+ui_visit_talk_named_child: {text: "किसी बच्चे को नाम लेकर बुलाया", audio: false}
+ui_visit_talk_why_how: {text: "'क्यों' या 'कैसे' पूछा", audio: false}
+ui_visit_talk_not_told: {text: "सीधा जवाब नहीं बताया", audio: false}
+ui_visit_talk_think_time: {text: "बच्चों को सोचने का समय दिया", audio: false}
+ui_visit_practice_head: {text: "पिछली कक्षा-जाँच का अभ्यास", audio: false}
+ui_visit_practice_seen: {text: "'{label}' का अभ्यास दिखा", audio: false}
+ui_visit_practice_none: {text: "पिछली कक्षा-जाँच में किसी दिक्कत का ज़िक्र नहीं है, इसलिए देखने के लिए कोई अभ्यास नहीं है।", audio: false}
+ui_visit_next_head: {text: "एक अगला कदम चुनें", audio: false}
+ui_visit_next_ask_named: {text: "अगली बार नाम लेकर पूछें", audio: false}
+ui_visit_next_ask_why: {text: "अगली बार 'क्यों' या 'कैसे' पूछें", audio: false}
+ui_visit_next_hold_answer: {text: "अगली बार जवाब बताने से पहले रुकें", audio: false}
+ui_visit_next_wait_time: {text: "अगली बार सोचने का समय दें", audio: false}
+ui_visit_next_repeat: {text: "यही अभ्यास एक बार और करें", audio: false}
+ui_visit_save: {text: "भ्रमण दर्ज करें", audio: false}
+ui_visit_saved: {text: "कक्षा-भ्रमण दर्ज हो गया।", audio: false}
+ui_visit_none: {text: "अभी कोई शिक्षक नहीं है जिसने स्कोर साझा करने की सहमति दी हो।", audio: false}
+ui_rvo_title: {text: "शिक्षकों ने बताया बनाम भ्रमण में दिखा", audio: false}
+ui_rvo_caption: {text: "पिछले {days} दिनों के आँकड़े: सहमति देने वाले शिक्षकों के अपने जवाब और भ्रमण में जो बातें दिखीं। ये सीखने के नतीजे नहीं हैं। सिर्फ़ गिनती दिखती है; कोई नाम या बच्चे की जानकारी नहीं।", audio: false}
+ui_rvo_none: {text: "पिछले {days} दिनों में सहमति देने वाले शिक्षकों का कोई जवाब या भ्रमण दर्ज नहीं है।", audio: false}
+ui_rvo_few: {text: "कोई एक दिक्कत इतने शिक्षकों ने नहीं बताई कि उसे दिखाया जाए (कम से कम {n} शिक्षक चाहिए)।", audio: false}
+ui_rvo_demo_all: {text: "डेमो डेटा: ये जवाब और भ्रमण काल्पनिक डेमो शिक्षकों के हैं।", audio: false}
+ui_rvo_demo_some: {text: "इसमें डेमो डेटा भी शामिल है।", audio: false}
+ui_rvo_row: {text: "{label}: {n} शिक्षकों ने अगले दिन का हाल बताया", audio: false}
+ui_rvo_reported: {text: "बताया: काम किया {worked}, अब भी अटके {stuck}, आज़मा नहीं सके {cant}", audio: false}
+ui_rvo_observed: {text: "भ्रमण में अभ्यास दिखा: {n} बार", audio: false}
+ui_rvo_observed_hidden: {text: "भ्रमण की गिनती छिपी है (कम से कम {n} शिक्षकों का भ्रमण चाहिए)।", audio: false}

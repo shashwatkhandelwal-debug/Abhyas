@@ -22,6 +22,7 @@ Branch `feat/v3-challenge3`, cut from `main` at `1caa36f`. Worktree `Abhyas-v3`.
 | Task | Status | Reason / notes | Commit | Payload bytes |
 |---|---|---|---|---|
 | V1 Follow-up loop | DONE | migration `a1c3e5f7b9d2` (tables `class_followup`, `class_followup_outcome`, column `teacher.tomorrow_focus_opt_in`, default false); flow in `class_profile/followup.py`, wired in `sessions/service.py` (`offer_followup`, `_handle_followup_button`) and `web/teacher.py`; 58 unit tests in `test_followup.py` (all paths, flag off/on, hi/en, she/he, demo2/demo3, fixed clock incl. Sunday, double tap, WhatsApp caps); migration tests extended (run on a fresh DB: pass) | see git log | 130226 / 151363 |
+| V2 Observation checklist and reported vs observed | DONE (V2c seed done under V0) | migration `b2d4f6a8c0e3` (table `class_visit_observation`); form `web/templates/_visit_checklist.html` posts to `POST /arp/visit` (`web/arp.py`), parsed by `web/visit_observation.py` (closed lists, practice struggle derived on the server from her own last check-in); trainer card `_reported_observed.html` from `reports/reported_vs_observed.py`; no auth change; 16 unit and 14 Postgres tests (suppression at 9 and 10, observed cell withheld under 10 teachers, flag off, hi/en, no free text, access) | see git log | 130226 / 151363 |
 
 ## V1e: how WhatsApp would call "tomorrow's focus" (nothing is sent today)
 

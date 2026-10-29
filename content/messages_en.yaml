@@ -969,3 +969,35 @@ fu_cant_absent: {text: "Noted. You can try it when the children are back. You ca
 fu_cant_other: {text: "Noted. Try it when you get a chance. You can also ask the handbook."}
 fu_already: {text: "This answer is already saved."}
 fu_tomorrow_focus: {text: "One step for tomorrow, for '{label}':\n{tip}\n{sources}"}
+
+# ── ARP class-visit checklist and "reported vs observed" (flag OBSERVATION_ENABLED) ──
+ui_visit_title: {text: "Class visit checklist"}
+ui_visit_desc: {text: "After a visit, only tick and choose: no names, no child data, nothing to type. This list covers only teachers who agreed to share scores."}
+ui_visit_open: {text: "Record a visit: {name}"}
+ui_visit_talk_head: {text: "Which talk moves did you see? (tick what you saw)"}
+ui_visit_talk_named_child: {text: "Asked a named child"}
+ui_visit_talk_why_how: {text: "Asked why or how"}
+ui_visit_talk_not_told: {text: "Did not just tell the answer"}
+ui_visit_talk_think_time: {text: "Gave children time to think"}
+ui_visit_practice_head: {text: "Practice from the last check-in"}
+ui_visit_practice_seen: {text: "I saw the practice for '{label}'"}
+ui_visit_practice_none: {text: "No difficulty was reported in the last check-in, so there is no practice to look for."}
+ui_visit_next_head: {text: "Choose one next step"}
+ui_visit_next_ask_named: {text: "Next time, ask by name"}
+ui_visit_next_ask_why: {text: "Next time, ask why or how"}
+ui_visit_next_hold_answer: {text: "Next time, hold back the answer"}
+ui_visit_next_wait_time: {text: "Next time, give time to think"}
+ui_visit_next_repeat: {text: "Practise the same move once more"}
+ui_visit_save: {text: "Save the visit"}
+ui_visit_saved: {text: "Class visit saved."}
+ui_visit_none: {text: "No teacher has agreed to share scores yet."}
+ui_rvo_title: {text: "Reported vs observed"}
+ui_rvo_caption: {text: "Counts from the last {days} days: what consenting teachers reported themselves and what was seen on visits. These are self-reported and observed counts, not learning outcomes. Counts only; no names or child data."}
+ui_rvo_none: {text: "No follow-up answers or visits from consenting teachers in the last {days} days."}
+ui_rvo_few: {text: "No single difficulty was reported by enough teachers to show (at least {n} teachers needed)."}
+ui_rvo_demo_all: {text: "Demo data: these answers and visits belong to made-up demo teachers."}
+ui_rvo_demo_some: {text: "This includes demo data."}
+ui_rvo_row: {text: "{label}: {n} teachers said how the next day went"}
+ui_rvo_reported: {text: "Reported: worked {worked}, still stuck {stuck}, could not try {cant}"}
+ui_rvo_observed: {text: "Observed: practice seen on {n} visits"}
+ui_rvo_observed_hidden: {text: "Visit count hidden (visits to at least {n} teachers needed)."}

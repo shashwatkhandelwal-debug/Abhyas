@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, status
@@ -35,6 +35,7 @@ from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
     ARPObservation,
+    ClassVisitObservation,
     Message,
     Question,
     ReviewItem,
@@ -44,6 +45,7 @@ from backend.app.db.session import get_db_session
 from backend.app.reports.arp_digest import build_arp_digest
 from backend.app.reports.cluster_pack import build_cluster_pack
 from backend.app.reports.module_progress import module_progress_summary
+from backend.app.web import visit_observation
 from backend.app.web.cluster_pack_page import card_context, pack_enabled, print_context
 from backend.app.web.ui_lang import register_ui_globals
 
@@ -95,12 +97,29 @@ async def get_arp_dashboard(
         token_to_set = csrf_token
     demo_banner_text = get_message("ui_demo_banner") if current_user.is_demo_account else ""
 
+    # Class-visit checklist (flag OBSERVATION_ENABLED, on in demo mode): consenting teachers only
+    visit_context: dict[str, Any] = {"visit_rows": None}
+    if visit_observation.enabled():
+        try:
+            struggles = await visit_observation.last_struggles(
+                db, [uuid.UUID(t.teacher_id) for t in digest_data.consenting_teachers]
+            )
+        except Exception:  # the checklist still renders, without the practice to look for
+            logger.warning("visit checklist: last struggles unavailable", exc_info=True)
+            struggles = {}
+        visit_context = {
+            "visit_rows": visit_observation.form_rows(digest_data.consenting_teachers, struggles),
+            "visit_labels": visit_observation.labels(),
+        }
+
     saved_param = request.query_params.get("saved")
     msg_param = request.query_params.get("msg")
     saved_msg = ""
     if saved_param == "1":
         if msg_param == "obs":
             saved_msg = get_message("ui_arp_observation_success")
+        elif msg_param == "visit":
+            saved_msg = get_message("ui_visit_saved")
         elif msg_param == "ans":
             saved_msg = get_message("ui_arp_answer_success")
         elif msg_param == "ans_wa_fail":
@@ -120,6 +139,7 @@ async def get_arp_dashboard(
             "demo_mode": current_user.is_demo_account,
             "demo_banner_text": demo_banner_text,
             "saved_msg": saved_msg,
+            **visit_context,
             **card_context(pack, "/arp/cluster-pack/print"),
         },
     )
@@ -231,6 +251,83 @@ async def post_arp_observation(
         current_user.id,
     )
     return RedirectResponse(url="/arp?saved=1&msg=obs", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/visit", response_class=RedirectResponse)
+async def post_arp_visit(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    current_user: Annotated[AppUser, Depends(require_role("arp"))],
+    teacher_id: Annotated[str, Form()],
+) -> RedirectResponse:
+    """Stores the closed-list class-visit checklist (flag OBSERVATION_ENABLED). No free text."""
+    if not visit_observation.enabled():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    await verify_csrf_token(request)
+    try:
+        t_uuid = uuid.UUID(teacher_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid teacher_id"
+        ) from None
+    teacher = await db.get(Teacher, t_uuid)
+    if not teacher or not can_access_teacher(current_user, teacher):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Teacher not found")
+    if not can_view_teacher_scores(current_user, teacher):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Teacher has not consented to score sharing",
+        )
+
+    form = await request.form()
+    try:
+        parsed = visit_observation.parse_form(
+            [str(v) for v in form.getlist(visit_observation.TALK_FIELD)],
+            str(form.get(visit_observation.NEXT_FIELD) or "") or None,
+            str(form.get(visit_observation.SEEN_FIELD) or "") or None,
+        )
+    except visit_observation.VisitFormError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Choose from the lists"
+        ) from None
+
+    # the practice seen is the struggle of her own last check-in, read here (never from the form)
+    last = (await visit_observation.last_struggles(db, [teacher.id])).get(teacher.id)
+    seen = parsed.practice_seen and last is not None
+    today = datetime.now(IST).date()
+    since = datetime.now(UTC) - timedelta(seconds=settings.CHECKIN_DEDUPE_SECONDS)
+    recent = (
+        (
+            await db.execute(
+                select(ClassVisitObservation).where(
+                    ClassVisitObservation.teacher_id == teacher.id,
+                    ClassVisitObservation.arp_user_id == current_user.id,
+                    ClassVisitObservation.next_step == parsed.next_step,
+                    ClassVisitObservation.created_at > since,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not any(
+        list(r.talk_moves) == list(parsed.talk_moves) and r.practice_seen == seen for r in recent
+    ):
+        db.add(
+            ClassVisitObservation(
+                teacher_id=teacher.id,
+                arp_user_id=current_user.id,
+                talk_moves=list(parsed.talk_moves),
+                practice_seen=seen,
+                struggle_id=last if seen else None,
+                next_step=parsed.next_step,
+                observed_on=today,
+                is_demo=bool(teacher.is_demo),
+                created_at=datetime.now(UTC),
+            )
+        )
+        await db.commit()
+    return RedirectResponse(url="/arp?saved=1&msg=visit", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/answer", response_class=RedirectResponse)
