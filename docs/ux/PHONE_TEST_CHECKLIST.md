@@ -4,7 +4,7 @@ Nothing in the build run could open a phone browser. Everything below is what a 
 site**, in Chrome on a phone, once the build is deployed by hand. Record failures with a screenshot and the time.
 Mark an item "not testable on web" only where it says so. Passwords are in the submission form.
 
-Before you start: open `<HOSTED URL>/healthz` and wait for `"status": "ok"` (a cold start takes about a minute on
+Before you start: open the hosted site address followed by `/healthz` and wait for `"status": "ok"` (a cold start takes about a minute on
 Render's free plan). Use one phone per judge account; two people on one login reset each other.
 
 ## A. Fresh logins
