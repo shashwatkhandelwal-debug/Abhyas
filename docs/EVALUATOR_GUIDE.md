@@ -80,6 +80,26 @@ and `arp.demo` show a **Module progress** card (consenting teachers only, counts
 the trainer page); rows are labelled **Pilot** (real teachers) or **Demo (synthetic)** (the fictional cohort and
 the shared demo logins). `teacher.demo3` starts with all three modules complete.
 
+## After-class check-in ("कक्षा के बाद: कैसा रहा?")
+
+A four-tap, closed-list check-in: module, how it went, which difficulty, one handbook tip with its source chip. No
+typing and no language model; nothing about individual children is saved. It is on in demo mode for onboarded
+teachers. The chip sits in the tray just above the composer (English UI: "After class: how did it go?").
+
+- **`teacher.demo2` (inside the one-on-one scene with Ravi).** Tap the chip (1), tap "हासिल वाला घटाव" (2), tap "ज़्यादातर
+  अटके" (3), tap "हासिल वाला घटाव" again for the difficulty (4). You get the tip and its citation chips and two
+  buttons: **वापस अभ्यास पर** and "हैंडबुक से पूछें". The scene is only paused, not touched: "वापस अभ्यास पर" puts you
+  back with Ravi ("अब वापस रवि के पास: अपनी अगली बात कहिए।") at the same turn and board. "It went well" ("अच्छा रहा") also ends
+  with "वापस अभ्यास पर". Typing a sentence while a check-in is open counts as your next line to Ravi and drops the
+  unfinished check-in. Practice is not offered from inside a scene, because it would replace the one you are in.
+- **`teacher.demo3` (on the learn step, no scene).** Tap the chip, "मात्रा वाले शब्द", "कुछ बच्चे अटके", "मात्रा छूट जाना".
+  The last screen offers **रवि के साथ अभ्यास**. Tapping it opens the practice for that move **directly at the setup
+  of the rehearsal: the learn step is skipped** (you are asked to pick a child, then the scene starts).
+- On **WhatsApp** a screen with more than 3 options cannot be 3 reply buttons (Meta limit; titles are cut to 20
+  characters there). It is sent as one interactive list opened with the "विकल्प" button, so no option is dropped. The
+  web chat shows up to 5 buttons with their full titles. The check-in chip itself is a web chat feature; on WhatsApp the
+  check-in starts from the "After class" button on the week-done message or by typing "कक्षा के बाद" outside a scene.
+
 ## A suggested hour
 
 1. **teacher.demo2 (10 min).** Continue the 1-1 scene with Ravi using the sample chips (including the Hinglish
@@ -98,10 +118,12 @@ the shared demo logins). `teacher.demo3` starts with all three modules complete.
    official documents and ends with a **citation chip** ("स्रोत: …, पृष्ठ N"). **Tap the chip** to read the
    excerpt it came from, with its PDF page. An off-topic question ("आज का क्रिकेट मैच कौन जीता?") is
    declined instead of answered.
-4. **teacher.demo3 (3 min).** The chat opens on the learning step: tap "फिर से सुनें" (listen again) or "समझ गई, आगे" (got it, next), and type something else to see the reminder of the two buttons.
-5. **arp.demo, trainer.demo, coach.demo, admin (15 min).** Compare what each role sees. Log out of the teacher
+4. **After-class check-in (3 min).** In `teacher.demo2` take the four taps above and use "वापस अभ्यास पर".
+   Then `teacher.demo3` for the practice that skips the learn step.
+5. **teacher.demo3 (3 min).** The chat opens on the learning step: tap "फिर से सुनें" (listen again) or "समझ गई, आगे" (got it, next), and type something else to see the reminder of the two buttons.
+6. **arp.demo, trainer.demo, coach.demo, admin (15 min).** Compare what each role sees. Log out of the teacher
    logins first if you want to see the reset.
-6. **Low connectivity (5 min).** In the browser's developer tools set the network to Offline: the last
+7. **Low connectivity (5 min).** In the browser's developer tools set the network to Offline: the last
    messages and the learn summary stay readable and a message you send waits in the outbox, then sends by
    itself when you go online. The menu has a lite mode (audio plays only on tap). The first request after the
    service slept is slow by design of the free plan; the page says the server is waking up.
