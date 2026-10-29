@@ -336,7 +336,9 @@ body { margin: 0; padding: 0; background-color: var(--bg); color: var(--ink); fo
 .chat-page .chat-header { position: static; height: 48px; padding: 0 0.75rem; box-shadow: none; }
 .chat-page .header-move-title { display: none; }
 .chat-page .header-logout { display: inline-flex; align-items: center; min-height: 44px; }
-.chat-page .header-step-chip { margin-top: 0; }
+.chat-page .header-step-chip { margin-top: 0; flex: 1 1 auto; min-width: 0; line-height: 1.2; }
+.chat-page .header-sub { display: flex; align-items: center; gap: 0.4rem; }
+.chat-page .header-logout { flex: none; }
 .chat-page .demo-banner { padding: 0 0.8rem; line-height: 1.7; font-size: 0.72rem; }
 .chat-page .scene-bar:not([hidden]) { display: flex; flex-wrap: wrap; align-items: center; gap: 0 0.5rem; padding: 0.15rem 0.8rem; }
 .chat-page .sb-row { display: contents; }

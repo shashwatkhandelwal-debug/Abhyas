@@ -337,11 +337,12 @@ def measure(page: Any, vw: int, vh: int) -> dict[str, Any]:
           const chat = document.getElementById('chat-messages');
           chat.scrollTop = chat.scrollHeight;
           const cb = box(chat);
+          const inp = r('#chat-input');
           const chips = [...document.querySelectorAll('.quick-replies .reply-chip')].map((e) => {
             const b = box(e); const x = (b.left + b.right) / 2, y = (b.top + b.bottom) / 2;
             const hit = document.elementFromPoint(x, y);
             return {text: e.textContent.trim(), top: b.top, bottom: b.bottom,
-                    inChat: b.top >= cb.top - 1 && b.bottom <= cb.bottom + 1,
+                    inChat: b.top >= 0 && b.bottom <= (inp ? inp.top : innerHeight) + 1,
                     tappable: hit === e || e.contains(hit)};
           });
           return {input: r('#chat-input'), mic: r('#btn-mic'), send: r('#btn-send'), chat: cb, chips};
