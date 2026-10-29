@@ -306,6 +306,7 @@ export function loadChat({ strings = {}, online = true } = {}) {
   const navigator = { onLine: online, serviceWorker: undefined };
   const window = { AudioRecorder: class {}, addEventListener() {}, confirm: () => true };
   let uuid = 0;
+  const session = new Map();
   const sandbox = {
     window,
     document,
@@ -316,6 +317,7 @@ export function loadChat({ strings = {}, online = true } = {}) {
     Date: FakeDate,
     indexedDB: makeIndexedDB(),
     localStorage: { getItem: () => null, setItem() {} },
+    sessionStorage: { getItem: (k) => session.get(k) ?? null, setItem: (k, v) => session.set(k, String(v)) },
     crypto: { randomUUID: () => `client-${++uuid}` },
     FormData: class {
       append() {}
@@ -343,7 +345,8 @@ export function loadChat({ strings = {}, online = true } = {}) {
         renderSceneHeader, addressChild, renderHint, hintSent, applyView, setupSceneEnd, setupHandbookChips, recorderErrorText, toggleLiteMode, flashStatus,
         recordRequestLatency, isSlowNetwork, showSlowNetworkWarning,
         formatCoachEvidenceText, upgradeCoachEvidenceQuotes,
-        getChipA1Text, getChipBText, updateFastTrackChips, disableFastTrackChips, enableFastTrackChips, setupFastTrackTray })`,
+        getChipA1Text, getChipBText, updateFastTrackChips, disableFastTrackChips, enableFastTrackChips, setupFastTrackTray,
+        ftActivity, ftStop, FAST_TRACK_IDLE_MS })`,
     sandbox
   );
   api.setUiStrings(strings);
@@ -360,6 +363,7 @@ export function loadChat({ strings = {}, online = true } = {}) {
     FakeAudio,
     navigator,
     documentListeners,
+    session,
     rows: () => container.children.filter((c) => c.className.includes('msg-row')),
   };
 }

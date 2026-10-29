@@ -364,8 +364,8 @@ ui_chat_source_ocr: {text: "यह अंश स्कैन किए गए �
 ui_chat_source_error: {text: "स्रोत नहीं खुल सका — दोबारा छुएँ", audio: false}
 ui_chat_reconnecting: {text: "इंटरनेट लौट आया — दोबारा जुड़ रहे हैं…", audio: false}
 ui_chat_quote_tag: {text: "आपकी कही बात", audio: false}
-ui_fast_track_title: {text: "फास्ट-ट्रैक परीक्षण", audio: false}
-ui_fast_track_hint: {text: "हैंडबुक के लिए 'सवाल:' लिखें", audio: false}
+ui_fast_track_title: {text: "डेमो शॉर्टकट", audio: false}
+ui_fast_track_hint: {text: "A1, A2, B घटाव के अभ्यास में 30 सेकंड कुछ न करने पर दिखते हैं।", audio: false}
 ui_fast_track_chip_a1: {text: "A1: उत्तर बताना", audio: false}
 ui_fast_track_chip_a2: {text: "A2: नया सवाल (61-28)", audio: false}
 ui_fast_track_chip_b: {text: "B: बंडल-तीली सुधार", audio: false}
@@ -976,7 +976,7 @@ handbook_source_label:
   text: "FLN प्रशिक्षण पैकेज से"
   audio: false
 handbook_fallback:
-  text: "इस सवाल का जवाब बनाने वाली सेवा अभी नहीं चल रही। हैंडबुक में इस विषय का अंश (सार): {summary}\n{citation}"
+  text: "इस सवाल का जवाब बनाने वाली सेवा अभी नहीं चल रही। हैंडबुक में इस विषय के अंश का सार:\n{summary}\n{citation}\nमूल अंश पढ़ने के लिए नीचे स्रोत दबाएँ।"
   audio: false
 skill_ask:
   text: "आप पढ़ाने में किसमें और बेहतर होना चाहेंगे? बोलकर या लिखकर बताइए, या नीचे से नंबर बताइए (यह वैकल्पिक है, अधिकतम {max}):\n{list}"

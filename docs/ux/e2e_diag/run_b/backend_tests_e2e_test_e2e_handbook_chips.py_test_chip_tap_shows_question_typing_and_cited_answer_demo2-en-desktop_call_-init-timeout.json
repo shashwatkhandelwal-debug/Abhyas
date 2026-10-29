@@ -1,0 +1,33 @@
+{
+  "url": "http://127.0.0.1:57275/teacher/start",
+  "readyState": "complete",
+  "title": "Abhyas",
+  "viewport": {
+    "w": 1280,
+    "h": 800,
+    "docClientH": 800
+  },
+  "chatInputInDom": false,
+  "chatInputBox": null,
+  "chatInputStyle": null,
+  "composer": null,
+  "stripsAbove": [
+    {
+      "tag": "main",
+      "cls": "start-main",
+      "id": "",
+      "hidden": false,
+      "h": 800,
+      "display": "flex",
+      "visibility": "visible",
+      "height": "800px",
+      "overflow": "visible",
+      "flex": "0 1 auto",
+      "position": "static"
+    }
+  ],
+  "bodyText": "Abhyas\nAbhyas is your practice partner: before you teach, you practise by talking to simulated children.\nYou do: about 15 minutes, speaking or typing.\nYou get: feedback on what you said, and one thing to try.\nStart your first practice\nSkip\nहिन्दी | English",
+  "errors": [],
+  "net": [],
+  "label": "teacher.demo2-en-1280x800"
+}

@@ -1,0 +1,33 @@
+{
+  "url": "http://127.0.0.1:57275/teacher/start",
+  "readyState": "complete",
+  "title": "अभ्यास",
+  "viewport": {
+    "w": 360,
+    "h": 740,
+    "docClientH": 740
+  },
+  "chatInputInDom": false,
+  "chatInputBox": null,
+  "chatInputStyle": null,
+  "composer": null,
+  "stripsAbove": [
+    {
+      "tag": "main",
+      "cls": "start-main",
+      "id": "",
+      "hidden": false,
+      "h": 740,
+      "display": "flex",
+      "visibility": "visible",
+      "height": "740px",
+      "overflow": "visible",
+      "flex": "0 1 auto",
+      "position": "static"
+    }
+  ],
+  "bodyText": "अभ्यास\nअभ्यास आपका अभ्यास-साथी है: पढ़ाने से पहले आप नकली बच्चों के साथ बात करके अभ्यास करते हैं।\nआपको करना है: लगभग 15 मिनट, बोलकर या लिखकर।\nआपको मिलेगा: आपने जो कहा उस पर सुझाव, और आज़माने के लिए एक बात।\nपहला अभ्यास शुरू करें\nछोड़ें\nहिन्दी | English",
+  "errors": [],
+  "net": [],
+  "label": "teacher.demo1-hi-360x740"
+}

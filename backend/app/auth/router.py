@@ -412,6 +412,9 @@ async def _reset_demo_teacher(db: AsyncSession, user: AppUser | None, *, on_logi
                 await reset_demo_teacher_unless_fresh(db, user.username)
             else:
                 await reset_demo_teacher(db, user.username)
+        # Commit now. The session dependency commits only after the response has been sent, so the
+        # browser's next request (the redirect target) could still read the pre-reset rows.
+        await db.commit()
     except Exception:
         logger.exception("demo_reset_failed username=%s", user.username)
 
