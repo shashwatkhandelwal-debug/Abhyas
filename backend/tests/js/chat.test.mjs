@@ -655,6 +655,31 @@ test('group scene bar lists the three children; a name tap puts the name in the 
   assert.equal(h.kids.children.length, 0);
 });
 
+test('one-on-one child strip: label follows the title when sent, plain title when not', () => {
+  const c = load();
+  const h = withSceneBar(c);
+  c.renderSceneHeader({ ...SCENE, strip_label: 'समझ रहा है · फिर अटका' });
+  assert.equal(h.title.textContent, 'रवि से आमने-सामने बात · समझ रहा है · फिर अटका');
+  c.renderSceneHeader(SCENE);
+  assert.equal(h.title.textContent, 'रवि से आमने-सामने बात');
+});
+
+test('group child strip: label beside each name, re-rendered when a label changes, tap still uses the plain name', () => {
+  const c = load();
+  const h = withSceneBar(c);
+  const labelled = (labels) => ({
+    ...GROUP,
+    children: GROUP.children.map((k, i) => ({ ...k, label: labels[i] })),
+  });
+  c.renderSceneHeader(labelled(['अटका हुआ', 'समझ रही है', 'समझ गया']));
+  assert.deepEqual(h.kids.children.map((k) => k.textContent), ['रवि · अटका हुआ', 'प्रिया · समझ रही है', 'अमन · समझ गया']);
+  assert.equal(h.kids.children[1].getAttribute('data-name'), 'प्रिया');
+  c.renderSceneHeader(labelled(['अटका हुआ · फिर अटका', 'समझ रही है', 'समझ गया']));
+  assert.equal(h.kids.children[0].textContent, 'रवि · अटका हुआ · फिर अटका');
+  c.renderSceneHeader(GROUP); // flag off: no labels, plain names
+  assert.deepEqual(h.kids.children.map((k) => k.textContent), ['रवि', 'प्रिया', 'अमन']);
+});
+
 test('scene bar disappears when no scene is running', () => {
   const c = load();
   const h = withSceneBar(c);

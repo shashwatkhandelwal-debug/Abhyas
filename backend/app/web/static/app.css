@@ -378,7 +378,7 @@ body {
   border-radius: 3px;
 }
 .sb-board-label { font-weight: 500; font-size: 0.8rem; opacity: 0.8; margin-right: 0.3rem; }
-.sb-children { display: inline-flex; gap: 0.35rem; }
+.sb-children { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; }
 .sb-children[hidden] { display: none; }
 .child-pill {
   padding: 0.2rem 0.7rem;

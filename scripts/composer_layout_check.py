@@ -77,7 +77,11 @@ def build_scenarios() -> dict[str, dict[str, Any]]:
         "board": board_text(item), "item": {"type": "sub", "a": 52, "b": 17, "tens": None, "ones": None, "word": None},
         "manipulatives": {"bundles": 5, "sticks": 2, "regrouped": False, "aria_label": "5 बंडल और 2 तीलियाँ"},
         "title": get_message("ui_scene_group_title"),
-        "children": [{"id": c, "name": get_message(f"speaker_{c}")} for c in ("ravi", "priya", "aman")],
+        "children": [  # worst case for width: the longest state label on every pill (child strip)
+            {"id": c, "name": get_message(f"speaker_{c}"),
+             "label": get_message(f"ui_strip_stuck_{g}") + " · " + get_message(f"ui_strip_relapse_{g}")}
+            for c, g in (("ravi", "m"), ("priya", "f"), ("aman", "m"))
+        ],
     }  # fmt: skip
     ready = "READY"
     return {

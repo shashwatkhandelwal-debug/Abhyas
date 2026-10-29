@@ -1039,6 +1039,14 @@ ask_resume_scene_group: {text: "अब वापस बच्चों के �
 ui_scene_group_title: {text: "तीनों बच्चों के साथ", audio: false}
 ui_scene_board: {text: "बोर्ड", audio: false}
 ui_scene_pick_child: {text: "किसी बच्चे से बात करने के लिए उसका नाम दबाएँ", audio: false}
+ui_strip_stuck_m: {text: "अटका हुआ", audio: false}
+ui_strip_stuck_f: {text: "अटकी हुई", audio: false}
+ui_strip_learning_m: {text: "समझ रहा है", audio: false}
+ui_strip_learning_f: {text: "समझ रही है", audio: false}
+ui_strip_got_m: {text: "समझ गया", audio: false}
+ui_strip_got_f: {text: "समझ गई", audio: false}
+ui_strip_relapse_m: {text: "फिर अटका", audio: false}
+ui_strip_relapse_f: {text: "फिर अटकी", audio: false}
 ui_step_label: {text: "चरण {n} / {total}: {name}", audio: false}
 ui_step_1: {text: "सीखना", audio: false}
 ui_step_2: {text: "अपने शब्दों में बताना", audio: false}

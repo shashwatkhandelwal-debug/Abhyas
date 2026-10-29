@@ -329,6 +329,9 @@ class Settings(BaseSettings):
     WHATSAPP_BUTTON_TITLE_MAX: int = 20  # Meta limit: reply-button / list-row title length
     WHATSAPP_LIST_ROWS_MAX: int = 10  # Meta limit: rows in one interactive list
     CHECKIN_DEDUPE_SECONDS: int = 60  # the same check-in inside this window is stored once
+    CHILD_STRIP_ENABLED: bool = (
+        False  # scene bar shows each child's state label (stuck / getting it / got it)
+    )
 
     # ── Demo / Evaluation & Observability ────────────────────────────────
     SERVE_IN_REVIEW_TO_DEMO: bool = True

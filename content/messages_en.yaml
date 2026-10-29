@@ -717,6 +717,14 @@ ask_resume_scene_group: {text: "Back to the children: say your next line."}
 ui_scene_group_title: {text: "With the three children"}
 ui_scene_board: {text: "Board"}
 ui_scene_pick_child: {text: "Tap a name to speak to that child"}
+ui_strip_stuck_m: {text: "Stuck"}
+ui_strip_stuck_f: {text: "Stuck"}
+ui_strip_learning_m: {text: "Getting it"}
+ui_strip_learning_f: {text: "Getting it"}
+ui_strip_got_m: {text: "Got it"}
+ui_strip_got_f: {text: "Got it"}
+ui_strip_relapse_m: {text: "Stuck again"}
+ui_strip_relapse_f: {text: "Stuck again"}
 ui_step_label: {text: "Step {n} of {total}: {name}"}
 ui_step_1: {text: "Learn"}
 ui_step_2: {text: "Say it in your words"}

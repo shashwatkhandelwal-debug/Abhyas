@@ -845,14 +845,14 @@ function renderSceneHeader(sc) {
     const el = document.getElementById(id);
     if (el && el.textContent !== text) el.textContent = text;
   };
-  set('sb-title', sc.title);
+  set('sb-title', sc.strip_label ? `${sc.title} · ${sc.strip_label}` : sc.title);
   set('sb-turn', sc.turn_label);
   set('sb-board', sc.board);
   renderManipulatives(sc.manipulatives);
   const kids = document.getElementById('sb-children');
   if (!kids) return;
   const list = sc.children || [];
-  const ids = list.map((c) => c.id).join(',');
+  const ids = list.map((c) => c.id + (c.label || '')).join(',');
   if (kids.dataset.ids !== ids) {
     kids.dataset.ids = ids;
     while (kids.children.length) kids.removeChild(kids.children[0]);
@@ -861,7 +861,7 @@ function renderSceneHeader(sc) {
       b.type = 'button';
       b.className = `child-pill ${c.id}`;
       b.setAttribute('data-name', c.name);
-      b.textContent = c.name;
+      b.textContent = c.label ? `${c.name} · ${c.label}` : c.name;
       kids.appendChild(b);
     });
   }
