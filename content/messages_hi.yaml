@@ -1343,3 +1343,10 @@ ui_rvo_row: {text: "{label}: {n} शिक्षकों ने अगले �
 ui_rvo_reported: {text: "बताया: काम किया {worked}, अब भी अटके {stuck}, आज़मा नहीं सके {cant}", audio: false}
 ui_rvo_observed: {text: "भ्रमण में अभ्यास दिखा: {n} बार", audio: false}
 ui_rvo_observed_hidden: {text: "भ्रमण की गिनती छिपी है (कम से कम {n} शिक्षकों का भ्रमण चाहिए)।", audio: false}
+
+# ── Adaptive next practice (flag ADAPTIVE_PATH_ENABLED): one-line "why this next" ──
+adp_why_most: {text: "क्यों अभी यह: हाल की कक्षा-जाँच में आपने '{label}' में ज़्यादातर बच्चे अटके बताए।", audio: false}
+adp_why_some: {text: "क्यों अभी यह: हाल की कक्षा-जाँच में आपने '{label}' में कुछ बच्चे अटके बताए।", audio: false}
+adp_why_stuck: {text: "क्यों अभी यह: अगले दिन के हाल में आपने बताया कि '{label}' में बच्चे अब भी अटके हैं।", audio: false}
+adp_why_worked: {text: "क्यों अभी यह: '{label}' का तरीका आपके यहाँ काम किया, इसलिए पहले दूसरा अभ्यास।", audio: false}
+adp_why_new: {text: "क्यों अभी यह: शुरुआत में पहले बुनियादी अभ्यास, जिसमें मॉडल शिक्षक का तरीका पहले देखने को मिलता है।", audio: false}

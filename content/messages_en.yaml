@@ -1001,3 +1001,10 @@ ui_rvo_row: {text: "{label}: {n} teachers said how the next day went"}
 ui_rvo_reported: {text: "Reported: worked {worked}, still stuck {stuck}, could not try {cant}"}
 ui_rvo_observed: {text: "Observed: practice seen on {n} visits"}
 ui_rvo_observed_hidden: {text: "Visit count hidden (visits to at least {n} teachers needed)."}
+
+# ── Adaptive next practice (flag ADAPTIVE_PATH_ENABLED): one-line "why this next" ──
+adp_why_most: {text: "Why this next: in a recent check-in you said most children got stuck on '{label}'."}
+adp_why_some: {text: "Why this next: in a recent check-in you said some children got stuck on '{label}'."}
+adp_why_stuck: {text: "Why this next: the next day you said children are still stuck on '{label}'."}
+adp_why_worked: {text: "Why this next: the method for '{label}' worked for you, so a different practice comes first."}
+adp_why_new: {text: "Why this next: at the start, the basic practice first, where the model teacher shows the method before you try it."}

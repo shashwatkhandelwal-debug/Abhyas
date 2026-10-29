@@ -14,6 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.class_profile import (
+    adaptive,
     checkin_flow,
     followup,
     level_sorter,
@@ -397,8 +398,46 @@ class SessionService:
             except (SQLAlchemyError, ValueError):
                 logger.warning("Could not schedule reminder", exc_info=True)
 
+    async def _adaptive_choice(
+        self, ctx: SessionContext, teacher_id: UUID, current_move_id: str
+    ) -> adaptive.Choice | None:
+        """The next practice from her check-ins and follow-ups (flag ADAPTIVE_PATH_ENABLED).
+
+        Only reorders among moves already in her path; None means "keep the old order".
+        """
+        if not adaptive.enabled():
+            return None
+        path_entries = await self.repo.get_move_path(teacher_id)
+        done = await self.repo.done_move_ids(teacher_id, DONE_MIN_EVIDENCE)
+        candidates = [
+            p.move_id
+            for p in path_entries
+            if p.move_id and p.move_id != current_move_id and p.move_id not in done
+        ]
+        now = followup.utcnow()
+        since = now - timedelta(days=settings.ADAPTIVE_HISTORY_DAYS)
+        checkins = [
+            adaptive.CheckinSignal(c.outcome, list(c.struggle_ids), c.created_at)
+            for c in await self.repo.recent_checkins(teacher_id, since)
+        ]
+        outcomes = [
+            adaptive.FollowupSignal(sid, outcome, when)
+            for sid, outcome, when in await self.repo.recent_followup_outcomes(teacher_id, since)
+        ]
+        return adaptive.choose_next(
+            candidates,
+            checkins=checkins,
+            followups=outcomes,
+            experience_band=ctx.experience_band,
+            now=now,
+        )
+
     async def _get_next_move_title(self, teacher_id: UUID, current_move_id: str) -> str:
         """Determines next move title from teacher's personal move path."""
+        ctx = await self.get_or_create_context(teacher_id)
+        choice = await self._adaptive_choice(ctx, teacher_id, current_move_id)
+        if choice is not None:
+            return move_title(choice.move_id)
         path_entries = await self.repo.get_move_path(teacher_id)
         if path_entries:
             curr_idx = next(
@@ -445,6 +484,7 @@ class SessionService:
         address_form = ctx.address_form
         level_name = get_message(f"evidence_level_{level}", address_form)
         next_title = await self._get_next_move_title(teacher_id, ctx.current_move_id)
+        choice = await self._adaptive_choice(ctx, teacher_id, ctx.current_move_id)
         default_name = (
             get_message("btn_female", address_form)
             if address_form == "f"
@@ -459,7 +499,8 @@ class SessionService:
                     name=ctx.name or default_name,
                     level_name=level_name,
                     next_move_title=next_title,
-                ),
+                )
+                + (f"\n{adaptive.reason_text(choice)}" if choice is not None else ""),
                 buttons=[
                     Button(
                         id="btn_next_move",
@@ -2488,9 +2529,18 @@ class SessionService:
         elif curr == SessionStateEnum.DONE:
             move = load_move_card(ctx.current_move_id)
             if matched_intent == Intent.NEXT or btn_id == "btn_next_move":
+                choice = await self._adaptive_choice(ctx, teacher_id, ctx.current_move_id)
+                if choice is not None:  # flag on and she has history: her chosen next practice
+                    ctx.current_move_id = choice.move_id
+                    move = load_move_card(choice.move_id)
                 wsm.transition("btn_next_move")
                 await self._sync_context_to_db(ctx, teacher_id)
-                return await self._build_learn_messages(move, address_form, ctx.class_struggles)
+                learn = await self._build_learn_messages(move, address_form, ctx.class_struggles)
+                if choice is not None and learn:
+                    learn[0] = learn[0].model_copy(
+                        update={"text_hi": f"{adaptive.reason_text(choice)}\n\n{learn[0].text_hi}"}
+                    )
+                return learn
             if matched_intent == Intent.PROGRESS or btn_id == "btn_progress":
                 return [
                     OutboundMessage(
