@@ -57,3 +57,17 @@ I searched all 1,157 stored chunks for बंडल, दहाई, उधार,
 - The 4 hits listed under `up_ganit_sandarshika_c1` are rows with ids like `NUM_*_BUNDLES_learn`, which are our own move-card rows indexed under that source, not handbook text. I confirmed this from their chunk ids.
 - So the handbooks use no consistent term for borrowing or carry. "उधार" never appears, and "हासिल" appears in handbook text only as "achieve". There is no different handbook term to switch to, so I left the label, which is catalog and yaml text, unchanged.
 - Open question for a human: "हासिल वाला घटाव" borrows the addition-carry word for subtraction. A Hindi-speaking teacher should confirm whether it reads naturally.
+
+## F5: wording polish: DONE
+
+Edited, because the string lives in our own yaml:
+- `content/class_struggles.yaml`, `NUM_COUNTING.tip_hi`: "छुआएँ या हटवाएँ" became "छूकर या हटाकर गिनवाएँ", and the last sentence became the imperative "हर चीज़ के लिए एक ही संख्या बोलें।".
+- `content/level_sorter.yaml`, `subjects.reading.multigrade.text_hi`: "रिमीडियल काम करने" became "अतिरिक्त अभ्यास करने". The sentence already says "पीछे रह रहे बच्चों", so I did not insert your full replacement phrase, to avoid repeating it.
+- `messages_hi.yaml` and the templates contained none of these words.
+- Test: `backend/tests/unit/test_wording_polish.py`. The 8 related content and struggle test files (320 tests) also pass.
+
+Not edited, because the string comes from the source documents. Both words appear in the stored chunk `text`, `heading` and `section` fields, not in `gloss_hi`:
+- `content/chunks/up_bhasha_sandarshika_c1.jsonl`: "रिमीडियल" in 114 `text`, 5 `heading` and 5 `section` fields.
+- `content/chunks/up_ganit_sandarshika_c1.jsonl`: "रिमीडियल" in 63 `text`, 11 `heading` and 11 `section` fields.
+- Chunks containing "छुआएँ" or "छुआए" could not be isolated from the combined search. They are in the same two files, so treat them as unedited too.
+- Also untouched: the OCR cache and samples (`content/sources/ocr_cache`, `docs/ocr_samples`), and an old quote in `docs/ux/V2_RUN_B.md`.

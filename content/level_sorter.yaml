@@ -16,7 +16,7 @@ subjects:
     first_chunk_ids: ["up_bhasha_sandarshika_c1:p137:303"]
     multigrade:
       chunk_ids: ["up_bhasha_sandarshika_c1:p141:312", "up_bhasha_sandarshika_c1:p142:315"]
-      text_hi: "अगर एक ही कमरे में कक्षा 1 और 2 साथ बैठती हैं, तो पुस्तिका में दोनों कक्षाओं के पीछे रह रहे बच्चों का एक ही समूह बनाकर उसके साथ रिमीडियल काम करने का उदाहरण दिया गया है।"
+      text_hi: "अगर एक ही कमरे में कक्षा 1 और 2 साथ बैठती हैं, तो पुस्तिका में दोनों कक्षाओं के पीछे रह रहे बच्चों का एक ही समूह बनाकर उसके साथ अतिरिक्त अभ्यास करने का उदाहरण दिया गया है।"
       text_en: "If classes 1 and 2 sit in one room, the guide gives an example where the children who are falling behind in both classes form one group for remedial work."
   maths:
     levels: [number_recognition, one_digit, two_digit, subtraction]
