@@ -323,7 +323,11 @@ class Settings(BaseSettings):
 
     # ── V2 features (each ON in demo mode, OFF by default otherwise: see `v2_enabled`) ──
     CLASS_CHECKIN_ENABLED: bool = False  # "After class: how did it go?" closed-list check-in
-    CHECKIN_MAX_BUTTONS: int = 5  # most buttons on one check-in screen ("more" counts as one)
+    CHECKIN_MAX_BUTTONS: int = 5  # WEB cap: most buttons on one check-in screen ("more" counts)
+    WEB_BUTTON_TITLE_MAX: int = 40  # web chat: longest button title kept as written
+    WHATSAPP_REPLY_BUTTONS_MAX: int = 3  # Meta limit: reply buttons in one message
+    WHATSAPP_BUTTON_TITLE_MAX: int = 20  # Meta limit: reply-button / list-row title length
+    WHATSAPP_LIST_ROWS_MAX: int = 10  # Meta limit: rows in one interactive list
     CHECKIN_DEDUPE_SECONDS: int = 60  # the same check-in inside this window is stored once
 
     # ── Demo / Evaluation & Observability ────────────────────────────────

@@ -9,8 +9,9 @@ with no LLM. State lives on `SessionContext` (`checkin_*`); this module mutates 
 messages plus, when a check-in is complete, the record the service stores (ids only).
 
 Buttons are catalog keys, so the English UI localises them (`btn_chk_mod_<module>`,
-`btn_chk_str_<struggle>`, ...). At most `settings.CHECKIN_MAX_BUTTONS` per screen; a "more" button
-pages through a longer list.
+`btn_chk_str_<struggle>`, ...). At most `settings.CHECKIN_MAX_BUTTONS` (the web cap) per screen; a "more" button
+pages through a longer list. The WhatsApp channel re-renders a screen with more than 3 options as
+an interactive list and shortens titles to 20 characters (`channels/whatsapp/buttons.py`).
 """
 
 from __future__ import annotations
@@ -60,7 +61,6 @@ OUTCOME_BUTTONS = {
 
 _OTHER_PREFIX = "OTHER_"
 _TRAILING = " .!?।,"
-_BUTTON_TITLE_MAX = 20  # Button.title_hi limit (WhatsApp)
 _IN_SCENE = (SessionStateEnum.REHEARSE_INTRO, SessionStateEnum.REHEARSE)
 
 
@@ -108,7 +108,7 @@ def _module(module_id: str, lib: StruggleLibrary) -> CheckinModule | None:
 
 def _btn(button_id: str, fallback: str = "") -> Button:
     title = get_message(button_id) if has_message(button_id) else fallback
-    return Button(id=button_id, title_hi=title[:_BUTTON_TITLE_MAX])
+    return Button(id=button_id, title_hi=title[: settings.WEB_BUTTON_TITLE_MAX])
 
 
 def module_label(module_id: str) -> str:

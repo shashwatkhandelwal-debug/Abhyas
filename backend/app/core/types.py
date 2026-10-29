@@ -6,6 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from backend.app.config import settings
+
 
 class InboundMessage(BaseModel):
     """Normalized inbound message from any channel (spec/02 §2.5, spec/07 §7.1)."""
@@ -23,10 +25,14 @@ class InboundMessage(BaseModel):
 
 
 class Button(BaseModel):
-    """Quick-reply button option (title <= 20 chars for WhatsApp limit) (spec/02 §2.5)."""
+    """Quick-reply button option (spec/02 §2.5).
+
+    The model keeps the title as written (up to `WEB_BUTTON_TITLE_MAX`); the WhatsApp channel
+    shortens it to Meta's 20 characters when it renders (`channels/whatsapp/buttons.py`).
+    """
 
     id: str
-    title_hi: str = Field(max_length=20)
+    title_hi: str = Field(max_length=settings.WEB_BUTTON_TITLE_MAX)
 
 
 class Citation(BaseModel):
