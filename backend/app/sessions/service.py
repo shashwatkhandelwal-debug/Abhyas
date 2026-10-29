@@ -13,8 +13,15 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.class_profile import checkin_flow, level_sorter, personalise, skills_flow
+from backend.app.class_profile import (
+    checkin_flow,
+    followup,
+    level_sorter,
+    personalise,
+    skills_flow,
+)
 from backend.app.class_profile import flow as class_flow
+from backend.app.class_profile.library import load_library
 from backend.app.class_profile.skills import clean_skill_ids, load_skills, skill_levels
 from backend.app.config import settings, v2_enabled
 from backend.app.content_models import MoveCard
@@ -279,6 +286,8 @@ class SessionService:
             checkin_struggle=str(ctx_data.get("checkin_struggle", "")),
             checkin_page=int(ctx_data.get("checkin_page", 0)),
             checkin_jump_move=str(ctx_data.get("checkin_jump_move", "")),
+            followup_id=str(ctx_data.get("followup_id", "")),
+            followup_stage=str(ctx_data.get("followup_stage", "")),
             level_stage=str(ctx_data.get("level_stage", "")),
             level_subject=str(ctx_data.get("level_subject", "")),
             level_idx=int(ctx_data.get("level_idx", 0)),
@@ -364,6 +373,8 @@ class SessionService:
             "checkin_struggle": ctx.checkin_struggle,
             "checkin_page": ctx.checkin_page,
             "checkin_jump_move": ctx.checkin_jump_move,
+            "followup_id": ctx.followup_id,
+            "followup_stage": ctx.followup_stage,
             "level_stage": ctx.level_stage,
             "level_subject": ctx.level_subject,
             "level_idx": ctx.level_idx,
@@ -837,12 +848,20 @@ class SessionService:
     ) -> list[OutboundMessage]:
         """Stores a completed check-in (once) and builds what the flow could not: the next move."""
         if chk.record is not None:
-            await self.repo.record_class_checkin(
+            stored = await self.repo.record_class_checkin(
                 teacher_id,
                 chk.record.module_id,
                 chk.record.outcome,
                 list(chk.record.struggle_ids),
             )
+            if stored is not None and chk.record.struggle_ids and followup.enabled():
+                # a check-in with a struggle: ask how the practice went on the next school day
+                await self.repo.create_followup(
+                    teacher_id,
+                    stored.id,
+                    chk.record.struggle_ids[0],
+                    followup.due_date_for(followup.utcnow()),
+                )
         if chk.resume_scene:  # the scene was only paused: say who she is talking to again
             level_sorter.reset(ctx)
             prompt = self._get_resume_prompt(ctx, SessionStateEnum.REHEARSE, ctx.address_form)
@@ -861,6 +880,89 @@ class SessionService:
         if chk.launch_move_id is not None:
             return await self._launch_checkin_practice(ctx, teacher_id, chk.launch_move_id)
         return chk.messages
+
+    async def offer_followup(self, teacher_id: UUID) -> list[OutboundMessage]:
+        """She opened the chat: the follow-up that is due (flag FOLLOWUP_ENABLED), offered once."""
+        if not followup.enabled():
+            return []
+        ctx = await self.get_or_create_context(teacher_id)
+        busy = (
+            ctx.checkin_stage
+            not in ("", checkin_flow.STAGE_RESULT)  # "result": a finished check-in
+            or ctx.level_stage
+            or ctx.rating_stage
+            or ctx.class_stage
+            or ctx.skill_stage
+            or ctx.awaiting_delete_confirm
+        )
+        if ctx.onboarding_state != OnboardingStateEnum.READY or busy:
+            return []
+        row = await self.repo.next_due_followup(teacher_id, followup.ist_date(followup.utcnow()))
+        if row is None or row.offered_at is not None:
+            return []
+        await self.repo.mark_followup_offered(row.id)
+        checkin_flow.finish(ctx)
+        ctx.followup_id = str(row.id)
+        ctx.followup_stage = followup.STAGE_ASK
+        await self._sync_context_to_db(ctx, teacher_id)
+        return [followup.ask_message(load_library().get(row.struggle_id))]
+
+    async def _handle_followup_button(
+        self, ctx: SessionContext, teacher_id: UUID, button_id: str
+    ) -> list[OutboundMessage]:
+        """One tap on the follow-up options; an outcome is stored once (a double tap says so)."""
+        row = None
+        if ctx.followup_id:
+            try:
+                row = await self.repo.get_followup(UUID(ctx.followup_id))
+            except ValueError:
+                row = None
+        if row is not None and row.teacher_id != teacher_id:
+            row = None
+        answered = row is not None and await self.repo.get_followup_outcome(row.id) is not None
+        in_scene = ctx.current_state in (
+            SessionStateEnum.REHEARSE_INTRO,
+            SessionStateEnum.REHEARSE,
+        )
+        res = followup.handle_button(
+            ctx,
+            button_id,
+            struggle_id=row.struggle_id if row is not None else None,
+            answered=answered,
+            in_scene=in_scene,
+        )
+        if res.handbook:
+            if ctx.current_state != SessionStateEnum.ASK:
+                ctx.prior_state_before_ask = ctx.current_state
+                ctx.current_state = SessionStateEnum.ASK
+            await self._sync_context_to_db(ctx, teacher_id)
+            return [
+                OutboundMessage(kind="text", text_hi=get_message("ask_prompt", ctx.address_form))
+            ]
+        if res.outcome is not None and row is not None:
+            if await self.repo.record_followup_outcome(teacher_id, row.id, res.outcome) is None:
+                return [followup.already_message()]  # answered a moment ago (double tap)
+        if res.reason is not None and row is not None:
+            await self.repo.set_followup_reason(row.id, res.reason)
+        messages = res.messages
+        if res.went_worked:
+            next_title: str | None = await self._get_next_move_title(
+                teacher_id, ctx.current_move_id
+            )
+            if next_title == move_title(ctx.current_move_id):
+                next_title = None  # no later move in her path: say nothing about one
+            messages = followup.worked_messages(
+                load_library().get(row.struggle_id) if row is not None else None,
+                next_title,
+                offer_next=ctx.current_state == SessionStateEnum.DONE,
+            )
+        if res.launch_move_id is not None:
+            ctx.followup_id = ""
+            return await self._launch_checkin_practice(ctx, teacher_id, res.launch_move_id)
+        if res.went_worked:
+            ctx.followup_id = ""
+        await self._sync_context_to_db(ctx, teacher_id)
+        return messages
 
     async def _launch_checkin_practice(
         self, ctx: SessionContext, teacher_id: UUID, move_id: str
@@ -942,6 +1044,15 @@ class SessionService:
             checkin_flow.finish(ctx)
         elif btn_id == checkin_flow.BTN_START:
             level_sorter.reset(ctx)
+
+        # 1'. "How did yesterday's practice go?" (flag FOLLOWUP_ENABLED): closed-list buttons only
+        if (
+            btn_id in followup.ALL_BUTTONS
+            and followup.enabled()
+            and ctx.onboarding_state == OnboardingStateEnum.READY
+            and not ctx.awaiting_delete_confirm
+        ):
+            return await self._handle_followup_button(ctx, teacher_id, str(btn_id))
 
         # 1a. "After class: how did it go?" (flag CLASS_CHECKIN_ENABLED): closed-list buttons only
         if (

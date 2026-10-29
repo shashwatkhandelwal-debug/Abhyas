@@ -1286,3 +1286,28 @@ lvl_after: {text: "इनमें से किसी गतिविधि क
 lvl_scene_waiting: {text: "आपका अभ्यास वहीं रुका है, जहाँ आपने छोड़ा था। जब चाहें वापस जाइए।", audio: false}
 lvl_already: {text: "यह समूह-योजना पूरी हो चुकी है। नई योजना के लिए 'स्तर से समूह बनाएँ' दबाएँ।", audio: false}
 lvl_command_words: {text: "कक्षा को समूहों में बाँटें, स्तर के हिसाब से समूह, स्तर से समूह बनाएँ, group my class, group by level, level sorter", audio: false}
+
+# ── Follow-up loop (flag FOLLOWUP_ENABLED): "How did yesterday's practice go?" ──
+fu_ask: {text: "कल का अभ्यास कैसा रहा? '{label}' के लिए जो तरीका आज़माना था, उसके बारे में एक बटन दबाइए।", audio: false}
+fu_unknown_label: {text: "पिछली कक्षा की दिक्कत", audio: false}
+btn_fu_worked: {text: "काम किया", audio: false}
+btn_fu_stuck: {text: "अब भी अटके हैं", audio: false}
+btn_fu_cant: {text: "आज़मा नहीं सके", audio: false}
+fu_why_ask: {text: "कोई बात नहीं। क्या वजह रही? एक चुनिए।", audio: false}
+btn_fu_why_time: {text: "समय नहीं था", audio: false}
+btn_fu_why_multigrade: {text: "कई कक्षाएँ साथ", audio: false}
+btn_fu_why_absent: {text: "बच्चे नहीं आए", audio: false}
+btn_fu_why_other: {text: "कोई और वजह", audio: false}
+btn_fu_practice: {text: "रवि के साथ अभ्यास", audio: false}
+btn_fu_handbook: {text: "हैंडबुक से पूछें", audio: false}
+fu_worked_ack: {text: "ठीक है, दर्ज कर लिया: '{label}' में यह तरीका काम किया।", audio: false}
+fu_stuck_other: {text: "'{label}': दर्ज कर लिया। इस पर एक दूसरे स्रोत में भी बात है। स्रोत पर टैप करके पूरा अंश पढ़ें:\n{sources}", audio: false}
+fu_stuck_same: {text: "'{label}': दर्ज कर लिया। इसके लिए अभी एक ही स्रोत उपलब्ध है, इसलिए वही सुझाव फिर से:\n{tip}\n{sources}", audio: false}
+fu_stuck_practice: {text: "इस दिक्कत के लिए अभ्यास का केस है: {move_title}। रवि के साथ यह गलती अभ्यास करें, या हैंडबुक से और पूछें।", audio: false}
+fu_stuck_missing: {text: "दर्ज कर लिया। इसके लिए पुस्तिका की सामग्री अभी उपलब्ध नहीं है। आप हैंडबुक से पूछ सकते हैं।", audio: false}
+fu_cant_multigrade: {text: "एक कमरे में कई कक्षाएँ हों तो 'स्तर से समूह बनाएँ' में कक्षा को समूहों में बाँटने की योजना मिलती है। चाहें तो हैंडबुक से भी पूछ सकते हैं।", audio: false}
+fu_cant_time: {text: "दर्ज कर लिया। जब मौका मिले, हैंडबुक से पूछ सकते हैं कि इसे कम समय में कैसे करें।", audio: false}
+fu_cant_absent: {text: "दर्ज कर लिया। जब बच्चे आएँ, तब इसे आज़मा सकते हैं। हैंडबुक से और पूछ सकते हैं।", audio: false}
+fu_cant_other: {text: "दर्ज कर लिया। जब मौका मिले, इसे आज़माइए। हैंडबुक से भी पूछ सकते हैं।", audio: false}
+fu_already: {text: "यह जवाब दर्ज हो चुका है।", audio: false}
+fu_tomorrow_focus: {text: "कल का एक कदम, '{label}' के लिए:\n{tip}\n{sources}", audio: false}

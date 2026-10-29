@@ -944,3 +944,28 @@ lvl_after: {text: "To know more about any of these activities, ask the handbook.
 lvl_scene_waiting: {text: "Your practice is waiting exactly where you left it. Go back whenever you like."}
 lvl_already: {text: "This grouping plan is finished. Tap 'Group by level' for a new one."}
 lvl_command_words: {text: "group my class, group by level, level sorter, group the class by level"}
+
+# ── Follow-up loop (flag FOLLOWUP_ENABLED): "How did yesterday's practice go?" ──
+fu_ask: {text: "How did yesterday's practice go? Tap one button about the method you planned to try for '{label}'."}
+fu_unknown_label: {text: "the difficulty from your last class"}
+btn_fu_worked: {text: "It worked"}
+btn_fu_stuck: {text: "Still stuck"}
+btn_fu_cant: {text: "Could not try"}
+fu_why_ask: {text: "That is fine. What got in the way? Pick one."}
+btn_fu_why_time: {text: "No time"}
+btn_fu_why_multigrade: {text: "Several grades"}
+btn_fu_why_absent: {text: "Children absent"}
+btn_fu_why_other: {text: "Something else"}
+btn_fu_practice: {text: "Practise with Ravi"}
+btn_fu_handbook: {text: "Ask the handbook"}
+fu_worked_ack: {text: "Noted: the method worked for '{label}'."}
+fu_stuck_other: {text: "'{label}': noted. Another source also covers this. Tap the source to read the full passage:\n{sources}"}
+fu_stuck_same: {text: "'{label}': noted. Only one source is available for this so far, so here is the same tip again:\n{tip}\n{sources}"}
+fu_stuck_practice: {text: "There is a practice case for this difficulty: {move_title}. Practise this mistake with Ravi, or ask the handbook more."}
+fu_stuck_missing: {text: "Noted. The handbook material for this is not available yet. You can ask the handbook."}
+fu_cant_multigrade: {text: "If several grades share one room, 'Group by level' gives a plan for splitting the class into groups. You can also ask the handbook."}
+fu_cant_time: {text: "Noted. When you get a chance, you can ask the handbook how to do this in less time."}
+fu_cant_absent: {text: "Noted. You can try it when the children are back. You can ask the handbook for more."}
+fu_cant_other: {text: "Noted. Try it when you get a chance. You can also ask the handbook."}
+fu_already: {text: "This answer is already saved."}
+fu_tomorrow_focus: {text: "One step for tomorrow, for '{label}':\n{tip}\n{sources}"}

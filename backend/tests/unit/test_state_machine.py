@@ -9,11 +9,14 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.config import settings
 from backend.app.core.messages import get_message
 from backend.app.core.types import InboundMessage
 from backend.app.db.models import (
     AdoptionEvidence,
     ClassCheckin,
+    ClassFollowup,
+    ClassFollowupOutcome,
     ClassOutcome,
     ConsentLog,
     ExplainScore,
@@ -424,6 +427,8 @@ class FakeSessionRepository(SessionRepository):
         self._training_ratings: list[TrainingRating] = []
         self._class_outcomes: list[ClassOutcome] = []
         self._class_checkins: list[ClassCheckin] = []
+        self._followups: list[ClassFollowup] = []
+        self._followup_outcomes: list[ClassFollowupOutcome] = []
         self._module_progress: dict[tuple[UUID, str], ModuleProgress] = {}
         self._invite_codes: dict[str, InviteCode] = {
             "KNP-C01-B1": InviteCode(
@@ -666,6 +671,96 @@ class FakeSessionRepository(SessionRepository):
         )
         self._class_checkins.append(row)
         return row
+
+    async def create_followup(
+        self,
+        teacher_id: UUID,
+        checkin_id: UUID,
+        struggle_id: str,
+        due_date: date,
+        *,
+        is_demo: bool = False,
+    ) -> ClassFollowup | None:
+        if any(f.checkin_id == checkin_id for f in self._followups):
+            return None
+        row = ClassFollowup(
+            id=uuid4(),
+            teacher_id=teacher_id,
+            checkin_id=checkin_id,
+            struggle_id=struggle_id,
+            due_date=due_date,
+            offered_at=None,
+            is_demo=is_demo,
+            created_at=datetime.now(UTC),
+        )
+        self._followups.append(row)
+        return row
+
+    async def get_followup(self, followup_id: UUID) -> ClassFollowup | None:
+        return next((f for f in self._followups if f.id == followup_id), None)
+
+    async def get_followup_outcome(self, followup_id: UUID) -> ClassFollowupOutcome | None:
+        return next((o for o in self._followup_outcomes if o.followup_id == followup_id), None)
+
+    async def next_due_followup(self, teacher_id: UUID, today: date) -> ClassFollowup | None:
+        open_rows = [
+            f
+            for f in self._followups
+            if f.teacher_id == teacher_id
+            and f.due_date <= today
+            and f.due_date >= today - timedelta(days=settings.FOLLOWUP_MAX_AGE_DAYS)
+            and await self.get_followup_outcome(f.id) is None
+        ]
+        return max(open_rows, key=lambda f: (f.due_date, f.created_at), default=None)
+
+    async def mark_followup_offered(self, followup_id: UUID) -> None:
+        row = await self.get_followup(followup_id)
+        if row is not None and row.offered_at is None:
+            row.offered_at = datetime.now(UTC)
+
+    async def record_followup_outcome(
+        self, teacher_id: UUID, followup_id: UUID, outcome: str
+    ) -> ClassFollowupOutcome | None:
+        if await self.get_followup_outcome(followup_id) is not None:
+            return None
+        row = ClassFollowupOutcome(
+            id=uuid4(),
+            teacher_id=teacher_id,
+            followup_id=followup_id,
+            outcome=outcome,
+            reason=None,
+            created_at=datetime.now(UTC),
+        )
+        self._followup_outcomes.append(row)
+        return row
+
+    async def set_followup_reason(self, followup_id: UUID, reason: str) -> bool:
+        row = await self.get_followup_outcome(followup_id)
+        if row is None or row.outcome != "cant" or row.reason is not None:
+            return False
+        row.reason = reason
+        return True
+
+    async def recent_checkins(self, teacher_id: UUID, since: datetime) -> list[ClassCheckin]:
+        return sorted(
+            (
+                c
+                for c in self._class_checkins
+                if c.teacher_id == teacher_id and c.created_at >= since
+            ),
+            key=lambda c: c.created_at,
+        )
+
+    async def recent_followup_outcomes(
+        self, teacher_id: UUID, since: datetime
+    ) -> list[tuple[str, str, datetime]]:
+        by_id = {f.id: f for f in self._followups}
+        rows = [
+            (by_id[o.followup_id].struggle_id, o.outcome, o.created_at)
+            for o in self._followup_outcomes
+            if o.teacher_id == teacher_id and o.created_at >= since and o.followup_id in by_id
+        ]
+        return sorted(rows, key=lambda r: r[2])
 
     async def record_realism_rating(
         self, teacher_id: UUID, rating: int, scene_id: UUID | None = None

@@ -13,6 +13,8 @@ from alembic.config import Config
 from sqlalchemy import create_engine, inspect, text
 
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
+# Tables the newest migration creates (it must step back and forward without touching older ones)
+LAST_MIGRATION_TABLES = {"class_followup", "class_followup_outcome"}
 
 
 @pytest.mark.skipif(
@@ -78,6 +80,8 @@ def test_alembic_migrations_round_trip() -> None:
             "training_rating",
             "module_progress",
             "class_checkin",
+            "class_followup",
+            "class_followup_outcome",
             "question",
             "doc_chunk",
             "review_item",
@@ -132,6 +136,20 @@ def test_alembic_migrations_round_trip() -> None:
         indexes = {i["name"] for i in inspector.get_indexes("class_checkin")}
         assert "idx_class_checkin_teacher" in indexes
 
+        # follow-up loop: ids and dates only, one outcome per follow-up, additive teacher column
+        columns = {c["name"] for c in inspector.get_columns("class_followup")}
+        assert columns == {
+            "id", "teacher_id", "checkin_id", "struggle_id", "due_date", "offered_at",
+            "is_demo", "created_at",
+        }  # fmt: skip
+        columns = {c["name"] for c in inspector.get_columns("class_followup_outcome")}
+        assert columns == {"id", "teacher_id", "followup_id", "outcome", "reason", "created_at"}
+        checks = {c["name"] for c in inspector.get_check_constraints("class_followup_outcome")}
+        assert {"check_class_followup_outcome", "check_class_followup_reason"} <= checks
+        uniques = {u["name"] for u in inspector.get_unique_constraints("class_followup_outcome")}
+        assert "uq_class_followup_outcome_followup" in uniques
+        assert "tomorrow_focus_opt_in" in {c["name"] for c in inspector.get_columns("teacher")}
+
         # Verify extensions
         with engine.connect() as conn:
             exts = {row[0] for row in conn.execute(text("SELECT extname FROM pg_extension"))}
@@ -160,7 +178,7 @@ def test_alembic_migrations_round_trip() -> None:
 
 @pytest.mark.skipif(not TEST_DATABASE_URL, reason="TEST_DATABASE_URL not set")
 def test_single_head_and_last_migration_steps_back_and_forward() -> None:
-    """One head; `downgrade -1` removes class_checkin, `upgrade head` brings it back."""
+    """One head; `downgrade -1` removes the newest migration's tables, `upgrade head` brings them back."""
     from alembic.script import ScriptDirectory
 
     assert TEST_DATABASE_URL is not None
@@ -185,10 +203,12 @@ def test_single_head_and_last_migration_steps_back_and_forward() -> None:
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
             conn.commit()
         command.upgrade(cfg, "head")
-        assert "class_checkin" in inspect(engine).get_table_names()
+        names = inspect(engine).get_table_names()
+        assert "class_checkin" in names and LAST_MIGRATION_TABLES <= set(names)
         command.downgrade(cfg, "-1")
-        assert "class_checkin" not in inspect(engine).get_table_names()
+        names = inspect(engine).get_table_names()
+        assert "class_checkin" in names and not (LAST_MIGRATION_TABLES & set(names))
         command.upgrade(cfg, "head")
-        assert "class_checkin" in inspect(engine).get_table_names()
+        assert LAST_MIGRATION_TABLES <= set(inspect(engine).get_table_names())
     finally:
         engine.dispose()

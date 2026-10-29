@@ -134,6 +134,10 @@ class Teacher(Base):
     class_profile_prompted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Opt-in (default off) to a weekly "tomorrow's focus" note; nothing is sent without it
+    tomorrow_focus_opt_in: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
     last_inbound_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
@@ -710,6 +714,66 @@ class CalibrationLabel(Base):
     scores: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     blind: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
+class ClassFollowup(Base):
+    """A follow-up due after a check-in with a struggle: "how did yesterday's practice go?"
+
+    Ids and dates only (no free text, no child data). `is_demo` marks seeded demo rows.
+    """
+
+    __tablename__ = "class_followup"
+    __table_args__ = (
+        UniqueConstraint("checkin_id", name="uq_class_followup_checkin"),
+        Index("idx_class_followup_teacher", "teacher_id", "due_date"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    teacher_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("teacher.id", ondelete="CASCADE"), nullable=False
+    )
+    checkin_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("class_checkin.id", ondelete="CASCADE"), nullable=False
+    )
+    struggle_id: Mapped[str] = mapped_column(Text, nullable=False)
+    due_date: Mapped[date] = mapped_column(Date, nullable=False)
+    offered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    is_demo: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
+class ClassFollowupOutcome(Base):
+    """Her answer to a follow-up (worked / still stuck / could not try, and why)."""
+
+    __tablename__ = "class_followup_outcome"
+    __table_args__ = (
+        UniqueConstraint("followup_id", name="uq_class_followup_outcome_followup"),
+        CheckConstraint(
+            "outcome IN ('worked', 'stuck', 'cant')", name="check_class_followup_outcome"
+        ),
+        CheckConstraint(
+            "reason IS NULL OR reason IN ('time', 'multigrade', 'absent', 'other')",
+            name="check_class_followup_reason",
+        ),
+        Index("idx_class_followup_outcome_teacher", "teacher_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    teacher_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("teacher.id", ondelete="CASCADE"), nullable=False
+    )
+    followup_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("class_followup.id", ondelete="CASCADE"), nullable=False
+    )
+    outcome: Mapped[str] = mapped_column(Text, nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )

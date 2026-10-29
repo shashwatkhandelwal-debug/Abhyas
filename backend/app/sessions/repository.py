@@ -15,6 +15,8 @@ from backend.app.config import settings
 from backend.app.db.models import (
     AdoptionEvidence,
     ClassCheckin,
+    ClassFollowup,
+    ClassFollowupOutcome,
     ClassOutcome,
     ConsentLog,
     ExplainScore,
@@ -327,6 +329,123 @@ class SessionRepository:
         self.session.add(row)
         await self.session.commit()
         return row
+
+    # ── follow-up loop (class_profile/followup.py) ─────────────────────────
+    async def create_followup(
+        self,
+        teacher_id: UUID,
+        checkin_id: UUID,
+        struggle_id: str,
+        due_date: date,
+        *,
+        is_demo: bool = False,
+    ) -> ClassFollowup | None:
+        """One follow-up per check-in; None when it already exists."""
+        res = await self.session.execute(
+            select(ClassFollowup).where(ClassFollowup.checkin_id == checkin_id)
+        )
+        if res.scalar_one_or_none() is not None:
+            return None
+        row = ClassFollowup(
+            id=uuid4(),
+            teacher_id=teacher_id,
+            checkin_id=checkin_id,
+            struggle_id=struggle_id,
+            due_date=due_date,
+            is_demo=is_demo,
+            created_at=datetime.now(UTC),
+        )
+        self.session.add(row)
+        await self.session.commit()
+        return row
+
+    async def get_followup(self, followup_id: UUID) -> ClassFollowup | None:
+        return await self.session.get(ClassFollowup, followup_id)
+
+    async def get_followup_outcome(self, followup_id: UUID) -> ClassFollowupOutcome | None:
+        res = await self.session.execute(
+            select(ClassFollowupOutcome).where(ClassFollowupOutcome.followup_id == followup_id)
+        )
+        return res.scalar_one_or_none()
+
+    async def next_due_followup(self, teacher_id: UUID, today: date) -> ClassFollowup | None:
+        """The latest follow-up due on or before `today` that she has not answered yet."""
+        res = await self.session.execute(
+            select(ClassFollowup)
+            .outerjoin(ClassFollowupOutcome, ClassFollowupOutcome.followup_id == ClassFollowup.id)
+            .where(
+                ClassFollowup.teacher_id == teacher_id,
+                ClassFollowup.due_date <= today,
+                ClassFollowup.due_date >= today - timedelta(days=settings.FOLLOWUP_MAX_AGE_DAYS),
+                ClassFollowupOutcome.id.is_(None),
+            )
+            .order_by(ClassFollowup.due_date.desc(), ClassFollowup.created_at.desc())
+            .limit(1)
+        )
+        return res.scalar_one_or_none()
+
+    async def mark_followup_offered(self, followup_id: UUID) -> None:
+        row = await self.session.get(ClassFollowup, followup_id)
+        if row is not None and row.offered_at is None:
+            row.offered_at = datetime.now(UTC)
+            await self.session.commit()
+
+    async def record_followup_outcome(
+        self, teacher_id: UUID, followup_id: UUID, outcome: str
+    ) -> ClassFollowupOutcome | None:
+        """Stores her answer once; None when this follow-up was already answered (double tap)."""
+        if await self.get_followup_outcome(followup_id) is not None:
+            return None
+        row = ClassFollowupOutcome(
+            id=uuid4(),
+            teacher_id=teacher_id,
+            followup_id=followup_id,
+            outcome=outcome,
+            created_at=datetime.now(UTC),
+        )
+        self.session.add(row)
+        try:
+            await self.session.commit()
+        except IntegrityError:
+            await self.session.rollback()
+            return None
+        return row
+
+    async def set_followup_reason(self, followup_id: UUID, reason: str) -> bool:
+        """The reason for "could not try"; stored once, only on a "cant" outcome."""
+        row = await self.get_followup_outcome(followup_id)
+        if row is None or row.outcome != "cant" or row.reason is not None:
+            return False
+        row.reason = reason
+        await self.session.commit()
+        return True
+
+    async def recent_checkins(self, teacher_id: UUID, since: datetime) -> list[ClassCheckin]:
+        res = await self.session.execute(
+            select(ClassCheckin)
+            .where(ClassCheckin.teacher_id == teacher_id, ClassCheckin.created_at >= since)
+            .order_by(ClassCheckin.created_at)
+        )
+        return list(res.scalars().all())
+
+    async def recent_followup_outcomes(
+        self, teacher_id: UUID, since: datetime
+    ) -> list[tuple[str, str, datetime]]:
+        """(struggle id, outcome, when) of her follow-up answers since `since`."""
+        res = await self.session.execute(
+            select(
+                ClassFollowup.struggle_id,
+                ClassFollowupOutcome.outcome,
+                ClassFollowupOutcome.created_at,
+            )
+            .join(ClassFollowup, ClassFollowup.id == ClassFollowupOutcome.followup_id)
+            .where(
+                ClassFollowupOutcome.teacher_id == teacher_id,
+                ClassFollowupOutcome.created_at >= since,
+            )
+            .order_by(ClassFollowupOutcome.created_at)
+        )
+        return [(str(r[0]), str(r[1]), r[2]) for r in res.all()]
 
     async def get_move_path(self, teacher_id: UUID) -> list[MovePath]:
         """Retrieves personal move path sequence for teacher."""
