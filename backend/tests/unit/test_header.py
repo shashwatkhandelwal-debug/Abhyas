@@ -3,8 +3,16 @@
 from __future__ import annotations
 
 from backend.app.rehearsal.header import manipulatives_dict, scene_header
+from backend.app.rehearsal.scene_store import TurnRecord
 from backend.app.rule_engine.child_state import ChildState
-from backend.app.rule_engine.domain import ChildRuntime, Domain, Problem, SceneState
+from backend.app.rule_engine.domain import (
+    ChildResponse,
+    ChildRuntime,
+    Domain,
+    Problem,
+    ResponseKind,
+    SceneState,
+)
 
 
 def _make_child(
@@ -300,3 +308,84 @@ def test_flag_on_by_demo_mode(monkeypatch: pytest.MonkeyPatch) -> None:
     header = scene_header(_scene([_make_child("ravi"), _make_child("priya")]))
     assert header is not None
     assert all("label" in c for c in header["children"])
+
+
+def _resp(
+    persona: str, kind: ResponseKind, item: Problem, answer: int | None = None
+) -> ChildResponse:
+    return ChildResponse(
+        persona_id=persona,
+        kind=kind,
+        answer=answer,
+        prior_state=ChildState.MISCONCEPTION,
+        new_state=ChildState.MISCONCEPTION,
+        affect="neutral",
+        item=item,
+    )
+
+
+def _turn(idx: int, *responses: ChildResponse) -> TurnRecord:
+    return TurnRecord(
+        turn_index=idx,
+        transcript="x",
+        acts=[],
+        addressed_child=None,
+        child_responses=list(responses),
+    )
+
+
+def _told_history(persona: str = "ravi") -> list[TurnRecord]:
+    return [
+        _turn(1, _resp(persona, ResponseKind.PARROT, OLD_ITEM, 35)),
+        _turn(2, _resp(persona, ResponseKind.ANSWER, NEW_ITEM, _bug_answer(NEW_ITEM))),  # type: ignore[arg-type]
+    ]
+
+
+def _stuck_on_new(persona: str = "ravi") -> ChildRuntime:
+    child = _make_child(persona)
+    child.last_answer = _bug_answer(NEW_ITEM)
+    return child
+
+
+def test_told_answer_then_new_problem_shows_marker(strip_on: None, lang: str) -> None:
+    ravi = _stuck_on_new()
+    label = child_strip_label(ravi, _scene([ravi]), _told_history())
+    assert label == f"{get_message('ui_strip_stuck_m')} · {get_message('ui_strip_relapse_m')}"
+    assert get_message("ui_strip_relapse_m") not in child_strip_label(ravi, _scene([ravi]))
+    header = scene_header(_scene([ravi], one=True), True, _told_history())
+    assert header is not None
+    assert header["strip_label"].endswith(get_message("ui_strip_relapse_m"))
+
+
+def test_told_answer_then_scaffold_then_correct_shows_got_it(strip_on: None, lang: str) -> None:
+    ravi = _make_child("ravi", ChildState.CORRECT, NEW_ITEM.key())
+    ravi.last_answer = 16
+    history = [
+        *_told_history(),
+        _turn(3, _resp("ravi", ResponseKind.SCAFFOLDED_CORRECT, NEW_ITEM, 16)),
+    ]
+    assert child_strip_label(ravi, _scene([ravi]), history) == get_message("ui_strip_got_m")
+
+
+def test_told_marker_only_for_the_child_who_was_told(strip_on: None) -> None:
+    ravi, aman = _stuck_on_new("ravi"), _stuck_on_new("aman")
+    header = scene_header(_scene([ravi, aman]), True, _told_history("ravi"))
+    assert header is not None
+    marker = get_message("ui_strip_relapse_m")
+    assert marker in header["children"][0]["label"]
+    assert marker not in header["children"][1]["label"]
+
+
+def test_told_answer_without_a_new_problem_shows_plain_stuck(strip_on: None) -> None:
+    ravi = _make_child("ravi")
+    ravi.last_answer = 35
+    history = [_turn(1, _resp("ravi", ResponseKind.PARROT, NEW_ITEM, 16))]
+    assert child_strip_label(ravi, _scene([ravi]), history) == get_message("ui_strip_stuck_m")
+
+
+def test_told_marker_hidden_when_flag_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "CHILD_STRIP_ENABLED", False)
+    monkeypatch.setattr(settings, "DEMO_MODE", False)
+    header = scene_header(_scene([_stuck_on_new()], one=True), True, _told_history())
+    assert header is not None
+    assert "strip_label" not in header

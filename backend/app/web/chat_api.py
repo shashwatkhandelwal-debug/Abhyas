@@ -446,7 +446,11 @@ async def get_chat_messages(
 
     # One-on-one header (child, progress cue, turn counter); null outside a one-on-one scene
     scene_record = await scene_store.get_active_for_teacher(teacher.id)
-    header = scene_header(scene_record.scene_state, scene_record.active) if scene_record else None
+    header = (
+        scene_header(scene_record.scene_state, scene_record.active, scene_record.turns)
+        if scene_record
+        else None
+    )
 
     # The sample lines only exist in demo mode (null elsewhere: the page leaves its list alone)
     view = await load_chat_view(

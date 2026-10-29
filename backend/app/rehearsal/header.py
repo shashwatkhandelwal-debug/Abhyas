@@ -7,14 +7,16 @@ the teacher finds out only by asking, which is the practice.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from backend.app.config import settings, v2_enabled
 from backend.app.content_models import MoveCard
 from backend.app.core.messages import get_message
+from backend.app.rehearsal.scene_store import TurnRecord
 from backend.app.rule_engine.bugs.registry import get_rule_info
 from backend.app.rule_engine.child_state import ChildState
-from backend.app.rule_engine.domain import ChildRuntime, Problem, SceneState
+from backend.app.rule_engine.domain import ChildRuntime, Problem, ResponseKind, SceneState
 
 
 def item_dict(item: Problem) -> dict[str, Any]:
@@ -103,22 +105,57 @@ def _relapsed(child: ChildRuntime, state: SceneState) -> bool:
     return str(child.last_answer) == str(bug.answer)
 
 
-def child_strip_label(child: ChildRuntime, state: SceneState) -> str:
+def _told_then_stuck(child: ChildRuntime, state: SceneState, turns: Sequence[TurnRecord]) -> bool:
+    """A child who was only told the answer, then gave the bug answer on a new problem.
+
+    A parrot turn leaves the child's saved state unchanged, so the only record is the turn history:
+    the engine's PARROT response for this child, followed by the child's own bug answer on the
+    current problem (a different item from the one she was told).
+    """
+    if child.state not in (ChildState.MISCONCEPTION, ChildState.CAN_EXPLAIN):
+        return False
+    current = state.current_item.key()
+    told_item: str | None = None
+    answered_new = False
+    for turn in turns:
+        for r in turn.child_responses:
+            if r.persona_id != child.persona_id:
+                continue
+            if r.kind == ResponseKind.PARROT:
+                told_item, answered_new = r.item.key(), False
+            elif told_item is not None and r.item.key() != told_item and r.item.key() == current:
+                answered_new = True
+    if told_item is None or not answered_new or child.last_answer is None:
+        return False
+    try:
+        rule = get_rule_info(child.misconception)
+    except KeyError:
+        return False
+    bug = rule.fn(state.current_item, {"guess_lexicon": state.guess_lexicon})
+    return str(child.last_answer) == str(bug.answer)
+
+
+def child_strip_label(
+    child: ChildRuntime, state: SceneState, turns: Sequence[TurnRecord] = ()
+) -> str:
     """The small label beside a child's name, from existing scene state only (no engine change).
 
     MISCONCEPTION and CAN_EXPLAIN are both still wrong, so both read "stuck"; PARTIAL is "getting
     it"; CORRECT is "got it". A relapse adds the "stuck again" marker. A child who was only told
-    the answer leaves no trace in the saved state, so that case shows as plain "stuck".
+    the answer leaves no trace in the saved child state, so that case is read from the turn history
+    (pass `turns`); without it the child shows as plain "stuck".
     """
     suffix = "_f" if child.persona_id in _FEMALE_PERSONAS else "_m"
     label = get_message(f"ui_strip_{_STRIP_KEY[child.state]}{suffix}")
-    if _relapsed(child, state):
+    if _relapsed(child, state) or _told_then_stuck(child, state, turns):
         label = f"{label} · {get_message(f'ui_strip_relapse{suffix}')}"
     return label
 
 
 def scene_header(
-    scene_state: SceneState | dict[str, Any], active: bool = True
+    scene_state: SceneState | dict[str, Any],
+    active: bool = True,
+    turns: Sequence[TurnRecord] = (),
 ) -> dict[str, Any] | None:
     """Scene bar data for an active scene (one-on-one or group); None when none is running."""
     state = (
@@ -148,7 +185,7 @@ def scene_header(
             "child_name": name,
             "title": get_message("ui_scene_one_title", child=name),
             "children": [],
-            **({"strip_label": child_strip_label(child, state)} if strip else {}),
+            **({"strip_label": child_strip_label(child, state, turns)} if strip else {}),
         }
     return {
         **header,
@@ -158,7 +195,7 @@ def scene_header(
             {
                 "id": c.persona_id,
                 "name": get_message(f"speaker_{c.persona_id}"),
-                **({"label": child_strip_label(c, state)} if strip else {}),
+                **({"label": child_strip_label(c, state, turns)} if strip else {}),
             }
             for c in state.children
         ],

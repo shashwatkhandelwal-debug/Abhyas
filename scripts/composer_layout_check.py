@@ -136,6 +136,56 @@ def _wire(m: Any, mid: str, speaker: str = "abhyas") -> dict[str, Any]:
     return out
 
 
+def _told_header() -> dict[str, Any]:
+    """Scene bar of a child who was told the answer, then stuck on a new problem, built by driving
+    the real SessionService and rule engine on mocks (the same flow as the one-on-one tests)."""
+    import asyncio
+    from unittest.mock import patch
+
+    sys.path.insert(0, str(ROOT / "backend" / "tests" / "unit"))
+    from test_one_on_one_flow import Harness  # type: ignore[import-not-found]
+    from test_state_machine import FakeSessionRepository  # type: ignore[import-not-found]
+
+    from backend.app.config import settings
+    from backend.app.llm.schemas import ActTaggerOutput
+    from backend.app.rehearsal.header import scene_header
+    from backend.app.rehearsal.scene_runner import SceneRunner
+    from backend.app.rehearsal.scene_store import InMemorySceneStore
+    from backend.app.rule_engine.domain import Problem, TeachingAct
+    from backend.app.sessions.service import SessionService
+
+    script: list[Any] = [
+        ([TeachingAct.TELL_ANSWER], None, None),
+        ([TeachingAct.GIVE_NEW_PROBLEM], None, Problem(type="sub", a=61, b=28)),
+    ]
+
+    async def fake_tag_act(**_k: Any) -> ActTaggerOutput:
+        acts, addressed, problem = script.pop(0)
+        return ActTaggerOutput(acts=acts, addressed_child=addressed, problem=problem)
+
+    async def run() -> dict[str, Any]:
+        store = InMemorySceneStore()
+        service = SessionService(
+            repository=FakeSessionRepository(), scene_runner=SceneRunner(store=store)  # type: ignore[arg-type]
+        )
+        h = Harness(service, store, script)
+        await h.setup("NUM_SUB_REGROUP_BUNDLES", "ravi", "उल्टा घटा दिया")
+        await h.say("उत्तर 16 होता है।")
+        await h.say("अब ये करो।")
+        scene = await h.scene()
+        header = scene_header(scene.scene_state, True, scene.turns)
+        assert header is not None
+        return header
+
+    with (
+        patch("backend.app.sessions.service.scene_store", InMemorySceneStore()),
+        patch("backend.app.rehearsal.scene_runner.tag_act", fake_tag_act),
+        patch.object(settings, "CHILD_STRIP_ENABLED", True),
+        patch.object(settings, "DEMO_MODE", False),
+    ):
+        return asyncio.run(run())
+
+
 def _v2_scenarios(scene: dict[str, Any], ready: str) -> dict[str, dict[str, Any]]:
     """Screens added in V2 (check-in tip, level sorter, child strip, talk-move feedback), built
     from the real flow modules so the screenshots show what the service sends."""
@@ -178,6 +228,7 @@ def _v2_scenarios(scene: dict[str, Any], ready: str) -> dict[str, dict[str, Any]
         f"{get_message('coach_quote_suffix', quote='रवि, तुमने यह कैसे किया? एक-एक कदम बताओ।')}\n"
         f"➡️ {get_message('tm_next_keep')}"
     )
+    told = _told_header()
     return {
         "checkin_tip": {
             "messages": tip, "scene": None,
@@ -200,6 +251,14 @@ def _v2_scenarios(scene: dict[str, Any], ready: str) -> dict[str, dict[str, Any]
             "view": build_view(
                 onboarding=ready, move_id="m01", state="REHEARSE",
                 context={"rehearse_stage": "scene"}, live_scene=mid_relapse, with_samples=True,
+            ),
+        },
+        "strip_told": {
+            "messages": [msg("s2", "रवि: 61 में से 28 घटाया, 47 आया।", None, "ravi")],
+            "scene": told,
+            "view": build_view(
+                onboarding=ready, move_id="m01", state="REHEARSE",
+                context={"rehearse_stage": "scene"}, live_scene=told, with_samples=True,
             ),
         },
         "coach_talk": {
