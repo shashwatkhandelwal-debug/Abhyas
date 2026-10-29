@@ -556,3 +556,9 @@ async def test_page_chip_label_is_english_in_the_english_ui(
     ) as c:
         html = (await c.get("/teacher", cookies={LANG_COOKIE_NAME: "en"})).text
     assert get_message("ui_level_entry", lang="en") in html
+
+
+def test_two_chunks_on_one_page_are_cited_once() -> None:
+    ids = CONTENT.levels["paragraph"].chunk_ids  # both chunks are on the same printed page
+    lines, cites = ls._sources(ids, "f")
+    assert len(lines.split("\n")) == len(cites) == 1

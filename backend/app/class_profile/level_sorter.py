@@ -144,6 +144,8 @@ def _sources(chunk_ids: list[str], address_form: str) -> tuple[str, list[Citatio
     cites: list[Citation] = []
     for c in found:
         line = format_guide_citation(c.source_short_hi, c.page, address_form=address_form)
+        if line in lines:  # two chunks on one page are cited once
+            continue
         lines.append(line)
         cites.append(
             Citation(

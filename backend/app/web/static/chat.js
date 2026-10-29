@@ -845,7 +845,8 @@ function renderSceneHeader(sc) {
     const el = document.getElementById(id);
     if (el && el.textContent !== text) el.textContent = text;
   };
-  set('sb-title', sc.strip_label ? `${sc.title} · ${sc.strip_label}` : sc.title);
+  set('sb-title', sc.title);
+  set('sb-strip', sc.strip_label ? `· ${sc.strip_label}` : '');
   set('sb-turn', sc.turn_label);
   set('sb-board', sc.board);
   renderManipulatives(sc.manipulatives);

@@ -604,6 +604,7 @@ function withSceneBar(c) {
   const els = {
     bar: mk('scene-bar'),
     title: mk('sb-title'),
+    strip: mk('sb-strip'),
     turn: mk('sb-turn'),
     board: mk('sb-board'),
     manip: mk('sb-manipulatives', 'span'),
@@ -659,9 +660,10 @@ test('one-on-one child strip: label follows the title when sent, plain title whe
   const c = load();
   const h = withSceneBar(c);
   c.renderSceneHeader({ ...SCENE, strip_label: 'समझ रहा है · फिर अटका' });
-  assert.equal(h.title.textContent, 'रवि से आमने-सामने बात · समझ रहा है · फिर अटका');
-  c.renderSceneHeader(SCENE);
   assert.equal(h.title.textContent, 'रवि से आमने-सामने बात');
+  assert.equal(h.strip.textContent, '· समझ रहा है · फिर अटका');
+  c.renderSceneHeader(SCENE);
+  assert.equal(h.strip.textContent, '');
 });
 
 test('group child strip: label beside each name, re-rendered when a label changes, tap still uses the plain name', () => {

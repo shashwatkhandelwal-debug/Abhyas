@@ -72,6 +72,8 @@ def _no_module_progress_query(monkeypatch: pytest.MonkeyPatch) -> None:
         return []
 
     monkeypatch.setattr("backend.app.web.arp.module_progress_summary", empty)
+    # the cluster meeting pack has its own tests (integration/test_cluster_pack_postgres.py)
+    monkeypatch.setattr("backend.app.web.arp.pack_enabled", lambda: False)
 
 
 @pytest.mark.asyncio

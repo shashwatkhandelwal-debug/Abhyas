@@ -313,6 +313,7 @@ body {
 .sb-row + .sb-row { margin-top: 0.3rem; }
 .sb-title { font-weight: 700; }
 .sb-title { flex: 1; }
+.sb-strip { font-weight: 600; }
 .sb-turn { font-weight: 600; white-space: nowrap; }
 .sh-end {
   margin-left: auto;

@@ -68,7 +68,7 @@
 
     <section class="scene-bar" id="scene-bar" role="region" aria-labelledby="sb-title"{% if not scene_header %} hidden{% endif %}>
       <div class="sb-row">
-        <span class="sb-title" id="sb-title">{{ scene_header.title if scene_header else '' }}{% if scene_header and scene_header.strip_label %} · {{ scene_header.strip_label }}{% endif %}</span>
+        <span class="sb-title" id="sb-title">{{ scene_header.title if scene_header else '' }}</span><span class="sb-strip" id="sb-strip">{% if scene_header and scene_header.strip_label %}· {{ scene_header.strip_label }}{% endif %}</span>
         <span class="sb-turn" id="sb-turn">{{ scene_header.turn_label if scene_header else '' }}</span>
       </div>
       <div class="sb-row">
