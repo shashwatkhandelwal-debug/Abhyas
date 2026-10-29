@@ -27,6 +27,7 @@ from backend.app.llm.roles.guide_answerer import answer_guide_question
 from backend.app.llm.schemas import RetrievedChunk
 from backend.app.rehearsal.scene_runner import load_move_card
 from backend.app.retrieval.search import get_guide_retriever
+from backend.app.retrieval.source_scope import scope_label, scope_of_short
 from backend.app.sessions.service import SessionService
 from backend.app.web.chat_api import router as chat_router
 from backend.tests.unit.test_state_machine import FakeSessionRepository
@@ -274,5 +275,8 @@ async def test_ask_answer_carries_guide_speaker_and_tappable_citation() -> None:
     assert len(out[0].citations) == 1
     cite = out[0].citations[0]
     assert cite.chunk_id == hit.chunk_id and cite.page == hit.page
-    assert cite.line_hi == f"स्रोत: {hit.source_short_hi}, पृष्ठ {hit.page}"
+    # the line names the source and page, then whether the source is national or a state pack
+    label = scope_label(scope_of_short(hit.source_short_hi))
+    assert label, "every ingested handbook source has a national or state label"
+    assert cite.line_hi == f"स्रोत: {hit.source_short_hi}, पृष्ठ {hit.page} ({label})"
     assert cite.line_hi in out[0].text_hi  # WhatsApp has no tap, so the line stays in the text

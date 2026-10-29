@@ -199,6 +199,8 @@ ask_source_line:
 ask_source_citation:
   text: "स्रोत: {source}, पृष्ठ {page}"
   audio: false
+ask_source_scope_national: {text: "राष्ट्रीय", audio: false}
+ask_source_scope_state_UP: {text: "राज्य: उ.प्र.", audio: false}
 ask_source_page_abbrev:
   text: "पृ."
   audio: false

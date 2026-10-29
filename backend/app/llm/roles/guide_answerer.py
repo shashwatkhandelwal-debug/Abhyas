@@ -27,6 +27,7 @@ from backend.app.llm.schemas import (
     GuideAnswerResult,
     RetrievedChunk,
 )
+from backend.app.retrieval.source_scope import scope_label, scope_of_short
 
 logger = logging.getLogger("abhyas.llm.guide_answerer")
 
@@ -321,15 +322,24 @@ def format_guide_citation(
     page: int | None = None,
     address_form: str = "f",
 ) -> str:
-    """Formats a standard guide citation matching catalog ask_source_citation."""
+    """Formats a standard guide citation matching catalog ask_source_citation.
+
+    A source with a national / state scope in the manifest gets it beside the page, from the
+    catalog ("राष्ट्रीय", "राज्य: उ.प्र."); a source without one is cited as before.
+    """
+    label = scope_label(scope_of_short(source_short_hi))
+    suffix = f" ({label})" if label else ""
     if page is not None:
-        return load_catalog_message(
-            "ask_source_citation",
-            address_form=address_form,
-            source=source_short_hi,
-            page=page,
+        return (
+            load_catalog_message(
+                "ask_source_citation",
+                address_form=address_form,
+                source=source_short_hi,
+                page=page,
+            )
+            + suffix
         )
-    return f"[{source_short_hi}]"
+    return f"[{source_short_hi}]{suffix}"
 
 
 __all__ = [

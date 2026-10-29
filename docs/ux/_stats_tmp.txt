@@ -1,0 +1,16 @@
+c869d94 V2-A2: teacher form of address follows onboarding choice (consent/hint text_m, he/she model-step tagger, tests)
+ backend/app/llm/roles/act_tagger.py        |   2 +-
+ backend/tests/unit/test_teacher_address.py | 126 +++++++++++++++++++++++++++++
+ content/messages_hi.yaml                   |   3 +-
+ 3 files changed, 129 insertions(+), 2 deletions(-)
+
+2c86716 V2-A1: v2 design note (hooks for check-in, child strip, level sorter, talk-move feedback, labels, cluster pack)
+ docs/ux/V2_DESIGN.md | 82 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 82 insertions(+)
+
+41fad82 V2 run A: progress and run report
+ docs/ux/V2_PROGRESS.md     |     9 +
+ docs/ux/V2_RUN_A.md        |    25 +
+ docs/ux/_v2a_full_gate.txt | 27800 +++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 27834 insertions(+)
+

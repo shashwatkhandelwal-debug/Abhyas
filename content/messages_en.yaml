@@ -69,6 +69,8 @@ ask_clarify_prefix: {text: "Please tell me one thing:"}
 ask_clarify_generic: {text: "Please ask your question in a little more detail."}
 ask_source_line: {text: "Source: {source}{page_part}"}
 ask_source_citation: {text: "Source: {source}, page {page}"}
+ask_source_scope_national: {text: "National"}
+ask_source_scope_state_UP: {text: "State: UP"}
 ask_source_page_abbrev: {text: "p."}
 ask_try_this_week: {text: "Try this week:\n{tip}"}
 ask_escalated: {text: "Good question. I do not have a reliable answer, so I have put it in your ARP's review list; they will see it there."}

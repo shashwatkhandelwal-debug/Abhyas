@@ -24,6 +24,7 @@ from backend.app.retrieval.ingest import (
     SEED_CHUNKS_FILE,
     build_seed_chunks,
 )
+from backend.app.retrieval.source_scope import national_rank
 
 logger = logging.getLogger("abhyas.retrieval.search")
 
@@ -261,7 +262,10 @@ class GuideRetriever:
             elif raw_float > 0.0:
                 scored_chunks.append((norm_score, raw_float, chunk))
 
-        scored_chunks.sort(key=lambda x: (x[0], x[1]), reverse=True)
+        # equal scores: a national source first (deterministic; never changes a higher score)
+        scored_chunks.sort(
+            key=lambda x: (x[0], x[1], national_rank(str(x[2].get("source", "")))), reverse=True
+        )
 
         results: list[RetrievedChunk] = []
         for norm_score, _raw_score, chunk in scored_chunks[:top_k]:
