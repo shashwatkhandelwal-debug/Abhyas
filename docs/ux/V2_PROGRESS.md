@@ -14,6 +14,6 @@
 - B2 DONE: three Hindi transcripts in docs/ux/V2_RUN_B.md.
 - Flags added: `CLASS_CHECKIN_ENABLED` (default False; on when `DEMO_MODE` is on, via `v2_enabled`).
 - Payload (no client file changed): first load 127.70 KB raw / 30.50 KB gzip; offline assets 148.34 KB raw / 37.73 KB gzip (limit 150 KB).
-- Full gate: result recorded in docs/ux/V2_RUN_B.md.
+- Full gate: PASSED, 1880 passed, 1 skipped (fresh DB, compose pgvector :5432).
 - Branch head: see `git log`.
 

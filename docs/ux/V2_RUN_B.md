@@ -166,7 +166,7 @@ Verified this session (ran it):
 - `backend/tests/unit/test_class_checkin.py`: all pass (Hindi and English, flag on and off, she and he, demo2 and demo3 profiles, mapped-only struggle, rehearsal launch, double-tap idempotence, page chip).
 - Whole `backend/tests/unit` + `content/tests` passed (exit 0) before the B1 commit.
 - Postgres integration on fresh databases: new table + migration round trip (upgrade, downgrade to base, upgrade) + purge + demo reset (26 passed, 14 passed).
-- Full gate: (gate still running when this was written; see below)
+- Full gate: PASSED on a fresh database (`python scripts/pytest_fresh_db.py --server postgresql://postgres:postgres@127.0.0.1:5432/postgres`, compose service abhyas-db-1, port 5432): `1880 passed, 1 skipped in 714.66s (0:11:54)`. Raw log kept in %TEMP%, not committed.
 
 Assumed (not run): behaviour on the hosted Render site; WhatsApp delivery of the 5-option list (the code path exists, the Meta call is mocked in tests); real-browser behaviour of the server-rendered chip (it relies on the existing delegated `.reply-chip` click handler in chat.js, which I read but did not exercise in a browser); the production `DEMO_MODE` value.
 
