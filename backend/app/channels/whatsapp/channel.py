@@ -19,6 +19,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.channels.whatsapp.buttons import plan_buttons
 from backend.app.channels.whatsapp.client import whatsapp_client
 from backend.app.channels.whatsapp.templates import is_template_approved
 from backend.app.config import settings
@@ -95,26 +96,19 @@ class WhatsAppChannel:
                         delivered = True
 
                     if msg.buttons:
-                        button_tuples = [
-                            (b.id, b.title_hi)
-                            for b in msg.buttons
-                            if not (b.id == "btn_replay" and not msg.audio_ref)
-                        ]
-                        if len(button_tuples) <= 3:
+                        plan = plan_buttons(msg.buttons, has_audio=bool(msg.audio_ref))
+                        if plan.reply_buttons:
                             await whatsapp_client.send_interactive_buttons(
                                 to_phone,
                                 body_text=msg.text_hi or "आगे चुनें:",
-                                buttons=button_tuples,
+                                buttons=plan.reply_buttons,
                             )
-                        else:
-                            rows: list[tuple[str, str, str | None]] = [
-                                (bid, title, None) for bid, title in button_tuples
-                            ]
+                        elif plan.list_rows:
                             await whatsapp_client.send_interactive_list(
                                 to_phone,
                                 body_text=msg.text_hi or "आगे चुनें:",
                                 button_label="विकल्प",
-                                rows=rows,
+                                rows=plan.list_rows,
                             )
                         delivered = True
 

@@ -77,6 +77,7 @@ def test_alembic_migrations_round_trip() -> None:
             "realism_rating",
             "training_rating",
             "module_progress",
+            "class_checkin",
             "question",
             "doc_chunk",
             "review_item",
@@ -121,6 +122,16 @@ def test_alembic_migrations_round_trip() -> None:
         fks = inspector.get_foreign_keys("module_progress")
         assert fks and fks[0]["options"].get("ondelete") == "CASCADE"
 
+        # class_checkin: ids only (no text columns for children), outcome check, FK cascade
+        columns = {c["name"] for c in inspector.get_columns("class_checkin")}
+        assert columns == {"id", "teacher_id", "module_id", "outcome", "struggle_ids", "created_at"}
+        checks = {c["name"] for c in inspector.get_check_constraints("class_checkin")}
+        assert "check_class_checkin_outcome" in checks
+        fks = inspector.get_foreign_keys("class_checkin")
+        assert fks and fks[0]["options"].get("ondelete") == "CASCADE"
+        indexes = {i["name"] for i in inspector.get_indexes("class_checkin")}
+        assert "idx_class_checkin_teacher" in indexes
+
         # Verify extensions
         with engine.connect() as conn:
             exts = {row[0] for row in conn.execute(text("SELECT extname FROM pg_extension"))}
@@ -143,5 +154,41 @@ def test_alembic_migrations_round_trip() -> None:
         tables_reupgrade = set(inspector.get_table_names())
         for table in expected_tables:
             assert table in tables_reupgrade, f"Table {table} missing after re-upgrade"
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.skipif(not TEST_DATABASE_URL, reason="TEST_DATABASE_URL not set")
+def test_single_head_and_last_migration_steps_back_and_forward() -> None:
+    """One head; `downgrade -1` removes class_checkin, `upgrade head` brings it back."""
+    from alembic.script import ScriptDirectory
+
+    assert TEST_DATABASE_URL is not None
+    sync_url = TEST_DATABASE_URL.replace("postgresql+asyncpg://", "postgresql+psycopg2://").replace(
+        "postgresql://", "postgresql+psycopg2://", 1
+    )
+    cfg = Config("alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", sync_url)
+    heads = ScriptDirectory.from_config(cfg).get_heads()
+    assert len(heads) == 1, heads
+
+    db_name = sync_url.rsplit("/", 1)[-1].split("?")[0].lower()
+    is_ci = os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true"
+    if "test" not in db_name and not is_ci:
+        pytest.skip(f"Refusing to migrate database '{db_name}' (name must contain 'test')")
+
+    engine = create_engine(sync_url)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto;"))
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+            conn.commit()
+        command.upgrade(cfg, "head")
+        assert "class_checkin" in inspect(engine).get_table_names()
+        command.downgrade(cfg, "-1")
+        assert "class_checkin" not in inspect(engine).get_table_names()
+        command.upgrade(cfg, "head")
+        assert "class_checkin" in inspect(engine).get_table_names()
     finally:
         engine.dispose()

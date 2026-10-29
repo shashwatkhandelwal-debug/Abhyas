@@ -72,7 +72,7 @@ FALLBACK_PATTERNS: list[tuple[re.Pattern[str], TeachingAct]] = [
         TeachingAct.CONTRAST_TWO_ANSWERS,
     ),
     (
-        re.compile(r"धीरे-धीरे करके देखो|मैं करके दिखाती|देखो मैं|मैं बताती", re.IGNORECASE),
+        re.compile(r"धीरे-धीरे करके देखो|मैं करके दिखात[ाी]|देखो मैं|मैं बतात[ाी]", re.IGNORECASE),
         TeachingAct.MODEL_STEP_ALOUD,
     ),
     (

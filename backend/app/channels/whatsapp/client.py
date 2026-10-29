@@ -28,9 +28,6 @@ from backend.app.config import settings
 logger = logging.getLogger("abhyas.channels.whatsapp.client")
 
 MAX_TEXT_LENGTH: Final = 4096
-MAX_BUTTONS_COUNT: Final = 3
-MAX_BUTTON_TITLE_LENGTH: Final = 20
-MAX_LIST_ROWS_COUNT: Final = 10
 RATE_LIMIT_RPS: Final = 20.0
 RETRY_DELAYS: Final = (0.5, 2.0, 8.0)
 
@@ -109,10 +106,10 @@ class WhatsAppClient:
                 "type": "reply",
                 "reply": {
                     "id": bid,
-                    "title": title[:MAX_BUTTON_TITLE_LENGTH],
+                    "title": title[: settings.WHATSAPP_BUTTON_TITLE_MAX],
                 },
             }
-            for bid, title in buttons[:MAX_BUTTONS_COUNT]
+            for bid, title in buttons[: settings.WHATSAPP_REPLY_BUTTONS_MAX]
         ]
         payload = {
             "messaging_product": "whatsapp",
@@ -138,10 +135,10 @@ class WhatsAppClient:
         section_rows = [
             {
                 "id": rid,
-                "title": title[:24],
+                "title": title[: settings.WHATSAPP_BUTTON_TITLE_MAX],
                 **({"description": desc[:72]} if desc else {}),
             }
-            for rid, title, desc in rows[:MAX_LIST_ROWS_COUNT]
+            for rid, title, desc in rows[: settings.WHATSAPP_LIST_ROWS_MAX]
         ]
         payload = {
             "messaging_product": "whatsapp",

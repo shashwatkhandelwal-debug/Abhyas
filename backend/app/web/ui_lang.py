@@ -110,11 +110,17 @@ async def switch_language(
     return response
 
 
-def speaker_label(speaker: str | None) -> str:
-    """Display name for a bubble speaker (catalog `speaker_<id>`), falling back to the raw id."""
+def speaker_label(speaker: str | None, address_form: str | None = "f") -> str:
+    """Display name for a bubble speaker (catalog `speaker_<id>`), falling back to the raw id.
+
+    The model teacher's label says "teacher" in the feminine only for a teacher who chose the
+    feminine form; for the masculine form, or none chosen yet, the neutral catalog string is used.
+    """
     if not speaker:
         return ""
     key = f"speaker_{speaker}"
+    if speaker == "model_teacher" and address_form != "f":
+        key = "speaker_model_teacher_neutral"
     return get_message(key) if has_message(key) else speaker
 
 

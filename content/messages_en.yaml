@@ -178,6 +178,7 @@ ui_fast_track_chip_c: {text: "C: Handbook Query (RAG)"}
 speaker_abhyas: {text: "Abhyas"}
 speaker_coach: {text: "Coach"}
 speaker_model_teacher: {text: "Model teacher"}
+speaker_model_teacher_neutral: {text: "Model teacher"}
 speaker_teacher: {text: "You"}
 state_LEARN: {text: "Learning"}
 state_EXPLAIN_BACK: {text: "Explaining in your own words"}
@@ -810,3 +811,50 @@ ui_menu_share_scores_on: {text: "Sharing with ARP: On (Turn off)"}
 ui_menu_share_scores_off: {text: "Sharing with ARP: Off (Turn on)"}
 ui_class_share_scores_title: {text: "Share scores with ARP"}
 ui_class_share_scores_desc: {text: "Your ARP will see your practised move and scores to prepare help before their visit. A question the handbook cannot answer is sent to the ARP, and nothing else from the chat is. They never see your recordings."}
+
+# -- After-class check-in (class_profile/checkin_flow.py, flag CLASS_CHECKIN_ENABLED) --
+ui_checkin_entry: {text: "After class: how did it go?"}
+btn_chk_start: {text: "After class?"}
+btn_chk_more: {text: "More topics"}
+btn_chk_mod_NUM_SUB_REGROUP_BUNDLES: {text: "Subtraction"}
+btn_chk_mod_NUM_ADD_CARRY_BUNDLES: {text: "Addition (carry)"}
+btn_chk_mod_NUM_PLACE_VALUE_BUNDLES: {text: "Place value"}
+btn_chk_mod_LIT_MATRA_BLENDING: {text: "Reading with matras"}
+btn_chk_mod_OTHER_numeracy: {text: "Other maths topics"}
+btn_chk_mod_OTHER_literacy: {text: "Other reading topics"}
+btn_chk_well: {text: "It went well"}
+btn_chk_some: {text: "Some struggled"}
+btn_chk_most: {text: "Most struggled"}
+btn_chk_str_NUM_COUNTING: {text: "Counting"}
+btn_chk_str_NUM_NUMBER_WRITING: {text: "Writing numbers"}
+btn_chk_str_NUM_PLACE_VALUE: {text: "Tens and ones"}
+btn_chk_str_NUM_COMPARE: {text: "Comparing numbers"}
+btn_chk_str_NUM_ADD_CARRY: {text: "Addition with carry"}
+btn_chk_str_NUM_SUB_REGROUP: {text: "Regrouping"}
+btn_chk_str_NUM_WORD_PROBLEM: {text: "Word problems"}
+btn_chk_str_NUM_SMALL_FACTS: {text: "Small sums to 20"}
+btn_chk_str_LIT_MATRA_DROP: {text: "Matras dropped"}
+btn_chk_str_LIT_AKSHAR_BY_AKSHAR: {text: "Slow letter reading"}
+btn_chk_str_LIT_FIRST_AKSHAR_GUESS: {text: "Guessing words"}
+btn_chk_str_LIT_LETTER_SOUND: {text: "Letters and sounds"}
+btn_chk_str_LIT_COMPREHENSION: {text: "Understanding"}
+btn_chk_str_LIT_WRITING: {text: "Dictation writing"}
+btn_chk_practice: {text: "Practise with Ravi"}
+btn_chk_handbook: {text: "Ask the handbook"}
+chk_module_ask: {text: "After-class check: which topic did you work on with the children today? Choose below."}
+chk_more_ask: {text: "Which other topic? Choose below."}
+chk_outcome_ask: {text: "How did '{module}' go with the children?"}
+chk_struggle_ask: {text: "Where did the children get stuck in '{module}'? Choose one."}
+chk_pick_button: {text: "Please choose one of the buttons below. There is no need to type here."}
+chk_well_ack: {text: "Noted: the class practice on '{module}' went well. Nothing about individual children is saved."}
+chk_well_next: {text: "The next move in your path: {next_move_title}."}
+chk_tip: {text: "'{label}': a tip based on the handbook:\n{tip}\n{sources}\nNoted. Nothing about individual children is saved."}
+chk_tip_missing: {text: "'{label}': the handbook material for this is not available yet. Noted."}
+chk_practice_yes: {text: "There is a practice case for this difficulty: {move_title}. Practise this mistake with Ravi, or ask the handbook more."}
+chk_practice_none: {text: "A practice case for this difficulty has not been built yet. You can ask the handbook."}
+chk_already: {text: "This check-in is already noted. Tap 'After class' for a new one."}
+chk_command_words: {text: "after class, class check in, check in"}
+btn_chk_resume: {text: "Back to practice"}
+chk_in_scene_practice: {text: "There is a practice case for this difficulty: {move_title}. Your current practice is still waiting where you left it. Go back to it now, or ask the handbook."}
+chk_scene_waiting: {text: "Your practice is still waiting where you left it. Tap 'Back to practice'."}
+hint_checkin: {text: "Choose one of the buttons above. No need to type."}

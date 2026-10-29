@@ -34,6 +34,7 @@ from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
     Batch,
+    ClassCheckin,
     ClassOutcome,
     Cluster,
     ConsentLog,
@@ -483,6 +484,7 @@ async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
     await session.execute(delete(RealismRating).where(RealismRating.teacher_id == teacher_id))
     await session.execute(delete(TrainingRating).where(TrainingRating.teacher_id == teacher_id))
     await session.execute(delete(ClassOutcome).where(ClassOutcome.teacher_id == teacher_id))
+    await session.execute(delete(ClassCheckin).where(ClassCheckin.teacher_id == teacher_id))
     await session.execute(
         delete(ConsentLog).where(
             ConsentLog.teacher_id == teacher_id, ConsentLog.created_at > cutoff

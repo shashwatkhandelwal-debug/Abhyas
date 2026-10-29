@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -11,8 +11,10 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.config import settings
 from backend.app.db.models import (
     AdoptionEvidence,
+    ClassCheckin,
     ClassOutcome,
     ConsentLog,
     ExplainScore,
@@ -300,6 +302,32 @@ class SessionRepository:
         await self.session.commit()
         return row
 
+    async def record_class_checkin(
+        self, teacher_id: UUID, module_id: str, outcome: str, struggle_ids: list[str]
+    ) -> ClassCheckin | None:
+        """Stores one "After class" check-in; None when the same one was stored a moment ago."""
+        since = datetime.now(UTC) - timedelta(seconds=settings.CHECKIN_DEDUPE_SECONDS)
+        res = await self.session.execute(
+            select(ClassCheckin).where(
+                ClassCheckin.teacher_id == teacher_id,
+                ClassCheckin.module_id == module_id,
+                ClassCheckin.outcome == outcome,
+                ClassCheckin.created_at > since,
+            )
+        )
+        if any(list(r.struggle_ids) == list(struggle_ids) for r in res.scalars().all()):
+            return None
+        row = ClassCheckin(
+            teacher_id=teacher_id,
+            module_id=module_id,
+            outcome=outcome,
+            struggle_ids=list(struggle_ids),
+            created_at=datetime.now(UTC),
+        )
+        self.session.add(row)
+        await self.session.commit()
+        return row
+
     async def get_move_path(self, teacher_id: UUID) -> list[MovePath]:
         """Retrieves personal move path sequence for teacher."""
         res = await self.session.execute(
@@ -427,6 +455,9 @@ class SessionRepository:
             delete(RehearsalScore).where(RehearsalScore.teacher_id == teacher_id)
         )
         await self.session.execute(delete(Question).where(Question.teacher_id == teacher_id))
+        await self.session.execute(
+            delete(ClassCheckin).where(ClassCheckin.teacher_id == teacher_id)
+        )
         await self.session.execute(delete(MovePath).where(MovePath.teacher_id == teacher_id))
         await self.session.execute(
             delete(SessionState).where(SessionState.teacher_id == teacher_id)

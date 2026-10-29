@@ -321,6 +321,15 @@ class Settings(BaseSettings):
     TRAINING_RATING_MAX_UNCLEAR: int = 1
     TRAINING_RATING_RECENT_COMMENTS: int = 5  # latest comments shown in trainer/admin views
 
+    # ── V2 features (each ON in demo mode, OFF by default otherwise: see `v2_enabled`) ──
+    CLASS_CHECKIN_ENABLED: bool = False  # "After class: how did it go?" closed-list check-in
+    CHECKIN_MAX_BUTTONS: int = 5  # WEB cap: most buttons on one check-in screen ("more" counts)
+    WEB_BUTTON_TITLE_MAX: int = 40  # web chat: longest button title kept as written
+    WHATSAPP_REPLY_BUTTONS_MAX: int = 3  # Meta limit: reply buttons in one message
+    WHATSAPP_BUTTON_TITLE_MAX: int = 20  # Meta limit: reply-button / list-row title length
+    WHATSAPP_LIST_ROWS_MAX: int = 10  # Meta limit: rows in one interactive list
+    CHECKIN_DEDUPE_SECONDS: int = 60  # the same check-in inside this window is stored once
+
     # ── Demo / Evaluation & Observability ────────────────────────────────
     SERVE_IN_REVIEW_TO_DEMO: bool = True
     DEMO_MODE: bool = True
@@ -394,3 +403,8 @@ class Settings(BaseSettings):
 
 # Global singleton settings
 settings = Settings()
+
+
+def v2_enabled(flag: bool) -> bool:
+    """A v2 feature flag is on when set, or in demo mode (the hosted judge-facing site)."""
+    return bool(flag or settings.DEMO_MODE)

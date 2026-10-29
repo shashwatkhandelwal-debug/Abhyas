@@ -87,7 +87,7 @@
         <div class="bubble">
           {% if msg.direction == 'out' and msg.speaker %}
           <div class="speaker-tag {{ msg.speaker|lower }}">
-            {{ speaker_label(msg.speaker) }}
+            {{ speaker_label(msg.speaker, address_form) }}
           </div>
           {% endif %}
 
@@ -145,6 +145,9 @@
     </main>
 
     <div class="helper-tray" id="helper-tray">
+    {% if checkin_entry %}
+    <section class="handbook-section" id="checkin-entry"><div class="handbook-chips"><button type="button" class="reply-chip" data-btn-id="btn_chk_start" data-btn-title="{{ get_message('ui_checkin_entry') }}">{{ get_message('ui_checkin_entry') }}</button></div></section>
+    {% endif %}
     {% if handbook_chips %}
     <section class="handbook-section" id="handbook-chips" {% if ui_lang() != 'en' %}data-prefix="{{ handbook_prefix }}" {% endif %}data-autosend="{{ handbook_autosend }}">
       <div class="demo-hint">{{ get_message('ui_handbook_title') }}</div>

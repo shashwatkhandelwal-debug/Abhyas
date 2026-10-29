@@ -13,6 +13,7 @@ from backend.app.core.messages import get_message
 from backend.app.core.types import InboundMessage
 from backend.app.db.models import (
     AdoptionEvidence,
+    ClassCheckin,
     ClassOutcome,
     ConsentLog,
     ExplainScore,
@@ -422,6 +423,7 @@ class FakeSessionRepository(SessionRepository):
         self._realism_ratings: list[RealismRating] = []
         self._training_ratings: list[TrainingRating] = []
         self._class_outcomes: list[ClassOutcome] = []
+        self._class_checkins: list[ClassCheckin] = []
         self._module_progress: dict[tuple[UUID, str], ModuleProgress] = {}
         self._invite_codes: dict[str, InviteCode] = {
             "KNP-C01-B1": InviteCode(
@@ -643,6 +645,26 @@ class FakeSessionRepository(SessionRepository):
             created_at=datetime.now(UTC),
         )
         self._class_outcomes.append(row)
+        return row
+
+    async def record_class_checkin(
+        self, teacher_id: UUID, module_id: str, outcome: str, struggle_ids: list[str]
+    ) -> ClassCheckin | None:
+        if any(
+            c.teacher_id == teacher_id
+            and (c.module_id, c.outcome, c.struggle_ids) == (module_id, outcome, struggle_ids)
+            for c in self._class_checkins
+        ):
+            return None
+        row = ClassCheckin(
+            id=uuid4(),
+            teacher_id=teacher_id,
+            module_id=module_id,
+            outcome=outcome,
+            struggle_ids=list(struggle_ids),
+            created_at=datetime.now(UTC),
+        )
+        self._class_checkins.append(row)
         return row
 
     async def record_realism_rating(

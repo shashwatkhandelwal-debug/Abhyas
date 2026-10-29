@@ -13,10 +13,10 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.class_profile import checkin_flow, personalise, skills_flow
 from backend.app.class_profile import flow as class_flow
-from backend.app.class_profile import personalise, skills_flow
 from backend.app.class_profile.skills import clean_skill_ids, load_skills, skill_levels
-from backend.app.config import settings
+from backend.app.config import settings, v2_enabled
 from backend.app.content_models import MoveCard
 from backend.app.core.intents import (
     BUTTON_INTENT_MAP,
@@ -272,6 +272,12 @@ class SessionService:
             class_stage=str(ctx_data.get("class_stage", "")),
             class_pending=[str(i) for i in ctx_data.get("class_pending") or []],
             class_struggles=[str(i) for i in teacher.class_struggles or []],
+            checkin_stage=str(ctx_data.get("checkin_stage", "")),
+            checkin_module=str(ctx_data.get("checkin_module", "")),
+            checkin_outcome=str(ctx_data.get("checkin_outcome", "")),
+            checkin_struggle=str(ctx_data.get("checkin_struggle", "")),
+            checkin_page=int(ctx_data.get("checkin_page", 0)),
+            checkin_jump_move=str(ctx_data.get("checkin_jump_move", "")),
             skill_stage=str(ctx_data.get("skill_stage", "")),
             skill_pending=[str(i) for i in ctx_data.get("skill_pending") or []],
             teaching_skills=[str(i) for i in teacher.teaching_skills or []],
@@ -347,6 +353,12 @@ class SessionService:
             "diagnosis": ctx.diagnosis,
             "class_stage": ctx.class_stage,
             "class_pending": ctx.class_pending,
+            "checkin_stage": ctx.checkin_stage,
+            "checkin_module": ctx.checkin_module,
+            "checkin_outcome": ctx.checkin_outcome,
+            "checkin_struggle": ctx.checkin_struggle,
+            "checkin_page": ctx.checkin_page,
+            "checkin_jump_move": ctx.checkin_jump_move,
             "skill_stage": ctx.skill_stage,
             "skill_pending": ctx.skill_pending,
             "asked_share_consent": ctx.asked_share_consent,
@@ -437,9 +449,17 @@ class SessionService:
                         id="btn_progress",
                         title_hi=get_message("btn_progress", address_form),
                     ),
+                    *self._checkin_entry_buttons(),
                 ],
             )
         ]
+
+    @staticmethod
+    def _checkin_entry_buttons() -> list[Button]:
+        """The "After class" quick reply (flag CLASS_CHECKIN_ENABLED, ON in demo mode)."""
+        if not v2_enabled(settings.CLASS_CHECKIN_ENABLED):
+            return []
+        return [Button(id=checkin_flow.BTN_START, title_hi=get_message(checkin_flow.BTN_START))]
 
     async def _begin_training_rating(
         self, ctx: SessionContext, teacher_id: UUID, level: int
@@ -760,7 +780,7 @@ class SessionService:
         module_id = ctx.current_move_id
         if module_id not in modules.module_ids():
             return
-        learned = ctx.current_state not in (
+        learned = ctx.checkin_jump_move != module_id and ctx.current_state not in (
             SessionStateEnum.LEARN,
             SessionStateEnum.EXPLAIN_BACK,
             SessionStateEnum.ASK,
@@ -798,9 +818,55 @@ class SessionService:
         ctx.diagnosis = {}
         ctx.module_mode = True
         ctx.module_check_stage = modules.CHECK_IDLE
+        ctx.checkin_jump_move = ""
         await self._sync_context_to_db(ctx, teacher_id)
         move = load_move_card(module_id)
         return await self._build_learn_messages(move, address_form, ctx.class_struggles)
+
+    async def _checkin_messages(
+        self, ctx: SessionContext, teacher_id: UUID, chk: checkin_flow.CheckinResult
+    ) -> list[OutboundMessage]:
+        """Stores a completed check-in (once) and builds what the flow could not: the next move."""
+        if chk.record is not None:
+            await self.repo.record_class_checkin(
+                teacher_id,
+                chk.record.module_id,
+                chk.record.outcome,
+                list(chk.record.struggle_ids),
+            )
+        if chk.resume_scene:  # the scene was only paused: say who she is talking to again
+            prompt = self._get_resume_prompt(ctx, SessionStateEnum.REHEARSE, ctx.address_form)
+            return [OutboundMessage(kind="text", text_hi=prompt)]
+        if chk.went_well:
+            next_title: str | None = await self._get_next_move_title(
+                teacher_id, ctx.current_move_id
+            )
+            if next_title == move_title(ctx.current_move_id):
+                next_title = None  # no later move in her path: say nothing about one
+            messages = checkin_flow.well_messages(
+                ctx, next_title, offer_next=ctx.current_state == SessionStateEnum.DONE
+            )
+            checkin_flow.finish(ctx)
+            return messages
+        if chk.launch_move_id is not None:
+            return await self._launch_checkin_practice(ctx, teacher_id, chk.launch_move_id)
+        return chk.messages
+
+    async def _launch_checkin_practice(
+        self, ctx: SessionContext, teacher_id: UUID, move_id: str
+    ) -> list[OutboundMessage]:
+        """ "Practise this mistake": the move's rehearsal opens at its setup (learn step skipped)."""
+        move = load_move_card(move_id)
+        ctx.current_move_id = move_id
+        ctx.current_state = SessionStateEnum.REHEARSE_INTRO
+        ctx.rehearsal_turns_count = 0
+        ctx.retries_count = 0
+        ctx.rating_stage = ""
+        ctx.resume_scene_id = ""
+        ctx.module_mode = False
+        ctx.module_check_stage = modules.CHECK_IDLE
+        ctx.checkin_jump_move = move_id
+        return await self._begin_rehearse_setup(ctx, teacher_id, move)
 
     async def _handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
         """Dispatches an inbound teacher message through conversation flow and persists side effects."""
@@ -860,6 +926,34 @@ class SessionService:
                 return await self._build_learn_messages(move, address_form, ctx.class_struggles)
 
         ctx.last_inbound_at = now
+
+        # 1a. "After class: how did it go?" (flag CLASS_CHECKIN_ENABLED): closed-list buttons only
+        if (
+            v2_enabled(settings.CLASS_CHECKIN_ENABLED)
+            and ctx.onboarding_state == OnboardingStateEnum.READY
+            and matched_intent != Intent.DELETE
+            and text_content != "delete"
+            and not ctx.awaiting_delete_confirm
+        ):
+            stage_before = ctx.checkin_stage
+            chk = checkin_flow.handle(ctx, text_content, btn_id, matched_intent)
+            if chk.handbook:  # "Ask the handbook": the ask prompt, her next message is the question
+                if ctx.current_state != SessionStateEnum.ASK:
+                    ctx.prior_state_before_ask = ctx.current_state
+                    ctx.current_state = SessionStateEnum.ASK
+                await self._sync_context_to_db(ctx, teacher_id)
+                return [
+                    OutboundMessage(kind="text", text_hi=get_message("ask_prompt", address_form))
+                ]
+            if chk.handled or ctx.checkin_stage != stage_before:
+                if chk.handled and ctx.rating_stage:
+                    ctx.rating_stage = ""
+                    ctx.rating_level = 0
+                    ctx.rating_unclear = 0
+                messages = await self._checkin_messages(ctx, teacher_id, chk)
+                await self._sync_context_to_db(ctx, teacher_id)
+                if chk.handled:
+                    return messages
 
         # 1b. "Rate the training" (after REFLECT): the rating and the one-line comment are free
         # answers, so they are read here before intent routing can mistake them for commands.
