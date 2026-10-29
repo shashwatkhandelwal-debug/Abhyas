@@ -409,11 +409,9 @@ class SessionService:
             return None
         path_entries = await self.repo.get_move_path(teacher_id)
         done = await self.repo.done_move_ids(teacher_id, DONE_MIN_EVIDENCE)
-        candidates = [
-            p.move_id
-            for p in path_entries
-            if p.move_id and p.move_id != current_move_id and p.move_id not in done
-        ]
+        others = [p.move_id for p in path_entries if p.move_id and p.move_id != current_move_id]
+        # moves she has not finished first; a finished one can come back when her check-ins say so
+        candidates = [m for m in others if m not in done] + [m for m in others if m in done]
         now = followup.utcnow()
         since = now - timedelta(days=settings.ADAPTIVE_HISTORY_DAYS)
         checkins = [

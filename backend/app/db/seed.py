@@ -571,6 +571,9 @@ async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
                     teacher_id=TEACHER_DEMO3_ID, position=idx + 1, move_id=m_id, reason="completed"
                 )
             )
+    from backend.app.db.demo_loop import seed_login_loop
+
+    await seed_login_loop(session, teacher_id, now)  # demo2 and demo3 only, demo mode only
     await dedupe_adoption_evidence(session, [teacher_id])
     await session.flush()
     logger.info("Reset demo teacher %s to the seeded state", login)
