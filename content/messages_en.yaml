@@ -866,3 +866,44 @@ btn_chk_resume: {text: "Back to practice"}
 chk_in_scene_practice: {text: "There is a practice case for this difficulty: {move_title}. Your current practice is still waiting where you left it. Go back to it now, or ask the handbook."}
 chk_scene_waiting: {text: "Your practice is still waiting where you left it. Tap 'Back to practice'."}
 hint_checkin: {text: "Choose one of the buttons above. No need to type."}
+ui_level_entry: {text: "Group my class by level"}
+btn_lvl_start: {text: "Group by level"}
+btn_lvl_handbook: {text: "Ask the handbook"}
+btn_lvl_resume: {text: "Back to practice"}
+btn_lvl_sub_reading: {text: "Reading"}
+btn_lvl_sub_maths: {text: "Maths"}
+lvl_subject_reading: {text: "Reading"}
+lvl_subject_maths: {text: "Maths"}
+lvl_label_letter: {text: "letters"}
+lvl_label_word: {text: "words"}
+lvl_label_paragraph: {text: "paragraph"}
+lvl_label_story: {text: "story"}
+lvl_label_number_recognition: {text: "number recognition"}
+lvl_label_one_digit: {text: "1-digit addition"}
+lvl_label_two_digit: {text: "2-digit numbers"}
+lvl_label_subtraction: {text: "subtraction"}
+btn_lvl_cnt_0: {text: "0"}
+btn_lvl_cnt_1_5: {text: "1-5"}
+btn_lvl_cnt_6_10: {text: "6-10"}
+btn_lvl_cnt_11_20: {text: "11-20"}
+btn_lvl_cnt_20p: {text: "20+"}
+lvl_count_label_0: {text: "none"}
+lvl_count_label_1_5: {text: "1-5 children"}
+lvl_count_label_6_10: {text: "6-10 children"}
+lvl_count_label_11_20: {text: "11-20 children"}
+lvl_count_label_20p: {text: "more than 20 children"}
+lvl_subject_ask: {text: "Let us group your class by level. For which subject? Choose below."}
+lvl_count_ask: {text: "{subject} ({step}/{total}): about how many children are at the '{level}' level? A rough guess is fine; no need to type any child's name."}
+lvl_pick_button: {text: "Please choose one of the buttons below. No need to type here."}
+lvl_empty: {text: "You chose 0 children at every level, so no groups could be made. Start again if you like."}
+lvl_head_one: {text: "{subject}: by your estimate all the children are at about one level, so there is one group. This estimate stays in this conversation only; nothing is saved."}
+lvl_head_many: {text: "{subject}: by your estimate the class can be split into {n} groups. This estimate stays in this conversation only; nothing is saved."}
+lvl_first: {text: "Sit with group 1 first: these children are at the level needing most support, and the guide asks for separate time with the children who need more help.\n{sources}"}
+lvl_merged_note: {text: "Children are at four levels, so two neighbouring levels share a group. Start with the lower level's activity."}
+lvl_group: {text: "Group {n}: {levels}\n{minutes}-minute activity: {activity}\n{sources}"}
+lvl_group_missing: {text: "Group {n}: {levels}\nThe handbook content for an activity at this level is not available yet. You can ask the handbook."}
+lvl_multigrade: {text: "With several classes in one room: {text}\n{sources}"}
+lvl_after: {text: "To know more about any of these activities, ask the handbook."}
+lvl_scene_waiting: {text: "Your practice is waiting exactly where you left it. Go back whenever you like."}
+lvl_already: {text: "This grouping plan is finished. Tap 'Group by level' for a new one."}
+lvl_command_words: {text: "group my class, group by level, level sorter, group the class by level"}

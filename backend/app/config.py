@@ -329,6 +329,16 @@ class Settings(BaseSettings):
     WHATSAPP_BUTTON_TITLE_MAX: int = 20  # Meta limit: reply-button / list-row title length
     WHATSAPP_LIST_ROWS_MAX: int = 10  # Meta limit: rows in one interactive list
     CHECKIN_DEDUPE_SECONDS: int = 60  # the same check-in inside this window is stored once
+    LEVEL_SORTER_ENABLED: bool = False  # "Group my class by level": counts per level -> 2-3 groups
+    LEVEL_BUCKET_COUNTS: dict[str, int] = {  # tapped range -> the count used to size groups
+        "0": 0,
+        "1_5": 3,
+        "6_10": 8,
+        "11_20": 15,
+        "20p": 25,
+    }
+    LEVEL_MAX_GROUPS: int = 3  # most groups the sorter proposes (adjacent small levels merge)
+    LEVEL_ACTIVITY_MINUTES: int = 10  # length of the one activity shown per group
     CHILD_STRIP_ENABLED: bool = (
         False  # scene bar shows each child's state label (stuck / getting it / got it)
     )

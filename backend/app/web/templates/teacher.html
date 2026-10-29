@@ -146,7 +146,9 @@
 
     <div class="helper-tray" id="helper-tray">
     {% if checkin_entry %}
-    <section class="handbook-section" id="checkin-entry"><div class="handbook-chips"><button type="button" class="reply-chip" data-btn-id="btn_chk_start" data-btn-title="{{ get_message('ui_checkin_entry') }}">{{ get_message('ui_checkin_entry') }}</button></div></section>
+    <section class="handbook-section" id="checkin-entry"><div class="handbook-chips"><button type="button" class="reply-chip" data-btn-id="btn_chk_start" data-btn-title="{{ get_message('ui_checkin_entry') }}">{{ get_message('ui_checkin_entry') }}</button>{% if level_entry %}<button type="button" class="reply-chip" data-btn-id="btn_lvl_start" data-btn-title="{{ get_message('ui_level_entry') }}">{{ get_message('ui_level_entry') }}</button>{% endif %}</div></section>
+    {% elif level_entry %}
+    <section class="handbook-section" id="checkin-entry"><div class="handbook-chips"><button type="button" class="reply-chip" data-btn-id="btn_lvl_start" data-btn-title="{{ get_message('ui_level_entry') }}">{{ get_message('ui_level_entry') }}</button></div></section>
     {% endif %}
     {% if handbook_chips %}
     <section class="handbook-section" id="handbook-chips" {% if ui_lang() != 'en' %}data-prefix="{{ handbook_prefix }}" {% endif %}data-autosend="{{ handbook_autosend }}">

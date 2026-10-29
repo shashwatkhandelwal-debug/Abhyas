@@ -1044,7 +1044,7 @@ ui_strip_stuck_f: {text: "अटकी हुई", audio: false}
 ui_strip_learning_m: {text: "समझ रहा है", audio: false}
 ui_strip_learning_f: {text: "समझ रही है", audio: false}
 ui_strip_got_m: {text: "समझ गया", audio: false}
-ui_strip_got_f: {text: "समझ गई", audio: false}
+ui_strip_got_f: {text: "समझ चुकी", audio: false}
 ui_strip_relapse_m: {text: "फिर अटका", audio: false}
 ui_strip_relapse_f: {text: "फिर अटकी", audio: false}
 ui_step_label: {text: "चरण {n} / {total}: {name}", audio: false}
@@ -1208,3 +1208,44 @@ btn_chk_resume: {text: "वापस अभ्यास पर", audio: false}
 chk_in_scene_practice: {text: "इस दिक्कत के लिए अभ्यास का केस है: {move_title}। चल रहा अभ्यास वहीं रुका है। अभी उसी पर लौटिए, या हैंडबुक से पूछिए।", audio: false}
 chk_scene_waiting: {text: "आपका अभ्यास वहीं रुका है, जहाँ छोड़ा था। 'वापस अभ्यास पर' दबाइए।", audio: false}
 hint_checkin: {text: "ऊपर के बटनों में से एक चुनिए। लिखने की ज़रूरत नहीं है।", audio: false}
+ui_level_entry: {text: "कक्षा को स्तर के हिसाब से समूहों में बाँटें", audio: false}
+btn_lvl_start: {text: "स्तर से समूह बनाएँ", audio: false}
+btn_lvl_handbook: {text: "हैंडबुक से पूछें", audio: false}
+btn_lvl_resume: {text: "वापस अभ्यास पर", audio: false}
+btn_lvl_sub_reading: {text: "पढ़ना", audio: false}
+btn_lvl_sub_maths: {text: "गणित", audio: false}
+lvl_subject_reading: {text: "पढ़ना", audio: false}
+lvl_subject_maths: {text: "गणित", audio: false}
+lvl_label_letter: {text: "अक्षर", audio: false}
+lvl_label_word: {text: "शब्द", audio: false}
+lvl_label_paragraph: {text: "अनुच्छेद", audio: false}
+lvl_label_story: {text: "कहानी", audio: false}
+lvl_label_number_recognition: {text: "संख्या पहचान", audio: false}
+lvl_label_one_digit: {text: "एक अंक का जोड़", audio: false}
+lvl_label_two_digit: {text: "दो अंक की संख्या", audio: false}
+lvl_label_subtraction: {text: "घटाव", audio: false}
+btn_lvl_cnt_0: {text: "0", audio: false}
+btn_lvl_cnt_1_5: {text: "1-5", audio: false}
+btn_lvl_cnt_6_10: {text: "6-10", audio: false}
+btn_lvl_cnt_11_20: {text: "11-20", audio: false}
+btn_lvl_cnt_20p: {text: "20+", audio: false}
+lvl_count_label_0: {text: "कोई नहीं", audio: false}
+lvl_count_label_1_5: {text: "1-5 बच्चे", audio: false}
+lvl_count_label_6_10: {text: "6-10 बच्चे", audio: false}
+lvl_count_label_11_20: {text: "11-20 बच्चे", audio: false}
+lvl_count_label_20p: {text: "20 से ज़्यादा बच्चे", audio: false}
+lvl_subject_ask: {text: "कक्षा को स्तर के हिसाब से समूहों में बाँटते हैं। किस विषय के लिए? नीचे से चुनिए।", audio: false}
+lvl_count_ask: {text: "{subject} ({step}/{total}): '{level}' स्तर पर लगभग कितने बच्चे हैं? मोटा अंदाज़ा काफ़ी है; किसी बच्चे का नाम लिखने की ज़रूरत नहीं।", audio: false}
+lvl_pick_button: {text: "इसके लिए कृपया नीचे दिए बटनों में से एक चुनिए। यहाँ लिखने की ज़रूरत नहीं है।", audio: false}
+lvl_empty: {text: "आपने सभी स्तरों पर 0 बच्चे चुने, इसलिए समूह नहीं बन सके। चाहें तो फिर से शुरू करें।", audio: false}
+lvl_head_one: {text: "{subject}: आपके अंदाज़े के हिसाब से सभी बच्चे लगभग एक ही स्तर पर हैं, इसलिए एक ही समूह है। यह अनुमान सिर्फ़ इस बातचीत में है, कोई जानकारी दर्ज नहीं होती।", audio: false}
+lvl_head_many: {text: "{subject}: आपके अंदाज़े के हिसाब से कक्षा को {n} समूहों में बाँटा जा सकता है। यह अनुमान सिर्फ़ इस बातचीत में है, कोई जानकारी दर्ज नहीं होती।", audio: false}
+lvl_first: {text: "सबसे पहले समूह 1 के साथ बैठें: ये बच्चे सबसे ज़्यादा सहारे वाले स्तर पर हैं, और पुस्तिका अधिक सहायता वाले बच्चों के साथ अलग से काम करने को कहती है।\n{sources}", audio: false}
+lvl_merged_note: {text: "चार स्तरों पर बच्चे होने से दो पास के स्तर एक समूह में रखे हैं। पहले निचले स्तर की गतिविधि से शुरू करें।", audio: false}
+lvl_group: {text: "समूह {n}: {levels}\n{minutes} मिनट की गतिविधि: {activity}\n{sources}", audio: false}
+lvl_group_missing: {text: "समूह {n}: {levels}\nइस स्तर की गतिविधि के लिए पुस्तिका की सामग्री अभी उपलब्ध नहीं है। आप हैंडबुक से पूछ सकते हैं।", audio: false}
+lvl_multigrade: {text: "एक कमरे में कई कक्षाएँ हों तो: {text}\n{sources}", audio: false}
+lvl_after: {text: "इनमें से किसी गतिविधि के बारे में और जानना हो तो हैंडबुक से पूछिए।", audio: false}
+lvl_scene_waiting: {text: "आपका अभ्यास वहीं रुका है, जहाँ आपने छोड़ा था। जब चाहें वापस जाइए।", audio: false}
+lvl_already: {text: "यह समूह-योजना पूरी हो चुकी है। नई योजना के लिए 'स्तर से समूह बनाएँ' दबाएँ।", audio: false}
+lvl_command_words: {text: "कक्षा को समूहों में बाँटें, स्तर के हिसाब से समूह, स्तर से समूह बनाएँ, group my class, group by level, level sorter", audio: false}
