@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from backend.app.content_models import Domain
 from backend.app.core.messages import get_message
 from backend.app.rehearsal.scene_store import TurnRecord
-from backend.app.rule_engine.domain import ResponseKind
+from backend.app.rule_engine.domain import ResponseKind, TeachingAct
 
 # Most telling first: telling the answer teaches nothing, so it is named before anything good
 _PRIORITY: tuple[tuple[ResponseKind, str], ...] = (
@@ -27,6 +27,12 @@ _PRIORITY: tuple[tuple[ResponseKind, str], ...] = (
 _LITERACY_KEYS = {"coach_outcome_concrete": "coach_outcome_concrete_literacy"}
 
 
+def _told_before(turns: Sequence[TurnRecord], current: TurnRecord) -> bool:
+    """True when the coach told the answer in this turn or an earlier one."""
+    told = TeachingAct.TELL_ANSWER.value
+    return any(told in t.acts for t in turns if t.turn_index <= current.turn_index)
+
+
 def outcome_line(
     turns: Sequence[TurnRecord], address_form: str = "f", domain: Domain | None = None
 ) -> str:
@@ -35,6 +41,8 @@ def outcome_line(
         for turn in turns:
             for response in turn.child_responses:
                 if response.kind == kind:
+                    if kind == ResponseKind.RELAPSE and not _told_before(turns, turn):
+                        key = "coach_outcome_relapse_scaffold"
                     child = get_message(f"speaker_{response.persona_id}", address_form)
                     if domain == Domain.LITERACY:
                         key = _LITERACY_KEYS.get(key, key)

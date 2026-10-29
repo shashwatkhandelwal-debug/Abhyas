@@ -817,6 +817,7 @@ ui_start_skip: {text: "Skip"}
 # ── Chat clarity part 7: what happened in the scene ──
 coach_outcome_told: {text: "You told {child} the answer, so they repeated it without understanding. Try asking them to explain first."}
 coach_outcome_relapse: {text: "You gave a new problem after telling the answer, so {child} went back to the old mistake. Telling the answer does not teach the method."}
+coach_outcome_relapse_scaffold: {text: "On the new problem {child} went back to the old mistake. Ask them to explain again with the objects in hand."}
 coach_outcome_checked: {text: "You checked on a new problem, and {child} solved it by explaining the method: it stuck."}
 coach_outcome_concrete: {text: "You used something concrete (bundles and sticks), so {child} could see what to do where."}
 coach_outcome_concrete_literacy: {text: "With your help {child} read the word correctly: the sounds gave them something to hold on to."}
