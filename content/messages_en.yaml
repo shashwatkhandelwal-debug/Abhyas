@@ -841,6 +841,8 @@ ui_pack_few: {text: "No single difficulty was reported by enough teachers to put
 ui_pack_demo_all: {text: "Demo data: these check-ins are from fictional demo teachers, not real teachers."}
 ui_pack_demo_some: {text: "This includes demo data."}
 ui_pack_teachers: {text: "{n} teachers"}
+ui_chat_suggest: {text: "Ideas"}
+ui_sheet_close: {text: "Close"}
 ui_pack_row: {text: "{label}: children get stuck, reported by {n} teachers"}
 ui_pack_move: {text: "Practise together: {move}"}
 ui_pack_nomove: {text: "There is no practice case for this yet; read the handbook tip together."}

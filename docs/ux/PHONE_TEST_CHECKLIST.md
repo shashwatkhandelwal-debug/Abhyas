@@ -65,6 +65,18 @@ On `teacher.demo2`:
 
 Turn on airplane mode in the chat: the offline banner appears, a message you send waits and goes out when you reconnect. Lite mode (☰) plays audio only on tap.
 
+## I. Phone screen layout (real Android phone, Chrome)
+
+Do these on a real phone, not desktop emulation, with Chrome's address bar showing (do not scroll the page first):
+- [ ] On every screen (start, consent, name, learn, check-in module, check-in outcome, level sorter, a scene) the text box, "सुझाव", mic and send buttons are all on screen, and scrolling the message list never hides them.
+- [ ] The page itself never scrolls; only the message list does.
+- [ ] Quick-reply buttons sit in one row just above the text box. With more buttons than fit, the row scrolls sideways and the first button is visible.
+- [ ] Tap the text box: the keyboard opens, the text box stays just above it, and the message list is still at least a few lines tall. Close the keyboard: the layout returns.
+- [ ] Tap "सुझाव": one sheet opens above the text box (at most about half the screen) with handbook questions open and sample lines and the demo shortcuts collapsed. The text box stays visible below it. The close button and tapping outside the sheet both close it.
+- [ ] The demo shortcuts tray exists only inside this sheet, and sample lines and handbook questions too (no separate strips above the text box).
+- [ ] Five cycles of log out and log in: the sheet and every section inside it start closed (handbook questions open) each time.
+- [ ] Dark and light themes both show readable text and all buttons at least thumb size.
+
 ## Not testable on web
 
 - WhatsApp reply buttons (3 max) and the interactive list (more than 3 options); the check-in start from "After class" on the week-done message.

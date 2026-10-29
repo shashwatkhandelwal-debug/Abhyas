@@ -1183,6 +1183,8 @@ ui_pack_few: {text: "कोई एक दिक्कत इतने शिक�
 ui_pack_demo_all: {text: "डेमो डेटा: ये कक्षा-जाँचें काल्पनिक डेमो शिक्षकों की हैं, वास्तविक शिक्षकों की नहीं।", audio: false}
 ui_pack_demo_some: {text: "इसमें डेमो डेटा भी शामिल है।", audio: false}
 ui_pack_teachers: {text: "{n} शिक्षक", audio: false}
+ui_chat_suggest: {text: "सुझाव", audio: false}
+ui_sheet_close: {text: "बंद करें", audio: false}
 ui_pack_row: {text: "{label}: बच्चे अटकते हैं, {n} शिक्षकों ने बताया", audio: false}
 ui_pack_move: {text: "साथ में अभ्यास: {move}", audio: false}
 ui_pack_nomove: {text: "इसके लिए अभ्यास का केस अभी बना नहीं है; पुस्तिका का सुझाव साथ पढ़ें।", audio: false}

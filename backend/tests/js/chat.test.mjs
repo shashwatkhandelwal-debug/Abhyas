@@ -1358,21 +1358,15 @@ test('Fast-Track: not offered while a reply is pending', async () => {
   assert.equal(shown(t.a2), true);
 });
 
-test('Fast-Track tray starts collapsed and keeps its open/closed state for the session', () => {
+test('Fast-Track tray starts collapsed on every load and its state is not kept', () => {
   const c = load();
   const t = withFastTrackTray(c);
-  t.tray.open = true;
+  c.session.set('abhyas_ft_open', '1');
   c.setupFastTrackTray();
-  assert.equal(t.tray.open, false);
+  assert.ok(!t.tray.open);
+  assert.equal(t.tray._listeners.toggle, undefined);
   t.tray.open = true;
-  t.tray._listeners.toggle();
   assert.equal(c.session.get('abhyas_ft_open'), '1');
-
-  const c2 = load();
-  const t2 = withFastTrackTray(c2);
-  c2.session.set('abhyas_ft_open', '1');
-  c2.setupFastTrackTray();
-  assert.equal(t2.tray.open, true);
 });
 
 test('Fast-Track chips lock on tap, and open again on reply, failure or the 90 s cap', async () => {
