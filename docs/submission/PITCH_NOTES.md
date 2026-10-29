@@ -32,11 +32,32 @@ Source links: ASER 2024 https://pratham.org.uk/unveiling-prathams-annual-status-
 | National / state labels on citations; national tie-break in retrieval | **Built** | UP is the only state pack ingested |
 | Cluster meeting pack with printable agenda | **Built** | Demo cluster 1 shows the privacy rule (7 consenting teachers, hidden); the trainer view shows the full pack |
 | Per-channel button limits (web 5; WhatsApp 3 reply buttons, a list beyond that) | **Built** | Tested; not exercised on live WhatsApp |
+| Next-day follow-up after a check-in (worked / still stuck / could not try, with a reason) | **Built** | Closed lists, a different cited source on "still stuck", stored once per follow-up; web only (WhatsApp has no "chat opened" event) |
+| ARP class-visit checklist (talk moves seen, practice seen, one next step) | **Built** | No free text, no child data; consenting teachers only |
+| "Reported vs observed" trainer card | **Built** | Counts only, hidden below 10 teachers; self-reported and observed, not outcomes |
+| Adaptive next practice with a one-line reason | **Built** | Deterministic reorder among her own moves; demo3 needs a whole week to reach it |
+| Opt-in weekly "tomorrow's focus" note | Roadmap | A pure builder and its tests exist; no screen turns it on and nothing is sent |
 | Regional languages via Bhashini | Roadmap | A Bhashini client file exists in the repo; the product is Hindi and English only |
 | Home-language bridging scenes | Roadmap | |
 | IVR for teachers without a smartphone | Roadmap | |
 | A real WhatsApp pilot | Roadmap | Needs Meta credentials and teachers |
 | Classroom-outcome measurement | Roadmap | No real teacher has used the system |
+
+## 2b. Measurement plan for a pilot
+
+What a pilot would measure, from data the product already stores as closed lists (no free text, no child data):
+
+- **Check-ins per week per teacher**, and the share of teachers who do one in weeks 1, 3 and 6 (the field trial's problem was drop-off, so week-3 return is the first number).
+- **Follow-up outcomes**: of the follow-ups offered, how many were answered, and the split between "worked", "still stuck" and "could not try" with the reasons (time, several grades, children absent, other).
+- **Observed talk moves**: the ARP's tick-list per visit (named a child, asked why or how, did not just tell the answer, gave time to think), compared with what the same teachers reported.
+- **Follow-through**: whether the practice from the last check-in was seen on the visit.
+
+What it would NOT claim:
+
+- No learning-outcome claim. Nothing here measures what children learned.
+- No classroom-impact claim. Reported and observed counts show what teachers say and what an ARP saw on a visit; the two can disagree, and the card puts them side by side on purpose.
+- No comparison with other tools, no causal claim, no per-teacher ranking. Aggregates are shown only for 10 or more consenting teachers.
+- The demo numbers are made-up demo data and are labelled so; they say nothing about real teachers.
 
 ## 3. Judge Q&A (short, honest)
 

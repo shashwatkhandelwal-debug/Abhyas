@@ -170,7 +170,7 @@ Expected card (counts are the seeded demo data, labelled as such):
 ```
 संकुल बैठक पैक
 डेमो डेटा: ये कक्षा-जाँचें काल्पनिक डेमो शिक्षकों की हैं, वास्तविक शिक्षकों की नहीं।
-1. हासिल वाला घटाव गलत करते हैं (बंडल खोलना): बच्चे अटकते हैं, 14 शिक्षकों ने बताया
+1. हासिल वाला घटाव गलत करते हैं (बंडल खोलना): बच्चे अटकते हैं, 15 शिक्षकों ने बताया
    साथ में अभ्यास: हासिल वाला घटाव: बंडल खोलकर
 2. हासिल वाला जोड़ गलत करते हैं: बच्चे अटकते हैं, 11 शिक्षकों ने बताया
    साथ में अभ्यास: हासिल वाला जोड़: 10 तीलियों का बंडल बनाकर
@@ -179,6 +179,63 @@ Expected card (counts are the seeded demo data, labelled as such):
 The agenda is one page: 5 मिनट share, 15 मिनट practise
 the move together, 10 मिनट read the handbook tip, 5 मिनट each
 teacher picks one thing to try.
+
+## The loop in one take (check-in, practice, follow-up, observation, trainer view)
+
+This section is the 3:00 story told along the regrouping thread; use it in place of the level sorter and the separate pack beat if the
+cut has to stay at 3:00 (the Timing table below keeps the original split). Every line below was printed by the real `SessionService` on
+the mock path with a fixed clock (Friday check-in, Saturday follow-up); nothing is edited. Only flows that pass tests are used.
+
+Say (about 45 words, the one statistic): "In a field trial with about 1,900 UP grade 3 teachers, a WhatsApp chatbot alone did not change
+adoption, and only 15 to 20 percent stayed active. So Abhyas closes the loop. This demo follows one struggle, regrouping in
+subtraction, from check-in to trainer view."
+
+**1. Check-in** (`teacher.demo2`: the check-in chip, first module, "ज़्यादातर अटके", "हासिल वाला घटाव"):
+
+```
+'हासिल वाला घटाव': पुस्तिका के आधार पर सुझाव:
+घटाव में पहले "बचे कितने" वाले सवाल ठोस चीज़ों से हल करवाएँ और बच्चों को अपने तरीके बनाने दें; मानक तरीका उसके बाद सिखाएँ।
+स्रोत: निपुण भारत दिशानिर्देश, पृष्ठ 281 (राष्ट्रीय)
+स्रोत: निष्ठा FLN, पृष्ठ 427 (राष्ट्रीय)
+दर्ज कर लिया गया। इसमें बच्चों की कोई जानकारी दर्ज नहीं होती।
+   buttons: [रवि के साथ अभ्यास] [हैंडबुक से पूछें]
+```
+
+**2. Practice**: tap "रवि के साथ अभ्यास" (the hero beat above: tell the answer, Ravi parrots, the old mistake returns).
+
+**3. Follow-up** (the next school day, when the chat opens):
+
+```
+कल का अभ्यास कैसा रहा? 'हासिल वाला घटाव' के लिए जो तरीका आज़माना था, उसके बारे में एक बटन दबाइए।
+   buttons: [काम किया] [अब भी अटके हैं] [आज़मा नहीं सके]
+```
+
+Tap "अब भी अटके हैं":
+
+```
+'हासिल वाला घटाव': दर्ज कर लिया। इस पर एक दूसरे स्रोत में भी बात है। स्रोत पर टैप करके पूरा अंश पढ़ें:
+स्रोत: निष्ठा FLN, पृष्ठ 427 (राष्ट्रीय)
+   buttons: [रवि के साथ अभ्यास] [हैंडबुक से पूछें]
+```
+
+(Tap "आज़मा नहीं सके" instead and it asks why with four buttons; "कई कक्षाएँ साथ" answers with the level sorter button.)
+
+**4. Observation** (`arp.demo`, **कक्षा-भ्रमण सूची**): talk moves the ARP can tick, then one next step, no typing:
+
+```
+कौन सी बातचीत दिखी? (जो दिखीं, उन पर निशान लगाएँ)
+किसी बच्चे को नाम लेकर बुलाया / 'क्यों' या 'कैसे' पूछा / सीधा जवाब नहीं बताया / बच्चों को सोचने का समय दिया
+```
+
+**5. Trainer view** (`trainer.demo`, demo data, labelled):
+
+```
+हासिल वाला घटाव गलत करते हैं (बंडल खोलना): 14 शिक्षकों ने अगले दिन का हाल बताया
+बताया: काम किया 5, अब भी अटके 7, आज़मा नहीं सके 2
+भ्रमण में अभ्यास दिखा: 12 बार
+```
+
+Say: "Self-reported and observed counts from consenting teachers. Not learning outcomes. Below ten teachers, nothing is shown."
 
 ## 2:50 to 3:00. Close
 
