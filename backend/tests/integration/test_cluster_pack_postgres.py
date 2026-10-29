@@ -457,3 +457,67 @@ async def test_pages_in_english(session_factory: async_sessionmaker[AsyncSession
     pr = await _get("/arp/cluster-pack/print", await _user("arp"), session_factory, cookies)
     assert "Cluster meeting pack" in res.text
     assert 'lang="en"' in pr.text and "Cluster meeting: agenda" in pr.text
+
+
+def _card(html: str) -> str:
+    return html.split('id="cluster-pack"')[1].split("</section>")[0]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("lang", ["hi", "en"])
+async def test_rows_say_children_get_stuck_as_teachers_reported(
+    session_factory: async_sessionmaker[AsyncSession], lang: str
+) -> None:
+    await _seed_full(session_factory)
+    token = set_ui_lang(lang)  # for get_message below; the page reads the cookie
+    cookies = {"abhyas_lang": lang}
+    try:
+        res = await _get("/arp", await _user("arp"), session_factory, cookies)
+        card = _card(res.text)
+        struggle = LIB.get(WITH_MOVE)
+        assert struggle is not None
+        label = struggle.label_en if lang == "en" else struggle.label_hi
+        row = get_message("ui_pack_row", label=label, n=N + 4)
+        assert escape(row) in card
+        assert "*" not in card
+        if lang == "hi":
+            assert "बच्चे अटकते हैं" in row and "शिक्षकों ने बताया" in row
+    finally:
+        reset_ui_lang(token)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("lang", ["hi", "en"])
+async def test_print_agenda_lines_are_catalog_strings_without_asterisks(
+    session_factory: async_sessionmaker[AsyncSession], lang: str
+) -> None:
+    await _seed_full(session_factory)
+    token = set_ui_lang(lang)
+    try:
+        res = await _get(
+            "/arp/cluster-pack/print", await _user("arp"), session_factory, {"abhyas_lang": lang}
+        )
+        html = res.text
+        assert "*" not in html
+        share = get_message("ui_pack_agenda_share", items="").split("{")[0].split(":")[0]
+        assert escape(share) in html
+        assert get_message("ui_pack_agenda_plan") in html
+    finally:
+        reset_ui_lang(token)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("count", "suppressed"), [(N - 1, True), (N, False)])
+async def test_pack_is_suppressed_at_nine_and_shown_at_ten(
+    session_factory: async_sessionmaker[AsyncSession], count: int, suppressed: bool
+) -> None:
+    assert N == 10
+    async with session_factory() as session:
+        who = await _teachers(session, count)
+        await _report(session, who, WITH_MOVE)
+        await session.commit()
+    res = await _get("/arp", await _user("arp"), session_factory)
+    card = _card(res.text)
+    label = escape(LIB.get(WITH_MOVE).label_hi)  # type: ignore[union-attr]
+    assert ('id="cluster-pack-suppressed"' in card) is suppressed
+    assert (label in card) is (not suppressed)

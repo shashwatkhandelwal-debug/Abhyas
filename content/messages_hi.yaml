@@ -1183,6 +1183,7 @@ ui_pack_few: {text: "कोई एक दिक्कत इतने शिक�
 ui_pack_demo_all: {text: "डेमो डेटा: ये कक्षा-जाँचें काल्पनिक डेमो शिक्षकों की हैं, वास्तविक शिक्षकों की नहीं।", audio: false}
 ui_pack_demo_some: {text: "इसमें डेमो डेटा भी शामिल है।", audio: false}
 ui_pack_teachers: {text: "{n} शिक्षक", audio: false}
+ui_pack_row: {text: "{label}: बच्चे अटकते हैं, {n} शिक्षकों ने बताया", audio: false}
 ui_pack_move: {text: "साथ में अभ्यास: {move}", audio: false}
 ui_pack_nomove: {text: "इसके लिए अभ्यास का केस अभी बना नहीं है; पुस्तिका का सुझाव साथ पढ़ें।", audio: false}
 ui_pack_print: {text: "छापने लायक एजेंडा खोलें", audio: false}
@@ -1191,7 +1192,7 @@ ui_pack_scope_arp: {text: "आपका संकुल", audio: false}
 ui_pack_scope_trainer: {text: "आपका ज़िला", audio: false}
 ui_pack_period: {text: "पिछले {days} दिन की कक्षा-जाँचें", audio: false}
 ui_pack_minutes: {text: "{m} मिनट", audio: false}
-ui_pack_agenda_share: {text: "साझा करें: इन दिक्कतों की बात शिक्षकों ने सबसे ज़्यादा की: {items}।", audio: false}
+ui_pack_agenda_share: {text: "साझा करें: शिक्षकों ने बताया कि बच्चे इन जगहों पर सबसे ज़्यादा अटकते हैं: {items}।", audio: false}
 ui_pack_agenda_practise: {text: "साथ में अभ्यास करें: {move}। दो-दो की जोड़ी में बारी-बारी से शिक्षक और बच्चा बनकर अभ्यास करें।", audio: false}
 ui_pack_agenda_nomove: {text: "साथ में अभ्यास: इन दिक्कतों के लिए अभ्यास का केस अभी बना नहीं है, इसलिए यह समय नीचे का पुस्तिका-सुझाव पढ़ने और चर्चा में लगाएँ।", audio: false}
 ui_pack_agenda_read: {text: "पुस्तिका का सुझाव पढ़ें: {label}। {tip}", audio: false}

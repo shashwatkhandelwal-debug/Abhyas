@@ -13,7 +13,7 @@
     {% else %}
     <ol id="cluster-pack-items" style="margin: 0 0 0.75rem 0; padding-left: 1.2rem;">
       {% for i in pack.items %}
-      <li data-struggle="{{ i.struggle_id }}" style="margin-bottom: 0.5rem;"><strong>{{ i.label }}</strong> &mdash; {{ get_message("ui_pack_teachers", n=i.teachers) }}<br>
+      <li data-struggle="{{ i.struggle_id }}" style="margin-bottom: 0.5rem;"><strong>{{ get_message("ui_pack_row", label=i.label, n=i.teachers) }}</strong><br>
         {% if i.move_id %}<span data-move="{{ i.move_id }}">{{ get_message("ui_pack_move", move=i.move_title) }}</span>{% else %}<span data-move="">{{ get_message("ui_pack_nomove") }}</span>{% endif %}
       </li>
       {% endfor %}

@@ -841,6 +841,7 @@ ui_pack_few: {text: "No single difficulty was reported by enough teachers to put
 ui_pack_demo_all: {text: "Demo data: these check-ins are from fictional demo teachers, not real teachers."}
 ui_pack_demo_some: {text: "This includes demo data."}
 ui_pack_teachers: {text: "{n} teachers"}
+ui_pack_row: {text: "{label}: children get stuck, reported by {n} teachers"}
 ui_pack_move: {text: "Practise together: {move}"}
 ui_pack_nomove: {text: "There is no practice case for this yet; read the handbook tip together."}
 ui_pack_print: {text: "Open the printable agenda"}
@@ -849,7 +850,7 @@ ui_pack_scope_arp: {text: "Your cluster"}
 ui_pack_scope_trainer: {text: "Your district"}
 ui_pack_period: {text: "Check-ins of the last {days} days"}
 ui_pack_minutes: {text: "{m} min"}
-ui_pack_agenda_share: {text: "Share: teachers reported these difficulties most: {items}."}
+ui_pack_agenda_share: {text: "Share: teachers reported that children get stuck most on these: {items}."}
 ui_pack_agenda_practise: {text: "Practise together: {move}. In pairs, take turns as teacher and child."}
 ui_pack_agenda_nomove: {text: "Practise together: there is no practice case for these difficulties yet, so use this time to read the handbook tip below and discuss it."}
 ui_pack_agenda_read: {text: "Read the handbook tip: {label}. {tip}"}
