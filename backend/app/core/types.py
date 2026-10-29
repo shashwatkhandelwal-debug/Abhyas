@@ -44,7 +44,7 @@ class OutboundMessage(BaseModel):
     kind: Literal["text", "audio", "buttons", "template"]
     text_hi: str | None = None
     audio_ref: str | None = None  # cache key of TTS audio
-    buttons: list[Button] = Field(default_factory=list, max_length=3)
+    buttons: list[Button] = Field(default_factory=list, max_length=5)  # WhatsApp sends >3 as a list
     template_name: str | None = None
     template_params: list[str] = Field(default_factory=list)
     speaker: str | None = None  # "abhyas" | persona id | "model_teacher" | "coach"

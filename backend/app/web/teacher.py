@@ -40,7 +40,7 @@ from backend.app.auth.session import clear_session_cookie
 from backend.app.channels.web import WebChannel
 from backend.app.class_profile.skills import skill_progress
 from backend.app.class_profile.views import views_for
-from backend.app.config import settings
+from backend.app.config import settings, v2_enabled
 from backend.app.content_models import MoveCard
 from backend.app.core.messages import (
     get_message,
@@ -67,6 +67,7 @@ from backend.app.rehearsal.header import scene_header
 from backend.app.sessions.modules import MODULE_STEPS, module_ids, module_views
 from backend.app.sessions.repository import SessionRepository
 from backend.app.sessions.service import SessionService
+from backend.app.sessions.state_machine import OnboardingStateEnum
 from backend.app.web.assets import STATIC_DIR, sw_build_version
 from backend.app.web.chat_api import get_teacher_for_user
 from backend.app.web.chat_view import load_chat_view
@@ -225,6 +226,12 @@ async def teacher_chat_page(
             "handbook_prefix": settings.HANDBOOK_ASK_PREFIX,
             "initial_messages": initial_messages,
             "address_form": teacher.address_form,
+            # "After class: how did it go?" quick reply: onboarded, not in a scene (flag, ON in demo)
+            "checkin_entry": bool(
+                v2_enabled(settings.CLASS_CHECKIN_ENABLED)
+                and teacher.onboarding_state == OnboardingStateEnum.READY.value
+                and active_scene is None
+            ),
             "ui_strings": chat_ui_strings(teacher.address_form),
             "rec_config": {
                 "maxSec": settings.REC_MAX_SECONDS,

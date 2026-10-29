@@ -509,6 +509,32 @@ class ClassOutcome(Base):
     )
 
 
+class ClassCheckin(Base):
+    """ "After class: how did it go?": a closed-list check-in (module, outcome, struggle ids).
+
+    No child names, no free text; the ids come from the check-in's closed lists only.
+    """
+
+    __tablename__ = "class_checkin"
+    __table_args__ = (
+        CheckConstraint("outcome IN ('well', 'some', 'most')", name="check_class_checkin_outcome"),
+        Index("idx_class_checkin_teacher", "teacher_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    teacher_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("teacher.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    module_id: Mapped[str] = mapped_column(Text, nullable=False)
+    outcome: Mapped[str] = mapped_column(Text, nullable=False)
+    struggle_ids: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
 class RealismRating(Base):
     __tablename__ = "realism_rating"
     __table_args__ = (

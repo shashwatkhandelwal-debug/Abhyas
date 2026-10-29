@@ -77,6 +77,7 @@ def test_alembic_migrations_round_trip() -> None:
             "realism_rating",
             "training_rating",
             "module_progress",
+            "class_checkin",
             "question",
             "doc_chunk",
             "review_item",
@@ -120,6 +121,16 @@ def test_alembic_migrations_round_trip() -> None:
         assert "check_module_progress_verdict" in checks
         fks = inspector.get_foreign_keys("module_progress")
         assert fks and fks[0]["options"].get("ondelete") == "CASCADE"
+
+        # class_checkin: ids only (no text columns for children), outcome check, FK cascade
+        columns = {c["name"] for c in inspector.get_columns("class_checkin")}
+        assert columns == {"id", "teacher_id", "module_id", "outcome", "struggle_ids", "created_at"}
+        checks = {c["name"] for c in inspector.get_check_constraints("class_checkin")}
+        assert "check_class_checkin_outcome" in checks
+        fks = inspector.get_foreign_keys("class_checkin")
+        assert fks and fks[0]["options"].get("ondelete") == "CASCADE"
+        indexes = {i["name"] for i in inspector.get_indexes("class_checkin")}
+        assert "idx_class_checkin_teacher" in indexes
 
         # Verify extensions
         with engine.connect() as conn:

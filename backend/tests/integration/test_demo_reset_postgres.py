@@ -28,6 +28,7 @@ from backend.app.config import settings
 from backend.app.db.models import (
     AdoptionEvidence,
     AppUser,
+    ClassCheckin,
     ClassOutcome,
     Message,
     ModuleProgress,
@@ -161,6 +162,7 @@ async def _snapshot(session: AsyncSession, teacher_id: UUID) -> dict[str, Any]:
         "ratings": await ids(RealismRating),
         "training_ratings": await ids(TrainingRating),
         "class_outcomes": await ids(ClassOutcome),
+        "class_checkins": await ids(ClassCheckin),
         "evidence": await ids(AdoptionEvidence),
         "module_progress": sorted(
             (m.module_id, m.check_passed, m.diagnose_verdict)
@@ -190,6 +192,14 @@ async def _dirty(session: AsyncSession, teacher_id: UUID) -> None:
     teacher.teaching_skills = ["probes_with_followup", "checks_on_new_problem"]
     teacher.class_profile_prompted_at = now
     teacher.start_seen_at = now
+    session.add(
+        ClassCheckin(
+            teacher_id=teacher_id,
+            module_id="LIT_MATRA_BLENDING",
+            outcome="most",
+            struggle_ids=["LIT_MATRA_DROP"],
+        )
+    )
     session.add(
         ClassOutcome(
             teacher_id=teacher_id,

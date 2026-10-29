@@ -28,6 +28,7 @@ from backend.app.db.models import (
     AppUser,
     ARPObservation,
     CalibrationLabel,
+    ClassCheckin,
     ClassOutcome,
     ConsentLog,
     ExplainScore,
@@ -78,6 +79,7 @@ async def purge_teacher_data(db: AsyncSession, teacher_id: uuid.UUID) -> None:
     await db.execute(delete(TrainingRating).where(TrainingRating.teacher_id == teacher_id))
     await db.execute(delete(ModuleProgress).where(ModuleProgress.teacher_id == teacher_id))
     await db.execute(delete(ClassOutcome).where(ClassOutcome.teacher_id == teacher_id))
+    await db.execute(delete(ClassCheckin).where(ClassCheckin.teacher_id == teacher_id))
 
     # 3. Explain-back scores
     await db.execute(delete(ExplainScore).where(ExplainScore.teacher_id == teacher_id))

@@ -529,6 +529,14 @@ class SessionContext(BaseModel):
     teaching_skills: list[str] = Field(
         default_factory=list
     )  # saved choice, mirrors the teacher row
+    # "After class: how did it go?" (class_profile/checkin_flow.py): "" (not in it), "module",
+    # "outcome", "struggle", "result"; the rest is what she has tapped so far (closed-list ids only)
+    checkin_stage: str = ""
+    checkin_module: str = ""
+    checkin_outcome: str = ""
+    checkin_struggle: str = ""
+    checkin_page: int = 0
+    checkin_jump_move: str = ""  # a move opened from a check-in: its learn step was skipped
     rating_unclear: int = 0  # unclear replies to the 1-5 prompt so far
     rating_level: int = 0  # evidence level reached, kept for the week_done message afterwards
     resume_scene_id: str = (

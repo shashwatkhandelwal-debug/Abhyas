@@ -141,6 +141,8 @@ def next_action(
             return _make(ask_key, af)
         if stage == "confirm":
             return _make("hint_confirm", af)
+    if context.get("checkin_stage") in ("module", "outcome", "struggle"):
+        return _make("hint_checkin", af)
     rating = context.get("rating_stage")
     if state == SessionStateEnum.DONE.value and rating:
         return _make("hint_rating" if rating == "rating" else "hint_rating_comment", af)
