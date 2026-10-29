@@ -25,8 +25,8 @@ whose answers come from a rule engine, never from the language model, and gets c
 | `teacher.demo1` | `<DEMO_PASSWORD>` | `/teacher` | **A new teacher.** Nothing done yet: the first message starts the welcome, the service consent question (with a "more" button; score sharing is asked later after first rehearsal) and the short onboarding, then the first move. Tap the buttons or type/speak. |
 | `teacher.demo2` | `<DEMO_PASSWORD>` | `/teacher` | **Mid-rehearsal, one-on-one with Ravi.** Already inside a 1-1 scene of "हासिल वाला घटाव" (subtraction with regrouping, 43 − 27): the diagnosis is done and one question asked, so the header shows "रवि से 1-1 बात", the board (43 − 27), a progress cue ("अपना तरीका बता रहा है"), the turn counter (1/10) and an **end practice** button. Use the sample chips or type, e.g. "देखो, ये 4 बंडल और 3 खुली तीलियाँ हैं, 3 में से 7 नहीं निकलतीं, तो एक बंडल खोलो।" and then give a new problem ("अब 52 में से 17 करो"): the cue moves, and when Ravi gets the new problem right the scene ends. Finish the scene to get coach feedback (strength with your own words quoted, one change, an exact sentence) on the **one-on-one rubric**, and the retry. After the reflection step you are asked to **rate the training**: a 1–5 usefulness score (say or type it, or tap 1 / 3 / 5) and an optional one-line comment (voice or text, or *Skip*). |
 | `teacher.demo3` | `<DEMO_PASSWORD>` | `/teacher` | **Three modules completed, on the learning step of the next weekly move** (reading matra words by blending letter sounds, `LIT_MATRA_BLENDING`). The chat already shows the learning-step message with its **two buttons**, labelled in Hindi: "समझ गई, आगे" (Got it, next: continues to the explain-back step) and "फिर से सुनें" (Listen again: repeats the step). Typing other text does not advance it; the reply reminds you of the two buttons. ☰ → **Modules** shows the three completed numeracy modules. This login has *not* agreed to share scores, so it never appears in the ARP digest or trainer counts. **Literacy group scene: 3 actions from the start:** (1) tap "समझ गई, आगे"; (2) send one sentence in your own words (the explain-back step); (3) tap the listen button ("सुनना चाहेंगी…" prompt, `btn_listen`). The group scene (Ravi, Priya, Aman; board word "मेला") then opens at turn 0/8; speak or type to the children, e.g. "प्रिया, बोर्ड पर क्या लिखा है? पढ़ो।", then say "बस" to end and get feedback (at least 3 teacher turns are needed for advice). |
-| `arp.demo` | `<DEMO_PASSWORD>` | `/arp` | **Cluster resource person**, cluster KNP-C01: weekly digest of *consenting* teachers only, questions escalated from the chat (answer them here), classroom-observation form. |
-| `trainer.demo` | `<DEMO_PASSWORD>` | `/trainer` | **DIET/SCERT trainer**, district Kanpur Nagar: module × batch table (completion, most-missed key point, rubric and ladder distributions). Also the **training ratings** card: average, count and latest comments from consenting teachers in the district (hidden below 10 ratings). Groups with fewer than 10 teachers are suppressed (batch KNP-B3 has 8 and shows the privacy notice); `/trainer/export.csv` follows the same rule. No teacher names appear. |
+| `arp.demo` | `<DEMO_PASSWORD>` | `/arp` | **Cluster resource person**, cluster KNP-C01: weekly digest of *consenting* teachers only, questions escalated from the chat (answer them here), classroom-observation form. The **Cluster meeting pack** card shows the privacy message here: this demo cluster has 7 consenting teachers, fewer than 10, so nothing is shown (correct, and on purpose: the same 7-of-12 split shows the small-group rule on the digest). To see a full pack, log in as `trainer.demo`. The demo check-ins behind it are labelled demo data, belong to the synthetic cohort teachers only (not the three shared logins) and exist only after a seed has run (`SEED_ON_BOOT=true` on a boot, or `python -m backend.app.db.seed`); a re-seed rebuilds them. |
+| `trainer.demo` | `<DEMO_PASSWORD>` | `/trainer` | **DIET/SCERT trainer**, district Kanpur Nagar: module × batch table (completion, most-missed key point, rubric and ladder distributions). Also the **training ratings** card: average, count and latest comments from consenting teachers in the district (hidden below 10 ratings). Groups with fewer than 10 teachers are suppressed (batch KNP-B3 has 8 and shows the privacy notice); `/trainer/export.csv` follows the same rule. No teacher names appear. **Cluster meeting pack** card: the two most-reported difficulties, a move to practise together and a printable agenda (demo data, labelled). |
 | `coach.demo` | `<DEMO_PASSWORD>` | `/review` | **Coach review console**: queue of AI scores and escalations that need a human look, per-item resolve, calibration labelling, move-card review. |
 | `admin` | `<ADMIN_PASSWORD>` | `/admin` | **Admin dashboard**: latency, token use, guard results, scheduler jobs, WhatsApp templates, the **training ratings** card (all teachers, no suppression) and the demo controls (*Reset demo*, *fast-forward*). |
 
@@ -100,6 +100,26 @@ teachers. The chip sits in the tray just above the composer (English UI: "After 
   web chat shows up to 5 buttons with their full titles. The check-in chip itself is a web chat feature; on WhatsApp the
   check-in starts from the "After class" button on the week-done message or by typing "कक्षा के बाद" outside a scene.
 
+## New in V2: what to try and the exact taps
+
+All of these are on in demo mode. They are controlled by settings flags (all default **off** outside demo mode; `DEMO_MODE`
+turns them on): `CLASS_CHECKIN_ENABLED`, `CHILD_STRIP_ENABLED`, `LEVEL_SORTER_ENABLED`, `TALK_MOVES_ENABLED`,
+`CLUSTER_PACK_ENABLED`. To turn one off on a deployment, set `DEMO_MODE=false` and leave its flag unset (that turns all of
+them off, and also hides the other demo-only screens); to turn one on outside demo mode set that flag to `true`. Flags are environment settings: this guide does not
+change them. The national / state source labels have no flag.
+
+| Feature | Account | Taps | What you see |
+|---|---|---|---|
+| **Child understanding strip** | `teacher.demo2` | Look at the scene bar; send a line asking Ravi how he did it, then a bundles-and-sticks line, then a new problem. | A label beside the child ("अटका हुआ", "समझ रहा है", "समझ गया") and "फिर अटका" if he slips on the new problem after "getting it". A child only *told* the answer shows "stuck", not "stuck again". |
+| **Talk-move feedback** | `teacher.demo2` | Finish the scene ("बस"). | In the coach bubble, after the advice: "बच्चों से बात करने का तरीका", one strength and one next step, with your own words in the quote badge. Group scenes (use `teacher.demo3`'s literacy scene) show the same block without a quote. |
+| **Level sorter** | `teacher.demo2` or `teacher.demo3` | Tray chip "कक्षा को स्तर के हिसाब से समूहों में बाँटें" (tap 1), "पढ़ना" or "गणित" (tap 2), then one range per level. | 2-3 groups, who to sit with first, one 10-minute activity per group with source chips; a multigrade line for reading only. Inside demo2's scene it pauses the scene and "वापस अभ्यास पर" returns. |
+| **Check-in** | see the section above | | |
+| **National / state labels** | any | Open any source chip text. | "(राष्ट्रीय)" for NCERT / NIPUN / NISHTHA, "(राज्य: उ.प्र.)" for the UP handbooks. |
+| **Cluster meeting pack** | `trainer.demo` | Scroll to "संकुल बैठक पैक"; tap "छापने लायक एजेंडा खोलें". | Two difficulties with teacher counts, a move to practise together, a one-page agenda. Data is demo data and is labelled. `arp.demo` shows the privacy message instead (7 consenting teachers). |
+
+Reminders: the first request after idle takes about 40-60 seconds on Render's free plan (open `/healthz` first), and two
+judges on one account interfere with each other (logging in or out resets that teacher).
+
 ## A suggested hour
 
 1. **teacher.demo2 (10 min).** Continue the 1-1 scene with Ravi using the sample chips (including the Hinglish
@@ -119,7 +139,8 @@ teachers. The chip sits in the tray just above the composer (English UI: "After 
    excerpt it came from, with its PDF page. An off-topic question ("आज का क्रिकेट मैच कौन जीता?") is
    declined instead of answered.
 4. **After-class check-in (3 min).** In `teacher.demo2` take the four taps above and use "वापस अभ्यास पर".
-   Then `teacher.demo3` for the practice that skips the learn step.
+   Then `teacher.demo3` for the practice that skips the learn step. Then try the **level sorter** (2 min) and, as
+   `trainer.demo`, the **cluster meeting pack** (2 min).
 5. **teacher.demo3 (3 min).** The chat opens on the learning step: tap "फिर से सुनें" (listen again) or "समझ गई, आगे" (got it, next), and type something else to see the reminder of the two buttons.
 6. **arp.demo, trainer.demo, coach.demo, admin (15 min).** Compare what each role sees. Log out of the teacher
    logins first if you want to see the reset.

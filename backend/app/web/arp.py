@@ -42,7 +42,9 @@ from backend.app.db.models import (
 )
 from backend.app.db.session import get_db_session
 from backend.app.reports.arp_digest import build_arp_digest
+from backend.app.reports.cluster_pack import build_cluster_pack
 from backend.app.reports.module_progress import module_progress_summary
+from backend.app.web.cluster_pack_page import card_context, pack_enabled, print_context
 from backend.app.web.ui_lang import register_ui_globals
 
 logger = logging.getLogger("abhyas.web.arp")
@@ -81,6 +83,11 @@ async def get_arp_dashboard(
         suppress_below=settings.AGGREGATION_SUPPRESSION_N,
     )
 
+    # Cluster meeting pack (flag CLUSTER_PACK_ENABLED, on in demo mode): own cluster, consenting only
+    pack = (
+        await build_cluster_pack(db, cluster_id=current_user.cluster_id) if pack_enabled() else None
+    )
+
     csrf_token = request.cookies.get(CSRF_COOKIE_NAME)
     token_to_set: str | None = None
     if not csrf_token:
@@ -113,10 +120,30 @@ async def get_arp_dashboard(
             "demo_mode": current_user.is_demo_account,
             "demo_banner_text": demo_banner_text,
             "saved_msg": saved_msg,
+            **card_context(pack, "/arp/cluster-pack/print"),
         },
     )
     if token_to_set:
         set_csrf_cookie(resp, token_to_set)
+    return resp
+
+
+@router.get("/cluster-pack/print", response_class=HTMLResponse)
+async def get_cluster_pack_print(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    current_user: Annotated[AppUser, Depends(require_role("arp"))],
+) -> HTMLResponse:
+    """The one-screen, printable meeting agenda (server-rendered, no JavaScript)."""
+    if not pack_enabled():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    pack = await build_cluster_pack(db, cluster_id=current_user.cluster_id)
+    resp = templates.TemplateResponse(
+        request=request,
+        name="cluster_pack_print.html",
+        context={"request": request, **print_context(pack, "ui_pack_scope_arp")},
+    )
+    resp.headers["Cache-Control"] = "no-store"
     return resp
 
 

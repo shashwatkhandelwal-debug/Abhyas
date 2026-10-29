@@ -33,7 +33,7 @@ from typing import Any
 
 import yaml
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.passwords import hash_password
@@ -45,6 +45,7 @@ from backend.app.db.models import (
     AppUser,
     ARPObservation,
     Batch,
+    ClassCheckin,
     Cluster,
     ExplainScore,
     ModuleProgress,
@@ -646,6 +647,9 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
     # believable items (real rows, real confidence), not one per cohort teacher.
     await _seed_review_queue(session, teachers, now)
 
+    # 4d. Demo class check-ins so the cluster meeting pack is not empty (demo data, see below)
+    await _seed_demo_checkins(session, teachers, now)
+
     # 5. Compute AggModuleBatch using compute_aggregates_for_batch (no hard-coded or random numbers)
     for b_id in ["KNP-B1", "KNP-B2", "KNP-B3"]:
         computed_agg = await compute_aggregates_for_batch(session, b_id, target_move_id)
@@ -668,6 +672,72 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
     logger.info(
         "Successfully populated demo cohort with SceneRunner deliberate practice rehearsals."
     )
+
+
+# Demo class check-ins behind the cluster meeting pack: (struggle id, teachers who report it).
+# They belong to the synthetic cohort teachers only (`is_demo=True`, fictional names), never to the
+# shared demo logins, and only to teachers who agreed to share, as the pack counts only those. The
+# pack labels them "demo data". A re-seed (`seed_database`, what "reset demo data" means on Render)
+# deletes and re-creates them; the per-login reset deletes a demo login's own check-ins.
+DEMO_CHECKIN_REPORTS = (
+    ("NUM_SUB_REGROUP", 14),
+    ("NUM_ADD_CARRY", 11),
+    ("LIT_MATRA_DROP", 4),
+    ("NUM_COUNTING", 2),
+)
+DEMO_CHECKIN_WELL = 3  # extra "it went well" check-ins (no struggle) from other teachers
+
+
+async def _seed_demo_checkins(
+    session: AsyncSession, teachers: list[Teacher], now: datetime
+) -> None:
+    """Deterministic demo check-ins for consenting cohort teachers (idempotent: delete, re-create)."""
+    from backend.app.class_profile.checkin_flow import modules
+    from backend.app.class_profile.library import load_library
+
+    lib = load_library()
+    module_of = {sid: m.id for m in modules(lib) for sid in m.struggle_ids}
+    pool = [
+        t for t in teachers[3:] if t.is_demo and t.consent_share_scores
+    ]  # not the 3 shared logins
+    await session.execute(
+        delete(ClassCheckin).where(ClassCheckin.teacher_id.in_([t.id for t in teachers[3:]]))
+    )
+
+    def check_id(n: int) -> uuid.UUID:
+        return uuid.UUID(f"00000000-0000-0001-0008-{n:012x}")
+
+    n = 0
+    start = 0
+    for sid, count in DEMO_CHECKIN_REPORTS:
+        for k in range(count):
+            teacher = pool[(start + k) % len(pool)]
+            n += 1
+            session.add(
+                ClassCheckin(
+                    id=check_id(n),
+                    teacher_id=teacher.id,
+                    module_id=module_of[sid],
+                    outcome="most" if k % 3 == 0 else "some",
+                    struggle_ids=[sid],
+                    created_at=now - timedelta(days=1 + (n % 20), hours=n % 7),
+                )
+            )
+        start += count // 2  # overlap: some teachers report two different difficulties
+    for k in range(DEMO_CHECKIN_WELL):
+        n += 1
+        teacher = pool[-1 - k]
+        session.add(
+            ClassCheckin(
+                id=check_id(n),
+                teacher_id=teacher.id,
+                module_id="NUM_SUB_REGROUP_BUNDLES",
+                outcome="well",
+                struggle_ids=[],
+                created_at=now - timedelta(days=2 + k),
+            )
+        )
+    await session.flush()
 
 
 # Cohort positions (0-based, demo4 onwards) whose seeded scores go to the coach review queue

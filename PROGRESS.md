@@ -840,3 +840,26 @@ Only items measured or run in this sprint are listed; the earlier gate totals ab
   After the merge to `main` the working tree is LF and the script itself reports 149,494 B = 4,106 B headroom.
 - **Not run this sprint:** `ruff format --check` on the whole repo, `scripts/freeze_check.py`, any live-provider test,
   latency on the hosted site, kappa against coaches. Nothing here states a kappa value or curriculum codes.
+
+## V2 national build (`feat/v2-national`, 2026-10-29)
+
+Run log with every item, reason and commit: `docs/ux/OVERNIGHT_LOG.md`. Merge reports: `docs/ux/RUN_REPORT_M1.md`, `docs/ux/RUN_REPORT_FINAL.md`.
+
+- **Built:** address form (she / he) fix; after-class check-in; per-channel button caps; child strip; level sorter;
+  talk-move feedback; national / state labels and tie-break; cluster meeting pack with printable agenda; judge docs
+  (`docs/EVALUATOR_GUIDE.md`, `docs/ux/DEMO_SCRIPT.md`, `docs/submission/PITCH_NOTES.md`, `docs/ux/PHONE_TEST_CHECKLIST.md`).
+- **Flags (all default off, on in demo mode via `v2_enabled`):** `CLASS_CHECKIN_ENABLED`, `CHILD_STRIP_ENABLED`,
+  `LEVEL_SORTER_ENABLED`, `TALK_MOVES_ENABLED`, `CLUSTER_PACK_ENABLED`. Tunables: `LEVEL_BUCKET_COUNTS`, `LEVEL_MAX_GROUPS`,
+  `LEVEL_ACTIVITY_MINUTES`, `CLUSTER_PACK_WINDOW_DAYS`, `CLUSTER_PACK_TOP`, `CLUSTER_PACK_AGENDA_MINUTES`.
+- **Verified this build:** full gate `2087 passed, 1 skipped` (fresh DB, compose pgvector :5432); ruff and `mypy --strict`
+  clean; Node chat tests 77 / 77; layout check 0 failures; page weight 151,520 B of 153,600 B (headroom 2,080 B as measured;
+  about 1,500 B once the two tray chips of an onboarded teacher are counted, which the script does not render).
+  No carriage returns in the served static files on this checkout, so the LF figure equals the measured one.
+- **Decisions:** child-strip labels map MISCONCEPTION and CAN_EXPLAIN to "stuck", PARTIAL to "getting it", CORRECT to
+  "got it"; level names are ours (no 4-level scale exists in the stored handbooks); the demo ARP cluster's pack is
+  suppressed by design (7 consenting teachers); the national / state label is Hindi in both UI languages because
+  citation lines are.
+- **Not done / needs a human:** engine change to show "stuck again" after a told answer; masculine act-tagger few-shot
+  examples (needs a code change to the example slice); deploy by hand (autoDeploy is false); phone tests; real Claude and
+  WhatsApp checks; UptimeRobot through 9 Nov (18 Nov if shortlisted); reading the Hindi in the transcripts.
+- **Blocked on humans:** see `docs/ux/RUN_REPORT_FINAL.md`.

@@ -1,6 +1,9 @@
 # Official source documents behind the guide answers. PDFs are NOT in git (see .gitignore);
 # only the processed chunks in content/chunks/*.jsonl are. `ingest: true` = chunked and searchable.
 # sha256 is of the exact file that was ingested; as_of_date is the date this copy was placed in the repo.
+# scope: `national` (a central-government source) or `state` (then `state: <code>`, e.g. UP). The scope
+# is shown beside every citation (catalog keys ask_source_scope_national / ask_source_scope_state_<code>)
+# and a national source wins a retrieval tie. Adding a state pack: see docs/ux/V2_DESIGN.md section 5.
 - id: nipun_guidelines_2021
   title: "NIPUN Bharat — Guidelines for Implementation (Ministry of Education, 2021)"
   short_hi: "निपुण भारत दिशानिर्देश"
@@ -8,6 +11,7 @@
   url: "https://diksha.gov.in/assets/docs/NIPUN-BHARAT-GUIDELINES-EN.pdf"
   sha256: "496edd51fb995592452d86f1ba67c50fce2a50405e65945d4221c69e0b2145d6"
   as_of_date: "2026-10-22"
+  scope: national
   lang: en
   pages: 332
   ingest: true
@@ -20,6 +24,7 @@
   url: "https://diksha.gov.in/assets/docs/vidyapravesh.pdf"
   sha256: "5bd0e7cba5b777e3a109df7633d9cb9a1615011d7cdfc27c39eead67abf2d92b"
   as_of_date: "2026-10-22"
+  scope: national
   lang: en
   pages: 56
   ingest: true
@@ -32,6 +37,8 @@
   url: "not recorded"
   sha256: "f269e7e4cad01ffd6ab29ebde39d280cf000984bc4be0113697c9acca61714ab"
   as_of_date: "2026-10-22"
+  scope: state
+  state: UP
   lang: hi
   pages: 112
   ingest: true
@@ -46,6 +53,8 @@
   url: "not recorded"
   sha256: "834b7eac174fe8457fac1fedd28e410a1a75be5a312e7a20960b762454d38aee"
   as_of_date: "2026-10-22"
+  scope: state
+  state: UP
   lang: hi
   pages: 156
   ingest: true
@@ -60,6 +69,7 @@
   url: "https://ciet.ncert.gov.in/storage/app/public/files/17/Nishtha/NISHTHA_FLN_ENGLISH.pdf"
   sha256: "cc66d0fc9b0f185c910db563e4cf2e80423dcdb99e27fd43f635dddf9b65b789"
   as_of_date: "2026-10-22"
+  scope: national
   lang: en
   ingest: true
   # Video transcripts (spoken dialogue), LMS steps and link lists match almost any query; the

@@ -313,6 +313,7 @@ body {
 .sb-row + .sb-row { margin-top: 0.3rem; }
 .sb-title { font-weight: 700; }
 .sb-title { flex: 1; }
+.sb-strip { font-weight: 600; }
 .sb-turn { font-weight: 600; white-space: nowrap; }
 .sh-end {
   margin-left: auto;
@@ -378,7 +379,7 @@ body {
   border-radius: 3px;
 }
 .sb-board-label { font-weight: 500; font-size: 0.8rem; opacity: 0.8; margin-right: 0.3rem; }
-.sb-children { display: inline-flex; gap: 0.35rem; }
+.sb-children { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; }
 .sb-children[hidden] { display: none; }
 .child-pill {
   padding: 0.2rem 0.7rem;
@@ -1554,7 +1555,6 @@ body {
 
 .chat-page { height: 100vh; height: 100dvh; overflow: hidden; }
 .chat-page .app-container { height: 100%; min-height: 0; overflow: hidden; }
-/* Header and composer never shrink or move; every strip between them may shrink and scroll inside itself, so the chat keeps its floor and the input stays on screen */
 .chat-page .app-container > * { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
 .chat-page .app-container > .chat-header, .chat-page .app-container > .composer-wrapper { flex: none; overflow: visible; position: static; }
 .chat-page .app-container > .chat-messages { flex: 1 1 0; min-height: 6rem; overscroll-behavior: contain; }

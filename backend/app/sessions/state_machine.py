@@ -537,6 +537,12 @@ class SessionContext(BaseModel):
     checkin_struggle: str = ""
     checkin_page: int = 0
     checkin_jump_move: str = ""  # a move opened from a check-in: its learn step was skipped
+    # "Group my class by level" (class_profile/level_sorter.py): "" (not in it), "subject", "count",
+    # "result"; the tapped range per level is kept for this conversation only (never stored)
+    level_stage: str = ""
+    level_subject: str = ""
+    level_idx: int = 0
+    level_counts: dict[str, str] = Field(default_factory=dict)
     rating_unclear: int = 0  # unclear replies to the 1-5 prompt so far
     rating_level: int = 0  # evidence level reached, kept for the week_done message afterwards
     resume_scene_id: str = (

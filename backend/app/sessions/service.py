@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.class_profile import checkin_flow, personalise, skills_flow
+from backend.app.class_profile import checkin_flow, level_sorter, personalise, skills_flow
 from backend.app.class_profile import flow as class_flow
 from backend.app.class_profile.skills import clean_skill_ids, load_skills, skill_levels
 from backend.app.config import settings, v2_enabled
@@ -65,6 +65,7 @@ from backend.app.sessions.state_machine import (
     SessionStateEnum,
     WeeklyStateMachine,
 )
+from backend.app.sessions.talk_moves import talk_move_line
 from backend.app.sessions.titles import move_title
 from backend.app.sessions.training_rating import (
     is_rating_escape,
@@ -278,6 +279,10 @@ class SessionService:
             checkin_struggle=str(ctx_data.get("checkin_struggle", "")),
             checkin_page=int(ctx_data.get("checkin_page", 0)),
             checkin_jump_move=str(ctx_data.get("checkin_jump_move", "")),
+            level_stage=str(ctx_data.get("level_stage", "")),
+            level_subject=str(ctx_data.get("level_subject", "")),
+            level_idx=int(ctx_data.get("level_idx", 0)),
+            level_counts={str(k): str(v) for k, v in (ctx_data.get("level_counts") or {}).items()},
             skill_stage=str(ctx_data.get("skill_stage", "")),
             skill_pending=[str(i) for i in ctx_data.get("skill_pending") or []],
             teaching_skills=[str(i) for i in teacher.teaching_skills or []],
@@ -359,6 +364,10 @@ class SessionService:
             "checkin_struggle": ctx.checkin_struggle,
             "checkin_page": ctx.checkin_page,
             "checkin_jump_move": ctx.checkin_jump_move,
+            "level_stage": ctx.level_stage,
+            "level_subject": ctx.level_subject,
+            "level_idx": ctx.level_idx,
+            "level_counts": ctx.level_counts,
             "skill_stage": ctx.skill_stage,
             "skill_pending": ctx.skill_pending,
             "asked_share_consent": ctx.asked_share_consent,
@@ -835,6 +844,7 @@ class SessionService:
                 list(chk.record.struggle_ids),
             )
         if chk.resume_scene:  # the scene was only paused: say who she is talking to again
+            level_sorter.reset(ctx)
             prompt = self._get_resume_prompt(ctx, SessionStateEnum.REHEARSE, ctx.address_form)
             return [OutboundMessage(kind="text", text_hi=prompt)]
         if chk.went_well:
@@ -927,6 +937,12 @@ class SessionService:
 
         ctx.last_inbound_at = now
 
+        # starting one of the two class tools drops the other's unfinished screen (nothing is stored)
+        if btn_id == level_sorter.BTN_START:
+            checkin_flow.finish(ctx)
+        elif btn_id == checkin_flow.BTN_START:
+            level_sorter.reset(ctx)
+
         # 1a. "After class: how did it go?" (flag CLASS_CHECKIN_ENABLED): closed-list buttons only
         if (
             v2_enabled(settings.CLASS_CHECKIN_ENABLED)
@@ -954,6 +970,39 @@ class SessionService:
                 await self._sync_context_to_db(ctx, teacher_id)
                 if chk.handled:
                     return messages
+
+        # 1a'. "Group my class by level" (flag LEVEL_SORTER_ENABLED): closed-list buttons, no storage
+        if (
+            v2_enabled(settings.LEVEL_SORTER_ENABLED)
+            and ctx.onboarding_state == OnboardingStateEnum.READY
+            and matched_intent != Intent.DELETE
+            and text_content != "delete"
+            and not ctx.awaiting_delete_confirm
+        ):
+            lvl_stage_before = ctx.level_stage
+            lvl = level_sorter.handle(ctx, text_content, btn_id, matched_intent)
+            if lvl.handbook:  # "Ask the handbook": the ask prompt, her next message is the question
+                if ctx.current_state != SessionStateEnum.ASK:
+                    ctx.prior_state_before_ask = ctx.current_state
+                    ctx.current_state = SessionStateEnum.ASK
+                await self._sync_context_to_db(ctx, teacher_id)
+                return [
+                    OutboundMessage(kind="text", text_hi=get_message("ask_prompt", address_form))
+                ]
+            if lvl.handled or ctx.level_stage != lvl_stage_before:
+                if lvl.handled and ctx.rating_stage:
+                    ctx.rating_stage = ""
+                    ctx.rating_level = 0
+                    ctx.rating_unclear = 0
+                lvl_messages = lvl.messages
+                if lvl.resume_scene:  # the scene was only paused: say who she is talking to again
+                    prompt = self._get_resume_prompt(
+                        ctx, SessionStateEnum.REHEARSE, ctx.address_form
+                    )
+                    lvl_messages = [OutboundMessage(kind="text", text_hi=prompt)]
+                await self._sync_context_to_db(ctx, teacher_id)
+                if lvl.handled:
+                    return lvl_messages
 
         # 1b. "Rate the training" (after REFLECT): the rating and the one-line comment are free
         # answers, so they are read here before intent routing can mistake them for commands.
@@ -1918,6 +1967,13 @@ class SessionService:
                 skill_lead = self._skill_lead(move, coach_res.feedback.scores, ctx, address_form)
                 if skill_lead:
                     feedback_body = f"{skill_lead}\n\n{feedback_body}"
+                if v2_enabled(settings.TALK_MOVES_ENABLED):
+                    # from the tagged acts only (no model): named vs whole class, how/why vs check
+                    talk_line = talk_move_line(
+                        scene.turns, one_on_one=one_on_one, address_form=address_form
+                    )
+                    if talk_line:
+                        feedback_body = f"{feedback_body}\n\n{talk_line}"
 
                 ctx.rehearse_stage = rehearse_setup.STAGE_NONE
                 await self._sync_context_to_db(ctx, teacher_id)

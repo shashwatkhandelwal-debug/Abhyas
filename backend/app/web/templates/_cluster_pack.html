@@ -1,0 +1,24 @@
+{# Cluster meeting pack. Context: pack (ClusterPack), pack_print_url, suppression_message, get_message. Counts only, no teacher identity. #}
+<section class="card table-card" id="cluster-pack" aria-label="{{ get_message('ui_pack_title') }}" style="margin: 1rem 0; padding: 1rem 1.25rem; background: var(--surface, #fff); border: 1px solid var(--border, #ddd); border-radius: 12px;">
+  <h2 style="margin: 0 0 0.25rem 0; font-size: 1.1rem;">{{ get_message("ui_pack_title") }}</h2>
+  <p style="margin: 0 0 0.75rem 0; color: var(--muted, #5E6662); font-size: 0.9rem;">{{ get_message("ui_pack_desc", days=pack.window_days) }}</p>
+  {% if pack.n_teachers == 0 %}
+    <p id="cluster-pack-empty" style="margin: 0; color: var(--muted, #5E6662);">{{ get_message("ui_pack_none", days=pack.window_days) }}</p>
+  {% elif pack.suppressed %}
+    <p id="cluster-pack-suppressed" style="margin: 0;">{{ suppression_message }}</p>
+  {% else %}
+    {% if pack.includes_demo %}<p id="cluster-pack-demo" style="margin: 0 0 0.5rem 0;"><span class="module-label module-label-demo">{% if pack.all_demo %}{{ get_message("ui_pack_demo_all") }}{% else %}{{ get_message("ui_pack_demo_some") }}{% endif %}</span></p>{% endif %}
+    {% if not pack.items %}
+      <p id="cluster-pack-few" style="margin: 0;">{{ get_message("ui_pack_few", n=suppression_n) }}</p>
+    {% else %}
+    <ol id="cluster-pack-items" style="margin: 0 0 0.75rem 0; padding-left: 1.2rem;">
+      {% for i in pack.items %}
+      <li data-struggle="{{ i.struggle_id }}" style="margin-bottom: 0.5rem;"><strong>{{ i.label }}</strong> &mdash; {{ get_message("ui_pack_teachers", n=i.teachers) }}<br>
+        {% if i.move_id %}<span data-move="{{ i.move_id }}">{{ get_message("ui_pack_move", move=i.move_title) }}</span>{% else %}<span data-move="">{{ get_message("ui_pack_nomove") }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+    <p style="margin: 0;"><a id="cluster-pack-print" href="{{ pack_print_url }}" target="_blank" rel="noopener">{{ get_message("ui_pack_print") }}</a></p>
+    {% endif %}
+  {% endif %}
+</section>

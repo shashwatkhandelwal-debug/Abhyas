@@ -1,0 +1,58 @@
+# Level sorter ("Group my class by level"): the activity a group of children at one level can do for
+# about 10 minutes, each one a short paraphrase of stored handbook chunks (content/chunks/*.jsonl).
+#
+# The teacher never types a child's name or a level: she taps a rough number of children per level.
+# Levels run from the one needing most support to the least. A level with no `chunk_ids`, or whose
+# chunks are not stored, is shown honestly as "not available yet" (never invented).
+#
+#   levels.<id>.activity_hi/en   what the group does (paraphrases only what the chunks say)
+#   levels.<id>.chunk_ids        1-2 stored chunks the activity is taken from
+#   subjects.<id>.first_chunk_ids  chunks that say which children get the teacher's time first
+#   subjects.<id>.multigrade     a line about several classes in one room; only where a chunk says it
+
+subjects:
+  reading:
+    levels: [letter, word, paragraph, story]
+    first_chunk_ids: ["up_bhasha_sandarshika_c1:p137:303"]
+    multigrade:
+      chunk_ids: ["up_bhasha_sandarshika_c1:p141:312", "up_bhasha_sandarshika_c1:p142:315"]
+      text_hi: "अगर एक ही कमरे में कक्षा 1 और 2 साथ बैठती हैं, तो पुस्तिका में दोनों कक्षाओं के पीछे रह रहे बच्चों का एक ही समूह बनाकर उसके साथ रिमीडियल काम करने का उदाहरण दिया गया है।"
+      text_en: "If classes 1 and 2 sit in one room, the guide gives an example where the children who are falling behind in both classes form one group for remedial work."
+  maths:
+    levels: [number_recognition, one_digit, two_digit, subtraction]
+    first_chunk_ids: ["up_ganit_sandarshika_c1:p040:058"]
+    multigrade: null
+
+levels:
+  letter:
+    activity_hi: "अक्षर कार्ड या ग्रिड बनाकर दें। आप एक अक्षर बोलें और बच्चे सही अक्षर पर उँगली रखें। फिर उसी अक्षर को शब्दों में ढूँढकर गोला लगवाएँ।"
+    activity_en: "Give the group letter cards or a letter grid. Say a letter and the children put a finger on the right one. Then they find the same letter inside words and circle it."
+    chunk_ids: ["up_bhasha_sandarshika_c1:p138:305", "up_bhasha_sandarshika_c1:p136:301"]
+  word:
+    activity_hi: "परिचित अक्षरों की ग्रिड पर दो-दो अक्षर जोड़कर तेज़ी से बोलें और बच्चों को साथ बोलने दें। जब वे सहज हो जाएँ, तो अक्षर जोड़कर शब्द बनवाएँ, पढ़वाएँ और लिखवाएँ।"
+    activity_en: "On a grid of known letters, join two letters and say them together quickly, with the children saying them along. When they are comfortable, they join letters into words, read them and write them."
+    chunk_ids: ["up_bhasha_sandarshika_c1:p138:305", "up_bhasha_sandarshika_c1:p139:306"]
+  paragraph:
+    activity_hi: "पहले आप पाठ को हाव-भाव के साथ पढ़कर सुनाएँ। फिर बच्चे जोड़ियों या समूह में बारी-बारी से वही पाठ पढ़ें और आप सबको अलग-अलग सुझाव दें।"
+    activity_en: "First read the passage aloud with expression. Then the children read it in turns in pairs or in the group, and you give each one individual feedback."
+    chunk_ids: ["up_bhasha_sandarshika_c1:p142:314", "up_bhasha_sandarshika_c1:p142:315"]
+  story:
+    activity_hi: "बच्चे कहानी स्वतंत्र रूप से पढ़ें। फिर जोड़ियों या समूह में बारी-बारी से उसे अपने शब्दों में सुनाएँ। पसंद की किताब पढ़ने के लिए भी प्रोत्साहित करें।"
+    activity_en: "The children read the story on their own. Then in pairs or in the group they take turns retelling it in their own words. Also encourage them to read a book they like."
+    chunk_ids: ["up_bhasha_sandarshika_c1:p142:314", "up_bhasha_sandarshika_c1:p142:315"]
+  number_recognition:
+    activity_hi: "पाँच-पाँच बच्चों के समूह को 1 से 20 तक के संख्या कार्ड दें। आप एक कार्ड दिखाएँ और पूछें: इसके बाद कौन-सी संख्या आएगी, इससे पहले कौन-सी आएगी और बीच की संख्याएँ कौन-सी हैं?"
+    activity_en: "Give a group of five children number cards from 1 to 20. Show one card and ask: which number comes after it, which comes before it, and which numbers are in between?"
+    chunk_ids: ["up_ganit_sandarshika_c1:p040:057", "up_ganit_sandarshika_c1:p040:058"]
+  one_digit:
+    activity_hi: "बोर्ड पर 3+5, 5+4, 7+2 जैसे सवाल लिखें। बच्चे टेनफ्रेम में ब्लॉक रखकर दिखाएँ और सवाल का चित्र कॉपी में बनाएँ। पहले बच्चे खुद करें।"
+    activity_en: "Write sums like 3+5, 5+4, 7+2 on the board. The children show each one with blocks on a ten-frame and draw it in their notebook. Let them try first on their own."
+    chunk_ids: ["up_ganit_sandarshika_c1:p044:067"]
+  two_digit:
+    activity_hi: "आप कोई संख्या बोलें, जैसे 43। बच्चे उतने बंडल और खुली तीलियाँ निकालें। फिर एक-एक करके बोर्ड पर आकर संख्या का नाम दिखाएँ।"
+    activity_en: "Say a number such as 43. The children take out that many bundles and loose sticks. Then, one by one, they come to the board and point to the number name."
+    chunk_ids: ["up_ganit_sandarshika_c1:p063:102"]
+  subtraction:
+    activity_hi: "बच्चों के चार समूह बनाएँ और हर समूह को टेनफ्रेम और 9 कंकड़ दें। एक घटाव का सवाल दें, जैसे 5 कंकड़ में से 3 घटाओ। बच्चे कंकड़ निकालकर बचे हुए गिनें और बताएँ।"
+    activity_en: "Make four groups and give each a ten-frame and 9 pebbles. Give a subtraction question such as 5 pebbles take away 3. The children take them away, count what is left and say it."
+    chunk_ids: ["up_ganit_sandarshika_c1:p045:068", "up_ganit_sandarshika_c1:p045:069"]

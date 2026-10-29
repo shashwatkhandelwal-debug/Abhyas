@@ -199,6 +199,8 @@ ask_source_line:
 ask_source_citation:
   text: "स्रोत: {source}, पृष्ठ {page}"
   audio: false
+ask_source_scope_national: {text: "राष्ट्रीय", audio: false}
+ask_source_scope_state_UP: {text: "राज्य: उ.प्र.", audio: false}
 ask_source_page_abbrev:
   text: "पृ."
   audio: false
@@ -821,6 +823,15 @@ ui_scene_turn: {text: "आपकी बारी {turn}/{max}", audio: false}
 ui_chat_scene_end: {text: "अभ्यास पूरा करें", audio: false}
 ui_chat_scene_end_confirm: {text: "अभ्यास अभी पूरा करें?", audio: false}
 coach_quote_suffix: {text: "आपके शब्द: «{quote}»", audio: false}
+tm_head: {text: "💬 बच्चों से बात करने का तरीका", audio: false}
+tm_strength_explain: {text: "आपने बच्चे से पूछा कि उसने यह कैसे किया।", audio: false}
+tm_strength_named: {text: "आपने बच्चे का नाम लेकर उससे बात की।", audio: false}
+tm_strength_class: {text: "आपने पूरी कक्षा से सवाल पूछा।", audio: false}
+tm_next_told: {text: "इस बार जवाब बता दिया गया। अगली बार पहले पूछें: 'तुमने यह कैसे किया?'", audio: false}
+tm_next_check: {text: "ज़्यादातर सवाल सिर्फ़ जवाब जाँचने वाले थे। अगली बार किसी बच्चे से पूछें कि उसने यह कैसे या क्यों किया।", audio: false}
+tm_next_named: {text: "अगली बार किसी एक बच्चे का नाम लेकर उससे समझाने को कहें।", audio: false}
+tm_next_explain: {text: "अगली बार किसी बच्चे से पूछें कि उसने यह कैसे किया।", audio: false}
+tm_next_keep: {text: "अगली बार सही जवाब आने पर भी पूछें: 'कैसे किया?'", audio: false}
 ui_chat_scene_stop_word: {text: "बस", audio: false}
 coach_source_suggestion: {text: "स्रोत से एक सुझाव: {suggestion}", audio: false}
 
@@ -1039,6 +1050,14 @@ ask_resume_scene_group: {text: "अब वापस बच्चों के �
 ui_scene_group_title: {text: "तीनों बच्चों के साथ", audio: false}
 ui_scene_board: {text: "बोर्ड", audio: false}
 ui_scene_pick_child: {text: "किसी बच्चे से बात करने के लिए उसका नाम दबाएँ", audio: false}
+ui_strip_stuck_m: {text: "अटका हुआ", audio: false}
+ui_strip_stuck_f: {text: "अटकी हुई", audio: false}
+ui_strip_learning_m: {text: "समझ रहा है", audio: false}
+ui_strip_learning_f: {text: "समझ रही है", audio: false}
+ui_strip_got_m: {text: "समझ गया", audio: false}
+ui_strip_got_f: {text: "समझ चुकी", audio: false}
+ui_strip_relapse_m: {text: "फिर अटका", audio: false}
+ui_strip_relapse_f: {text: "फिर अटकी", audio: false}
 ui_step_label: {text: "चरण {n} / {total}: {name}", audio: false}
 ui_step_1: {text: "सीखना", audio: false}
 ui_step_2: {text: "अपने शब्दों में बताना", audio: false}
@@ -1156,6 +1175,28 @@ ui_class_share_scores_desc:
 
 # -- After-class check-in (class_profile/checkin_flow.py, flag CLASS_CHECKIN_ENABLED) --
 ui_checkin_entry: {text: "कक्षा के बाद: कैसा रहा?", audio: false}
+ui_pack_title: {text: "संकुल बैठक पैक", audio: false}
+ui_pack_desc: {text: "पिछले {days} दिनों की कक्षा-जाँचों से: शिक्षकों ने सबसे ज़्यादा किस दिक्कत की बात की, साथ में क्या अभ्यास करें, और बैठक का एक पन्ने का एजेंडा। सिर्फ़ गिनती दिखती है; कोई नाम या बच्चे की जानकारी नहीं।", audio: false}
+ui_pack_none: {text: "पिछले {days} दिनों में सहमति देने वाले शिक्षकों की कोई कक्षा-जाँच नहीं मिली, इसलिए अभी पैक नहीं बन सका।", audio: false}
+ui_pack_few: {text: "कोई एक दिक्कत इतने शिक्षकों ने नहीं बताई कि उसे बैठक के सामने रखा जाए (कम से कम {n} शिक्षक चाहिए)।", audio: false}
+ui_pack_demo_all: {text: "डेमो डेटा: ये कक्षा-जाँचें काल्पनिक डेमो शिक्षकों की हैं, वास्तविक शिक्षकों की नहीं।", audio: false}
+ui_pack_demo_some: {text: "इसमें डेमो डेटा भी शामिल है।", audio: false}
+ui_pack_teachers: {text: "{n} शिक्षक", audio: false}
+ui_pack_move: {text: "साथ में अभ्यास: {move}", audio: false}
+ui_pack_nomove: {text: "इसके लिए अभ्यास का केस अभी बना नहीं है; पुस्तिका का सुझाव साथ पढ़ें।", audio: false}
+ui_pack_print: {text: "छापने लायक एजेंडा खोलें", audio: false}
+ui_pack_print_title: {text: "संकुल बैठक: एजेंडा", audio: false}
+ui_pack_scope_arp: {text: "आपका संकुल", audio: false}
+ui_pack_scope_trainer: {text: "आपका ज़िला", audio: false}
+ui_pack_period: {text: "पिछले {days} दिन की कक्षा-जाँचें", audio: false}
+ui_pack_minutes: {text: "{m} मिनट", audio: false}
+ui_pack_agenda_share: {text: "साझा करें: इन दिक्कतों की बात शिक्षकों ने सबसे ज़्यादा की: {items}।", audio: false}
+ui_pack_agenda_practise: {text: "साथ में अभ्यास करें: {move}। दो-दो की जोड़ी में बारी-बारी से शिक्षक और बच्चा बनकर अभ्यास करें।", audio: false}
+ui_pack_agenda_nomove: {text: "साथ में अभ्यास: इन दिक्कतों के लिए अभ्यास का केस अभी बना नहीं है, इसलिए यह समय नीचे का पुस्तिका-सुझाव पढ़ने और चर्चा में लगाएँ।", audio: false}
+ui_pack_agenda_read: {text: "पुस्तिका का सुझाव पढ़ें: {label}। {tip}", audio: false}
+ui_pack_agenda_plan: {text: "आगे के लिए: हर शिक्षक एक बात चुनें जो इस हफ़्ते कक्षा में आज़मानी है।", audio: false}
+ui_pack_agenda_empty: {text: "एजेंडा बनाने के लिए अभी पर्याप्त कक्षा-जाँचें नहीं हैं।", audio: false}
+ui_pack_print_hint: {text: "यह पन्ना सीधे प्रिंट किया जा सकता है।", audio: false}
 btn_chk_start: {text: "कक्षा के बाद: कैसा?", audio: false}
 btn_chk_more: {text: "और विषय देखें", audio: false}
 btn_chk_mod_NUM_SUB_REGROUP_BUNDLES: {text: "हासिल वाला घटाव", audio: false}
@@ -1200,3 +1241,44 @@ btn_chk_resume: {text: "वापस अभ्यास पर", audio: false}
 chk_in_scene_practice: {text: "इस दिक्कत के लिए अभ्यास का केस है: {move_title}। चल रहा अभ्यास वहीं रुका है। अभी उसी पर लौटिए, या हैंडबुक से पूछिए।", audio: false}
 chk_scene_waiting: {text: "आपका अभ्यास वहीं रुका है, जहाँ छोड़ा था। 'वापस अभ्यास पर' दबाइए।", audio: false}
 hint_checkin: {text: "ऊपर के बटनों में से एक चुनिए। लिखने की ज़रूरत नहीं है।", audio: false}
+ui_level_entry: {text: "कक्षा को स्तर के हिसाब से समूहों में बाँटें", audio: false}
+btn_lvl_start: {text: "स्तर से समूह बनाएँ", audio: false}
+btn_lvl_handbook: {text: "हैंडबुक से पूछें", audio: false}
+btn_lvl_resume: {text: "वापस अभ्यास पर", audio: false}
+btn_lvl_sub_reading: {text: "पढ़ना", audio: false}
+btn_lvl_sub_maths: {text: "गणित", audio: false}
+lvl_subject_reading: {text: "पढ़ना", audio: false}
+lvl_subject_maths: {text: "गणित", audio: false}
+lvl_label_letter: {text: "अक्षर", audio: false}
+lvl_label_word: {text: "शब्द", audio: false}
+lvl_label_paragraph: {text: "अनुच्छेद", audio: false}
+lvl_label_story: {text: "कहानी", audio: false}
+lvl_label_number_recognition: {text: "संख्या पहचान", audio: false}
+lvl_label_one_digit: {text: "एक अंक का जोड़", audio: false}
+lvl_label_two_digit: {text: "दो अंक की संख्या", audio: false}
+lvl_label_subtraction: {text: "घटाव", audio: false}
+btn_lvl_cnt_0: {text: "0", audio: false}
+btn_lvl_cnt_1_5: {text: "1-5", audio: false}
+btn_lvl_cnt_6_10: {text: "6-10", audio: false}
+btn_lvl_cnt_11_20: {text: "11-20", audio: false}
+btn_lvl_cnt_20p: {text: "20+", audio: false}
+lvl_count_label_0: {text: "कोई नहीं", audio: false}
+lvl_count_label_1_5: {text: "1-5 बच्चे", audio: false}
+lvl_count_label_6_10: {text: "6-10 बच्चे", audio: false}
+lvl_count_label_11_20: {text: "11-20 बच्चे", audio: false}
+lvl_count_label_20p: {text: "20 से ज़्यादा बच्चे", audio: false}
+lvl_subject_ask: {text: "कक्षा को स्तर के हिसाब से समूहों में बाँटते हैं। किस विषय के लिए? नीचे से चुनिए।", audio: false}
+lvl_count_ask: {text: "{subject} ({step}/{total}): '{level}' स्तर पर लगभग कितने बच्चे हैं? मोटा अंदाज़ा काफ़ी है; किसी बच्चे का नाम लिखने की ज़रूरत नहीं।", audio: false}
+lvl_pick_button: {text: "इसके लिए कृपया नीचे दिए बटनों में से एक चुनिए। यहाँ लिखने की ज़रूरत नहीं है।", audio: false}
+lvl_empty: {text: "आपने सभी स्तरों पर 0 बच्चे चुने, इसलिए समूह नहीं बन सके। चाहें तो फिर से शुरू करें।", audio: false}
+lvl_head_one: {text: "{subject}: आपके अंदाज़े के हिसाब से सभी बच्चे लगभग एक ही स्तर पर हैं, इसलिए एक ही समूह है। यह अनुमान सिर्फ़ इस बातचीत में है, कोई जानकारी दर्ज नहीं होती।", audio: false}
+lvl_head_many: {text: "{subject}: आपके अंदाज़े के हिसाब से कक्षा को {n} समूहों में बाँटा जा सकता है। यह अनुमान सिर्फ़ इस बातचीत में है, कोई जानकारी दर्ज नहीं होती।", audio: false}
+lvl_first: {text: "सबसे पहले समूह 1 के साथ बैठें: ये बच्चे सबसे ज़्यादा सहारे वाले स्तर पर हैं, और पुस्तिका अधिक सहायता वाले बच्चों के साथ अलग से काम करने को कहती है।\n{sources}", audio: false}
+lvl_merged_note: {text: "चार स्तरों पर बच्चे होने से दो पास के स्तर एक समूह में रखे हैं। पहले निचले स्तर की गतिविधि से शुरू करें।", audio: false}
+lvl_group: {text: "समूह {n}: {levels}\n{minutes} मिनट की गतिविधि: {activity}\n{sources}", audio: false}
+lvl_group_missing: {text: "समूह {n}: {levels}\nइस स्तर की गतिविधि के लिए पुस्तिका की सामग्री अभी उपलब्ध नहीं है। आप हैंडबुक से पूछ सकते हैं।", audio: false}
+lvl_multigrade: {text: "एक कमरे में कई कक्षाएँ हों तो: {text}\n{sources}", audio: false}
+lvl_after: {text: "इनमें से किसी गतिविधि के बारे में और जानना हो तो हैंडबुक से पूछिए।", audio: false}
+lvl_scene_waiting: {text: "आपका अभ्यास वहीं रुका है, जहाँ आपने छोड़ा था। जब चाहें वापस जाइए।", audio: false}
+lvl_already: {text: "यह समूह-योजना पूरी हो चुकी है। नई योजना के लिए 'स्तर से समूह बनाएँ' दबाएँ।", audio: false}
+lvl_command_words: {text: "कक्षा को समूहों में बाँटें, स्तर के हिसाब से समूह, स्तर से समूह बनाएँ, group my class, group by level, level sorter", audio: false}

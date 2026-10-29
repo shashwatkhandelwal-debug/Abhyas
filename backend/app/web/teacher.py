@@ -231,6 +231,10 @@ async def teacher_chat_page(
                 v2_enabled(settings.CLASS_CHECKIN_ENABLED)
                 and teacher.onboarding_state == OnboardingStateEnum.READY.value
             ),
+            "level_entry": bool(
+                v2_enabled(settings.LEVEL_SORTER_ENABLED)
+                and teacher.onboarding_state == OnboardingStateEnum.READY.value
+            ),
             "ui_strings": chat_ui_strings(teacher.address_form),
             "rec_config": {
                 "maxSec": settings.REC_MAX_SECONDS,

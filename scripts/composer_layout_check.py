@@ -77,10 +77,14 @@ def build_scenarios() -> dict[str, dict[str, Any]]:
         "board": board_text(item), "item": {"type": "sub", "a": 52, "b": 17, "tens": None, "ones": None, "word": None},
         "manipulatives": {"bundles": 5, "sticks": 2, "regrouped": False, "aria_label": "5 बंडल और 2 तीलियाँ"},
         "title": get_message("ui_scene_group_title"),
-        "children": [{"id": c, "name": get_message(f"speaker_{c}")} for c in ("ravi", "priya", "aman")],
+        "children": [  # worst case for width: the longest state label on every pill (child strip)
+            {"id": c, "name": get_message(f"speaker_{c}"),
+             "label": get_message(f"ui_strip_stuck_{g}") + " · " + get_message(f"ui_strip_relapse_{g}")}
+            for c, g in (("ravi", "m"), ("priya", "f"), ("aman", "m"))
+        ],
     }  # fmt: skip
     ready = "READY"
-    return {
+    scenarios: dict[str, dict[str, Any]] = {
         "start": {
             "messages": [],
             "scene": None,
@@ -118,6 +122,150 @@ def build_scenarios() -> dict[str, dict[str, Any]]:
             ),
         },
     }  # fmt: skip
+    scenarios.update(_v2_scenarios(scene, ready))
+    return scenarios
+
+
+def _wire(m: Any, mid: str, speaker: str = "abhyas") -> dict[str, Any]:
+    """An OutboundMessage as the poll endpoint would send it (buttons, citations, speaker)."""
+    out = msg(mid, m.text_hi or "", None, m.speaker or speaker)
+    if m.buttons:
+        out["buttons"] = [{"id": b.id, "title_hi": b.title_hi} for b in m.buttons]
+    if m.citations:
+        out["citations"] = [c.model_dump(mode="json") for c in m.citations]
+    return out
+
+
+def _told_header() -> dict[str, Any]:
+    """Scene bar of a child who was told the answer, then stuck on a new problem, built by driving
+    the real SessionService and rule engine on mocks (the same flow as the one-on-one tests)."""
+    import asyncio
+    from unittest.mock import patch
+
+    sys.path.insert(0, str(ROOT / "backend" / "tests" / "unit"))
+    from test_one_on_one_flow import Harness  # type: ignore[import-not-found]
+    from test_state_machine import FakeSessionRepository  # type: ignore[import-not-found]
+
+    from backend.app.config import settings
+    from backend.app.llm.schemas import ActTaggerOutput
+    from backend.app.rehearsal.header import scene_header
+    from backend.app.rehearsal.scene_runner import SceneRunner
+    from backend.app.rehearsal.scene_store import InMemorySceneStore
+    from backend.app.rule_engine.domain import Problem, TeachingAct
+    from backend.app.sessions.service import SessionService
+
+    script: list[Any] = [
+        ([TeachingAct.TELL_ANSWER], None, None),
+        ([TeachingAct.GIVE_NEW_PROBLEM], None, Problem(type="sub", a=61, b=28)),
+    ]
+
+    async def fake_tag_act(**_k: Any) -> ActTaggerOutput:
+        acts, addressed, problem = script.pop(0)
+        return ActTaggerOutput(acts=acts, addressed_child=addressed, problem=problem)
+
+    async def run() -> dict[str, Any]:
+        store = InMemorySceneStore()
+        service = SessionService(
+            repository=FakeSessionRepository(), scene_runner=SceneRunner(store=store)  # type: ignore[arg-type]
+        )
+        h = Harness(service, store, script)
+        await h.setup("NUM_SUB_REGROUP_BUNDLES", "ravi", "उल्टा घटा दिया")
+        await h.say("उत्तर 16 होता है।")
+        await h.say("अब ये करो।")
+        scene = await h.scene()
+        header = scene_header(scene.scene_state, True, scene.turns)
+        assert header is not None
+        return header
+
+    with (
+        patch("backend.app.sessions.service.scene_store", InMemorySceneStore()),
+        patch("backend.app.rehearsal.scene_runner.tag_act", fake_tag_act),
+        patch.object(settings, "CHILD_STRIP_ENABLED", True),
+        patch.object(settings, "DEMO_MODE", False),
+    ):
+        return asyncio.run(run())
+
+
+def _v2_scenarios(scene: dict[str, Any], ready: str) -> dict[str, dict[str, Any]]:
+    """Screens added in V2 (check-in tip, level sorter, child strip, talk-move feedback), built
+    from the real flow modules so the screenshots show what the service sends."""
+    from backend.app.class_profile import checkin_flow, level_sorter
+    from backend.app.class_profile.library import load_library
+    from backend.app.core.messages import get_message
+    from backend.app.sessions.state_machine import SessionContext, SessionStateEnum
+    from backend.app.web.chat_view import build_view
+
+    lib = load_library()
+    tip_ctx = SessionContext.model_construct(address_form="f", current_state=SessionStateEnum.DONE)
+    tip = [_wire(m, f"t{i}") for i, m in enumerate(
+        checkin_flow.result_messages(tip_ctx, lib.get("NUM_SUB_REGROUP")))]  # type: ignore[arg-type]
+    scene_ctx = SessionContext.model_construct(
+        address_form="f", current_state=SessionStateEnum.REHEARSE
+    )
+    in_scene = [_wire(m, f"c{i}") for i, m in enumerate(
+        checkin_flow.result_messages(scene_ctx, lib.get("NUM_SUB_REGROUP")))]  # type: ignore[arg-type]
+    sort_ctx = SessionContext.model_construct(
+        address_form="f", current_state=SessionStateEnum.DONE, level_subject="reading",
+        level_counts={"letter": "6_10", "word": "11_20", "paragraph": "1_5", "story": "0"},
+    )
+    sorter = [_wire(m, f"l{i}") for i, m in enumerate(level_sorter.result_messages(sort_ctx))]
+
+    mid_relapse = dict(scene)
+    labels = (
+        f"{get_message('ui_strip_learning_m')} · {get_message('ui_strip_relapse_m')}",
+        get_message("ui_strip_stuck_f"),
+        get_message("ui_strip_got_m"),
+    )
+    mid_relapse["children"] = [
+        {"id": c, "name": get_message(f"speaker_{c}"), "label": label}
+        for c, label in zip(("ravi", "priya", "aman"), labels, strict=True)
+    ]
+    talk = (
+        "👍 आपने शुरू में «एक-एक कदम बताओ» कहकर रवि का तरीका पूछा और उसे ध्यान से सुना।\n"
+        "🔁 रवि 7 में से 3 घटा देता है; दोनों उत्तर सामने रखकर उसी से तुलना करवाइए।\n\n"
+        f"{get_message('tm_head')}\n"
+        f"👍 {get_message('tm_strength_explain')} "
+        f"{get_message('coach_quote_suffix', quote='रवि, तुमने यह कैसे किया? एक-एक कदम बताओ।')}\n"
+        f"➡️ {get_message('tm_next_keep')}"
+    )
+    told = _told_header()
+    return {
+        "checkin_tip": {
+            "messages": tip, "scene": None,
+            "view": build_view(onboarding=ready, move_id="m01", state="DONE", with_samples=True),
+        },
+        "checkin_scene": {
+            "messages": in_scene, "scene": mid_relapse,
+            "view": build_view(
+                onboarding=ready, move_id="m01", state="REHEARSE",
+                context={"rehearse_stage": "scene"}, live_scene=mid_relapse, with_samples=True,
+            ),
+        },
+        "sorter": {
+            "messages": sorter, "scene": None,
+            "view": build_view(onboarding=ready, move_id="m01", state="DONE", with_samples=True),
+        },
+        "strip_relapse": {
+            "messages": [msg("s1", "रवि: 61 में से 28 घटाया, 47 आया।", None, "ravi")],
+            "scene": mid_relapse,
+            "view": build_view(
+                onboarding=ready, move_id="m01", state="REHEARSE",
+                context={"rehearse_stage": "scene"}, live_scene=mid_relapse, with_samples=True,
+            ),
+        },
+        "strip_told": {
+            "messages": [msg("s2", "रवि: 61 में से 28 घटाया, 47 आया।", None, "ravi")],
+            "scene": told,
+            "view": build_view(
+                onboarding=ready, move_id="m01", state="REHEARSE",
+                context={"rehearse_stage": "scene"}, live_scene=told, with_samples=True,
+            ),
+        },
+        "coach_talk": {
+            "messages": [msg("k1", talk, None, "coach")], "scene": None,
+            "view": build_view(onboarding=ready, move_id="m01", state="FEEDBACK", with_samples=True),
+        },
+    }  # fmt: skip
 
 
 def _has(key: str) -> bool:
@@ -140,7 +288,8 @@ class Server:
         self.scenarios = build_scenarios()
         self.current = "start"
         tid = uuid.UUID("00000000-0000-0000-0000-000000000002")
-        t = Teacher(id=tid, name="डेमो शिक्षिका 2", preferred_channel="web", lite_mode=False)
+        t = Teacher(id=tid, name="डेमो शिक्षिका 2", preferred_channel="web", lite_mode=False,
+                    onboarding_state="READY")
         u = AppUser(id=uuid.uuid4(), username="teacher.demo2", role="teacher", teacher_id=tid,
                     display_name="डेमो शिक्षिका 2", password_hash="x")  # fmt: skip
 

@@ -239,6 +239,32 @@ async def test_tell_the_answer_is_parroted_and_relapse_on_a_new_item(
 
 
 @pytest.mark.asyncio
+async def test_strip_marks_a_child_who_was_told_then_stuck_on_a_new_problem(
+    harness: Callable[[], Harness], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("backend.app.config.settings.CHILD_STRIP_ENABLED", True)
+    monkeypatch.setattr("backend.app.config.settings.DEMO_MODE", False)
+    h = harness()
+    await h.setup("NUM_SUB_REGROUP_BUNDLES", "ravi", "उल्टा घटा दिया")
+    h.script += [
+        ([A.TELL_ANSWER], None, None),
+        ([A.GIVE_NEW_PROBLEM], None, Problem(type="sub", a=61, b=28)),
+    ]
+    await h.say("उत्तर 16 होता है।")
+    scene = await h.scene()
+    plain = scene_header(scene.scene_state, True, scene.turns)
+    assert plain is not None
+    assert get_message("ui_strip_relapse_m") not in plain["strip_label"]  # told, no new problem yet
+    await h.say("अब ये करो।")
+    scene = await h.scene()
+    header = scene_header(scene.scene_state, True, scene.turns)
+    assert header is not None
+    assert header["strip_label"] == (
+        f"{get_message('ui_strip_stuck_m')} · {get_message('ui_strip_relapse_m')}"
+    )
+
+
+@pytest.mark.asyncio
 async def test_out_of_scope_problem_makes_the_child_confused_without_a_placeholder(
     harness: Callable[[], Harness],
 ) -> None:

@@ -69,6 +69,8 @@ ask_clarify_prefix: {text: "Please tell me one thing:"}
 ask_clarify_generic: {text: "Please ask your question in a little more detail."}
 ask_source_line: {text: "Source: {source}{page_part}"}
 ask_source_citation: {text: "Source: {source}, page {page}"}
+ask_source_scope_national: {text: "National"}
+ask_source_scope_state_UP: {text: "State: UP"}
 ask_source_page_abbrev: {text: "p."}
 ask_try_this_week: {text: "Try this week:\n{tip}"}
 ask_escalated: {text: "Good question. I do not have a reliable answer, so I have put it in your ARP's review list; they will see it there."}
@@ -563,6 +565,15 @@ ui_scene_turn: {text: "Your turn {turn} of {max}"}
 ui_chat_scene_end: {text: "End practice"}
 ui_chat_scene_end_confirm: {text: "End the practice now?"}
 coach_quote_suffix: {text: "Your words:\n«{quote}»"}
+tm_head: {text: "💬 How you talked with the children"}
+tm_strength_explain: {text: "You asked a child how they did it."}
+tm_strength_named: {text: "You spoke to a child by name."}
+tm_strength_class: {text: "You asked the whole class a question."}
+tm_next_told: {text: "This time the answer was told. Next time ask first: 'How did you do it?'"}
+tm_next_check: {text: "Most questions only checked the answer. Next time ask a child how or why they did it."}
+tm_next_named: {text: "Next time call one child by name and ask them to explain."}
+tm_next_explain: {text: "Next time ask a child how they did it."}
+tm_next_keep: {text: "Next time, ask 'How did you do it?' even when the answer is right."}
 ui_chat_scene_stop_word: {text: "stop"}
 coach_source_suggestion: {text: "A suggestion from the sources:\n{suggestion}"}
 
@@ -717,6 +728,14 @@ ask_resume_scene_group: {text: "Back to the children: say your next line."}
 ui_scene_group_title: {text: "With the three children"}
 ui_scene_board: {text: "Board"}
 ui_scene_pick_child: {text: "Tap a name to speak to that child"}
+ui_strip_stuck_m: {text: "Stuck"}
+ui_strip_stuck_f: {text: "Stuck"}
+ui_strip_learning_m: {text: "Getting it"}
+ui_strip_learning_f: {text: "Getting it"}
+ui_strip_got_m: {text: "Got it"}
+ui_strip_got_f: {text: "Got it"}
+ui_strip_relapse_m: {text: "Stuck again"}
+ui_strip_relapse_f: {text: "Stuck again"}
 ui_step_label: {text: "Step {n} of {total}: {name}"}
 ui_step_1: {text: "Learn"}
 ui_step_2: {text: "Say it in your words"}
@@ -814,6 +833,28 @@ ui_class_share_scores_desc: {text: "Your ARP will see your practised move and sc
 
 # -- After-class check-in (class_profile/checkin_flow.py, flag CLASS_CHECKIN_ENABLED) --
 ui_checkin_entry: {text: "After class: how did it go?"}
+ui_pack_title: {text: "Cluster meeting pack"}
+ui_pack_desc: {text: "From class check-ins of the last {days} days: which difficulty teachers reported most, what to practise together, and a one-page agenda for the meeting. Only counts are shown; no names and no child information."}
+ui_pack_none: {text: "No check-ins from teachers who agreed to share were found in the last {days} days, so no pack could be made yet."}
+ui_pack_few: {text: "No single difficulty was reported by enough teachers to put in front of the meeting (at least {n} teachers are needed)."}
+ui_pack_demo_all: {text: "Demo data: these check-ins are from fictional demo teachers, not real teachers."}
+ui_pack_demo_some: {text: "This includes demo data."}
+ui_pack_teachers: {text: "{n} teachers"}
+ui_pack_move: {text: "Practise together: {move}"}
+ui_pack_nomove: {text: "There is no practice case for this yet; read the handbook tip together."}
+ui_pack_print: {text: "Open the printable agenda"}
+ui_pack_print_title: {text: "Cluster meeting: agenda"}
+ui_pack_scope_arp: {text: "Your cluster"}
+ui_pack_scope_trainer: {text: "Your district"}
+ui_pack_period: {text: "Check-ins of the last {days} days"}
+ui_pack_minutes: {text: "{m} min"}
+ui_pack_agenda_share: {text: "Share: teachers reported these difficulties most: {items}."}
+ui_pack_agenda_practise: {text: "Practise together: {move}. In pairs, take turns as teacher and child."}
+ui_pack_agenda_nomove: {text: "Practise together: there is no practice case for these difficulties yet, so use this time to read the handbook tip below and discuss it."}
+ui_pack_agenda_read: {text: "Read the handbook tip: {label}. {tip}"}
+ui_pack_agenda_plan: {text: "Next: each teacher picks one thing to try in class this week."}
+ui_pack_agenda_empty: {text: "There are not enough check-ins yet to make an agenda."}
+ui_pack_print_hint: {text: "This page can be printed as it is."}
 btn_chk_start: {text: "After class?"}
 btn_chk_more: {text: "More topics"}
 btn_chk_mod_NUM_SUB_REGROUP_BUNDLES: {text: "Subtraction"}
@@ -858,3 +899,44 @@ btn_chk_resume: {text: "Back to practice"}
 chk_in_scene_practice: {text: "There is a practice case for this difficulty: {move_title}. Your current practice is still waiting where you left it. Go back to it now, or ask the handbook."}
 chk_scene_waiting: {text: "Your practice is still waiting where you left it. Tap 'Back to practice'."}
 hint_checkin: {text: "Choose one of the buttons above. No need to type."}
+ui_level_entry: {text: "Group my class by level"}
+btn_lvl_start: {text: "Group by level"}
+btn_lvl_handbook: {text: "Ask the handbook"}
+btn_lvl_resume: {text: "Back to practice"}
+btn_lvl_sub_reading: {text: "Reading"}
+btn_lvl_sub_maths: {text: "Maths"}
+lvl_subject_reading: {text: "Reading"}
+lvl_subject_maths: {text: "Maths"}
+lvl_label_letter: {text: "letters"}
+lvl_label_word: {text: "words"}
+lvl_label_paragraph: {text: "paragraph"}
+lvl_label_story: {text: "story"}
+lvl_label_number_recognition: {text: "number recognition"}
+lvl_label_one_digit: {text: "1-digit addition"}
+lvl_label_two_digit: {text: "2-digit numbers"}
+lvl_label_subtraction: {text: "subtraction"}
+btn_lvl_cnt_0: {text: "0"}
+btn_lvl_cnt_1_5: {text: "1-5"}
+btn_lvl_cnt_6_10: {text: "6-10"}
+btn_lvl_cnt_11_20: {text: "11-20"}
+btn_lvl_cnt_20p: {text: "20+"}
+lvl_count_label_0: {text: "none"}
+lvl_count_label_1_5: {text: "1-5 children"}
+lvl_count_label_6_10: {text: "6-10 children"}
+lvl_count_label_11_20: {text: "11-20 children"}
+lvl_count_label_20p: {text: "more than 20 children"}
+lvl_subject_ask: {text: "Let us group your class by level. For which subject? Choose below."}
+lvl_count_ask: {text: "{subject} ({step}/{total}): about how many children are at the '{level}' level? A rough guess is fine; no need to type any child's name."}
+lvl_pick_button: {text: "Please choose one of the buttons below. No need to type here."}
+lvl_empty: {text: "You chose 0 children at every level, so no groups could be made. Start again if you like."}
+lvl_head_one: {text: "{subject}: by your estimate all the children are at about one level, so there is one group. This estimate stays in this conversation only; nothing is saved."}
+lvl_head_many: {text: "{subject}: by your estimate the class can be split into {n} groups. This estimate stays in this conversation only; nothing is saved."}
+lvl_first: {text: "Sit with group 1 first: these children are at the level needing most support, and the guide asks for separate time with the children who need more help.\n{sources}"}
+lvl_merged_note: {text: "Children are at four levels, so two neighbouring levels share a group. Start with the lower level's activity."}
+lvl_group: {text: "Group {n}: {levels}\n{minutes}-minute activity: {activity}\n{sources}"}
+lvl_group_missing: {text: "Group {n}: {levels}\nThe handbook content for an activity at this level is not available yet. You can ask the handbook."}
+lvl_multigrade: {text: "With several classes in one room: {text}\n{sources}"}
+lvl_after: {text: "To know more about any of these activities, ask the handbook."}
+lvl_scene_waiting: {text: "Your practice is waiting exactly where you left it. Go back whenever you like."}
+lvl_already: {text: "This grouping plan is finished. Tap 'Group by level' for a new one."}
+lvl_command_words: {text: "group my class, group by level, level sorter, group the class by level"}

@@ -318,6 +318,8 @@
     {% include "_module_progress.html" %}
     {% endif %}
 
+    {% if pack %}{% include "_cluster_pack.html" %}{% endif %}
+
     <section class="arp-section" aria-label="{{ get_message('ui_arp_section_teachers') }}">
       <div class="arp-section-title">
         <span>{{ get_message('ui_arp_section_teachers') }}</span>

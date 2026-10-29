@@ -80,3 +80,21 @@ So 6 of 14 map to one of the 4 moves; **8 have a tip and citations but no practi
 - No change to the rule engine, the guards, login/auth, or composer layout rules. A feature that would need one is skipped and recorded BLOCKED.
 - Payload baseline (this session, `python scripts/check_first_load.py`): teacher chat first load **127.63 KB raw / 30.49 KB gzip**; all offline assets **148.28 KB raw** vs the 150 KB limit (≈1.7 KB headroom on the offline-assets measure). Prefer server-driven buttons; client changes are the scarce resource.
 - Tests go through the real `SessionService` with mocks (`backend/tests/unit/test_one_on_one_flow.py::Harness` is the reusable fixture), Hindi and English, flag on and off.
+
+## 5. National core and state packs (built in run E2)
+
+Every official source in `content/sources/sources.yaml` carries a scope: `scope: national` (NCERT Vidya Pravesh, NIPUN Bharat guidelines, NISHTHA FLN) or `scope: state` with `state: UP` (the two UP Samagra Shiksha handbooks). The scope is metadata only:
+
+- **Citation text.** `format_guide_citation` (`llm/roles/guide_answerer.py`) looks the source up by its short Hindi name through `retrieval/source_scope.py` and adds the label from the catalog beside the page: `स्रोत: विद्या प्रवेश (NCERT), पृष्ठ 12 (राष्ट्रीय)` or `... (राज्य: उ.प्र.)`. Catalog keys: `ask_source_scope_national` and `ask_source_scope_state_<CODE>` in `messages_hi.yaml` (the one used; citation lines are Hindi in every UI language) and `messages_en.yaml` (kept for a future English line). A source with no scope (the Abhyas move summaries) is cited as before.
+- **Retrieval tie-break.** In `retrieval/search.py` the result sort key is `(normalised score, raw BM25 score, national_rank)`, so a national source wins only when the two scores are exactly equal. A higher-scoring state chunk still ranks first. Tested in `backend/tests/unit/test_source_scope.py`.
+
+### Adding a new state pack (for example Bihar)
+
+1. Put the handbook PDF in `content/sources/` (PDFs are not committed; check the licence note).
+2. Add an entry to `content/sources/sources.yaml`: `id`, `title`, `short_hi`, `file`, `sha256`, `as_of_date`, `lang`, `ingest: true`, and the scope fields `scope: state` and `state: BR`. For a font that has no usable text layer add `ocr: true` and `ingest_note` as the UP entries do.
+3. Add two catalog lines (Hindi and English): `ask_source_scope_state_BR` with the label (for example "राज्य: बिहार" / "State: Bihar").
+4. Ingest: `make content-ingest` (runs `python -m backend.app.retrieval.source_chunks`; the PDF path `python -m backend.app.retrieval.ingest --source <id>` takes one source). Check which of the two produced the chunks of the existing sources in `content/sources/README.md` before choosing. The result is `content/chunks/<id>.jsonl`. Nothing else in the code changes: retrieval reads every `*.jsonl` in that folder and the manifest gives the label.
+5. Run `python -m pytest backend/tests/unit/test_source_scope.py backend/tests/unit/test_checkin_content_integrity.py`. The first fails if a source in the manifest has no scope or no catalog label; the content tests fail if a struggle or level cites a chunk that is not stored.
+6. Only after that, map state-specific activities to the new chunks (`content/class_struggles.yaml`, `content/level_sorter.yaml`). A new pack never changes an existing citation by itself.
+
+No document was ingested in this build.
