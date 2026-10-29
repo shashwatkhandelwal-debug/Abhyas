@@ -23,6 +23,8 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
+from backend.app.db.demo_data import DEMO_CHECKIN_REPORTS, DEMO_CHECKIN_WELL
+from backend.app.reports.cluster_pack import ClusterPack, build_cluster_pack
 from backend.app.sessions.service import SessionService
 from backend.app.sessions.state_machine import OnboardingStateEnum
 
@@ -53,6 +55,7 @@ COUNTED_TABLES = (
     "doc_chunk",
     "review_item",
     "question",
+    "class_checkin",
 )
 
 
@@ -192,6 +195,20 @@ def test_seed_runs_on_fresh_postgres_and_is_idempotent(scratch_db: str) -> None:
     assert {status for _kind, _ref, status, _found in queue} == {"open"}
     assert all(found for _kind, _ref, _status, found in queue), "every item points at a real row"
     assert first["review_item"] == len(queue) and first["question"] == 1
+    # demo class check-ins behind the cluster meeting pack: exactly the planned rows, all demo
+    assert first["class_checkin"] == sum(c for _, c in DEMO_CHECKIN_REPORTS) + DEMO_CHECKIN_WELL
+    district_pack, c01_pack, c02_pack = asyncio.run(_demo_packs(scratch_db))
+    assert not district_pack.suppressed and district_pack.all_demo
+    assert [(i.struggle_id, i.teachers) for i in district_pack.items] == [
+        ("NUM_SUB_REGROUP", 14),
+        ("NUM_ADD_CARRY", 11),
+    ]
+    assert [i.move_id for i in district_pack.items] == [
+        "NUM_SUB_REGROUP_BUNDLES",
+        "NUM_ADD_CARRY_BUNDLES",
+    ]
+    assert c01_pack.suppressed and c01_pack.items == []  # demo cluster 1 has 7 consenting: n<10
+    assert not c02_pack.suppressed and c02_pack.all_demo
 
     _run(["-m", "backend.app.db.seed"], scratch_db)
     assert _counts(scratch_db) == first
@@ -269,6 +286,21 @@ def _invalid_onboarding_count(db_name: str) -> int:
             )
     finally:
         engine.dispose()
+
+
+async def _demo_packs(db_name: str) -> tuple[ClusterPack, ClusterPack, ClusterPack]:
+    async_url = make_url(_sync_url(db_name)).set(drivername="postgresql+asyncpg")
+    engine = create_async_engine(async_url, poolclass=NullPool)
+    factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    try:
+        async with factory() as session:
+            return (
+                await build_cluster_pack(session, district="Kanpur Nagar"),
+                await build_cluster_pack(session, cluster_id="KNP-C01"),
+                await build_cluster_pack(session, cluster_id="KNP-C02"),
+            )
+    finally:
+        await engine.dispose()
 
 
 async def _context_failures(db_name: str) -> dict[str, str]:

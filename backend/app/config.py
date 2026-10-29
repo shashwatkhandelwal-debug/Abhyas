@@ -340,6 +340,10 @@ class Settings(BaseSettings):
     LEVEL_MAX_GROUPS: int = 3  # most groups the sorter proposes (adjacent small levels merge)
     LEVEL_ACTIVITY_MINUTES: int = 10  # length of the one activity shown per group
     TALK_MOVES_ENABLED: bool = False  # coach feedback adds a talk-move line from the tagged acts
+    CLUSTER_PACK_ENABLED: bool = False  # ARP/trainer "Cluster meeting pack" from check-in counts
+    CLUSTER_PACK_WINDOW_DAYS: int = 30  # check-ins counted: the last this many days
+    CLUSTER_PACK_TOP: int = 2  # struggles named in the pack
+    CLUSTER_PACK_AGENDA_MINUTES: tuple[int, int, int, int] = (5, 15, 10, 5)  # share, practise, read, plan
     CHILD_STRIP_ENABLED: bool = (
         False  # scene bar shows each child's state label (stuck / getting it / got it)
     )

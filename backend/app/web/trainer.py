@@ -15,7 +15,8 @@ import logging
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,6 +28,7 @@ from backend.app.core.messages import get_message
 from backend.app.db.models import AppUser
 from backend.app.db.session import get_db_session
 from backend.app.reports.class_struggles import class_struggle_summary
+from backend.app.reports.cluster_pack import build_cluster_pack
 from backend.app.reports.module_progress import module_progress_summary
 from backend.app.reports.teaching_skills import teaching_skill_summary
 from backend.app.reports.trainer_aggregates import (
@@ -37,6 +39,7 @@ from backend.app.sessions.training_rating import (
     TrainingRatingSummary,
     training_rating_summary,
 )
+from backend.app.web.cluster_pack_page import card_context, pack_enabled, print_context
 from backend.app.web.ui_lang import register_ui_globals
 
 logger = logging.getLogger("abhyas.web.trainer")
@@ -98,6 +101,15 @@ async def get_trainer_dashboard(
         suppress_below=settings.AGGREGATION_SUPPRESSION_N,
     )
 
+    # Cluster meeting pack (flag CLUSTER_PACK_ENABLED, on in demo mode): own district, consenting only
+    pack = (
+        await build_cluster_pack(
+            db, district=current_user.district if current_user.role != "admin" else None
+        )
+        if pack_enabled()
+        else None
+    )
+
     csrf_token = generate_csrf_token()
     demo_banner_text = get_message("ui_demo_banner")
 
@@ -117,9 +129,31 @@ async def get_trainer_dashboard(
             "get_message": get_message,
             "demo_mode": current_user.is_demo_account,
             "demo_banner_text": demo_banner_text,
+            **card_context(pack, "/trainer/cluster-pack/print"),
         },
     )
     set_csrf_cookie(resp, csrf_token)
+    return resp
+
+
+@router.get("/cluster-pack/print", response_class=HTMLResponse)
+async def get_cluster_pack_print(
+    request: Request,
+    current_user: Annotated[AppUser, Depends(require_role("trainer"))],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> HTMLResponse:
+    """The one-screen, printable meeting agenda (server-rendered, no JavaScript)."""
+    if not pack_enabled():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    pack = await build_cluster_pack(
+        db, district=current_user.district if current_user.role != "admin" else None
+    )
+    resp = templates.TemplateResponse(
+        request=request,
+        name="cluster_pack_print.html",
+        context={"request": request, **print_context(pack, "ui_pack_scope_trainer")},
+    )
+    resp.headers["Cache-Control"] = "no-store"
     return resp
 
 

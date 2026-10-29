@@ -1175,6 +1175,28 @@ ui_class_share_scores_desc:
 
 # -- After-class check-in (class_profile/checkin_flow.py, flag CLASS_CHECKIN_ENABLED) --
 ui_checkin_entry: {text: "कक्षा के बाद: कैसा रहा?", audio: false}
+ui_pack_title: {text: "संकुल बैठक पैक", audio: false}
+ui_pack_desc: {text: "पिछले {days} दिनों की कक्षा-जाँचों से: शिक्षकों ने सबसे ज़्यादा किस दिक्कत की बात की, साथ में क्या अभ्यास करें, और बैठक का एक पन्ने का एजेंडा। सिर्फ़ गिनती दिखती है; कोई नाम या बच्चे की जानकारी नहीं।", audio: false}
+ui_pack_none: {text: "पिछले {days} दिनों में सहमति देने वाले शिक्षकों की कोई कक्षा-जाँच नहीं मिली, इसलिए अभी पैक नहीं बन सका।", audio: false}
+ui_pack_few: {text: "कोई एक दिक्कत इतने शिक्षकों ने नहीं बताई कि उसे बैठक के सामने रखा जाए (कम से कम {n} शिक्षक चाहिए)।", audio: false}
+ui_pack_demo_all: {text: "डेमो डेटा: ये कक्षा-जाँचें काल्पनिक डेमो शिक्षकों की हैं, वास्तविक शिक्षकों की नहीं।", audio: false}
+ui_pack_demo_some: {text: "इसमें डेमो डेटा भी शामिल है।", audio: false}
+ui_pack_teachers: {text: "{n} शिक्षक", audio: false}
+ui_pack_move: {text: "साथ में अभ्यास: {move}", audio: false}
+ui_pack_nomove: {text: "इसके लिए अभ्यास का केस अभी बना नहीं है; पुस्तिका का सुझाव साथ पढ़ें।", audio: false}
+ui_pack_print: {text: "छापने लायक एजेंडा खोलें", audio: false}
+ui_pack_print_title: {text: "संकुल बैठक: एजेंडा", audio: false}
+ui_pack_scope_arp: {text: "आपका संकुल", audio: false}
+ui_pack_scope_trainer: {text: "आपका ज़िला", audio: false}
+ui_pack_period: {text: "पिछले {days} दिन की कक्षा-जाँचें", audio: false}
+ui_pack_minutes: {text: "{m} मिनट", audio: false}
+ui_pack_agenda_share: {text: "साझा करें: इन दिक्कतों की बात शिक्षकों ने सबसे ज़्यादा की: {items}।", audio: false}
+ui_pack_agenda_practise: {text: "साथ में अभ्यास करें: {move}। दो-दो की जोड़ी में बारी-बारी से शिक्षक और बच्चा बनकर अभ्यास करें।", audio: false}
+ui_pack_agenda_nomove: {text: "साथ में अभ्यास: इन दिक्कतों के लिए अभ्यास का केस अभी बना नहीं है, इसलिए यह समय नीचे का पुस्तिका-सुझाव पढ़ने और चर्चा में लगाएँ।", audio: false}
+ui_pack_agenda_read: {text: "पुस्तिका का सुझाव पढ़ें: {label}। {tip}", audio: false}
+ui_pack_agenda_plan: {text: "आगे के लिए: हर शिक्षक एक बात चुनें जो इस हफ़्ते कक्षा में आज़मानी है।", audio: false}
+ui_pack_agenda_empty: {text: "एजेंडा बनाने के लिए अभी पर्याप्त कक्षा-जाँचें नहीं हैं।", audio: false}
+ui_pack_print_hint: {text: "यह पन्ना सीधे प्रिंट किया जा सकता है।", audio: false}
 btn_chk_start: {text: "कक्षा के बाद: कैसा?", audio: false}
 btn_chk_more: {text: "और विषय देखें", audio: false}
 btn_chk_mod_NUM_SUB_REGROUP_BUNDLES: {text: "हासिल वाला घटाव", audio: false}
