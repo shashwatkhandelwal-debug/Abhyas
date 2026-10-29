@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 import yaml
 
-from backend.tests.e2e.conftest import CLIPPED, DESKTOP, MOBILE
+from backend.tests.e2e.conftest import CLIPPED, DESKTOP, MOBILE, open_sheet
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -20,6 +20,7 @@ def test_sample_lines_are_folded_on_a_phone_open_on_a_desktop_and_plainly_labell
     open_chat: Any,
 ) -> None:
     phone = open_chat("teacher.demo2", lang="en", viewport=MOBILE).page
+    open_sheet(phone)
     assert phone.locator("#sample-tray summary").inner_text().strip() == _text(
         "en", "ui_sample_title"
     )
@@ -41,11 +42,12 @@ def test_sample_lines_are_folded_on_a_phone_open_on_a_desktop_and_plainly_labell
     assert phone.evaluate(CLIPPED, ".sample-item, .sample-item *") == []
 
     desktop = open_chat("teacher.demo2", lang="en", viewport=DESKTOP).page
-    assert desktop.evaluate("document.getElementById('sample-tray').open")
+    assert not desktop.evaluate("document.getElementById('sample-tray').open")  # sheet: all folded
 
 
 def test_a_sample_line_sends_and_the_child_answers(open_chat: Any) -> None:
     page = open_chat("teacher.demo2", lang="hi").page
+    open_sheet(page)
     page.locator("#sample-tray summary").tap()
     before = page.locator(".msg-row").count()
     page.locator(".demo-chip").first.tap()
@@ -60,6 +62,7 @@ def test_a_sample_line_sends_and_the_child_answers(open_chat: Any) -> None:
 
 def test_the_samples_follow_the_step(open_chat: Any) -> None:
     learn = open_chat("teacher.demo3", lang="en").page
+    open_sheet(learn)
     learn.locator("#sample-tray summary").tap()
     # in the learn step only the question sample makes sense: no lines about a child's answer
     assert learn.locator(".demo-chip").all_inner_texts() == [

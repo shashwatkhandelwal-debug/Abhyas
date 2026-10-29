@@ -14,7 +14,7 @@ from typing import Any
 import pytest
 import yaml
 
-from backend.tests.e2e.conftest import DESKTOP, MOBILE
+from backend.tests.e2e.conftest import DESKTOP, MOBILE, open_sheet
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FEEDBACK_WITHIN_MS = 300
@@ -53,6 +53,7 @@ def test_chip_tap_shows_question_typing_and_cited_answer(
     page = teacher.page
     chips = page.locator(".handbook-chip[data-id]")
     assert chips.count() >= 1, "the handbook chips are on the page (in a scene too)"
+    open_sheet(page)
     chip = chips.first
     before = page.locator(".msg-row").count()
 
@@ -129,6 +130,7 @@ def test_stale_cached_chat_js_cannot_break_a_new_build(open_chat: Any) -> None:
     script_src = page.locator("script[src*='chat.js']").get_attribute("src") or ""
     assert re.search(r"chat\.js\?v=[\w-]+$", script_src), script_src
     before = page.locator(".msg-row").count()
+    open_sheet(page)
     page.locator(".handbook-chip[data-id]").first.tap()
     page.wait_for_function(
         "(n) => document.querySelectorAll('.msg-row').length > n",
