@@ -71,3 +71,16 @@ Not edited, because the string comes from the source documents. Both words appea
 - `content/chunks/up_ganit_sandarshika_c1.jsonl`: "रिमीडियल" in 63 `text`, 11 `heading` and 11 `section` fields.
 - Chunks containing "छुआएँ" or "छुआए" could not be isolated from the combined search. They are in the same two files, so treat them as unedited too.
 - Also untouched: the OCR cache and samples (`content/sources/ocr_cache`, `docs/ocr_samples`), and an old quote in `docs/ux/V2_RUN_B.md`.
+
+## F6: demo script: DONE
+
+- `docs/ux/DEMO_SCRIPT.md`: the stale rehearsal note ("do not promise a stuck-again marker after tell the answer") is replaced.
+- The hero beat is now ask how, tell the answer, Ravi parrots, new problem, strip "अटका हुआ · फिर अटका", with real mock output. It is produced by the new `backend/tests/unit/test_demo_hero_beat.py`, which also pastes the real feedback; its first line is the tell-answer one.
+- Notes added: A1/A2/B chips appear only after 30 s idle in a subtraction scene, so type or speak the lines; the level sorter needs about six taps and can be recorded in maths or in one take.
+- The cluster pack rows use the new wording, and the feedback block uses the new real output.
+- Timing table with spoken words per section (72, 16, 40, 24, 17, 28, 16; 213 in total). I shortened the close to 16 words so it fits its 10 s. The hook (72 words in 20 s) is still dense and I left it as is, because trimming it would change cited claims. A human should decide.
+- Freeze-check test and hero-beat test: 12 passed.
+
+## Status after the addendum
+
+The FIX_HINDI_REPORT.md and the full gate that were the FINAL step of this list were not run, per the phone-redesign addendum. The single full gate will run at the end of the redesign branch (the redesign branches from this head, so it covers F1 to F6). Verified so far per task: the quick gates and task tests named above. Not run on this branch: the full suite.

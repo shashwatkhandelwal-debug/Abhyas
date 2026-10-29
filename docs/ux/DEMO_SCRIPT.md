@@ -52,60 +52,71 @@ Expected (mock path, deterministic, **not** model text):
 अब वापस रवि के पास: अपनी अगली बात कहिए।
 ```
 
-## 0:55 to 1:35. Practice with relapse and the child strip
+## 0:55 to 1:35. Hero beat: tell the answer, Ravi parrots, the old mistake returns
 
-Screen: the scene bar shows Ravi's label. Type or speak three lines to Ravi (the tray chips can send the same).
-Say: "Ravi's answers come from a rule engine. Watch the label beside his name."
+Screen: the scene bar shows Ravi's label, "अटका हुआ". **Type or speak these three lines; do not wait for the A1/A2/B
+chips.** Those chips appear only after 30 seconds idle in a subtraction scene, so on camera they will not be there.
+Say: "Ravi's answers come from a rule engine, not a model. I ask how. Then I just tell him the answer. He repeats it
+without understanding. On a new problem the old mistake is back, and the label says stuck again."
 
-Expected with a scripted act tagger (ask how, bundles and sticks, then a new problem). **[varies with live LLM]**:
-on the hosted site the teacher's lines are tagged by the model or the keyword fallback, so the labels can differ;
-the relapse marker needs Ravi to be "getting it" first and then slip on the next problem.
+Lines to say, in order: "तुमने यह कैसे किया?", then "सही उत्तर 16 है।", then "अब 61 में से 28 घटाओ।".
+
+Expected (real `SessionService`, mock path, scripted act tagger; the strip text is `strip_label`). **[varies with live
+LLM]**: on the hosted site the model or keyword fallback tags the lines, so check that "सही उत्तर ... है" is tagged as
+telling the answer; the numbers and the logic do not change.
 
 ```
-===== hi: one-on-one Ravi, relapse and feedback =====
-STRIP (start): रवि से आमने-सामने बात · अटका हुआ
-
 --- teacher asks how
-[ravi] दीदी, तो 7 में से 3 घटाया, 4 आया। 4 में से 2 घटाया, 2 आया। तो जवाब 24!
-STRIP (after asking how): रवि से आमने-सामने बात · अटका हुआ
+3 में से 7 नहीं घटता। तो 7 में से 3 घटाया, 4 आया। 4 में से 2 घटाया, 2 आया। 24!
+STRIP: अटका हुआ
 
---- teacher shows bundles
-[ravi] दीदी, 13 में से 7 घटाया, 6 आया। 3 में से 2 घटाया, 1 आया। तो जवाब 16!
-STRIP (after bundles): रवि से आमने-सामने बात · समझ रहा है
+--- teacher tells the answer
+16… ?
+STRIP: अटका हुआ
 
 --- teacher gives a new problem
-[ravi] दीदी, तो 8 में से 1 घटाया, 7 आया। 6 में से 2 घटाया, 4 आया। तो जवाब 47!
-STRIP (after the new problem (relapse if Ravi slips)): रवि से आमने-सामने बात · समझ रहा है · फिर अटका
+1 में से 8 नहीं घटता। तो 8 में से 1 घटाया, 7 आया। 6 में से 2 घटाया, 4 आया। 47!
+STRIP: अटका हुआ · फिर अटका
 ```
+
+Test: `backend/tests/unit/test_demo_hero_beat.py` runs exactly this beat. If you want the bundles version instead
+(ask how, bundles and sticks, new problem), the coach line changes to the scaffold-relapse sentence below.
 
 ## 1:35 to 2:05. Feedback with the quote badge and the talk-move line
 
-Screen: say "बस" to end. The coach bubble shows the teacher's own words in the quote badge, then the talk-move
-lines. Say: "The advice quotes what the teacher actually said, and the last two lines count what she did: asked how,
-named a child, or told the answer. It does not claim to measure wait time."
+Screen: say "बस" to end. The coach bubble opens with one line naming what happened, then the teacher's own words in
+the quote badge, then the talk-move lines. Say: "The advice quotes what the teacher actually said, and the last two
+lines count what she did. Here it says she told the answer."
 
 Expected (the coach lines are from the deterministic fallback; **[varies with live LLM]** for the coach's own
-strength/change sentences, while the talk-move block is always built from tagged acts):
+strength/change sentences, while the first line and the talk-move block are always built from tagged acts and the
+engine's recorded answers):
 
 ```
-[coach] चलिए, अब फीडबैक देखते हैं।
+चलिए, अब फीडबैक देखते हैं।
 आपके अभ्यास पर सुझाव:
-[coach] उत्तर बताने के बाद नया सवाल दिया, तो रवि की पुरानी गलती फिर दिखी। उत्तर बताने से तरीका नहीं सीखा जाता।
+आपने रवि को उत्तर बता दिया, इसलिए उसने बिना समझे उसे दोहरा दिया। पहले उससे समझाने को कहकर देखें।
 
-👍 आपने «तुमने यह कैसे किया? एक-एक कदम बताओ।» पूछा, इससे रवि की असली उलझन सामने आई।
-🔁 रवि 7 में से 3 घटा देता है; दोनों उत्तर 24 और 16 सामने रखकर उसी से तुलना करवाइए।
-🗣️ अगली बार ऐसे कहकर देखें: "तुमने पहले 24 कहा, अब 16 आया। कौन-सा ठीक है, और क्यों?"
+👍 आपने बच्चे से उसका तरीका पूछा, इससे उसकी असली उलझन सामने आई। आपके शब्द: «तुमने यह कैसे किया?»
+🔁 उत्तर बताने के बजाय दो उत्तर सामने रखकर पूछिए कि कौन-सा सही है।
+🗣️ अगली बार ऐसे कहकर देखें: "तुमने पहले एक उत्तर कहा था, अब तीलियाँ गिनकर दूसरा आया। कौन-सा ठीक है, और क्यों?"
 
 💬 बच्चों से बात करने का तरीका
-👍 आपने बच्चे से पूछा कि उसने यह कैसे किया। आपके शब्द: «रवि, तुमने यह कैसे किया? एक-एक कदम बताओ।»
-➡️ अगली बार सही जवाब आने पर भी पूछें: 'कैसे किया?'
+👍 आपने बच्चे से पूछा कि उसने यह कैसे किया। आपके शब्द: «तुमने यह कैसे किया?»
+➡️ इस बार जवाब बता दिया गया। अगली बार पहले पूछें: 'तुमने यह कैसे किया?'
 ```
+
+If the take uses bundles instead of telling the answer, the first line is: "नए सवाल पर रवि की पुरानी गलती फिर लौट आई।
+उससे फिर चीज़ें हाथ में लेकर समझाने को कहें।" (it never claims the answer was told).
 
 ## 2:05 to 2:30. Level sorter (teacher.demo3)
 
 Screen: tap the tray chip **"कक्षा को स्तर के हिसाब से समूहों में बाँटें"**, "पढ़ना", then the range for each of
 the four levels: 6-10, 11-20, 1-5, 0. Say: "Rough counts, no names. Each group gets one 10-minute activity from the
 UP handbook, with the page."
+
+Note: the level sorter needs about six taps (chip, subject, four range answers). Record it in maths (fewer groups to
+read out) or in one take; do not cut it mid-way.
 
 Expected (deterministic):
 
@@ -159,9 +170,9 @@ Expected card (counts are the seeded demo data, labelled as such):
 ```
 संकुल बैठक पैक
 डेमो डेटा: ये कक्षा-जाँचें काल्पनिक डेमो शिक्षकों की हैं, वास्तविक शिक्षकों की नहीं।
-1. **हासिल वाला घटाव गलत करते हैं (बंडल खोलना)** — 14 शिक्षक
+1. हासिल वाला घटाव गलत करते हैं (बंडल खोलना): बच्चे अटकते हैं, 14 शिक्षकों ने बताया
    साथ में अभ्यास: हासिल वाला घटाव: बंडल खोलकर
-2. **हासिल वाला जोड़ गलत करते हैं** — 11 शिक्षक
+2. हासिल वाला जोड़ गलत करते हैं: बच्चे अटकते हैं, 11 शिक्षकों ने बताया
    साथ में अभ्यास: हासिल वाला जोड़: 10 तीलियों का बंडल बनाकर
 ```
 
@@ -171,11 +182,27 @@ teacher picks one thing to try.
 
 ## 2:50 to 3:00. Close
 
-Say: "Built: these seven pieces, tested. Not built: regional languages, WhatsApp pilot, any measure of learning. A pilot
-would measure whether teachers come back and whether practice changes, not test scores." (`docs/submission/PITCH_NOTES.md`)
+Say: "Built: these seven pieces, tested. Not built: regional languages, a WhatsApp pilot, any measure of learning."
+(Fuller pilot wording is in `docs/submission/PITCH_NOTES.md`; it does not fit in ten seconds.)
 
 ## Rehearsal notes
 
 - Cold start on Render free: open `/healthz` a minute early.
-- Do not promise a "Stuck again" marker after "tell the answer": that case shows "stuck" (documented limit).
+- A1/A2/B chips appear only after 30 s idle in a subtraction scene. Type or speak the lines; do not wait for them.
+- The strip shows "अटका हुआ · फिर अटका" after a told answer followed by a new problem on which Ravi gives the bug
+  answer again. It reads that from the turn history; with no turn history it shows plain "अटका हुआ".
 - If the hosted act tagger tags a line differently, say so and move on; the engine's numbers stay the same.
+
+## Timing: 3:00 total, spoken words per section
+
+Spoken words are the quoted "Say" lines only; at about 2 to 2.5 words a second the hook is the one section that runs fast, and a human should trim it or let the voice-over run over the screen.
+
+| Section | Window | Spoken words |
+|---|---|---|
+| Problem hook | 0:00 to 0:20 | 72 |
+| Check-in | 0:20 to 0:55 | 16 |
+| Hero beat | 0:55 to 1:35 | 40 |
+| Feedback | 1:35 to 2:05 | 24 |
+| Level sorter | 2:05 to 2:30 | 17 |
+| Cluster pack | 2:30 to 2:50 | 28 |
+| Close | 2:50 to 3:00 | 16 |
