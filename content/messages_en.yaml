@@ -563,6 +563,15 @@ ui_scene_turn: {text: "Your turn {turn} of {max}"}
 ui_chat_scene_end: {text: "End practice"}
 ui_chat_scene_end_confirm: {text: "End the practice now?"}
 coach_quote_suffix: {text: "Your words:\n«{quote}»"}
+tm_head: {text: "💬 How you talked with the children"}
+tm_strength_explain: {text: "You asked a child how they did it."}
+tm_strength_named: {text: "You spoke to a child by name."}
+tm_strength_class: {text: "You asked the whole class a question."}
+tm_next_told: {text: "This time the answer was told. Next time ask first: 'How did you do it?'"}
+tm_next_check: {text: "Most questions only checked the answer. Next time ask a child how or why they did it."}
+tm_next_named: {text: "Next time call one child by name and ask them to explain."}
+tm_next_explain: {text: "Next time ask a child how they did it."}
+tm_next_keep: {text: "Next time, ask 'How did you do it?' even when the answer is right."}
 ui_chat_scene_stop_word: {text: "stop"}
 coach_source_suggestion: {text: "A suggestion from the sources:\n{suggestion}"}
 

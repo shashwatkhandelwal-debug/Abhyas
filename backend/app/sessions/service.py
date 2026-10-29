@@ -65,6 +65,7 @@ from backend.app.sessions.state_machine import (
     SessionStateEnum,
     WeeklyStateMachine,
 )
+from backend.app.sessions.talk_moves import talk_move_line
 from backend.app.sessions.titles import move_title
 from backend.app.sessions.training_rating import (
     is_rating_escape,
@@ -1966,6 +1967,13 @@ class SessionService:
                 skill_lead = self._skill_lead(move, coach_res.feedback.scores, ctx, address_form)
                 if skill_lead:
                     feedback_body = f"{skill_lead}\n\n{feedback_body}"
+                if v2_enabled(settings.TALK_MOVES_ENABLED):
+                    # from the tagged acts only (no model): named vs whole class, how/why vs check
+                    talk_line = talk_move_line(
+                        scene.turns, one_on_one=one_on_one, address_form=address_form
+                    )
+                    if talk_line:
+                        feedback_body = f"{feedback_body}\n\n{talk_line}"
 
                 ctx.rehearse_stage = rehearse_setup.STAGE_NONE
                 await self._sync_context_to_db(ctx, teacher_id)

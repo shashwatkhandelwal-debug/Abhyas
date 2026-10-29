@@ -821,6 +821,15 @@ ui_scene_turn: {text: "आपकी बारी {turn}/{max}", audio: false}
 ui_chat_scene_end: {text: "अभ्यास पूरा करें", audio: false}
 ui_chat_scene_end_confirm: {text: "अभ्यास अभी पूरा करें?", audio: false}
 coach_quote_suffix: {text: "आपके शब्द: «{quote}»", audio: false}
+tm_head: {text: "💬 बच्चों से बात करने का तरीका", audio: false}
+tm_strength_explain: {text: "आपने बच्चे से पूछा कि उसने यह कैसे किया।", audio: false}
+tm_strength_named: {text: "आपने बच्चे का नाम लेकर उससे बात की।", audio: false}
+tm_strength_class: {text: "आपने पूरी कक्षा से सवाल पूछा।", audio: false}
+tm_next_told: {text: "इस बार जवाब बता दिया गया। अगली बार पहले पूछें: 'तुमने यह कैसे किया?'", audio: false}
+tm_next_check: {text: "ज़्यादातर सवाल सिर्फ़ जवाब जाँचने वाले थे। अगली बार किसी बच्चे से पूछें कि उसने यह कैसे या क्यों किया।", audio: false}
+tm_next_named: {text: "अगली बार किसी एक बच्चे का नाम लेकर उससे समझाने को कहें।", audio: false}
+tm_next_explain: {text: "अगली बार किसी बच्चे से पूछें कि उसने यह कैसे किया।", audio: false}
+tm_next_keep: {text: "अगली बार सही जवाब आने पर भी पूछें: 'कैसे किया?'", audio: false}
 ui_chat_scene_stop_word: {text: "बस", audio: false}
 coach_source_suggestion: {text: "स्रोत से एक सुझाव: {suggestion}", audio: false}
 
