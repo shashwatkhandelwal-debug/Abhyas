@@ -16,6 +16,7 @@ from backend.tests.e2e.conftest import (
     CUT_OFF,
     MOBILE,
     link_acks_within,
+    open_sheet,
     tap_and_expect,
     tap_reply,
 )
@@ -63,6 +64,7 @@ def say(page: Any, text: str) -> None:
 
 
 def tap_handbook_chip(page: Any) -> None:
+    open_sheet(page)
     chip = page.locator(".handbook-chip[data-id]").first
     before = page.locator(".msg-row").count()
     tap_and_expect(page, chip.tap, NEW_ROW, before)
@@ -74,6 +76,7 @@ def tap_handbook_chip(page: Any) -> None:
 
 
 def tap_sample_line(page: Any) -> None:
+    open_sheet(page)
     summary = page.locator("#sample-tray summary")
     tap_and_expect(page, summary.tap, "() => document.getElementById('sample-tray').open")
     chip = page.locator(".demo-chip").first

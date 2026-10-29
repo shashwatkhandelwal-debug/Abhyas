@@ -58,15 +58,20 @@ class ClusterPack:
         return next((i for i in self.items if i.move_id), None)
 
 
+def _plain(text: str) -> str:
+    """Stored text shown as is: no literal markdown asterisks reach the page."""
+    return text.replace("*", "")
+
+
 def _item(s: ClassStruggle, teachers: int, *, en: bool) -> PackItem:
     cites = citations(s.chunk_ids)
     return PackItem(
         struggle_id=s.id,
-        label=s.label_en if en else s.label_hi,
+        label=_plain(s.label_en if en else s.label_hi),
         teachers=teachers,
         move_id=s.move_id,
         move_title=move_title(s.move_id) if s.move_id else "",
-        tip=s.tip_en if en else s.tip_hi,
+        tip=_plain(s.tip_en if en else s.tip_hi),
         sources=[format_guide_citation(c.source_short_hi, c.page) for c in cites],
     )
 

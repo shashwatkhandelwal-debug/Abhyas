@@ -7,7 +7,7 @@ from typing import Any
 
 import yaml
 
-from backend.tests.e2e.conftest import MOBILE
+from backend.tests.e2e.conftest import MOBILE, open_sheet
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -19,6 +19,7 @@ def _t(key: str, **fmt: str) -> str:
 
 def test_telling_the_answer_is_named_in_the_first_line_of_the_feedback(open_chat: Any) -> None:
     page = open_chat("teacher.demo2", viewport=MOBILE).page
+    open_sheet(page)
     page.locator("#sample-tray summary").tap()
     page.locator(".demo-chip", has_text="उत्तर बता दें").tap()
     page.wait_for_function(
@@ -26,6 +27,7 @@ def test_telling_the_answer_is_named_in_the_first_line_of_the_feedback(open_chat
         timeout=30_000,
     )
     page.wait_for_function("() => !document.querySelector('#pending-bubble.active')")
+    open_sheet(page)  # a sent chip closes the sheet
     page.locator(".demo-chip", has_text="जाँचने के लिए नया सवाल").tap()
     page.wait_for_function("() => !document.querySelector('#pending-bubble.active')")
     page.wait_for_timeout(2500)

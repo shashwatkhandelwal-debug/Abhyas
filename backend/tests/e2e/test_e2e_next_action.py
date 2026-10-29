@@ -44,7 +44,8 @@ def test_scene_line_says_how_to_keep_going_then_goes_once_she_speaks(open_chat: 
     suggest = page.locator("#next-suggest")
     line = "Ravi, let us make 43 with bundles of ten and loose sticks."
     assert suggest.inner_text().strip() == line
-    assert page.evaluate(LINES_IN_TEXT) <= 2.05
+    # the dock gives the line half the row (the suggestion button takes the rest): four lines at most
+    assert page.evaluate(LINES_IN_TEXT) <= 4.05
     suggest.click()
     page.wait_for_selector("#next-card", state="hidden", timeout=2000)
     page.wait_for_function(

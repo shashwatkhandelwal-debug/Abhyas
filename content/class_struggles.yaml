@@ -32,7 +32,7 @@ struggles:
     misconception_ids: []
     move_id: null
     chunk_ids: ["nipun_guidelines_2021:p087:080", "up_ganit_sandarshika_c1:p026:031"]
-    tip_hi: "गिनवाते समय हर चीज़ को छुआएँ या हटवाएँ, और पहले संख्या-नामों का क्रम पक्का करवाएँ। हर चीज़ के लिए एक ही संख्या बोली जाए।"
+    tip_hi: "गिनवाते समय हर चीज़ को छूकर या हटाकर गिनवाएँ, और पहले संख्या-नामों का क्रम पक्का करवाएँ। हर चीज़ के लिए एक ही संख्या बोलें।"
     tip_en: "When children count, have them touch or move each object, and make the order of number names firm first. One number for each object."
 
   - id: NUM_NUMBER_WRITING

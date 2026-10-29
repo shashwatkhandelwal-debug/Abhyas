@@ -409,6 +409,12 @@ async def main() -> None:
     print(
         f"All Offline Assets: {summary['all_assets_raw_kb']} KB raw / {summary['all_assets_gzip_kb']} KB gzip"
     )
+    print(
+        f"Exact bytes: first-load {summary['teacher_bundle_raw_bytes']}, all assets "
+        f"{summary['all_assets_raw_bytes']}; headroom to {BUDGET_LIMIT_BYTES}: "
+        f"{BUDGET_LIMIT_BYTES - summary['teacher_bundle_raw_bytes']} / "
+        f"{BUDGET_LIMIT_BYTES - summary['all_assets_raw_bytes']} bytes"
+    )
     print(f"Status: {'PASS' if summary['passed'] else 'FAIL'} (< 150 KB)")
 
     if not summary["passed"]:

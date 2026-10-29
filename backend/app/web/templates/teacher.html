@@ -50,16 +50,6 @@
 
     {% if demo_mode %}
     <div class="demo-banner" id="demo-banner" role="status" aria-label="{{ get_message('ui_demo_notice_label') }}"><span>{{ demo_banner_text or get_message('ui_demo_banner') }}</span><a href="/logout" class="demo-logout">{{ get_message('ui_logout') }}</a><button type="button" class="demo-dismiss" id="demo-dismiss" aria-label="{{ get_message('ui_demo_dismiss') }}">&times;</button></div>
-    <details class="fast-track-tray" id="fast-track-tray">
-      <summary class="ft-summary">⚡ {{ get_message('ui_fast_track_title') }}</summary>
-      <p class="ft-idle" id="ft-idle">{{ get_message('ui_fast_track_hint') }}</p>
-      <div class="ft-chips" role="toolbar" aria-label="{{ get_message('ui_fast_track_title') }}">
-        <button type="button" class="ft-chip" id="ft-chip-a1" data-action="a1" hidden disabled>{{ get_message('ui_fast_track_chip_a1') }}</button>
-        <button type="button" class="ft-chip" id="ft-chip-a2" data-action="a2" hidden disabled>{{ get_message('ui_fast_track_chip_a2') }}</button>
-        <button type="button" class="ft-chip" id="ft-chip-b" data-action="b" hidden disabled>{{ get_message('ui_fast_track_chip_b') }}</button>
-        <button type="button" class="ft-chip" id="ft-chip-c" data-action="c">{{ get_message('ui_fast_track_chip_c') }}</button>
-      </div>
-    </details>
     {% endif %}
 
     <div id="network-banner" class="network-banner" role="status" aria-live="polite" data-offline-text="{{ get_message('ui_offline_banner') }}" data-slow-text="{{ get_message('ui_slow_banner') }}">{% if not is_online and is_online is defined %}{{ get_message('ui_offline_banner') }}{% endif %}</div>
@@ -144,20 +134,23 @@
       </div>
     </main>
 
-    <div class="helper-tray" id="helper-tray">
+    <div class="dock" id="dock">
+    <div class="sheet" id="sheet" role="dialog" aria-label="{{ get_message('ui_chat_suggest') }}" hidden>
+      <div class="sheet-head"><button type="button" class="sheet-close" id="sheet-close" aria-label="{{ get_message('ui_sheet_close') }}">&times;</button></div>
     {% if checkin_entry %}
     <section class="handbook-section" id="checkin-entry"><div class="handbook-chips"><button type="button" class="reply-chip" data-btn-id="btn_chk_start" data-btn-title="{{ get_message('ui_checkin_entry') }}">{{ get_message('ui_checkin_entry') }}</button>{% if level_entry %}<button type="button" class="reply-chip" data-btn-id="btn_lvl_start" data-btn-title="{{ get_message('ui_level_entry') }}">{{ get_message('ui_level_entry') }}</button>{% endif %}</div></section>
     {% elif level_entry %}
     <section class="handbook-section" id="checkin-entry"><div class="handbook-chips"><button type="button" class="reply-chip" data-btn-id="btn_lvl_start" data-btn-title="{{ get_message('ui_level_entry') }}">{{ get_message('ui_level_entry') }}</button></div></section>
     {% endif %}
     {% if handbook_chips %}
+    <details class="sheet-sec" id="sheet-handbook" open><summary>{{ get_message('ui_handbook_title') }}</summary>
     <section class="handbook-section" id="handbook-chips" {% if ui_lang() != 'en' %}data-prefix="{{ handbook_prefix }}" {% endif %}data-autosend="{{ handbook_autosend }}">
-      <div class="demo-hint">{{ get_message('ui_handbook_title') }}</div>
       <div class="handbook-chips">
         {% for chip in handbook_chips %}<button type="button" class="handbook-chip" data-id="{{ chip.id }}"{% if ui_lang() == 'en' %} data-text="{{ chip.send }}"{% endif %}>{{ chip.label }}</button>
         {% endfor %}
       </div>
     </section>
+    </details>
     {% endif %}
     {% if demo_mode and view.samples %}
     <details class="sample-tray" id="sample-tray">
@@ -165,8 +158,20 @@
       <div class="sample-list" id="sample-list">{% for chip in view.samples %}<div class="sample-item"><button type="button" class="demo-chip" data-id="{{ chip.id }}" data-text="{{ chip.text }}" data-audio-available="{{ 'true' if chip.audio else 'false' }}">{{ chip.label }}</button><span class="sample-note">{{ chip.note }}</span></div>{% endfor %}</div>
     </details>
     {% endif %}
+    {% if demo_mode %}
+    <details class="fast-track-tray" id="fast-track-tray">
+      <summary class="ft-summary">⚡ {{ get_message('ui_fast_track_title') }}</summary>
+      <p class="ft-idle" id="ft-idle">{{ get_message('ui_fast_track_hint') }}</p>
+      <div class="ft-chips" role="toolbar" aria-label="{{ get_message('ui_fast_track_title') }}">
+        <button type="button" class="ft-chip" id="ft-chip-a1" data-action="a1" hidden disabled>{{ get_message('ui_fast_track_chip_a1') }}</button>
+        <button type="button" class="ft-chip" id="ft-chip-a2" data-action="a2" hidden disabled>{{ get_message('ui_fast_track_chip_a2') }}</button>
+        <button type="button" class="ft-chip" id="ft-chip-b" data-action="b" hidden disabled>{{ get_message('ui_fast_track_chip_b') }}</button>
+        <button type="button" class="ft-chip" id="ft-chip-c" data-action="c">{{ get_message('ui_fast_track_chip_c') }}</button>
+      </div>
+    </details>
+    {% endif %}
     </div>
-
+      <div class="action-row" id="action-row"></div>
     <div class="next-card" id="next-card" role="status" data-key="{{ view.hint.key if view.hint else '' }}"{% if not view.hint %} hidden{% endif %}>
       <span class="next-text" id="next-text">{{ view.hint.text if view.hint else '' }}</span>
       <button type="button" class="next-suggest" id="next-suggest"{% if not (view.hint and view.hint.suggest) %} hidden{% endif %}>{{ view.hint.suggest if view.hint and view.hint.suggest else '' }}</button>
@@ -181,6 +186,8 @@
           placeholder="{{ get_message('ui_chat_input_placeholder') }}"
           aria-label="{{ get_message('ui_chat_write_message') }}"
         >
+
+        <button type="button" class="btn-suggest" id="btn-suggest" aria-expanded="false" aria-controls="sheet">{{ get_message('ui_chat_suggest') }}</button>
 
         <button
           type="button"
@@ -218,6 +225,7 @@
         </div>
       </form>
     </footer>
+    </div>
   </div>
 
   <script type="application/json" id="ui-strings">{{ (ui_strings or {})|tojson }}</script>

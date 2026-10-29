@@ -29,6 +29,15 @@ TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEMO_PASSWORD = "e2e-demo-pass"
 SEED_TIMEOUT_S = 600
+
+
+def open_sheet(page: Any) -> None:
+    """Open the suggestions sheet (handbook chips, sample lines and demo shortcuts live in it)."""
+    if page.locator("#sheet").is_hidden():
+        page.locator("#btn-suggest").click()
+        page.locator("#sheet").wait_for(state="visible")
+
+
 MOBILE = {"width": 360, "height": 740}
 DESKTOP = {"width": 1280, "height": 800}
 

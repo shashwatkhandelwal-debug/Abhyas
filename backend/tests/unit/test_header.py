@@ -258,8 +258,9 @@ def test_relapse_marker_on_bug_answer_to_new_problem(strip_on: None, lang: str) 
     header = scene_header(_scene([ravi, _make_child("aman")]))
     assert header is not None
     ravi_label = header["children"][0]["label"]
-    assert get_message("ui_strip_relapse_m") in ravi_label
-    assert get_message("ui_strip_learning_m") in ravi_label
+    expected = f"{get_message('ui_strip_stuck_m')} · {get_message('ui_strip_relapse_m')}"
+    assert ravi_label == expected  # bundles then relapse: stuck again, never also "getting it"
+    assert get_message("ui_strip_learning_m") not in ravi_label
     assert "label" in header["children"][1]
     assert get_message("ui_strip_relapse_m") not in header["children"][1]["label"]
 
@@ -351,6 +352,7 @@ def test_told_answer_then_new_problem_shows_marker(strip_on: None, lang: str) ->
     ravi = _stuck_on_new()
     label = child_strip_label(ravi, _scene([ravi]), _told_history())
     assert label == f"{get_message('ui_strip_stuck_m')} · {get_message('ui_strip_relapse_m')}"
+    assert get_message("ui_strip_learning_m") not in label
     assert get_message("ui_strip_relapse_m") not in child_strip_label(ravi, _scene([ravi]))
     header = scene_header(_scene([ravi], one=True), True, _told_history())
     assert header is not None
