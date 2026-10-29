@@ -146,10 +146,11 @@ def child_strip_label(
     (pass `turns`); without it the child shows as plain "stuck".
     """
     suffix = "_f" if child.persona_id in _FEMALE_PERSONAS else "_m"
-    label = get_message(f"ui_strip_{_STRIP_KEY[child.state]}{suffix}")
     if _relapsed(child, state) or _told_then_stuck(child, state, turns):
-        label = f"{label} · {get_message(f'ui_strip_relapse{suffix}')}"
-    return label
+        # a relapse is stuck again, so it never also reads "getting it"
+        stuck = get_message(f"ui_strip_stuck{suffix}")
+        return f"{stuck} · {get_message(f'ui_strip_relapse{suffix}')}"
+    return get_message(f"ui_strip_{_STRIP_KEY[child.state]}{suffix}")
 
 
 def scene_header(

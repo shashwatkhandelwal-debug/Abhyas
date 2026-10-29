@@ -13,3 +13,10 @@ Branch `fix/hindi-polish`, cut from `main` (RUN_REPORT_M2.md present).
   - explain, bundles, then new problem (relapse, no tell-answer):
     `नए सवाल पर रवि की पुरानी गलती फिर लौट आई। उससे फिर चीज़ें हाथ में लेकर समझाने को कहें।`
 - Quick gate: ruff, mypy --strict, the coach outcome tests (13 passed) and check_first_load (127.33 KB first load) all passed.
+
+## F2: strip label: DONE
+
+- `backend/app/rehearsal/header.py` `child_strip_label`: when the relapse marker applies (bug answer after PARTIAL, or told-then-stuck), the label is now "अटका हुआ · फिर अटका" (English "Stuck · Stuck again"), never "समझ रहा है". No engine change; the catalog is unchanged because the stuck and relapse keys already existed.
+- Tests: `test_header.py` (bundles-then-relapse exact label; told-then-stuck also asserts no "learning"). 66 passed with `test_one_on_one_flow.py`.
+- Screenshots at 393x852, dark and light: `docs/ux/v2/F2-393x852-dark-strip_relapse.png` and `docs/ux/v2/F2-393x852-light-strip_relapse.png`. They come from `scripts/composer_layout_check.py`, whose relapse fixture label I updated to match. The dark one was viewed and shows "रवि · अटका हुआ · फिर अटका"; the light one was captured but not viewed.
+- Quick gate: ruff, mypy --strict and check_first_load passed.

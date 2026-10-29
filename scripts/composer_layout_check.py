@@ -212,7 +212,7 @@ def _v2_scenarios(scene: dict[str, Any], ready: str) -> dict[str, dict[str, Any]
 
     mid_relapse = dict(scene)
     labels = (
-        f"{get_message('ui_strip_learning_m')} · {get_message('ui_strip_relapse_m')}",
+        f"{get_message('ui_strip_stuck_m')} · {get_message('ui_strip_relapse_m')}",
         get_message("ui_strip_stuck_f"),
         get_message("ui_strip_got_m"),
     )
