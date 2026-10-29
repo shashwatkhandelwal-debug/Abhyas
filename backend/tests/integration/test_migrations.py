@@ -156,3 +156,39 @@ def test_alembic_migrations_round_trip() -> None:
             assert table in tables_reupgrade, f"Table {table} missing after re-upgrade"
     finally:
         engine.dispose()
+
+
+@pytest.mark.skipif(not TEST_DATABASE_URL, reason="TEST_DATABASE_URL not set")
+def test_single_head_and_last_migration_steps_back_and_forward() -> None:
+    """One head; `downgrade -1` removes class_checkin, `upgrade head` brings it back."""
+    from alembic.script import ScriptDirectory
+
+    assert TEST_DATABASE_URL is not None
+    sync_url = TEST_DATABASE_URL.replace("postgresql+asyncpg://", "postgresql+psycopg2://").replace(
+        "postgresql://", "postgresql+psycopg2://", 1
+    )
+    cfg = Config("alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", sync_url)
+    heads = ScriptDirectory.from_config(cfg).get_heads()
+    assert len(heads) == 1, heads
+
+    db_name = sync_url.rsplit("/", 1)[-1].split("?")[0].lower()
+    is_ci = os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true"
+    if "test" not in db_name and not is_ci:
+        pytest.skip(f"Refusing to migrate database '{db_name}' (name must contain 'test')")
+
+    engine = create_engine(sync_url)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto;"))
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+            conn.commit()
+        command.upgrade(cfg, "head")
+        assert "class_checkin" in inspect(engine).get_table_names()
+        command.downgrade(cfg, "-1")
+        assert "class_checkin" not in inspect(engine).get_table_names()
+        command.upgrade(cfg, "head")
+        assert "class_checkin" in inspect(engine).get_table_names()
+    finally:
+        engine.dispose()
