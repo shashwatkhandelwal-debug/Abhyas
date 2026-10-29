@@ -834,6 +834,9 @@ class SessionService:
                 chk.record.outcome,
                 list(chk.record.struggle_ids),
             )
+        if chk.resume_scene:  # the scene was only paused: say who she is talking to again
+            prompt = self._get_resume_prompt(ctx, SessionStateEnum.REHEARSE, ctx.address_form)
+            return [OutboundMessage(kind="text", text_hi=prompt)]
         if chk.went_well:
             next_title: str | None = await self._get_next_move_title(
                 teacher_id, ctx.current_move_id

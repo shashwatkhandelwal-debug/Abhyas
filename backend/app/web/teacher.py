@@ -226,11 +226,10 @@ async def teacher_chat_page(
             "handbook_prefix": settings.HANDBOOK_ASK_PREFIX,
             "initial_messages": initial_messages,
             "address_form": teacher.address_form,
-            # "After class: how did it go?" quick reply: onboarded, not in a scene (flag, ON in demo)
+            # "After class: how did it go?" chip: onboarded (flag, ON in demo); in a scene it pauses it
             "checkin_entry": bool(
                 v2_enabled(settings.CLASS_CHECKIN_ENABLED)
                 and teacher.onboarding_state == OnboardingStateEnum.READY.value
-                and active_scene is None
             ),
             "ui_strings": chat_ui_strings(teacher.address_form),
             "rec_config": {

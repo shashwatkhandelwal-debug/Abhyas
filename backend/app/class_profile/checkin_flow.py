@@ -51,6 +51,7 @@ BTN_START = "btn_chk_start"
 BTN_MORE = "btn_chk_more"
 BTN_PRACTICE = "btn_chk_practice"
 BTN_HANDBOOK = "btn_chk_handbook"
+BTN_RESUME = "btn_chk_resume"
 MODULE_PREFIX = "btn_chk_mod_"
 STRUGGLE_PREFIX = "btn_chk_str_"
 OUTCOME_BUTTONS = {
@@ -61,7 +62,8 @@ OUTCOME_BUTTONS = {
 
 _OTHER_PREFIX = "OTHER_"
 _TRAILING = " .!?।,"
-_IN_SCENE = (SessionStateEnum.REHEARSE_INTRO, SessionStateEnum.REHEARSE)
+_SCENE_SETUP = SessionStateEnum.REHEARSE_INTRO  # picking the child: no check-in here
+_SCENE = SessionStateEnum.REHEARSE  # a running scene: paused by the check-in, not touched
 
 
 @dataclass(frozen=True)
@@ -87,6 +89,7 @@ class CheckinResult:
     went_well: bool = False  # the service adds the "next move in your path" line
     launch_move_id: str | None = None  # open the practice scene for this move
     handbook: bool = False  # carry on as the handbook-question button
+    resume_scene: bool = False  # back to the paused scene (the service says where she was)
 
 
 def modules(lib: StruggleLibrary | None = None) -> list[CheckinModule]:
@@ -206,7 +209,14 @@ def result_messages(ctx: SessionContext, s: ClassStruggle) -> list[OutboundMessa
         )
     else:
         tip_msg = OutboundMessage(kind="text", text_hi=get_message("chk_tip_missing", label=label))
-    if s.move_id is not None:
+    if ctx.current_state == _SCENE:  # the scene is paused: no second practice, offer the way back
+        key = "chk_in_scene_practice" if s.move_id is not None else "chk_scene_waiting"
+        offer = OutboundMessage(
+            kind="buttons",
+            text_hi=get_message(key, move_title=move_title(s.move_id) if s.move_id else ""),
+            buttons=[_btn(BTN_RESUME), _btn(BTN_HANDBOOK)],
+        )
+    elif s.move_id is not None:
         offer = OutboundMessage(
             kind="buttons",
             text_hi=get_message("chk_practice_yes", move_title=move_title(s.move_id)),
@@ -226,6 +236,14 @@ def well_messages(
 ) -> list[OutboundMessage]:
     """A short acknowledgement and the next move in her path (no praise beyond that)."""
     text = get_message("chk_well_ack", module=module_label(ctx.checkin_module))
+    if ctx.current_state == _SCENE:  # the paused scene is what comes next, not another move
+        return [
+            OutboundMessage(
+                kind="buttons",
+                text_hi=f"{text}\n{get_message('chk_scene_waiting')}",
+                buttons=[_btn(BTN_RESUME)],
+            )
+        ]
     if next_move_title:
         text = f"{text}\n{get_message('chk_well_next', next_move_title=next_move_title)}"
     if next_move_title and offer_next:
@@ -275,12 +293,18 @@ def handle(
     """One inbound message. `handled=False` means "not mine, carry on with normal routing"."""
     lib = lib or load_library()
     text = (text or "").strip()
-    in_scene = ctx.current_state in _IN_SCENE
+    in_setup = ctx.current_state == _SCENE_SETUP
+    in_scene = ctx.current_state == _SCENE
 
-    if button_id == BTN_START or (
-        ctx.checkin_stage == STAGE_NONE and not button_id and is_checkin_command(text)
-    ):
-        return CheckinResult(handled=False) if in_scene else start(ctx, lib)
+    if button_id == BTN_START:  # the chip also works inside a running scene (it is paused)
+        return CheckinResult(handled=False) if in_setup else start(ctx, lib)
+    if ctx.checkin_stage == STAGE_NONE and not button_id and is_checkin_command(text):
+        # typed words inside a scene are her line to the child, never a command
+        return CheckinResult(handled=False) if in_setup or in_scene else start(ctx, lib)
+
+    if button_id == BTN_RESUME and in_scene:
+        _reset(ctx)
+        return CheckinResult(resume_scene=True)
 
     is_checkin_button = bool(button_id) and str(button_id).startswith("btn_chk_")
     if ctx.checkin_stage == STAGE_NONE:
@@ -305,8 +329,10 @@ def handle(
         return CheckinResult(handled=False)
 
     if not button_id:
-        if not text or is_rating_escape(intent, text):
-            _reset(ctx)  # a command (menu, next, ask ...) ends the check-in and runs normally
+        if not text or in_scene or is_rating_escape(intent, text):
+            # a command (menu, next, ask ...) ends the check-in and runs normally; inside a paused
+            # scene her typing is the next line to the child, so the check-in is dropped (unsaved)
+            _reset(ctx)
             return CheckinResult(handled=False)
         return CheckinResult([_screen(ctx, lib, note=True)])
 
@@ -353,6 +379,7 @@ __all__ = [
     "BTN_HANDBOOK",
     "BTN_MORE",
     "BTN_PRACTICE",
+    "BTN_RESUME",
     "BTN_START",
     "CheckinModule",
     "CheckinRecord",

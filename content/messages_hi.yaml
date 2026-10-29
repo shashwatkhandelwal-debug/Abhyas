@@ -1196,4 +1196,7 @@ chk_practice_yes: {text: "इस दिक्कत के लिए अभ्�
 chk_practice_none: {text: "इस दिक्कत के लिए अभ्यास का केस अभी बना नहीं है। आप हैंडबुक से पूछ सकते हैं।", audio: false}
 chk_already: {text: "यह कक्षा-जाँच दर्ज हो चुकी है। नई जाँच के लिए 'कक्षा के बाद' दबाएँ।", audio: false}
 chk_command_words: {text: "कक्षा के बाद, कक्षा के बाद कैसा रहा, class check in, check in, after class", audio: false}
+btn_chk_resume: {text: "वापस अभ्यास पर", audio: false}
+chk_in_scene_practice: {text: "इस दिक्कत के लिए अभ्यास का केस है: {move_title}। चल रहा अभ्यास वहीं रुका है। अभी उसी पर लौटिए, या हैंडबुक से पूछिए।", audio: false}
+chk_scene_waiting: {text: "आपका अभ्यास वहीं रुका है, जहाँ छोड़ा था। 'वापस अभ्यास पर' दबाइए।", audio: false}
 hint_checkin: {text: "ऊपर के बटनों में से एक चुनिए। लिखने की ज़रूरत नहीं है।", audio: false}

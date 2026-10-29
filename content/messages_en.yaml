@@ -854,4 +854,7 @@ chk_practice_yes: {text: "There is a practice case for this difficulty: {move_ti
 chk_practice_none: {text: "A practice case for this difficulty has not been built yet. You can ask the handbook."}
 chk_already: {text: "This check-in is already noted. Tap 'After class' for a new one."}
 chk_command_words: {text: "after class, class check in, check in"}
+btn_chk_resume: {text: "Back to practice"}
+chk_in_scene_practice: {text: "There is a practice case for this difficulty: {move_title}. Your current practice is still waiting where you left it. Go back to it now, or ask the handbook."}
+chk_scene_waiting: {text: "Your practice is still waiting where you left it. Tap 'Back to practice'."}
 hint_checkin: {text: "Choose one of the buttons above. No need to type."}

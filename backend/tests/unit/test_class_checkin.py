@@ -473,11 +473,124 @@ async def test_unknown_module_or_struggle_id_is_never_stored() -> None:
     assert t.stored() == []
 
 
-@pytest.mark.asyncio
-async def test_the_entry_is_ignored_inside_a_scene() -> None:
+async def _demo2_in_scene() -> Teacher:
+    """demo2's landing: a one-on-one scene with Ravi, diagnosed, one question asked."""
     t = await Teacher("demo2", "f").setup()
     ctx = await t.ctx()
     ctx.current_state = SessionStateEnum.REHEARSE
+    ctx.rehearse_mode = "one_on_one"
+    ctx.rehearse_child = "ravi"
+    ctx.rehearsal_turns_count = 1
+    ctx.diagnosis = {"bug": "borrow_swap"}
+    await t.service._sync_context_to_db(ctx, t.teacher_id)
+    return t
+
+
+async def _scene_fields(t: Teacher) -> tuple[Any, ...]:
+    c = await t.ctx()
+    return (
+        c.current_state,
+        c.current_move_id,
+        c.rehearse_mode,
+        c.rehearse_child,
+        c.rehearsal_turns_count,
+        c.retries_count,
+        dict(c.diagnosis),
+    )
+
+
+@pytest.mark.asyncio
+async def test_check_in_is_two_taps_from_demo2s_scene_landing(lang: str) -> None:
+    t = await _demo2_in_scene()
+    before = await _scene_fields(t)
+    out = await t.tap(checkin_flow.BTN_START)  # tap 1: the chip in the idle quick-reply row
+    assert (await t.ctx()).checkin_stage == "module"
+    assert module_button("NUM_SUB_REGROUP_BUNDLES") in ids(out)
+    out = await t.tap(module_button("NUM_SUB_REGROUP_BUNDLES"))  # tap 2: a module
+    assert ids(out) == list(checkin_flow.OUTCOME_BUTTONS)
+    assert await _scene_fields(t) == before  # paused, not touched
+
+
+@pytest.mark.asyncio
+async def test_struggle_path_in_scene_offers_the_way_back_not_a_second_practice(lang: str) -> None:
+    t = await _demo2_in_scene()
+    before = await _scene_fields(t)
+    await open_struggle_list(t, "NUM_SUB_REGROUP_BUNDLES", "btn_chk_most")
+    out = await t.tap(struggle_button("NUM_SUB_REGROUP"))
+    offer = out[-1]
+    assert ids([offer]) == [checkin_flow.BTN_RESUME, checkin_flow.BTN_HANDBOOK]
+    assert len(t.stored()) == 1  # the check-in itself is stored as usual
+    assert await _scene_fields(t) == before
+    back = await t.tap(checkin_flow.BTN_RESUME)
+    assert back[0].text_hi == get_message("ask_resume_scene_one", child=get_message("speaker_ravi"))
+    assert (await t.ctx()).checkin_stage == ""
+    assert await _scene_fields(t) == before  # the scene is intact and waiting for her next line
+
+
+@pytest.mark.asyncio
+async def test_went_well_in_scene_says_the_scene_is_waiting_and_resumes(lang: str) -> None:
+    t = await _demo2_in_scene()
+    before = await _scene_fields(t)
+    await open_module(t, "NUM_SUB_REGROUP_BUNDLES")
+    out = await t.tap("btn_chk_well")
+    assert ids(out) == [checkin_flow.BTN_RESUME]
+    assert get_message("chk_scene_waiting") in alltext(out)
+    assert "btn_next_move" not in ids(out)
+    await t.tap(checkin_flow.BTN_RESUME)
+    assert await _scene_fields(t) == before
+
+
+@pytest.mark.asyncio
+async def test_handbook_from_the_in_scene_check_in_returns_to_the_scene(lang: str) -> None:
+    t = await _demo2_in_scene()
+    await open_struggle_list(t, "NUM_SUB_REGROUP_BUNDLES", "btn_chk_most")
+    await t.tap(struggle_button("NUM_SUB_REGROUP"))
+    await t.tap(checkin_flow.BTN_HANDBOOK)
+    ctx = await t.ctx()
+    assert ctx.current_state == SessionStateEnum.ASK
+    assert ctx.prior_state_before_ask == SessionStateEnum.REHEARSE  # the ask flow resumes the scene
+
+
+@pytest.mark.asyncio
+async def test_typing_in_scene_is_her_line_not_a_check_in_command(lang: str) -> None:
+    t = await _demo2_in_scene()
+    ctx = await t.ctx()
+    assert checkin_flow.handle(ctx, "after class", None, None).handled is False  # typed words
+    assert ctx.checkin_stage == ""
+    await t.tap(checkin_flow.BTN_START)
+    ctx = await t.ctx()
+    assert ctx.checkin_stage == "module"
+    res = checkin_flow.handle(ctx, "35", None, None)  # typing mid-check-in: the next line to Ravi
+    assert res.handled is False and ctx.checkin_stage == ""
+    assert t.stored() == []
+
+
+@pytest.mark.asyncio
+async def test_a_stale_resume_button_outside_a_scene_is_harmless(lang: str) -> None:
+    t = await Teacher("demo3", "f").setup()
+    out = await t.tap(checkin_flow.BTN_RESUME)
+    assert get_message("chk_already") in alltext(out)
+    assert (await t.ctx()).current_state == SessionStateEnum.LEARN
+
+
+@pytest.mark.asyncio
+async def test_flag_off_no_check_in_starts_and_no_chip_is_offered_in_scene(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    t = await _demo2_in_scene()
+    monkeypatch.setattr(settings, "CLASS_CHECKIN_ENABLED", False)
+    assert SessionService._checkin_entry_buttons() == []
+    await t.tap(checkin_flow.BTN_START)  # a stray tap is routed as before, never as a check-in
+    ctx = await t.ctx()
+    assert ctx.checkin_stage == "" and ctx.checkin_module == ""
+    assert t.stored() == []
+
+
+@pytest.mark.asyncio
+async def test_the_entry_is_still_ignored_while_the_child_is_being_picked() -> None:
+    t = await Teacher("demo2", "f").setup()
+    ctx = await t.ctx()
+    ctx.current_state = SessionStateEnum.REHEARSE_INTRO
     await t.service._sync_context_to_db(ctx, t.teacher_id)
     await t.tap(checkin_flow.BTN_START)
     assert (await t.ctx()).checkin_stage == ""
@@ -568,7 +681,7 @@ async def _page(app: FastAPI, cookies: dict[str, str] | None = None) -> str:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("address_form", ["f", "m"])
-async def test_chat_page_shows_the_entry_chip_for_an_onboarded_teacher_outside_a_scene(
+async def test_chat_page_shows_the_entry_chip_for_an_onboarded_teacher(
     teacher_pwa_app: FastAPI,
     mock_teacher: TeacherRow,
     address_form: str,
@@ -604,4 +717,55 @@ async def test_chat_page_has_no_entry_chip_when_off_or_not_onboarded(
     assert "btn_chk_start" not in await _page(teacher_pwa_app)
     monkeypatch.setattr(settings, "CLASS_CHECKIN_ENABLED", True)
     mock_teacher.onboarding_state = "NEW"
+    assert "btn_chk_start" not in await _page(teacher_pwa_app)
+
+
+@pytest.mark.asyncio
+async def test_chat_page_keeps_the_entry_chip_inside_an_active_scene(
+    teacher_pwa_app: FastAPI,
+    mock_teacher_id: UUID,
+    mock_teacher: TeacherRow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from unittest.mock import AsyncMock, MagicMock
+
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from test_teacher_pwa import _scene_state_json
+
+    from backend.app.db.models import Scene
+    from backend.app.db.session import get_db_session
+
+    mock_teacher.onboarding_state = "READY"
+    scene = Scene(
+        id=uuid4(), teacher_id=mock_teacher_id, status="active", engine_state=_scene_state_json()
+    )
+
+    async def db_with_scene() -> AsyncSession:
+        db = AsyncMock(spec=AsyncSession)
+
+        async def get_mock(entity: Any, ident: Any) -> Any:
+            return mock_teacher if entity is TeacherRow and ident == mock_teacher_id else None
+
+        async def execute_mock(stmt: Any) -> Any:
+            res = MagicMock()
+            text = str(stmt)
+            if "FROM scene" in text:
+                res.scalar_one_or_none.return_value = scene
+            elif "FROM message" in text:
+                res.scalars.return_value.all.return_value = []
+            else:
+                res.scalar_one_or_none.return_value = mock_teacher
+            return res
+
+        db.get.side_effect = get_mock
+        db.execute.side_effect = execute_mock
+        return db
+
+    teacher_pwa_app.dependency_overrides[get_db_session] = db_with_scene
+    html = await _page(teacher_pwa_app)
+    assert not re.search(
+        r'<section class="scene-bar" id="scene-bar"[^>]* hidden>', html
+    )  # scene on
+    assert 'data-btn-id="btn_chk_start"' in html
+    monkeypatch.setattr(settings, "CLASS_CHECKIN_ENABLED", False)
     assert "btn_chk_start" not in await _page(teacher_pwa_app)
