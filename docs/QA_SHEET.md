@@ -154,3 +154,24 @@ optimistic because we added keywords after a first run on the same set); only 7 
 the rest get the cited tip and an honest "no practice case yet"; the two UP guides are OCR, so their pages are
 pointers to check. We have no evidence yet that personalising raises learning; the "did it help your class?"
 answers (`class_outcome`) are how we would start to find out **[UNVERIFIED]**.
+
+**17. What was added in V2, and what has actually been verified?**
+Added on branch `feat/v2-national`, all behind settings flags that are on in demo mode and off by default otherwise
+(`v2_enabled` in `backend/app/config.py`): teacher form of address follows the onboarding choice; the after-class
+check-in (`CLASS_CHECKIN_ENABLED`); the child understanding strip (`CHILD_STRIP_ENABLED`); the level sorter
+(`LEVEL_SORTER_ENABLED`); talk-move feedback (`TALK_MOVES_ENABLED`); national / state source labels (no flag); the
+cluster meeting pack (`CLUSTER_PACK_ENABLED`); per-channel button caps. **Verified here:** the full backend suite on a
+fresh pgvector database (2087 passed, 1 skipped, the skip being the audio-sample test that needs a speech key), `ruff`,
+`mypy --strict`, the Node tests for the chat client (77), the layout check at three phone sizes in dark and light
+(`scripts/composer_layout_check.py`), and page weight (`scripts/check_first_load.py`: all offline assets 151,520 B of
+a 153,600 B limit after a comment and blank-line trim). New tests cover: every check-in tip and level-sorter activity
+resolves to a stored handbook chunk (`test_checkin_content_integrity.py`, `test_level_sorter.py`), the cluster pack's
+n<10 rule and demo labelling on PostgreSQL (`test_cluster_pack_postgres.py`), and the national tie-break
+(`test_source_scope.py`). The children's answers still come only from the rule engine; the strip reads existing engine
+state and the talk-move line reads the stored acts, and neither calls a model. **Not verified:** any of this on a real
+phone (see `docs/ux/PHONE_TEST_CHECKLIST.md`), against a live Claude model, on live WhatsApp, or with a real teacher
+**[UNVERIFIED]**. Known limits: a child who was only told the answer shows "stuck", not "stuck again" (the saved state
+keeps no record of it); the level names (letters, words, paragraph, story; number recognition, 1-digit, 2-digit,
+subtraction) are ours, and each activity is a paraphrase of a stored UP handbook passage that the teacher can open
+(those two handbooks are machine-read, see question 9); the demo cluster's pack is hidden by the n<10 rule on purpose
+(7 consenting teachers), the trainer view shows it. There is no kappa figure and no learning-outcome claim.

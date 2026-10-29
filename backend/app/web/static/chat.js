@@ -1,10 +1,8 @@
 // Abhyas Chat Client (spec/09)
-
 const DB_NAME = 'abhyas_chat_db';
 const DB_VERSION = 1;
 const STORE_OUTBOX = 'outbox';
 const STORE_MESSAGES = 'messages_cache';
-
 const TYPING_TIMEOUT_MS = 60000;
 const COLD_START_HINT_MS = 5000;
 const AUDIO_WAIT_MS = 25000;
@@ -15,7 +13,6 @@ const FAST_TRACK_IDLE_MS = 30000;
 const BACKOFF_STEPS = [2000, 4000, 8000, 16000, 30000];
 const SLOW_REQUEST_THRESHOLD_MS = 8000;
 const SLOW_REQUEST_COUNT_THRESHOLD = 3;
-
 function getCsrfToken() {
   const meta = document.querySelector('meta[name="csrf-token"]');
   if (meta && meta.content) {
@@ -28,7 +25,6 @@ function getCsrfToken() {
   return '';
 }
 window.getCsrfToken = getCsrfToken;
-
 function openDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -45,7 +41,6 @@ function openDatabase() {
     request.onerror = () => reject(request.error);
   });
 }
-
 async function saveToOutbox(item) {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
@@ -55,7 +50,6 @@ async function saveToOutbox(item) {
     tx.onerror = () => reject(tx.error);
   });
 }
-
 async function removeFromOutbox(clientMsgId) {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
@@ -65,7 +59,6 @@ async function removeFromOutbox(clientMsgId) {
     tx.onerror = () => reject(tx.error);
   });
 }
-
 async function getPendingOutboxItems() {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
@@ -75,7 +68,6 @@ async function getPendingOutboxItems() {
     req.onerror = () => reject(req.error);
   });
 }
-
 async function cacheMessages(msgs) {
   if (!msgs || msgs.length === 0) return;
   const db = await openDatabase();
@@ -85,7 +77,6 @@ async function cacheMessages(msgs) {
     store.put(m);
   }
 }
-
 async function getCachedMessages() {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
@@ -99,9 +90,7 @@ async function getCachedMessages() {
     req.onerror = () => reject(req.error);
   });
 }
-
 const LOGOUT_CLEAR_TIMEOUT_MS = 1500;
-
 function deleteChatDatabase() {
   return new Promise((resolve) => {
     try {
@@ -114,7 +103,6 @@ function deleteChatDatabase() {
     }
   });
 }
-
 async function clearLocalState() {
   const wipes = [deleteChatDatabase()];
   if (window.caches) {
@@ -126,7 +114,6 @@ async function clearLocalState() {
   ]);
 }
 window.clearLocalState = clearLocalState;
-
 function setupLogoutCleanup() {
   document.addEventListener('click', (e) => {
     const link = e.target && e.target.closest ? e.target.closest('a[href="/logout"]') : null;
@@ -138,13 +125,10 @@ function setupLogoutCleanup() {
     });
   });
 }
-
 let UI = {};
-
 function setUiStrings(obj) {
   UI = obj || {};
 }
-
 function loadUiStrings() {
   const el = document.getElementById('ui-strings');
   if (!el) return;
@@ -154,22 +138,18 @@ function loadUiStrings() {
     console.warn('ui-strings JSON unreadable', e);
   }
 }
-
 function fillTemplate(str, vars) {
   let out = str;
   for (const k in vars || {}) out = out.split('{' + k + '}').join(String(vars[k]));
   return out;
 }
-
 function t(key, vars) {
   const s = UI[key];
   return s === undefined ? '' : fillTemplate(s, vars);
 }
-
 const MSG_SENDING = 'sending';
 const MSG_SENT = 'sent';
 const MSG_FAILED = 'failed';
-
 function nextMsgState(cur, ev) {
   switch (ev) {
     case 'accepted':
@@ -182,9 +162,7 @@ function nextMsgState(cur, ev) {
       return cur;
   }
 }
-
 const TYPING_OFF = Object.freeze({ visible: false, timedOut: false, replied: false, speaker: null, label: null, since: 0 });
-
 function typingNext(st, ev) {
   switch (ev.type) {
     case 'accepted':
@@ -212,13 +190,11 @@ function typingNext(st, ev) {
       return st;
   }
 }
-
 const SPEAKER_NAMES = {
   ravi: ['रवि', 'ravi'],
   priya: ['प्रिया', 'priya'],
   aman: ['अमन', 'aman'],
 };
-
 function guessSpeaker(text) {
   const s = (text || '').toLowerCase();
   let best = null;
@@ -234,7 +210,6 @@ function guessSpeaker(text) {
   }
   return best;
 }
-
 function audioNext(cur, ev) {
   switch (cur) {
     case 'loading':
@@ -260,7 +235,6 @@ function audioNext(cur, ev) {
       return cur;
   }
 }
-
 function micNext(cur, ev) {
   switch (cur) {
     case 'idle':
@@ -283,7 +257,6 @@ function micNext(cur, ev) {
       return cur;
   }
 }
-
 function netNext(cur, ev) {
   switch (ev) {
     case 'success':
@@ -300,13 +273,11 @@ function netNext(cur, ev) {
       return cur;
   }
 }
-
 function formatTimer(sec) {
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
-
 const REC_CONFIG = (() => {
   try {
     const el = document.getElementById('rec-config');
@@ -316,7 +287,6 @@ const REC_CONFIG = (() => {
   }
 })();
 const REC_HOLD_MS = REC_CONFIG.holdMs || 400;
-
 const state = {
   lastMessageId: null,
   isPending: false,
@@ -349,20 +319,16 @@ const state = {
   ftIdle: false,
   ftIdleTimer: null,
 };
-
 function isChildSpeaker(speaker) {
   return speaker === 'ravi' || speaker === 'priya' || speaker === 'aman';
 }
-
 function rmAttr(el, name) {
   if (el.removeAttribute) el.removeAttribute(name);
 }
-
 function announce(text) {
   const live = document.getElementById('sr-live');
   if (live && text) live.textContent = text;
 }
-
 function renderNetStatus() {
   const bar = document.getElementById('status-bar');
   if (!bar) return;
@@ -377,14 +343,12 @@ function renderNetStatus() {
     bar.hidden = true;
   }
 }
-
 function netEvent(ev) {
   const next = netNext(state.net, ev);
   if (next === state.net) return;
   state.net = next;
   renderNetStatus();
 }
-
 async function netFetch(url, opts) {
   const timer = setTimeout(() => netEvent('slow'), COLD_START_HINT_MS);
   try {
@@ -398,7 +362,6 @@ async function netFetch(url, opts) {
     throw err;
   }
 }
-
 function paintStatus(el, st, clientMsgId) {
   el.className = `status-icon ${st}`;
   el.setAttribute('data-state', st);
@@ -413,7 +376,6 @@ function paintStatus(el, st, clientMsgId) {
     rmAttr(el, 'tabindex');
   }
 }
-
 function setMessageState(clientMsgId, ev) {
   const cur = state.msgStates.get(clientMsgId) || MSG_SENDING;
   const next = nextMsgState(cur, ev);
@@ -422,11 +384,9 @@ function setMessageState(clientMsgId, ev) {
   if (el) paintStatus(el, next, clientMsgId);
   return next;
 }
-
 function updateMessageStatus(clientMsgId) {
   setMessageState(clientMsgId, 'accepted');
 }
-
 function failMessage(clientMsgId, reason) {
   state.failedIds.set(clientMsgId, reason);
   setMessageState(clientMsgId, 'failed');
@@ -435,11 +395,9 @@ function failMessage(clientMsgId, reason) {
   flashStatus(failureNoticeText(reason));
   if (state.fastTrackInFlight) enableFastTrackChips();
 }
-
 function failureNoticeText(reason) {
   return reason === 'network' ? t('ui_chat_send_failed_network') : t('ui_chat_send_failed_rejected');
 }
-
 async function retryMessage(clientMsgId) {
   if (!state.failedIds.has(clientMsgId)) return;
   state.failedIds.delete(clientMsgId);
@@ -456,7 +414,6 @@ async function retryMessage(clientMsgId) {
   await saveToOutbox(item);
   drainOutbox();
 }
-
 function setMicPhase(clientMsgId, ev) {
   const row = state.rows.get(clientMsgId);
   if (!row || !row._phaseEl) return;
@@ -467,7 +424,6 @@ function setMicPhase(clientMsgId, ev) {
   const key = next === 'uploading' ? 'ui_chat_rec_uploading' : next === 'transcribing' ? 'ui_chat_rec_transcribing' : '';
   row._phaseEl.textContent = key ? t(key) : '';
 }
-
 function applyTranscript(row, text) {
   if (!row || !row._phaseEl || row._micPhase === 'done' || !text) return;
   row._micPhase = 'done';
@@ -475,11 +431,9 @@ function applyTranscript(row, text) {
   row._phaseEl.textContent = '';
   if (row._textEl) row._textEl.textContent = text;
 }
-
 function typingLabel(speaker) {
   return t(`ui_chat_typing_${speaker}`) || t('ui_chat_typing_generic');
 }
-
 function renderTyping() {
   const bubble = document.getElementById('pending-bubble');
   const label = document.getElementById('pending-text');
@@ -497,28 +451,24 @@ function renderTyping() {
     state.typingTimer = null;
   }
 }
-
 function typingEvent(ev) {
   const next = typingNext(state.typing, { ...ev, now: Date.now() });
   if (next === state.typing) return;
   state.typing = next;
   renderTyping();
 }
-
 function audioFileName(blob) {
   const type = (blob && blob.type) || '';
   if (type.includes('mp4')) return 'voice.m4a';
   if (type.includes('webm')) return 'voice.webm';
   return 'voice.audio';
 }
-
 async function sendOutboxItem(item) {
   const csrfToken = getCsrfToken();
   const jsonHeaders = { 'Content-Type': 'application/json' };
   if (csrfToken) {
     jsonHeaders['x-csrf-token'] = csrfToken;
   }
-
   let resp = null;
   if (item.kind === 'text') {
     resp = await netFetch('/api/chat/text', {
@@ -542,7 +492,6 @@ async function sendOutboxItem(item) {
     }
     resp = await netFetch('/api/chat/audio', { method: 'POST', headers: audioHeaders, body: form });
   }
-
   if (!resp) return { outcome: 'rejected' };
   if (resp.status >= 200 && resp.status < 300) {
     const body = await resp.json().catch(() => null);
@@ -553,7 +502,6 @@ async function sendOutboxItem(item) {
   }
   return { outcome: 'retry' };
 }
-
 async function drainOnce() {
   let wakeAt = 0;
   const items = await getPendingOutboxItems();
@@ -566,7 +514,6 @@ async function drainOnce() {
       wakeAt = wakeAt ? Math.min(wakeAt, item.nextAttemptAt) : item.nextAttemptAt;
       continue;
     }
-
     const startTime = Date.now();
     let result;
     try {
@@ -576,7 +523,6 @@ async function drainOnce() {
       result = { outcome: 'retry' };
     }
     recordRequestLatency(Date.now() - startTime);
-
     if (result.outcome === 'accepted') {
       if (result.body && result.body.message_id) {
         adoptServerMessageId(id, result.body.message_id);
@@ -604,7 +550,6 @@ async function drainOnce() {
   }
   return wakeAt;
 }
-
 async function drainOutbox() {
   if (state.outboxRunning) {
     state.drainAgain = true;
@@ -623,12 +568,10 @@ async function drainOutbox() {
   }
   if (wakeAt) setTimeout(drainOutbox, Math.max(0, wakeAt - Date.now()) + 50);
 }
-
 function scrollChatToEnd() {
   const container = document.getElementById('chat-messages');
   if (container) container.scrollTop = container.scrollHeight;
 }
-
 function scrollChatToNew(firstRow) {
   const container = document.getElementById('chat-messages');
   if (!container) return;
@@ -637,14 +580,12 @@ function scrollChatToNew(firstRow) {
   const offset = firstRow.getBoundingClientRect().top - container.getBoundingClientRect().top;
   if (offset < 0) container.scrollTop += offset - 8;
 }
-
 function addressChild(name) {
   const input = document.getElementById('chat-input');
   if (!input || !name) return;
   if (!input.value.startsWith(name)) input.value = `${name}, ${input.value}`;
   if (input.focus) input.focus();
 }
-
 function renderManipulatives(m) {
   const el = document.getElementById('sb-manipulatives');
   if (!el) return;
@@ -661,7 +602,6 @@ function renderManipulatives(m) {
   } else {
     el.classList.remove('regrouped');
   }
-
   el.textContent = '';
   const bundlesWrap = document.createElement('span');
   bundlesWrap.className = 'manip-bundles';
@@ -672,7 +612,6 @@ function renderManipulatives(m) {
     bundlesWrap.appendChild(b);
   }
   el.appendChild(bundlesWrap);
-
   const sticksWrap = document.createElement('span');
   sticksWrap.className = 'manip-sticks';
   sticksWrap.setAttribute('aria-hidden', 'true');
@@ -683,9 +622,7 @@ function renderManipulatives(m) {
   }
   el.appendChild(sticksWrap);
 }
-
 let currentSceneHeader = null;
-
 function getSubItem(sc) {
   const s = sc || currentSceneHeader;
   const item = s && s.item;
@@ -696,18 +633,15 @@ function getSubItem(sc) {
   const m = (boardEl ? boardEl.textContent.trim() : '').match(/^(\d+)\s*[\u2212\-]\s*(\d+)$/);
   return m ? { a: parseInt(m[1], 10), b: parseInt(m[2], 10) } : null;
 }
-
 function getChipA1Text(sc) {
   const p = getSubItem(sc);
   return p ? '\u0930\u0935\u093f, \u0938\u0939\u0940 \u0909\u0924\u094d\u0924\u0930 ' + (p.a - p.b) + ' \u0939\u0948' : null;
 }
-
 function getChipBText(sc) {
   const p = getSubItem(sc);
   if (!p || p.a % 10 >= p.b % 10) return null;
   return '\u091a\u0932\u094b ' + p.a + ' \u092e\u0947\u0902 \u0938\u0947 ' + p.b + ' \u092b\u093f\u0930 \u0938\u0947 \u0915\u0930\u0924\u0947 \u0939\u0948\u0902: \u0926\u0947\u0916\u094b, ' + Math.floor(p.a / 10) + ' \u092c\u0902\u0921\u0932 \u0914\u0930 ' + (p.a % 10) + ' \u0916\u0941\u0932\u0940 \u0924\u0940\u0932\u093f\u092f\u093e\u0901 \u0939\u0948\u0902, ' + (p.a % 10) + ' \u092e\u0947\u0902 \u0938\u0947 ' + (p.b % 10) + ' \u0928\u0939\u0940\u0902 \u0928\u093f\u0915\u0932\u0924\u0940\u0902, \u0924\u094b \u090f\u0915 \u092c\u0902\u0921\u0932 \u0916\u094b\u0932\u094b\u0964';
 }
-
 function setDynamicChip(btn, text) {
   if (!btn) return;
   btn.hidden = !text;
@@ -721,8 +655,6 @@ function setDynamicChip(btn, text) {
     btn.disabled = true;
   }
 }
-
-// A1, A2 and B exist only in a running subtraction scene (board a < 100), and only once the teacher has been idle
 function updateFastTrackChips(sc) {
   if (!document.getElementById('fast-track-tray')) return;
   const p = sc ? getSubItem(sc) : null;
@@ -740,8 +672,6 @@ function updateFastTrackChips(sc) {
   if (idle) idle.hidden = show;
   if (state.ftScene !== was) ftActivity();
 }
-
-// Any activity hides A1/A2/B and restarts the countdown; it runs only in a subtraction scene on a visible page
 function ftActivity() {
   if (state.ftIdleTimer) clearTimeout(state.ftIdleTimer);
   state.ftIdleTimer = null;
@@ -757,7 +687,6 @@ function ftActivity() {
     }, FAST_TRACK_IDLE_MS);
   }
 }
-
 function ftStop() {
   if (state.ftIdleTimer) clearTimeout(state.ftIdleTimer);
   state.ftIdleTimer = null;
@@ -766,7 +695,6 @@ function ftStop() {
     updateFastTrackChips(currentSceneHeader);
   }
 }
-
 function disableFastTrackChips() {
   const tray = document.getElementById('fast-track-tray');
   if (!tray) return;
@@ -775,7 +703,6 @@ function disableFastTrackChips() {
     c.disabled = true;
   });
 }
-
 function enableFastTrackChips() {
   state.fastTrackInFlight = false;
   if (state.fastTrackTimer) {
@@ -794,10 +721,8 @@ function enableFastTrackChips() {
     }
   });
 }
-
 document.addEventListener('visibilitychange', () => (document.hidden ? ftStop() : ftActivity()));
 window.addEventListener('pagehide', ftStop);
-
 function setupFastTrackTray() {
   const tray = document.getElementById('fast-track-tray');
   if (!tray) return;
@@ -818,23 +743,19 @@ function setupFastTrackTray() {
     if (action === 'a1') text = text || getChipA1Text();
     if (action === 'b') text = text || getChipBText();
     if (!text) return;
-
     if (!navigator.onLine) {
       handleSendText(text);
       return;
     }
-
     disableFastTrackChips();
     state.fastTrackInFlight = true;
     if (state.fastTrackTimer) clearTimeout(state.fastTrackTimer);
     state.fastTrackTimer = setTimeout(() => {
       enableFastTrackChips();
     }, 90000);
-
     handleSendText(text);
   });
 }
-
 function renderSceneHeader(sc) {
   currentSceneHeader = sc;
   const bar = document.getElementById('scene-bar');
@@ -868,7 +789,6 @@ function renderSceneHeader(sc) {
   }
   kids.hidden = list.length === 0;
 }
-
 function renderHint(h) {
   const card = document.getElementById('next-card');
   if (!card) return;
@@ -886,14 +806,12 @@ function renderHint(h) {
     if (suggest.textContent !== (h.suggest || '')) suggest.textContent = h.suggest || '';
   }
 }
-
 function hintSent() {
   const card = document.getElementById('next-card');
   if (!card || card.hidden) return;
   state.hintDone = card.getAttribute('data-key');
   card.hidden = true;
 }
-
 function applyView(view) {
   if (!view) return;
   renderHint(view.hint);
@@ -903,7 +821,6 @@ function applyView(view) {
   const step = document.getElementById('header-step');
   if (step && step.textContent !== view.step_label) step.textContent = view.step_label;
 }
-
 function setupSceneEnd() {
   const btn = document.getElementById('sh-end');
   if (!btn) return;
@@ -912,10 +829,8 @@ function setupSceneEnd() {
     handleSendText(t('ui_chat_scene_stop_word'));
   });
 }
-
 async function pollMessages() {
   if (!navigator.onLine) return;
-
   try {
     const startTime = Date.now();
     let url = '/api/chat/messages';
@@ -929,11 +844,9 @@ async function pollMessages() {
     if (params.length > 0) {
       url += `?${params.join('&')}`;
     }
-
     const res = await netFetch(url);
     const duration = Date.now() - startTime;
     recordRequestLatency(duration);
-
     if (res.ok) {
       const data = await res.json();
       if (data.server_time) {
@@ -943,7 +856,6 @@ async function pollMessages() {
       }
       const stale = startTime <= state.lastAcceptedAt || [...state.msgStates.values()].includes(MSG_SENDING);
       state.isPending = data.pending || stale;
-
       let gotReply = false;
       let firstNewReply = null;
       if (data.messages && data.messages.length > 0) {
@@ -976,18 +888,15 @@ async function pollMessages() {
     scheduleNextPoll();
   }
 }
-
 function scheduleNextPoll() {
   if (state.pollTimer) clearTimeout(state.pollTimer);
   const delay = state.isPending ? 1500 : 20000;
   state.pollTimer = setTimeout(pollMessages, delay);
 }
-
 function triggerImmediatePoll() {
   if (state.pollTimer) clearTimeout(state.pollTimer);
   pollMessages();
 }
-
 function setAudioState(wrap, st) {
   if (st === 'none') {
     if (wrap._giveupTimer) clearTimeout(wrap._giveupTimer);
@@ -1015,12 +924,10 @@ function setAudioState(wrap, st) {
   };
   wrap._btn.setAttribute('aria-label', btnLabel[st] || '');
 }
-
 function transitionAudio(wrap, ev) {
   const next = audioNext(wrap._audioState, ev);
   if (next !== wrap._audioState) setAudioState(wrap, next);
 }
-
 function getAudioEl(wrap) {
   if (wrap._audio) return wrap._audio;
   const a = new Audio();
@@ -1036,7 +943,6 @@ function getAudioEl(wrap) {
   wrap._audio = a;
   return a;
 }
-
 function startAudio(wrap, silentFail) {
   const a = getAudioEl(wrap);
   const ev = wrap._audioState === 'error' ? 'retry' : 'play';
@@ -1044,7 +950,6 @@ function startAudio(wrap, silentFail) {
   transitionAudio(wrap, ev);
   a.play().catch(() => transitionAudio(wrap, silentFail ? 'pause' : 'error'));
 }
-
 function onAudioButton(wrap) {
   const st = wrap._audioState;
   if (st === 'playing' || st === 'loading') {
@@ -1053,11 +958,9 @@ function onAudioButton(wrap) {
   }
   if ((st === 'ready' || st === 'error') && wrap._ref) startAudio(wrap, false);
 }
-
 function buildAudioWrap(audioRef, initialState) {
   const wrap = document.createElement('div');
   wrap.className = 'bubble-audio';
-
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'btn-play';
@@ -1066,10 +969,8 @@ function buildAudioWrap(audioRef, initialState) {
   bars.setAttribute('aria-hidden', 'true');
   for (let i = 0; i < 3; i++) bars.appendChild(document.createElement('i'));
   btn.appendChild(bars);
-
   const label = document.createElement('span');
   label.className = 'audio-duration';
-
   wrap.appendChild(btn);
   wrap.appendChild(label);
   wrap._btn = btn;
@@ -1080,7 +981,6 @@ function buildAudioWrap(audioRef, initialState) {
   setAudioState(wrap, initialState);
   return wrap;
 }
-
 function attachAudioRef(wrap, audioRef, autoplay) {
   if (wrap._giveupTimer) clearTimeout(wrap._giveupTimer);
   wrap._ref = audioRef;
@@ -1090,7 +990,6 @@ function attachAudioRef(wrap, audioRef, autoplay) {
     setTimeout(() => startAudio(wrap, true), 300);
   }
 }
-
 function upgradeServerAudio() {
   document.querySelectorAll('.bubble-audio').forEach((el) => {
     const btn = el.querySelector('.btn-play[data-audio-ref]');
@@ -1103,7 +1002,6 @@ function upgradeServerAudio() {
     el.parentNode.replaceChild(buildAudioWrap(ref, 'ready'), el);
   });
 }
-
 function adoptServerMessageId(clientMsgId, serverId) {
   if (!clientMsgId || !serverId || clientMsgId === serverId) return;
   if (!state.renderedMsgIds.has(clientMsgId)) return;
@@ -1114,7 +1012,6 @@ function adoptServerMessageId(clientMsgId, serverId) {
     state.rows.set(serverId, row);
   }
 }
-
 function expectsAudio(msg) {
   if (msg.direction !== 'out' || msg.audio_ref || state.liteMode) return false;
   if (!isChildSpeaker(msg.speaker) && msg.speaker !== 'model_teacher') return false;
@@ -1122,14 +1019,12 @@ function expectsAudio(msg) {
   if (Number.isNaN(created)) return false;
   return Date.now() + state.serverSkewMs - created < AUDIO_WAIT_MS;
 }
-
 function formatCoachEvidenceText(textEl, rawText) {
   textEl.textContent = '';
   const quoteRegex = /(?:(?:\u0906\u092a\u0915\u0947 \u0936\u092c\u094d\u0926|Your words)\s*[:\-–—]\s*)?«([^»]+)»/gu;
   let lastIdx = 0;
   let match;
   let hasQuote = false;
-
   while ((match = quoteRegex.exec(rawText)) !== null) {
     hasQuote = true;
     if (match.index > lastIdx) {
@@ -1140,34 +1035,27 @@ function formatCoachEvidenceText(textEl, rawText) {
     }
     const badge = document.createElement('span');
     badge.className = 'evidence-quote-badge';
-
     const tag = document.createElement('span');
     tag.className = 'quote-tag';
     tag.textContent = t('ui_chat_quote_tag');
-
     const content = document.createElement('span');
     content.className = 'quote-content';
     content.textContent = `«${match[1]}»`;
-
     badge.appendChild(tag);
     badge.appendChild(content);
     textEl.appendChild(badge);
-
     lastIdx = quoteRegex.lastIndex;
   }
-
   if (lastIdx < rawText.length) {
     const postText = rawText.slice(lastIdx);
     const postNode = document.createTextNode ? document.createTextNode(postText) : document.createElement('span');
     if (!document.createTextNode) postNode.textContent = postText;
     textEl.appendChild(postNode);
   }
-
   if (!hasQuote) {
     textEl.textContent = rawText;
   }
 }
-
 function upgradeCoachEvidenceQuotes(container) {
   const root = container || document.getElementById('chat-messages');
   if (!root) return;
@@ -1181,7 +1069,6 @@ function upgradeCoachEvidenceQuotes(container) {
     }
   });
 }
-
 function renderMessage(msg, isLocalOptimistic = false) {
   if (msg.id && msg.client_msg_id && state.renderedMsgIds.has(msg.client_msg_id)) {
     adoptServerMessageId(msg.client_msg_id, msg.id);
@@ -1203,27 +1090,22 @@ function renderMessage(msg, isLocalOptimistic = false) {
     return false;
   }
   state.renderedMsgIds.add(msgKey);
-
   const container = document.getElementById('chat-messages');
   if (!container) return false;
-
   const row = document.createElement('div');
   row.className = `msg-row ${msg.direction === 'in' ? 'inbound' : 'outbound'}`;
   row.id = `msg-${msgKey}`;
   state.rows.set(msgKey, row);
   if (msg.client_msg_id) state.rows.set(msg.client_msg_id, row);
-
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
   row._bubble = bubble;
-
   if (msg.direction === 'out' && msg.speaker) {
     const speakerEl = document.createElement('div');
     speakerEl.className = `speaker-tag ${msg.speaker.toLowerCase()}`;
     speakerEl.textContent = getSpeakerLabel(msg.speaker);
     bubble.appendChild(speakerEl);
   }
-
   if (msg.text || msg.awaitingTranscript) {
     const textEl = document.createElement('p');
     textEl.className = 'bubble-text';
@@ -1235,7 +1117,6 @@ function renderMessage(msg, isLocalOptimistic = false) {
     bubble.appendChild(textEl);
     row._textEl = textEl;
   }
-
   if (msg.awaitingTranscript) {
     const phaseEl = document.createElement('p');
     phaseEl.className = 'bubble-phase';
@@ -1259,7 +1140,6 @@ function renderMessage(msg, isLocalOptimistic = false) {
     row._micPhase = 'transcribing';
     row.setAttribute('data-phase', 'transcribing');
   }
-
   if (msg.audio_ref || expectsAudio(msg)) {
     const wrap = buildAudioWrap(msg.audio_ref || null, msg.audio_ref ? 'ready' : 'loading');
     row._audioWrap = wrap;
@@ -1272,7 +1152,6 @@ function renderMessage(msg, isLocalOptimistic = false) {
       setTimeout(() => startAudio(wrap, true), 300);
     }
   }
-
   if (msg.citations && msg.citations.length > 0) {
     const sources = document.createElement('div');
     sources.className = 'bubble-sources';
@@ -1287,11 +1166,9 @@ function renderMessage(msg, isLocalOptimistic = false) {
     });
     bubble.appendChild(sources);
   }
-
   if (msg.direction === 'out' && msg.id && msg.text && TRANSLATABLE_SPEAKERS.has(msg.speaker)) {
     bubble.appendChild(buildTranslateControl(msg.id));
   }
-
   const meta = document.createElement('div');
   meta.className = 'bubble-meta';
   row._meta = meta;
@@ -1312,9 +1189,7 @@ function renderMessage(msg, isLocalOptimistic = false) {
   }
   meta.appendChild(statusEl);
   bubble.appendChild(meta);
-
   row.appendChild(bubble);
-
   if (msg.direction === 'out' && msg.buttons && msg.buttons.length > 0) {
     const qrContainer = document.createElement('div');
     qrContainer.className = 'quick-replies';
@@ -1333,7 +1208,6 @@ function renderMessage(msg, isLocalOptimistic = false) {
     });
     if (qrContainer.children.length > 0) row.appendChild(qrContainer);
   }
-
   const pendingEl = document.getElementById('pending-bubble');
   if (pendingEl && pendingEl.parentNode === container) {
     container.insertBefore(row, pendingEl);
@@ -1343,9 +1217,7 @@ function renderMessage(msg, isLocalOptimistic = false) {
   scrollChatToEnd();
   return true;
 }
-
 const TRANSLATABLE_SPEAKERS = new Set(['ravi', 'priya', 'aman', 'coach', 'guide', 'model_teacher']);
-
 function buildTranslateControl(messageId) {
   const wrap = document.createElement('div');
   wrap.className = 'translate-wrap';
@@ -1357,7 +1229,6 @@ function buildTranslateControl(messageId) {
   wrap.appendChild(btn);
   return wrap;
 }
-
 async function toggleTranslation(btn) {
   const wrap = btn.closest('.translate-wrap');
   if (!wrap || btn.disabled) return;
@@ -1407,12 +1278,10 @@ async function toggleTranslation(btn) {
     btn.removeAttribute('aria-busy');
   }
 }
-
 document.addEventListener('click', (ev) => {
   const btn = ev.target instanceof Element ? ev.target.closest('.translate-btn') : null;
   if (btn) toggleTranslation(btn);
 });
-
 function buildExcerptPanel(src) {
   const panel = document.createElement('div');
   panel.className = 'source-excerpt';
@@ -1454,7 +1323,6 @@ function buildExcerptPanel(src) {
   }
   return panel;
 }
-
 async function toggleSourceExcerpt(chip) {
   const holder = chip.closest('.bubble-sources');
   if (!holder) return;
@@ -1490,16 +1358,13 @@ async function toggleSourceExcerpt(chip) {
     chip.removeAttribute('aria-busy');
   }
 }
-
 document.addEventListener('click', (ev) => {
   const chip = ev.target instanceof Element ? ev.target.closest('.source-chip') : null;
   if (chip) toggleSourceExcerpt(chip);
 });
-
 function getSpeakerLabel(speaker) {
   return t(`speaker_${speaker}`) || speaker;
 }
-
 function recorderErrorText(code, detail) {
   if (code === 'unsupported') return t('ui_chat_rec_unsupported');
   if (code === 'insecure') return t('ui_chat_rec_insecure');
@@ -1508,7 +1373,6 @@ function recorderErrorText(code, detail) {
   if (code === 'busy') return t('ui_chat_rec_busy');
   return t('ui_chat_rec_start_failed', { error: detail || t('ui_chat_rec_unknown_error') });
 }
-
 function lockChips(container, chip) {
   container.querySelectorAll('.reply-chip').forEach((c) => {
     c.disabled = true;
@@ -1517,17 +1381,14 @@ function lockChips(container, chip) {
   chip.classList.add('pressed');
   announce(t('ui_chat_chip_done'));
 }
-
 async function handleSendText(text, typingLabel = null) {
   if (!text || !text.trim()) return null;
   hintSent();
   ftActivity();
   const clientMsgId = crypto.randomUUID();
   const cleanText = text.trim();
-
   const input = document.getElementById('chat-input');
   if (input) input.value = '';
-
   const optimisticMsg = {
     client_msg_id: clientMsgId,
     direction: 'in',
@@ -1537,7 +1398,6 @@ async function handleSendText(text, typingLabel = null) {
   };
   renderMessage(optimisticMsg, true);
   if (typingLabel) typingEvent({ type: 'accepted', label: typingLabel });
-
   await saveToOutbox({
     client_msg_id: clientMsgId,
     kind: 'text',
@@ -1545,17 +1405,14 @@ async function handleSendText(text, typingLabel = null) {
     timestamp: Date.now(),
     retryCount: 0,
   });
-
   drainOutbox();
   triggerImmediatePoll();
   return clientMsgId;
 }
-
 async function handleSendButton(buttonId, buttonTitle) {
   hintSent();
   ftActivity();
   const clientMsgId = crypto.randomUUID();
-
   const optimisticMsg = {
     client_msg_id: clientMsgId,
     direction: 'in',
@@ -1564,7 +1421,6 @@ async function handleSendButton(buttonId, buttonTitle) {
     created_at: new Date().toISOString(),
   };
   renderMessage(optimisticMsg, true);
-
   await saveToOutbox({
     client_msg_id: clientMsgId,
     kind: 'button',
@@ -1572,16 +1428,13 @@ async function handleSendButton(buttonId, buttonTitle) {
     timestamp: Date.now(),
     retryCount: 0,
   });
-
   drainOutbox();
   triggerImmediatePoll();
 }
-
 async function handleSendAudio(audioBlob, durationSec) {
   hintSent();
   ftActivity();
   const clientMsgId = crypto.randomUUID();
-
   const optimisticMsg = {
     client_msg_id: clientMsgId,
     direction: 'in',
@@ -1591,7 +1444,6 @@ async function handleSendAudio(audioBlob, durationSec) {
     created_at: new Date().toISOString(),
   };
   renderMessage(optimisticMsg, true);
-
   await saveToOutbox({
     client_msg_id: clientMsgId,
     kind: 'audio',
@@ -1599,14 +1451,11 @@ async function handleSendAudio(audioBlob, durationSec) {
     timestamp: Date.now(),
     retryCount: 0,
   });
-
   drainOutbox();
   triggerImmediatePoll();
 }
-
 function updateOnlineStatus() {
   const banner = document.getElementById('network-banner');
-
   if (!navigator.onLine) {
     netEvent('offline');
     if (!banner) return;
@@ -1632,7 +1481,6 @@ function updateOnlineStatus() {
     triggerImmediatePoll();
   }
 }
-
 function isSlowNetwork() {
   const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
   if (conn) {
@@ -1641,7 +1489,6 @@ function isSlowNetwork() {
   }
   return state.slowRequestCount >= SLOW_REQUEST_COUNT_THRESHOLD;
 }
-
 function recordRequestLatency(durationMs) {
   state.requestCount++;
   if (state.requestCount > 1) {
@@ -1655,7 +1502,6 @@ function recordRequestLatency(durationMs) {
     showSlowNetworkWarning();
   }
 }
-
 function showSlowNetworkWarning() {
   const banner = document.getElementById('network-banner');
   if (!banner || !navigator.onLine) return;
@@ -1668,21 +1514,17 @@ function showSlowNetworkWarning() {
     console.warn('Network banner element missing data-slow-text attribute');
   }
 }
-
 async function toggleLiteMode(forceValue = null) {
   const target = forceValue !== null ? forceValue : !state.liteMode;
   state.liteMode = target;
-
   try {
     localStorage.setItem('abhyas_lite_mode', target ? 'true' : 'false');
   } catch (e) {
   }
-
   const btn = document.getElementById('lite-mode-menu-btn');
   if (btn) {
     btn.textContent = target ? t('ui_chat_lite_on') : t('ui_chat_lite_off');
   }
-
   try {
     const csrfToken = getCsrfToken();
     const headers = { 'Content-Type': 'application/json' };
@@ -1700,7 +1542,6 @@ async function toggleLiteMode(forceValue = null) {
   }
 }
 window.toggleLiteMode = toggleLiteMode;
-
 async function toggleShareScores() {
   const btn = document.getElementById('share-scores-menu-btn');
   if (!btn) return;
@@ -1726,7 +1567,6 @@ async function toggleShareScores() {
   }
 }
 window.toggleShareScores = toggleShareScores;
-
 function setupMicEvents() {
   const micBtn = document.getElementById('btn-mic');
   const overlay = document.getElementById('recording-overlay');
@@ -1735,15 +1575,12 @@ function setupMicEvents() {
   const stopBtn = document.getElementById('btn-stop-rec');
   const recStatus = document.getElementById('rec-status');
   if (!micBtn) return;
-
   let pressedAt = 0;
   let holdTimer = null;
   const maxLabel = formatTimer(state.recorder.maxDurationSec);
-
   const setStatus = (key) => {
     if (recStatus) recStatus.textContent = t(key);
   };
-
   const stopRecUI = () => {
     clearTimeout(holdTimer);
     holdTimer = null;
@@ -1754,7 +1591,6 @@ function setupMicEvents() {
     if (overlay) overlay.classList.remove('active');
     if (timerEl) timerEl.textContent = '0:00';
   };
-
   const startRec = () => {
     if (state.isRecording) return;
     ftActivity();
@@ -1765,7 +1601,6 @@ function setupMicEvents() {
     setStatus('ui_chat_rec_recording_tap');
     if (timerEl) timerEl.textContent = `0:00 / ${maxLabel}`;
     if (overlay) overlay.classList.add('active');
-
     state.recorder.start({
       onTick: (sec) => {
         if (timerEl) timerEl.textContent = `${formatTimer(sec)} / ${maxLabel}`;
@@ -1790,18 +1625,15 @@ function setupMicEvents() {
       },
     });
   };
-
   const stopAndSend = () => {
     clearTimeout(holdTimer);
     state.recorder.stop();
   };
-
   const cancelRec = () => {
     state.recorder.cancel();
     state.mic = micNext(state.mic, 'cancel');
     stopRecUI();
   };
-
   micBtn.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.preventDefault();
@@ -1809,7 +1641,6 @@ function setupMicEvents() {
     try {
       micBtn.setPointerCapture(e.pointerId);
     } catch (err) {
-
     }
     pressedAt = Date.now();
     startRec();
@@ -1817,7 +1648,6 @@ function setupMicEvents() {
       setStatus('ui_chat_rec_recording');
     }, REC_HOLD_MS);
   });
-
   const onRelease = () => {
     if (!pressedAt || !state.isRecording) return;
     const heldMs = Date.now() - pressedAt;
@@ -1831,18 +1661,15 @@ function setupMicEvents() {
   };
   micBtn.addEventListener('pointerup', onRelease);
   micBtn.addEventListener('pointercancel', onRelease);
-
   micBtn.addEventListener('click', (e) => {
     if (e.detail === 0 && !state.isRecording) startRec();
   });
-
   if (stopBtn) stopBtn.addEventListener('click', stopAndSend);
   if (cancelBtn) cancelBtn.addEventListener('click', cancelRec);
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && state.isRecording) cancelRec();
   });
 }
-
 function flashStatus(text) {
   const bar = document.getElementById('status-bar');
   if (!bar || !text) return;
@@ -1851,9 +1678,7 @@ function flashStatus(text) {
   bar.hidden = false;
   setTimeout(renderNetStatus, 6000);
 }
-
 const SAMPLE_BOX_ID = 'sample-list';
-
 function setupDemoChips() {
   const box = document.getElementById(SAMPLE_BOX_ID);
   const tray = document.getElementById('sample-tray');
@@ -1887,7 +1712,6 @@ function setupDemoChips() {
     }
   });
 }
-
 function renderSamples(list) {
   const box = document.getElementById(SAMPLE_BOX_ID);
   if (!box || !Array.isArray(list)) return;
@@ -1913,7 +1737,6 @@ function renderSamples(list) {
     box.appendChild(item);
   });
 }
-
 function setupDemoBanner() {
   const banner = document.getElementById('demo-banner');
   if (!banner) return;
@@ -1931,9 +1754,7 @@ function setupDemoBanner() {
       } catch (e) {}
     });
 }
-
 const CHIP_SETTLE_MAX_MS = 8000;
-
 function whenSettled(clientMsgId, maxMs) {
   return new Promise((resolve) => {
     const t0 = Date.now();
@@ -1945,7 +1766,6 @@ function whenSettled(clientMsgId, maxMs) {
     poll();
   });
 }
-
 function setupHandbookChips() {
   const sec = document.getElementById('handbook-chips');
   const prefix = (sec && sec.getAttribute('data-prefix')) || '';
@@ -1985,19 +1805,16 @@ function setupHandbookChips() {
     handleSendText(auto, t('ui_chat_typing_handbook'));
   }
 }
-
 document.addEventListener('click', (e) => {
   ftActivity();
   const target = e.target;
   if (!target || !(target instanceof Element)) return;
-
   const failed = target.closest('.status-icon.failed');
   if (failed) {
     const id = failed.getAttribute('data-client-id');
     if (id) retryMessage(id);
     return;
   }
-
   const suggestBtn = target.closest('#next-suggest');
   if (suggestBtn) {
     if (suggestBtn.disabled || suggestBtn.classList.contains('pressed')) return;
@@ -2011,13 +1828,11 @@ document.addEventListener('click', (e) => {
     }
     return;
   }
-
   const childPill = target.closest('.child-pill[data-name]');
   if (childPill) {
     addressChild(childPill.getAttribute('data-name'));
     return;
   }
-
   const replyChip = target.closest('.reply-chip[data-btn-id]');
   if (replyChip) {
     if (replyChip.disabled) return;
@@ -2031,7 +1846,6 @@ document.addEventListener('click', (e) => {
     return;
   }
 });
-
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter' && e.key !== ' ') return;
   const target = e.target;
@@ -2043,7 +1857,6 @@ document.addEventListener('keydown', (e) => {
     if (id) retryMessage(id);
   }
 });
-
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker
@@ -2052,27 +1865,22 @@ function registerServiceWorker() {
       .catch((err) => console.warn('ServiceWorker registration failed:', err));
   }
 }
-
 function initRenderedMessagesFromDom() {
   const container = document.getElementById('chat-messages');
   if (!container) return;
-
   const rows = container.querySelectorAll('.msg-row');
   const cachedBatch = [];
-
   rows.forEach((row) => {
     const rawId = row.id ? row.id.replace(/^msg-/, '') : null;
     if (rawId) {
       state.renderedMsgIds.add(rawId);
       state.lastMessageId = rawId;
       state.rows.set(rawId, row);
-
       const textEl = row.querySelector('.bubble-text');
       const speakerEl = row.querySelector('.speaker-tag');
       const isOut = row.classList.contains('outbound');
       const createdAtAttr = row.getAttribute('data-created-at');
       const createdAt = createdAtAttr && createdAtAttr.trim() ? createdAtAttr.trim() : null;
-
       cachedBatch.push({
         id: rawId,
         direction: isOut ? 'out' : 'in',
@@ -2082,27 +1890,21 @@ function initRenderedMessagesFromDom() {
       });
     }
   });
-
   upgradeCoachEvidenceQuotes(container);
-
   if (cachedBatch.length > 0) {
     cacheMessages(cachedBatch).catch((err) => console.warn('Cache initial msgs error:', err));
   }
 }
-
 document.addEventListener('DOMContentLoaded', async () => {
   loadUiStrings();
-
   window.addEventListener('online', updateOnlineStatus);
   window.addEventListener('offline', updateOnlineStatus);
   updateOnlineStatus();
-
   const liteBtn = document.getElementById('lite-mode-menu-btn');
   let savedLite = false;
   try {
     savedLite = localStorage.getItem('abhyas_lite_mode') === 'true';
   } catch (e) {}
-
   if (liteBtn && liteBtn.textContent.trim() === t('ui_chat_lite_on')) {
     state.liteMode = true;
   } else if (savedLite) {
@@ -2111,11 +1913,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       liteBtn.textContent = t('ui_chat_lite_on');
     }
   }
-
   if (isSlowNetwork()) {
     showSlowNetworkWarning();
   }
-
   const form = document.getElementById('composer-form');
   const input = document.getElementById('chat-input');
   if (form && input) {
@@ -2125,23 +1925,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     input.addEventListener('input', ftActivity);
   }
-
   setupMicEvents();
   setupDemoChips();
   setupDemoBanner();
   setupFastTrackTray();
   setupHandbookChips();
   setupSceneEnd();
-
   setupLogoutCleanup();
-
   registerServiceWorker();
-
   initRenderedMessagesFromDom();
   upgradeServerAudio();
   scrollChatToEnd();
   window.addEventListener('load', scrollChatToEnd);
-
   await drainOutbox();
   pollMessages();
 });
