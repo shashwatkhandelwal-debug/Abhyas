@@ -71,7 +71,7 @@ from backend.app.web.assets import STATIC_DIR, sw_build_version
 from backend.app.web.chat_api import get_teacher_for_user
 from backend.app.web.chat_view import load_chat_view
 from backend.app.web.demo_samples import demo_sample_audio
-from backend.app.web.ui_lang import register_ui_globals
+from backend.app.web.ui_lang import register_ui_globals, speaker_label
 
 IST = ZoneInfo("Asia/Kolkata")
 logger = logging.getLogger("abhyas.web.teacher")
@@ -224,7 +224,8 @@ async def teacher_chat_page(
             "handbook_autosend": autosend,
             "handbook_prefix": settings.HANDBOOK_ASK_PREFIX,
             "initial_messages": initial_messages,
-            "ui_strings": chat_ui_strings(),
+            "address_form": teacher.address_form,
+            "ui_strings": chat_ui_strings(teacher.address_form),
             "rec_config": {
                 "maxSec": settings.REC_MAX_SECONDS,
                 "minSec": settings.REC_MIN_SECONDS,
@@ -867,11 +868,15 @@ CHAT_UI_PREFIX = "ui_chat_"
 CHAT_UI_PREFIXES = (CHAT_UI_PREFIX, "speaker_", "ui_time_")
 
 
-def chat_ui_strings() -> dict[str, str]:
-    """Strings for chat.js in the language of the current request (Hindi unless switched)."""
+def chat_ui_strings(address_form: str | None = "f") -> dict[str, str]:
+    """Strings for chat.js in the language of the current request (Hindi unless switched).
+
+    `speaker_model_teacher` follows her address form (neutral unless feminine), see `speaker_label`.
+    """
     strings: dict[str, str] = {}
     for prefix in CHAT_UI_PREFIXES:
         strings.update(texts_for_lang(prefix))
+    strings["speaker_model_teacher"] = speaker_label("model_teacher", address_form)
     return strings
 
 

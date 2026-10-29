@@ -87,7 +87,7 @@
         <div class="bubble">
           {% if msg.direction == 'out' and msg.speaker %}
           <div class="speaker-tag {{ msg.speaker|lower }}">
-            {{ speaker_label(msg.speaker) }}
+            {{ speaker_label(msg.speaker, address_form) }}
           </div>
           {% endif %}
 

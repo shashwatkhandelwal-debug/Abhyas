@@ -178,6 +178,7 @@ ui_fast_track_chip_c: {text: "C: Handbook Query (RAG)"}
 speaker_abhyas: {text: "Abhyas"}
 speaker_coach: {text: "Coach"}
 speaker_model_teacher: {text: "Model teacher"}
+speaker_model_teacher_neutral: {text: "Model teacher"}
 speaker_teacher: {text: "You"}
 state_LEARN: {text: "Learning"}
 state_EXPLAIN_BACK: {text: "Explaining in your own words"}

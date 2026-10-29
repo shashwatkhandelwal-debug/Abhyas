@@ -376,6 +376,7 @@ ui_fast_track_chip_c: {text: "C: हैंडबुक सवाल (RAG)", audi
 speaker_abhyas: {text: "अभ्यास", audio: false}
 speaker_coach: {text: "कोच", audio: false}
 speaker_model_teacher: {text: "आदर्श शिक्षिका", audio: false}
+speaker_model_teacher_neutral: {text: "आदर्श शिक्षण", audio: false}
 speaker_teacher: {text: "आप", audio: false}
 
 # ── State names (for resume prompt) ──────────────────────────
