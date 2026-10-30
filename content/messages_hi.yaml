@@ -1384,6 +1384,31 @@ adp_why_some: {text: "क्यों अभी यह: हाल की कक�
 adp_why_stuck: {text: "क्यों अभी यह: अगले दिन के हाल में आपने बताया कि '{label}' में बच्चे अब भी अटके हैं।", audio: false}
 adp_why_worked: {text: "क्यों अभी यह: '{label}' का तरीका आपके यहाँ काम किया, इसलिए पहले दूसरा अभ्यास।", audio: false}
 adp_why_new: {text: "क्यों अभी यह: शुरुआत में पहले बुनियादी अभ्यास, जिसमें मॉडल शिक्षक का तरीका पहले देखने को मिलता है।", audio: false}
+# Last adds: "My progress" (L1) and "what worked for other teachers" (L2)
+btn_mp_practice: {text: "अभ्यास करें", audio: false}
+mp_head: {text: "आपकी प्रगति, पिछले {n} अभ्यास:", audio: false}
+mp_row: {text: "{i}. {move} ({date})", audio: false}
+mp_trend_head: {text: "तुलना, {move}: पहला अभ्यास और सबसे नया अभ्यास", audio: false}
+mp_trend_line: {text: "{label}: पहले {before}, अब {after}।", audio: false}
+mp_yes: {text: "हाँ", audio: false}
+mp_no: {text: "नहीं", audio: false}
+mp_l_asked: {text: "बच्चे से कैसे या क्यों पूछना", audio: false}
+mp_l_told: {text: "जवाब खुद बता देना", audio: false}
+mp_l_concrete: {text: "तीलियाँ या गुच्छे जैसी चीज़ें इस्तेमाल करना", audio: false}
+mp_l_named: {text: "बच्चे को नाम से बुलाना", audio: false}
+mp_no_pair: {text: "तुलना के लिए एक ही तरीके का दोबारा अभ्यास चाहिए। नीचे आपके सबसे नए अभ्यास की बात है।", audio: false}
+mp_too_few: {text: "अभी तुलना के लिए कम अभ्यास हैं। एक और अभ्यास कीजिए, फिर यहाँ फ़र्क दिखेगा।", audio: false}
+mp_s_asked: {text: "एक ताकत: आप बच्चे से पूछती हैं कि उसने कैसे या क्यों किया।", text_m: "एक ताकत: आप बच्चे से पूछते हैं कि उसने कैसे या क्यों किया।", audio: false}
+mp_s_notold: {text: "एक ताकत: आप जवाब खुद नहीं बतातीं, बच्चे को सोचने देती हैं।", text_m: "एक ताकत: आप जवाब खुद नहीं बताते, बच्चे को सोचने देते हैं।", audio: false}
+mp_s_concrete: {text: "एक ताकत: आप तीलियाँ या गुच्छे जैसी चीज़ें इस्तेमाल करती हैं।", text_m: "एक ताकत: आप तीलियाँ या गुच्छे जैसी चीज़ें इस्तेमाल करते हैं।", audio: false}
+mp_s_named: {text: "एक ताकत: आप बच्चों को नाम से बुलाकर पूछती हैं।", text_m: "एक ताकत: आप बच्चों को नाम से बुलाकर पूछते हैं।", audio: false}
+mp_s_none: {text: "एक ताकत: आपने अभ्यास करके देखा, यही पहला कदम है।", audio: false}
+mp_n_told: {text: "अगला कदम: जवाब बताने से पहले पूछिए, 'तुमने कैसे किया?'", audio: false}
+mp_n_asked: {text: "अगला कदम: बच्चे से पूछिए, 'तुमने कैसे किया?'", audio: false}
+mp_n_concrete: {text: "अगला कदम: तीलियाँ या गुच्छे जैसी चीज़ें हाथ में लेकर समझाइए।", audio: false}
+mp_n_named: {text: "अगला कदम: एक बच्चे को नाम से बुलाकर पूछिए।", audio: false}
+mp_n_keep: {text: "अगला कदम: यही तरीका अपनी कक्षा में आज़माइए।", audio: false}
+pw_line: {text: "इस दिक्कत में {n} शिक्षकों ने बताया कि '{move}' वाला तरीका काम किया।", audio: false}
 # Track B scenes
 ui_board_compare: {text: "{a} और {b}: कौन बड़ा?", audio: false}
 hint_example_compare: {text: "{child}, तुमने कैसे तय किया कि कौन-सी संख्या बड़ी है?", audio: false}

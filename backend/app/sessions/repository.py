@@ -7,7 +7,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,11 +29,14 @@ from backend.app.db.models import (
     RealismRating,
     RehearsalScore,
     ReviewItem,
+    Scene,
     SessionState,
     Teacher,
     TrainingRating,
+    Turn,
 )
 from backend.app.sessions.path import MovePathEntry
+from backend.app.sessions.rehearsal_view import Rehearsal, TurnView
 
 logger = logging.getLogger("abhyas.sessions.repository")
 
@@ -485,6 +488,82 @@ class SessionRepository:
             .order_by(ClassFollowupOutcome.created_at)
         )
         return [(str(r[0]), str(r[1]), r[2]) for r in res.all()]
+
+    async def rehearsal_history(self, teacher_id: UUID, limit: int) -> list[Rehearsal]:
+        """Her last `limit` rehearsals with feedback, oldest first (her own rows only)."""
+        res = await self.session.execute(
+            select(RehearsalScore.scene_id, RehearsalScore.move_id, RehearsalScore.created_at)
+            .where(RehearsalScore.teacher_id == teacher_id, RehearsalScore.move_id.is_not(None))
+            .order_by(RehearsalScore.created_at.desc())
+            .limit(limit)
+        )
+        rows = res.all()
+        scene_ids = [r[0] for r in rows if r[0] is not None]
+        modes: dict[UUID, bool] = {}
+        turns: dict[UUID, list[TurnView]] = {}
+        if scene_ids:
+            for sid, state in (
+                await self.session.execute(
+                    select(Scene.id, Scene.engine_state).where(
+                        Scene.id.in_(scene_ids), Scene.teacher_id == teacher_id
+                    )
+                )
+            ).all():
+                modes[sid] = bool((state or {}).get("one_on_one"))
+            for t in (
+                await self.session.execute(
+                    select(Turn)
+                    .where(
+                        Turn.scene_id.in_(scene_ids),
+                        Turn.teacher_id == teacher_id,
+                        Turn.role == "teacher",
+                    )
+                    .order_by(Turn.scene_id, Turn.idx)
+                )
+            ).scalars():
+                turns.setdefault(t.scene_id, []).append(
+                    TurnView(t.transcript or "", tuple(t.acts or ()), t.addressed_child)
+                )
+        return [
+            Rehearsal(
+                move_id=str(move_id),
+                when=when,
+                one_on_one=modes.get(scene_id, False) if scene_id is not None else False,
+                turns=tuple(turns.get(scene_id, ())) if scene_id is not None else (),
+            )
+            for scene_id, move_id, when in reversed(rows)
+        ]
+
+    async def peer_worked_teachers(
+        self,
+        struggle_id: str,
+        since: datetime,
+        *,
+        exclude_teacher: UUID,
+        is_demo: bool,
+        cluster_id: str | None = None,
+    ) -> int:
+        """Distinct consenting teachers (not her) who answered "worked" for this struggle since `since`.
+
+        Demo and real teachers are never mixed (a demo count never reaches a real teacher and the
+        reverse). `cluster_id` narrows to one cluster.
+        """
+        stmt = (
+            select(func.count(func.distinct(ClassFollowupOutcome.teacher_id)))
+            .join(ClassFollowup, ClassFollowup.id == ClassFollowupOutcome.followup_id)
+            .join(Teacher, Teacher.id == ClassFollowupOutcome.teacher_id)
+            .where(
+                ClassFollowup.struggle_id == struggle_id,
+                ClassFollowupOutcome.outcome == "worked",
+                ClassFollowupOutcome.created_at >= since,
+                Teacher.consent_share_scores.is_(True),
+                Teacher.is_demo.is_(is_demo),
+                Teacher.id != exclude_teacher,
+            )
+        )
+        if cluster_id is not None:
+            stmt = stmt.where(Teacher.cluster_id == cluster_id)
+        return int((await self.session.execute(stmt)).scalar_one())
 
     async def get_move_path(self, teacher_id: UUID) -> list[MovePath]:
         """Retrieves personal move path sequence for teacher."""

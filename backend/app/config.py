@@ -362,6 +362,11 @@ class Settings(BaseSettings):
     ADAPTIVE_WORKED_WEIGHT: int = 2  # a follow-up "worked" lowers the score by this much
     ADAPTIVE_HISTORY_DAYS: int = 30  # check-ins and follow-ups older than this are ignored
     ADAPTIVE_NEW_TEACHER_BANDS: tuple[str, ...] = ("0-1",)  # experience bands that get model practice first
+    MY_PROGRESS_ENABLED: bool = False  # "My progress": her own last rehearsals and talk-move trend
+    MY_PROGRESS_SHOWN: int = 5  # rehearsals listed in "My progress"
+    MY_PROGRESS_HISTORY_MAX: int = 20  # stored rehearsals read to find the earliest of a move
+    PEER_WORKED_ENABLED: bool = False  # "what worked for other teachers" line after a struggle
+    PEER_WORKED_WINDOW_DAYS: int = 60  # "worked" follow-up answers counted in the peer line
     OBSERVATION_WINDOW_DAYS: int = 30  # observations and follow-ups counted in "reported vs observed"
     OBSERVATION_ROWS_MAX: int = 3  # struggles shown in "reported vs observed"
     OBSERVATION_TALK_MOVES: tuple[str, ...] = ("named_child", "why_how", "not_told", "think_time")
