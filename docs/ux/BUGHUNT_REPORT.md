@@ -50,4 +50,28 @@ Severity: P0 breaks a flow or leaks/destroys data, P1 a judge would notice in 15
 | B18 | P2 | explain-back | "आपने 4 में से 0 मुख्य बातें कहीं" for a sensible literacy explanation | fairer scoring | fidelity checker output (model) | left |
 | B19 | P2 | `/lang/hi` with no `next` while logged in | Goes to /login | stays on page | `ui_lang.py` default redirect | left |
 
-Counts: P0 1, P1 14 (B01, B03, B07, B08, B09 and K1 to K7 counted as 7 → B01, B03, B07, B08, B09, K1, K2, K3, K4, K5, K6, K7), P2 11.
+## Status after phase 2 and 3
+
+| ID | Status | Commit | Confirmed |
+|---|---|---|---|
+| B02 | FIXED | 70f2b6f | live (demo1 login works after "delete my data") + test (fails before) |
+| B09 | FIXED | 70f2b6f | test |
+| B03 | FIXED | 48e2e67 | test |
+| B01 | FIXED | f80a4a2 | live (typed "हाँ" re-asked) + test |
+| K1 | FIXED, root cause found | 0aa8742, 1d41f38 | live for the telling reaction (male and English runs); the scene store fix (children's lines were never saved in Postgres, so repeats went undetected) is covered by a Postgres test that fails before and passes after, but was NOT re-run with the real model (call cap reached). In the live run before that last fix the female regrouping run and compare still repeated lines. |
+| K2, K3 | FIXED | 256dae9 | live + test |
+| K4 | FIXED | 8cb5591 | live: no tip shown on place value (nothing qualified), on-topic tip and excerpt on subtraction; test |
+| K5 | FIXED | 2428392 | live + test. Deviation: Hindi demo3 banner says 'समझ गई, आगे' (not "Got it, next") to avoid English in Hindi mode |
+| K7 | FIXED | 0a2ca7b | live ("12:57 am" like live bubbles) + python and node tests |
+| K6 | FIXED | 45a355b | live + integration tests. Demo seed changed: demo2 now has 6 messages (card first), counts updated in tests |
+| B07, B08 | FIXED | 56830ab | live + tests |
+| B04, B10 to B19 | P2-LEFT | | B10 is an intentional bilingual heading (a test asserts it); the rest are polish outside the shared flows |
+
+## Gate (not complete)
+
+- `ruff check .` clean after adding `# ruff: noqa` to the throwaway `scripts/bughunt` files; `mypy --strict backend/app` clean (201 files).
+- `ruff format --check .` still lists 8 files that are also unformatted on origin/main (newer local ruff 0.16.5), not touched by this run.
+- Unit slices run and green during fixes: child voice, state machine, placement feedback, onboarding, tip filter, bubble time, my progress, teacher progress, error pages, demo data; node `chat.test.mjs` + `sw.test.mjs` 94/94; integration demo loop, demo reset, seed 47/47 plus the Postgres reload test.
+- The full `scripts/pytest_fresh_db.py` run was killed by the system at about 26% (low memory) with one failure (`F`) already shown that I did not get to identify. Not re-run. Phone, composer and dashboard layout checks, `check_first_load.py` and the freeze-check test (part of the full run) were not run either, so payload headroom and layout are unverified after the changes (banner texts and the clock markup add a few hundred bytes to the page).
+- Zero console errors and no 5xx in every journey run.
+- Live calls: cap reached (see the log); `eval/lowband/REPORT.md` untouched; nothing pushed to main.
