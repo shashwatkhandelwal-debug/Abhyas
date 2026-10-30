@@ -36,7 +36,13 @@ Source links: ASER 2024 https://pratham.org.uk/unveiling-prathams-annual-status-
 | ARP class-visit checklist (talk moves seen, practice seen, one next step) | **Built** | No free text, no child data; consenting teachers only |
 | "Reported vs observed" trainer card | **Built** | Counts only, hidden below 10 teachers; self-reported and observed, not outcomes |
 | Adaptive next practice with a one-line reason | **Built** | Deterministic reorder among her own moves; demo3 needs a whole week to reach it |
-| Opt-in weekly "tomorrow's focus" note | Roadmap | A pure builder and its tests exist; no screen turns it on and nothing is sent |
+| Opt-in daily "आज का सुझाव" card in the web chat | **Built** | Asked once a week at most, one cited step a day, never inside a scene she has started; nothing is sent over WhatsApp |
+| Scene: comparing two-digit numbers (child compares the ones first) | **Built** | One deterministic rule; text-only board; key points from stored chunks, the "bundles first" step is our own design |
+| Scene: letter name versus letter sound ("ब से बतख") | **Built** | The stored chunks name no confusable letter pair, so the scene uses the name-versus-sound confusion; group only |
+| Trainer "Where training is not landing" | **Built** | Latest simulated rehearsal per consenting teacher and move, counts only, cells under 10 withheld; CSV rows function exists, wired on merge |
+| Experience-aware start ("straight to practice" for 6+ years) | **Built** | New teachers keep model practice first; the learn step is recorded as skipped, counts only |
+| Neutral ARP wording, and the ARP's visit note shown to the teacher | **Built** | See section 2c; a school-setting question is not built |
+| Audio on the model practice | Roadmap | No cached audio exists; a human prewarm run is needed (`docs/ux/TRACKB_LOG.md`) |
 | Regional languages via Bhashini | Roadmap | A Bhashini client file exists in the repo; the product is Hindi and English only |
 | Home-language bridging scenes | Roadmap | |
 | IVR for teachers without a smartphone | Roadmap | |

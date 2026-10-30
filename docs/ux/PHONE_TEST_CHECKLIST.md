@@ -92,6 +92,21 @@ Needs the hosted site seeded with this code (`SEED_ON_BOOT=true` once, or the se
 | J7 | Log in as `teacher.demo3`, finish the week to the week-done message. | One line "क्यों अभी यह: ..." inside the week-done message (no new strip). After the "next" tap, the same line leads the learn message. |
 | J8 | Switch the interface to English on each of the above. | The same screens in English, no Hindi left in buttons, button titles not cut. |
 
+## K. Track B: new scenes and screens (real Android phone, Chrome)
+
+Needs the hosted site seeded with this code (the trainer table and the cohort rows come from the seed). Nothing here was checked on a real phone.
+
+| # | Taps | Expected |
+|---|---|---|
+| K1 | `teacher.demo3`: check-in, module "संख्याओं की तुलना", "ज़्यादातर अटके", the struggle, then "रवि के साथ अभ्यास", "तीनों बच्चे". | The scene bar shows "39 और 41: कौन बड़ा?" on one line without cutting; three children; the composer and the end-practice button stay on screen. |
+| K2 | Type or speak "रवि, सही उत्तर 41 है।" then "रवि, अब ये सवाल: 28 और 33, कौन बड़ा?". | Ravi repeats 41, then says 28; his label reads "अटका हुआ · फिर अटका". Child lines wrap and are readable. |
+| K3 | Same check-in, module "अक्षर की ध्वनि". | Board word "बकरी"; the children say "ब से बतख". Devanagari shows with no broken conjuncts. |
+| K4 | `teacher.demo3`, open `/teacher`, tap "हाँ", reload. | The opt-in question has two buttons that fit; after the reload the "आज का सुझाव" card shows its source chip (tap it: the passage opens) and three buttons, none cut. |
+| K5 | New account, answer "6-10 साल" at onboarding. | The learn message shows three buttons ("समझ गई, आगे", "फिर से सुनें", "सीधे अभ्यास") that fit at 360 px; "सीधे अभ्यास" opens the set-up with a third button "मुख्य बातें देखें". |
+| K6 | `trainer.demo`, scroll to "प्रशिक्षण कहाँ नहीं पहुँच रहा". | The table scrolls sideways inside its card (no page-wide scroll); the privacy message fits in its cells; "कार्ड देखें" opens a readable key-points page. |
+| K7 | `arp.demo`, `/arp`, then save a visit for "डेमो शिक्षिका 2" and open `teacher.demo2`'s chat. | The neutral "साथ में अभ्यास करें" label and the support line show without overflow; the note "आपके ARP ने देखा: ..." has one "ठीक है" button. |
+| K8 | Switch to English on K1 to K7. | The same screens in English; no Hindi in buttons; titles not cut. |
+
 ## Not testable on web
 
 - WhatsApp reply buttons (3 max) and the interactive list (more than 3 options); the check-in start from "After class" on the week-done message.
