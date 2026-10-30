@@ -372,14 +372,16 @@ async def test_pack_with_no_qualifying_struggle_says_so(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(("role", "base"), [("arp", "/arp"), ("trainer", "/trainer")])
-async def test_print_view_is_one_server_rendered_agenda_without_javascript(
+async def test_print_view_is_one_server_rendered_agenda_with_only_the_print_script(
     session_factory: async_sessionmaker[AsyncSession], role: str, base: str
 ) -> None:
     await _seed_full(session_factory)
     res = await _get(f"{base}/cluster-pack/print", await _user(role), session_factory)
     assert res.status_code == 200
     html = res.text
-    assert "<script" not in html.lower()
+    # the only script is the three-line print button (no chat bundle, no external file)
+    assert html.lower().count("<script") == 1 and "window.print()" in html
+    assert '<script src' not in html.lower()
     assert 'id="pack-agenda"' in html and html.count("<tr>") == 4
     minutes = settings.CLUSTER_PACK_AGENDA_MINUTES
     for m in minutes:

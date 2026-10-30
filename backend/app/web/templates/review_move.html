@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ get_message('ui_review_move_title') }} {{ move.title_hi }} — {{ get_message("ui_review_title") }}</title>
+  <title>{{ get_message('ui_review_move_title') }} {{ move.title_hi }}: {{ get_message("ui_review_title") }}</title>
   <link rel="stylesheet" href="/static/app.css">
   <style>
     .move-container {
@@ -141,7 +141,7 @@
         <h1 style="margin:0.25rem 0 0 0; font-size:1.4rem; color:var(--brand);">
           {{ move.title_hi }} (<code>{{ move.id }}</code>)
         </h1>
-        <small style="color:var(--muted);">{{ get_message('ui_review_domain_colon') }} {{ move.domain }} · {{ get_message('ui_review_sankul_colon') }} {{ move.sankul_month or '—' }}</small>
+        <small style="color:var(--muted);">{{ get_message('ui_review_domain_colon') }} {{ move.domain }} · {{ get_message('ui_review_sankul_colon') }} {{ move.sankul_month or '-' }}</small>
       </div>
       <div>
         <span class="status-badge {% if move.status == 'approved' %}status-approved{% else %}status-pending{% endif %}" style="font-size:0.95rem; padding:0.35rem 0.8rem;">
@@ -205,7 +205,7 @@
       <div style="display:flex; flex-direction:column; gap:0.75rem;">
         {% for crit in card.rubric.criteria %}
         <div style="border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.75rem; background:var(--bg);">
-          <strong>{{ crit.id }} — {{ crit.text_hi }}</strong>
+          <strong>{{ crit.id }}: {{ crit.text_hi }}</strong>
           <div style="font-size:0.85rem; color:var(--muted); margin-top:0.2rem;">
             {% for lvl, desc in crit.levels.items() %}
             <span>[{{ lvl }}]: {{ desc }}</span>{% if not loop.last %} · {% endif %}
@@ -216,7 +216,7 @@
       </div>
 
       <h2>{{ get_message('ui_review_h_scenario') }}</h2>
-      <p><strong>{{ get_message('ui_review_class_context') }}</strong> {{ card.scenario.intro_hi if card.scenario else '—' }}</p>
+      <p><strong>{{ get_message('ui_review_class_context') }}</strong> {{ card.scenario.intro_hi if card.scenario else '-' }}</p>
       {% if card.model_rehearsal %}
       <p><strong>{{ get_message('ui_review_model_first_line') }}</strong> {{ card.model_rehearsal[0].text_hi }} ({{ get_message('ui_review_speaker_colon') }} {{ card.model_rehearsal[0].speaker }})</p>
       {% endif %}

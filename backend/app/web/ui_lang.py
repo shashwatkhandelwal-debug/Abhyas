@@ -152,10 +152,23 @@ def lang_switch(context: Any) -> Markup:
     return lang_switch_html(request.url.path if request is not None else "/")
 
 
+def code_label(prefix: str, code: object) -> str:
+    """Jinja helper: the catalog label `<prefix><code>` (never the raw code), "-" when none."""
+    key = f"{prefix}{code}"
+    return get_message(key) if has_message(key) else "-"
+
+
+def state_label(code: object) -> str:
+    """Jinja helper: the label of a session state code."""
+    return code_label("ui_step_state_", code)
+
+
 def register_ui_globals(env: Any) -> None:
     """Make bilingual helpers available to a Jinja environment."""
     env.globals["get_message"] = get_message
     env.globals["speaker_label"] = speaker_label
+    env.globals["state_label"] = state_label
+    env.globals["code_label"] = code_label
     env.globals["lang_switch"] = lang_switch
     env.globals["ui_lang"] = get_ui_lang
     env.globals["asset_v"] = sw_build_version

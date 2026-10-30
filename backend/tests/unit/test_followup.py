@@ -185,7 +185,7 @@ async def test_not_offered_before_the_due_day_then_offered_once(lang: str, flags
     flags.moment = at(FRIDAY + timedelta(days=1))
     out = await t.service.offer_followup(t.teacher_id)
     assert ids(out) == [followup.BTN_WORKED, followup.BTN_STUCK, followup.BTN_CANT]
-    expected = "कल का अभ्यास कैसा रहा?" if lang == "hi" else "How did yesterday's practice go?"
+    expected = "आज अभ्यास कैसा रहा?" if lang == "hi" else "How did today's practice go?"
     assert expected in alltext(out)
     assert await t.service.offer_followup(t.teacher_id) == []  # opening again does not repeat it
 
@@ -220,7 +220,7 @@ async def test_worked_acknowledges_stores_and_names_the_next_move(
     text = alltext(out)
     assert stored_outcomes(t) == [("worked", None)]
     assert "!" not in text and "शाबाश" not in text and "great" not in text.lower()
-    assert len(out) == 1
+    assert len(out) <= 2 and out[-1].buttons  # the answer, then a next step with a button
     if address_form == "m" and lang == "hi":
         assert not any(re.search(m, text) for m in FEMININE_MARKERS)
     if profile == "demo3":  # a later move exists on her path

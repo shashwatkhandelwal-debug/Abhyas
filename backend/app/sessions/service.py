@@ -26,6 +26,7 @@ from backend.app.class_profile.library import load_library
 from backend.app.class_profile.skills import clean_skill_ids, load_skills, skill_levels
 from backend.app.config import settings, v2_enabled
 from backend.app.content_models import MoveCard
+from backend.app.core.help_question import is_help_question
 from backend.app.core.intents import (
     BUTTON_INTENT_MAP,
     Intent,
@@ -33,6 +34,7 @@ from backend.app.core.intents import (
     match_intent,
 )
 from backend.app.core.messages import get_message, get_ui_lang
+from backend.app.core.outbound_text import normalize_outbound
 from backend.app.core.types import Button, Citation, InboundMessage, OutboundMessage
 from backend.app.db.models import Message
 from backend.app.handbook.fallback import fallback_reply, match_handbook_question
@@ -50,6 +52,7 @@ from backend.app.llm.roles.module_check import check_module
 from backend.app.llm.roles.question_classifier import classify_question
 from backend.app.llm.schemas import RetrievedChunk
 from backend.app.rehearsal.diagnosis import DiagnosisResult
+from backend.app.rehearsal.header import scene_header
 from backend.app.rehearsal.scene_runner import ChildLineRecord, SceneRunner, load_move_card
 from backend.app.rehearsal.scene_store import scene_store
 from backend.app.retrieval.search import GuideRetriever, get_guide_retriever
@@ -289,6 +292,7 @@ class SessionService:
             checkin_jump_move=str(ctx_data.get("checkin_jump_move", "")),
             followup_id=str(ctx_data.get("followup_id", "")),
             followup_stage=str(ctx_data.get("followup_stage", "")),
+            scene_line_at=str(ctx_data.get("scene_line_at", "")),
             level_stage=str(ctx_data.get("level_stage", "")),
             level_subject=str(ctx_data.get("level_subject", "")),
             level_idx=int(ctx_data.get("level_idx", 0)),
@@ -376,6 +380,7 @@ class SessionService:
             "checkin_jump_move": ctx.checkin_jump_move,
             "followup_id": ctx.followup_id,
             "followup_stage": ctx.followup_stage,
+            "scene_line_at": ctx.scene_line_at,
             "level_stage": ctx.level_stage,
             "level_subject": ctx.level_subject,
             "level_idx": ctx.level_idx,
@@ -824,7 +829,7 @@ class SessionService:
 
     async def handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
         """Handles one teacher message, then records which module steps it completed."""
-        out = await self._handle_inbound(inbound)
+        out = normalize_outbound(await self._handle_inbound(inbound))  # after the guards
         try:
             await self._track_module_progress(inbound.teacher_id)
         except SQLAlchemyError:
@@ -936,15 +941,146 @@ class SessionService:
         )
         if ctx.onboarding_state != OnboardingStateEnum.READY or busy:
             return []
-        row = await self.repo.next_due_followup(teacher_id, followup.ist_date(followup.utcnow()))
+        now = followup.utcnow()
+        today = followup.ist_date(now)
+        row = await self.repo.next_due_followup(teacher_id, today)
         if row is None or row.offered_at is not None:
             return []
+        day_start = datetime.combine(today, datetime.min.time(), tzinfo=followup.IST)
+        if await self.repo.recent_followup_outcomes(teacher_id, day_start.astimezone(UTC)):
+            return []  # she already answered one today: never a second the same day
+        _, scene, spoken = await self._followup_scene(ctx, teacher_id)
+        if spoken:
+            return []  # never in the middle of a scene she has started talking in
         await self.repo.mark_followup_offered(row.id)
         checkin_flow.finish(ctx)
         ctx.followup_id = str(row.id)
         ctx.followup_stage = followup.STAGE_ASK
         await self._sync_context_to_db(ctx, teacher_id)
-        return [followup.ask_message(load_library().get(row.struggle_id))]
+        checkin = await self.repo.get_class_checkin(row.checkin_id)
+        return normalize_outbound(
+            [
+                followup.ask_message(
+                    load_library().get(row.struggle_id),
+                    module_id=checkin.module_id if checkin is not None else None,
+                    checkin_outcome=checkin.outcome if checkin is not None else None,
+                )
+            ]
+        )
+
+    # Quick replies that match what each step's hint tells her to press (ids the flow handles)
+    _HELP_BUTTONS: dict[str, tuple[str, ...]] = {
+        SessionStateEnum.LEARN.value: ("btn_understood",),
+        SessionStateEnum.MODEL.value: ("btn_listen", "btn_skip"),
+        SessionStateEnum.FEEDBACK.value: ("btn_retry", "btn_continue"),
+        SessionStateEnum.DONE.value: ("btn_next_move", "btn_progress"),
+    }
+
+    async def _help_reply(
+        self, ctx: SessionContext, teacher_id: UUID, text: str
+    ) -> list[OutboundMessage] | None:
+        """The coach's hint for this screen when the line is clearly a help question, else None."""
+        if not text or not is_help_question(text):
+            return None
+        free_text = (
+            ctx.onboarding_state == OnboardingStateEnum.NEW
+            or ctx.awaiting_delete_confirm
+            or ctx.current_state == SessionStateEnum.ASK
+            or ctx.rating_stage
+            or ctx.class_stage
+            or ctx.skill_stage
+        )  # these steps take a free line, so the line is theirs
+        if free_text:
+            return None
+        from backend.app.web.next_action import next_action  # lazy: the web package imports us
+
+        ready = ctx.onboarding_state == OnboardingStateEnum.READY
+        in_scene, header, _ = await self._followup_scene(ctx, teacher_id)
+        hint = next_action(
+            onboarding=ctx.onboarding_state.value,
+            state=ctx.current_state.value,
+            context={
+                "class_stage": ctx.class_stage,
+                "skill_stage": ctx.skill_stage,
+                "checkin_stage": ctx.checkin_stage,
+                "level_stage": ctx.level_stage,
+                "rating_stage": ctx.rating_stage,
+                "module_mode": ctx.module_mode,
+                "module_check_stage": ctx.module_check_stage,
+                "resume_scene_id": ctx.resume_scene_id,
+                "rehearse_stage": ctx.rehearse_stage,
+                "rehearse_mode": ctx.rehearse_mode,
+            },
+            retries=ctx.retries_count,
+            address_form=ctx.address_form,
+            started=True,
+            scene=header,
+        )
+        if hint is None:
+            return None
+        body = str(hint["text"])
+        buttons: list[Button] = []
+        if in_scene and header is not None and ctx.rehearse_stage != "diagnose":
+            body = f"{body} {get_message('help_scene_stop', ctx.address_form)}"
+        elif ready and not ctx.checkin_stage and not ctx.level_stage:
+            buttons = [
+                Button(id=b, title_hi=get_message(b, ctx.address_form))
+                for b in self._HELP_BUTTONS.get(ctx.current_state.value, ())
+            ]
+        elif ctx.onboarding_state == OnboardingStateEnum.PROFILE_ADDRESS:
+            buttons = [
+                Button(id=b, title_hi=get_message(b, ctx.address_form))
+                for b in ("btn_female", "btn_male")
+            ]
+        return [
+            OutboundMessage(
+                kind="buttons" if buttons else "text",
+                text_hi=body,
+                buttons=buttons,
+                speaker="coach",
+            )
+        ]
+
+    async def _followup_scene(
+        self, ctx: SessionContext, teacher_id: UUID
+    ) -> tuple[bool, dict[str, Any] | None, bool]:
+        """(in a scene screen, the scene bar data if a scene is running, she has spoken in it)."""
+        in_scene = ctx.current_state in (
+            SessionStateEnum.REHEARSE_INTRO,
+            SessionStateEnum.REHEARSE,
+        )
+        if not in_scene:
+            return False, None, False
+        record = await scene_store.get_active_for_teacher(teacher_id)
+        header = scene_header(record.scene_state, record.active, record.turns) if record else None
+        # "Talking in the scene": she sent a line to it recently. A scene resumed from an earlier
+        # visit (or seeded, like demo2's) is a fresh landing, so the follow-up still goes first.
+        quiet = timedelta(hours=settings.FOLLOWUP_SCENE_QUIET_HOURS)
+        spoken = False
+        if ctx.scene_line_at:
+            try:
+                spoken = datetime.now(UTC) - datetime.fromisoformat(ctx.scene_line_at) < quiet
+            except ValueError:
+                spoken = False
+        return True, header, spoken
+
+    async def _followup_close(
+        self, ctx: SessionContext, teacher_id: UUID, messages: list[OutboundMessage]
+    ) -> list[OutboundMessage]:
+        """Every answer ends with a next step: back to the scene, or the usual next buttons."""
+        in_scene, header, _ = await self._followup_scene(ctx, teacher_id)
+        if in_scene:
+            return [*messages, followup.back_to_scene_message(header)]
+        if messages and messages[-1].buttons:
+            return messages
+        buttons = [
+            Button(id="btn_progress", title_hi=get_message("btn_progress", ctx.address_form)),
+            *self._checkin_entry_buttons(),
+        ]
+        return [
+            *messages,
+            OutboundMessage(kind="buttons", text_hi=get_message("fu_next_idle"), buttons=buttons),
+        ]
 
     async def _handle_followup_button(
         self, ctx: SessionContext, teacher_id: UUID, button_id: str
@@ -959,10 +1095,12 @@ class SessionService:
         if row is not None and row.teacher_id != teacher_id:
             row = None
         answered = row is not None and await self.repo.get_followup_outcome(row.id) is not None
-        in_scene = ctx.current_state in (
-            SessionStateEnum.REHEARSE_INTRO,
-            SessionStateEnum.REHEARSE,
-        )
+        in_scene, _, _ = await self._followup_scene(ctx, teacher_id)
+        if button_id == followup.BTN_BACK:
+            if not in_scene:
+                return await self._followup_close(ctx, teacher_id, [followup.already_message()])
+            prompt = self._get_resume_prompt(ctx, SessionStateEnum.REHEARSE, ctx.address_form)
+            return [OutboundMessage(kind="text", text_hi=prompt)]
         res = followup.handle_button(
             ctx,
             button_id,
@@ -1001,7 +1139,9 @@ class SessionService:
         if res.went_worked:
             ctx.followup_id = ""
         await self._sync_context_to_db(ctx, teacher_id)
-        return messages
+        if ctx.followup_stage == followup.STAGE_WHY:  # the reason screen is the next step itself
+            return messages
+        return await self._followup_close(ctx, teacher_id, messages)
 
     async def _launch_checkin_practice(
         self, ctx: SessionContext, teacher_id: UUID, move_id: str
@@ -1083,6 +1223,13 @@ class SessionService:
             checkin_flow.finish(ctx)
         elif btn_id == checkin_flow.BTN_START:
             level_sorter.reset(ctx)
+
+        # 0'. A question to the app ("what do I do now?") is answered by the coach and never reaches
+        # the scene, the check-in or the onboarding step; no state changes.
+        if btn_id is None:
+            help_reply = await self._help_reply(ctx, teacher_id, text_content)
+            if help_reply is not None:
+                return help_reply
 
         # 1'. "How did yesterday's practice go?" (flag FOLLOWUP_ENABLED): closed-list buttons only
         if (
@@ -1536,6 +1683,14 @@ class SessionService:
             elif current_onboarding == OnboardingStateEnum.PROFILE_NAME:
                 osm.transition(text_content)
                 await self._sync_context_to_db(ctx, teacher_id)
+                if (
+                    ctx.onboarding_state == OnboardingStateEnum.PROFILE_NAME
+                ):  # not a name: ask again
+                    return [
+                        OutboundMessage(
+                            kind="text", text_hi=get_message("ask_name_again", address_form)
+                        )
+                    ]
                 return [
                     OutboundMessage(
                         kind="buttons",
@@ -1831,6 +1986,7 @@ class SessionService:
             ]
 
         elif curr == SessionStateEnum.REHEARSE_INTRO:
+            ctx.scene_line_at = datetime.now(UTC).isoformat()  # she is talking in the scene
             if ctx.rehearse_stage in rehearse_setup.SETUP_STAGES:
                 setup_messages = await rehearse_setup.handle_setup(
                     ctx=ctx,
@@ -1861,6 +2017,7 @@ class SessionService:
             return turn_res.outbound
 
         elif curr == SessionStateEnum.REHEARSE:
+            ctx.scene_line_at = datetime.now(UTC).isoformat()  # she is talking in the scene
             scene = await scene_store.get_active_for_teacher(teacher_id)
             if scene is None:
                 scene = await self.scene_runner.create_scene(
@@ -1873,7 +2030,7 @@ class SessionService:
                 child_lines: list[ChildLineRecord], text_msgs: list[OutboundMessage]
             ) -> None:
                 if inbound.channel == "web" and self.repo.session is not None:
-                    for tm in text_msgs:
+                    for tm in normalize_outbound(text_msgs):
                         row_id = uuid.uuid4()
                         tm.message_id = row_id
                         db_msg = Message(
@@ -1901,6 +2058,7 @@ class SessionService:
                 on_text_ready=_on_text_ready,
             )
 
+            normalize_outbound(turn_res.outbound)  # same text as the early rows, for the match
             if early_text_rows and self.repo.session is not None:
                 for outbound in turn_res.outbound:
                     for early_row in early_text_rows:

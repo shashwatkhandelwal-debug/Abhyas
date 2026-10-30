@@ -1,0 +1,24 @@
+    /* Phone layout shared by the ARP, trainer and coach pages (dashboard-only; app.css is not touched).
+       app.css centres the body for the chat, which pushes a wide page off the left edge, so these
+       pages use a normal block body and let their tables scroll inside their own box. */
+    body.dash-page { display: block; min-height: 0; }
+    .dash-page .arp-container, .dash-page .trainer-dashboard, .dash-page .review-container {
+      width: 100%; box-sizing: border-box; min-width: 0; margin-left: auto; margin-right: auto;
+    }
+    .dash-page h1, .dash-page h2, .dash-page h3, .dash-page p, .dash-page td, .dash-page th,
+    .dash-page label, .dash-page .demo-banner { overflow-wrap: anywhere; }
+    .csv-row { margin: 0.25rem 0 0.5rem; text-align: right; }
+    .csv-link { display: inline-block; padding: 0.5rem 0.75rem; min-height: 44px; box-sizing: border-box; font-size: 0.9rem; color: var(--brand); }
+    .table-scroll { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
+    .table-scroll table { min-width: 34rem; }
+    .table-scroll th:first-child, .table-scroll td:first-child {
+      position: sticky; left: 0; z-index: 1; background: var(--surface);
+    }
+    .table-scroll th:first-child { background: var(--bg); }
+    @media (max-width: 600px) {
+      .dash-page .stats-grid { grid-template-columns: 1fr; }
+      .dash-page .arp-header, .dash-page .trainer-header { flex-direction: column; align-items: flex-start; }
+      .dash-page .arp-controls { flex-wrap: wrap; gap: 0.5rem; }
+      .dash-page .trainer-title-area { flex-wrap: wrap; }
+      .dash-page .arp-container, .dash-page .review-container { padding-left: 0.75rem; padding-right: 0.75rem; }
+    }

@@ -1,22 +1,23 @@
-# English mirror of messages_hi.yaml — UI text and system messages for users who switch the
+# English mirror of messages_hi.yaml: UI text and system messages for users who switch the
 # UI to English (Hindi stays the default). Every key of messages_hi.yaml must exist here with the
 # same {placeholders}; backend/tests/unit/test_messages_en.py enforces it. No gender variants
 # (text_m) are needed in English. Words the teacher says to children and chunk titles written at
 # ingest time stay Hindi on purpose (see KEEP_HINDI in that test).
-welcome: {text: "Hello! I am Abhyas — your practice partner. Each week, in about 15 minutes, we will learn one classroom move and practise it by voice with three children."}
+welcome: {text: "Hello! I am Abhyas, your practice partner. Each week, in about 15 minutes, we will learn one classroom move and practise it by voice with three children."}
 consent_service: {text: "Before we start: your voice is turned into text and the audio is deleted straight away. Your scores are visible only to you unless you yourself allow sharing with your ARP. You can erase everything at any time by writing 'delete my data'. Do you agree?"}
 consent_details: {text: "What we keep: your name, class, experience, the text of what you say, your practice scores and, if you tell us, the struggles you pick in 'My class' (from a fixed list, at most 3) and the teaching skill you want to get better at (from a fixed list, at most 2). What we do not keep: recordings of your voice (deleted immediately), any information about children. If you choose to share with your ARP, they see the move you practised and your scores so they can prepare help before visiting. A question the handbook cannot answer is sent to the ARP, and nothing else from the chat is. Your ARP never sees your recordings. Trainers (DIET/SCERT) only see totals for groups of 10 or more teachers, never anyone's name."}
 consent_declined: {text: "No problem. Whenever you want to start, send 'hello'."}
 ask_join_code: {text: "Send the code your ARP gave you. If you do not have a code, write 'no'."}
 join_code_invalid: {text: "That code was not found. Please send it again, or write 'no'."}
 ask_name: {text: "What is your name?"}
+ask_name_again: {text: "Please write only your name, for example: Riya."}
 ask_address_form: {text: "How should I address you?"}
 btn_female: {text: "Teacher (she)"}
 btn_male: {text: "Teacher (he)"}
 ask_experience: {text: "{name}, how many years have you been teaching?"}
 ask_classes: {text: "Which class do you teach this year?"}
 consent_share_scores: {text: "Would you like to share your practice scores with your ARP? If you share, your ARP will see the move you practised and your scores so they can prepare help on exactly this before their next visit. A question the handbook cannot answer is sent to the ARP, and nothing else from the chat is. Your ARP will not see your voice recordings. You can change this at any time in My class."}
-placement_intro: {text: "Let's do a short practice. This is not a test. The board says: 52 − 17. Ravi from Class 2 says: '45!' Talk to Ravi the way you would in class — by voice or by typing."}
+placement_intro: {text: "Let's do a short practice. This is not a test. The board says: 52 − 17. Ravi from Class 2 says: '45!' Talk to Ravi the way you would in class, by voice or by typing."}
 placement_done: {text: "Very good! Now I know where to start for you."}
 ready_first_move: {text: "Your first move is: {move_title}. Let's begin!"}
 learn_intro: {text: "This week's move: {move_title}. The key points are written below:"}
@@ -84,7 +85,7 @@ followup_try_in_class: {text: "{name}, did you try '{move_title}' in class? Choo
 arp_answer_delivered: {text: "Your ARP has sent the answer to your question: {answer}"}
 help_menu: {text: "What would you like to do?"}
 stt_failed: {text: "I could not hear the audio clearly. Please speak again or type your message."}
-stt_confirm: {text: "I heard: \"{text}\" — is that right?"}
+stt_confirm: {text: "I heard: \"{text}\". Is that right?"}
 stt_budget_type_please: {text: "Voice is switched off for now. Please type your message."}
 audio_too_long: {text: "This message is too long. Please send one shorter than 1 minute."}
 unsupported_type: {text: "For now I can only understand voice and text messages."}
@@ -124,13 +125,13 @@ ui_app_name: {text: "Abhyas"}
 ui_hold_to_talk: {text: "Hold to talk"}
 ui_type_here: {text: "Type here…"}
 ui_type_instead: {text: "Type instead of speaking"}
-ui_offline_banner: {text: "You are offline — there is no internet; your messages are being kept to send later"}
+ui_offline_banner: {text: "You are offline: there is no internet; your messages are being kept to send later"}
 ui_offline_short: {text: "You are offline"}
-ui_slow_banner: {text: "The network is slow — turn on lite mode?"}
+ui_slow_banner: {text: "The network is slow. Turn on lite mode?"}
 ui_mic_denied: {text: "Microphone permission was not granted. Turn on the microphone in your browser settings, or type your message."}
-ui_demo_banner: {text: "Demo data — not real teachers"}
+ui_demo_banner: {text: "Demo data: not real teachers"}
 ui_in_review: {text: "In review"}
-ui_suppressed: {text: "Group is small (n<10) — hidden to protect privacy"}
+ui_suppressed: {text: "Group is small (n<10): hidden to protect privacy"}
 ui_samples_title: {text: "Sample voices (for evaluation)"}
 ui_logout: {text: "Log out"}
 ui_delete_data: {text: "Delete my data"}
@@ -144,7 +145,7 @@ ui_time_just_now: {text: "just now"}
 ui_default_teacher_name: {text: "Teacher"}
 ui_chat_msg_sending: {text: "Sending…"}
 ui_chat_msg_sent: {text: "Sent"}
-ui_chat_msg_failed: {text: "Could not send — tap to send again"}
+ui_chat_msg_failed: {text: "Could not send. Tap to send again"}
 ui_chat_typing_generic: {text: "A reply is coming…"}
 ui_chat_typing_ravi: {text: "Ravi is thinking…"}
 ui_chat_typing_priya: {text: "Priya is thinking…"}
@@ -153,7 +154,7 @@ ui_chat_typing_timeout: {text: "The reply is taking a while. Please try again in
 ui_chat_audio_loading: {text: "Audio is coming…"}
 ui_chat_audio_ready: {text: "Audio message"}
 ui_chat_audio_playing: {text: "Playing…"}
-ui_chat_audio_error: {text: "Audio did not play — tap to try again"}
+ui_chat_audio_error: {text: "Audio did not play. Tap to try again"}
 ui_chat_audio_play: {text: "Play audio"}
 ui_chat_audio_pause: {text: "Pause"}
 ui_chat_audio_retry: {text: "Try again"}
@@ -162,14 +163,14 @@ ui_chat_rec_uploading: {text: "Sending your voice…"}
 ui_chat_rec_transcribing: {text: "Writing out what you said…"}
 ui_chat_voice_note: {text: "🎤 Voice note ({sec} seconds)"}
 ui_chat_chip_done: {text: "Sent ✓"}
-ui_chat_cold_start: {text: "The server is waking up — this can take about a minute. Please wait; your message is safe."}
+ui_chat_cold_start: {text: "The server is waking up. This can take about a minute. Please wait; your message is safe."}
 ui_chat_source_page: {text: "page {page}"}
 ui_chat_source_printed: {text: "printed page {page}"}
 ui_chat_source_summary: {text: "Hindi summary"}
 ui_chat_source_original_en: {text: "This passage is in English, from the original document."}
 ui_chat_source_ocr: {text: "This passage was read from a scanned page by a machine, so it may contain small errors."}
-ui_chat_source_error: {text: "Could not open the source — tap to try again"}
-ui_chat_reconnecting: {text: "The internet is back — reconnecting…"}
+ui_chat_source_error: {text: "Could not open the source. Tap to try again"}
+ui_chat_reconnecting: {text: "The internet is back. Reconnecting…"}
 ui_chat_quote_tag: {text: "Your words"}
 ui_fast_track_title: {text: "Demo shortcuts"}
 ui_fast_track_hint: {text: "A1, A2, B appear after 30 seconds of no activity in a subtraction practice."}
@@ -191,6 +192,29 @@ state_FEEDBACK: {text: "Suggestions"}
 state_TRY_IN_CLASS: {text: "Trying it in class"}
 state_REFLECT_PEER: {text: "Peer checklist"}
 state_REFLECT_SELF: {text: "Sharing your experience"}
+ui_step_state_LEARN: {text: "Learn"}
+ui_step_state_EXPLAIN_BACK: {text: "Own words"}
+ui_step_state_MODEL: {text: "Model"}
+ui_step_state_REHEARSE_INTRO: {text: "Practice"}
+ui_step_state_REHEARSE: {text: "Practice"}
+ui_step_state_FEEDBACK: {text: "Feedback"}
+ui_step_state_TRY_IN_CLASS: {text: "Try in class"}
+ui_step_state_REFLECT_PEER: {text: "Peer checklist"}
+ui_step_state_REFLECT_SELF: {text: "Reflection"}
+ui_step_state_DONE: {text: "Done"}
+ui_step_state_ASK: {text: "Handbook question"}
+ui_step_state_NEW: {text: "Not started"}
+ui_export_csv: {text: "Download (CSV)"}
+ui_pack_print_button: {text: "Download / Print"}
+ui_review_kind_rehearsal_score: {text: "Practice score"}
+ui_review_kind_explain_score: {text: "Explain-back score"}
+ui_review_kind_question: {text: "Question"}
+ui_review_kind_guard_failure: {text: "Guard failure"}
+ui_role_coach: {text: "Coach"}
+ui_role_arp: {text: "ARP"}
+ui_role_trainer: {text: "Trainer"}
+ui_role_admin: {text: "Admin"}
+ui_role_teacher: {text: "Teacher"}
 coach_exact_words_contrast_math: {text: "दोनों के उत्तर देखो, तीलियाँ गिनकर बताओ कि कौन-सा सही है और क्यों?"}
 coach_exact_words_contrast_lit: {text: "दोनों के पढ़े शब्द सुनो, अक्षर मिलाकर बताओ कि कौन-सा सही है?"}
 coach_fallback_neutral: {text: "I could not clearly see this move in your words yet; try the suggestion below and have another go."}
@@ -216,7 +240,7 @@ ui_review_transcript_title: {text: "Practice conversation (transcript)"}
 ui_review_ai_score: {text: "Score given by the AI"}
 ui_review_coach_score: {text: "Score revised by the coach"}
 ui_review_notes_label: {text: "Coach's note"}
-ui_review_blind_banner: {text: "Blind calibration mode — the AI scores are hidden here."}
+ui_review_blind_banner: {text: "Blind calibration mode: the AI scores are hidden here."}
 ui_review_success_notice: {text: "Review recorded successfully."}
 ui_review_calibrate_empty: {text: "All available rehearsals have been checked"}
 ui_trainer_title: {text: "Trainer dashboard (DIET / SCERT)"}
@@ -236,9 +260,9 @@ ui_trainer_col_rubric: {text: "Rubric distribution (0/1/2)"}
 ui_trainer_col_ladder: {text: "Evidence ladder (levels 1-5)"}
 ui_trainer_export_csv: {text: "Download CSV"}
 ui_trainer_no_data: {text: "No data available"}
-ui_trainer_suppression_notice: {text: "Group is small (n<10) — hidden to protect privacy"}
+ui_trainer_suppression_notice: {text: "Group is small (n<10): hidden to protect privacy"}
 ui_trainer_insight_all_good: {text: "Teachers in all batches understand the key points well."}
-ui_trainer_insight_recommendation: {text: "In batch {batch}, {pct}% of teachers are missing the point '{key_point}' — give it 10 minutes in the next training."}
+ui_trainer_insight_recommendation: {text: "In batch {batch}, {pct}% of teachers are missing the point '{key_point}', give it 10 minutes in the next training."}
 ui_arp_title: {text: "ARP weekly digest"}
 ui_arp_section_overview: {text: "This week at a glance"}
 ui_arp_active_teachers: {text: "Active teachers"}
@@ -372,7 +396,7 @@ ui_chat_main_menu: {text: "Main menu"}
 ui_delete_effects: {text: "If you confirm, your account, all practice scores, evidence-ladder progress, chat messages and audio records will be erased from the database for good."}
 ui_delete_irreversible_html: {text: "This is <strong>permanent and cannot be undone</strong>."}
 ui_delete_question: {text: "Do you really want to delete all your data?"}
-ui_delete_title: {text: "Delete my data — confirm"}
+ui_delete_title: {text: "Delete my data: confirm"}
 ui_delete_back_progress: {text: "Back to progress"}
 ui_delete_confirm_no: {text: "No, go back"}
 ui_delete_confirm_yes: {text: "Yes, delete"}
@@ -391,7 +415,7 @@ ui_progress_share_scores: {text: "Share scores with ARP"}
 ui_progress_consent_heading: {text: "Privacy & consent settings"}
 ui_progress_research: {text: "Take part in research & improvement"}
 ui_progress_moves_label: {text: "Teaching moves and progress"}
-ui_progress_page_title: {text: "My progress — Abhyas"}
+ui_progress_page_title: {text: "My progress: Abhyas"}
 ui_progress_ladder_levels: {text: "Evidence ladder levels"}
 ui_progress_data_heading: {text: "Account & data management"}
 ui_progress_back_chat: {text: "Back to chat"}
@@ -470,7 +494,7 @@ ui_review_move_title: {text: "Move review:"}
 ui_lang_label: {text: "Language"}
 ui_lang_name_hi: {text: "हिन्दी"}
 ui_lang_name_en: {text: "English"}
-ui_login_page_title: {text: "Log in — Abhyas"}
+ui_login_page_title: {text: "Log in: Abhyas"}
 ui_login_subtitle: {text: "Practice partner for primary teachers"}
 ui_login_username: {text: "Username"}
 ui_login_password: {text: "Password"}
@@ -491,7 +515,7 @@ ui_chat_translate: {text: "Translate"}
 ui_chat_translate_loading: {text: "Translating…"}
 ui_chat_translate_hide: {text: "Hide translation"}
 ui_chat_translate_error: {text: "Could not translate this"}
-ui_chat_translate_limit: {text: "Too many requests — please try again in a moment"}
+ui_chat_translate_limit: {text: "Too many requests. Please try again in a moment"}
 ui_chat_translate_retry: {text: "Try again"}
 ui_chat_translation_label: {text: "English translation"}
 ui_chat_rec_unsupported: {text: "Voice recording does not work in this browser. Type your message instead, or open the page in Chrome."}
@@ -499,16 +523,16 @@ ui_chat_rec_permission: {text: "Microphone permission was not given. Tap the �
 ui_chat_rec_start_failed: {text: "The microphone could not start ({error}). Tap to try again, or type instead."}
 ui_chat_rec_unknown_error: {text: "Unknown error"}
 stt_unclear_label: {text: "(voice not understood)"}
-ui_chat_rec_auto_sent: {text: "One minute reached — your voice note was sent."}
+ui_chat_rec_auto_sent: {text: "One minute reached. Your voice note was sent."}
 ui_chat_rec_busy: {text: "Another app is using the microphone. Close it and try again."}
 ui_chat_rec_insecure: {text: "The microphone needs a secure (https) page. Open the https link, or type instead."}
 ui_chat_rec_no_mic: {text: "No microphone found. Plug one in, or type your message instead."}
 ui_chat_rec_too_short: {text: "That was too short. Press the button and speak for at least 1 second."}
 ui_chat_stop_send: {text: "Send"}
 ui_chat_rec_recording_tap: {text: "Recording… press ‘Send’ when you finish speaking"}
-ui_offline_title: {text: "Offline — Abhyas"}
+ui_offline_title: {text: "Offline: Abhyas"}
 ui_offline_retry: {text: "Try again"}
-ui_offline_notice: {text: "You are offline — your earlier history and the classroom checklist are available."}
+ui_offline_notice: {text: "You are offline: your earlier history and the classroom checklist are available."}
 ui_offline_checklist_badge: {text: "Classroom practice checklist (available offline)"}
 ui_offline_checklist_title: {text: "Two-digit subtraction with regrouping (52 − 17)"}
 ui_offline_checklist_intro: {text: "Keep these 4 steps in mind while teaching. Your ticks are saved here."}
@@ -584,7 +608,7 @@ module_check_reply_more: {text: "Good try. One more thing to remember:\n{point}"
 module_check_done_pass: {text: "The module check is done. Shall we move on?"}
 module_check_done_more: {text: "Your check is saved. You can practise again if you like, or move on."}
 ui_chat_menu_modules: {text: "Modules"}
-ui_modules_page_title: {text: "Abhyas — Modules"}
+ui_modules_page_title: {text: "Abhyas: Modules"}
 ui_modules_title: {text: "Modules"}
 ui_modules_intro: {text: "Each module has four steps: learn, spot a child's confusion (1-1), practise, and a short check at the end."}
 ui_modules_step_learn: {text: "Learn"}
@@ -613,8 +637,8 @@ ui_modprog_step_check: {text: "Check"}
 ui_modprog_label_pilot: {text: "Pilot"}
 ui_modprog_label_demo: {text: "Demo (synthetic)"}
 ui_nav_opening: {text: "Opening…"}
-ui_nav_waking: {text: "The server is waking up — this can take about a minute. Please wait, the page will open by itself."}
-ui_chat_send_failed_network: {text: "No internet. Your message is kept on this phone — when the internet is back, tap the ‘!’ to send it again."}
+ui_nav_waking: {text: "The server is waking up. This can take about a minute. Please wait, the page will open by itself."}
+ui_chat_send_failed_network: {text: "No internet. Your message is kept on this phone. When the internet is back, tap the ‘!’ to send it again."}
 ui_chat_send_failed_rejected: {text: "The message could not be sent. Refresh the page and try again, or type it instead."}
 ui_chat_lite_save_failed: {text: "Lite mode changed on this phone but did not reach the server. Tap again when the internet is back."}
 ui_error_404_title: {text: "This page was not found"}
@@ -622,11 +646,11 @@ ui_error_404_body: {text: "The link may be old or wrong. Go to the home page and
 ui_error_500_title: {text: "Something went wrong"}
 ui_error_500_body: {text: "This is a problem on our side, not yours. Your work is safe. Please try again in a little while."}
 ui_error_503_title: {text: "The service is getting ready"}
-ui_error_503_body: {text: "The server is waking up — this can take about a minute. Please wait, the page will reopen by itself."}
+ui_error_503_body: {text: "The server is waking up. This can take about a minute. Please wait, the page will reopen by itself."}
 ui_error_home: {text: "Go to the home page"}
 ui_error_retry: {text: "Try again"}
 ui_waking_title: {text: "Abhyas is waking up…"}
-ui_waking_body: {text: "The free server sleeps when idle and wakes up again; this takes about a minute. Keep this page open — you will be taken in automatically as soon as it is ready."}
+ui_waking_body: {text: "The free server sleeps when idle and wakes up again; this takes about a minute. Keep this page open. You will be taken in automatically as soon as it is ready."}
 ui_waking_still: {text: "Still waking up… please wait a little longer."}
 learn_buttons_reminder: {text: "At this step, tap one of the two buttons below: “{next}” or “{replay}”. Typed text does not move it forward here."}
 realism_prompt_one_on_one: {text: "Did {child} feel like a real classroom child? Choose from 1 (not at all) to 5 (exactly like them)."}
@@ -673,7 +697,7 @@ ui_class_no_match: {text: "That did not match anything on the list, so nothing w
 ui_class_saved: {text: "Your class is saved."}
 ui_class_cleared: {text: "Your class choice was removed."}
 ui_class_too_many: {text: "Choose at most {max}; the first {max} were kept."}
-ui_class_chosen_because: {text: "Chosen for your class: children get stuck here — {label}"}
+ui_class_chosen_because: {text: "Chosen for your class: children get stuck here, {label}"}
 ui_trainer_class_title: {text: "Common class struggles"}
 ui_trainer_class_desc: {text: "What teachers said about their class (consenting teachers only; hidden below 10)."}
 ui_trainer_class_teachers: {text: "Teachers who answered"}
@@ -948,6 +972,16 @@ lvl_command_words: {text: "group my class, group by level, level sorter, group t
 # ── Follow-up loop (flag FOLLOWUP_ENABLED): "How did yesterday's practice go?" ──
 fu_ask: {text: "How did yesterday's practice go? Tap one button about the method you planned to try for '{label}'."}
 fu_unknown_label: {text: "the difficulty from your last class"}
+help_scene_stop: {text: "To finish the practice, type 'stop'."}
+fu_ask_leadin: {text: "Yesterday, after class, you told me that in '{module}' {outcome}. How did today's practice go? Tap one button about the method you planned to try for '{label}'."}
+fu_leadin_well: {text: "the practice went well"}
+fu_leadin_some: {text: "some children got stuck"}
+fu_leadin_most: {text: "most children got stuck"}
+btn_fu_back: {text: "Back to practice"}
+fu_back_one: {text: "Now back to {child}: the board shows {board}. Ask {child} how they got this answer."}
+fu_back_group: {text: "Now back to the children: the board shows {board}. Name one child and ask how they got this answer."}
+fu_back_setup: {text: "Now back to practice: pick one of the buttons above to go on."}
+fu_next_idle: {text: "Next: see your progress, or log an after-class check-in."}
 btn_fu_worked: {text: "It worked"}
 btn_fu_stuck: {text: "Still stuck"}
 btn_fu_cant: {text: "Could not try"}

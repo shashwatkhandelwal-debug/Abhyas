@@ -100,7 +100,7 @@ def scope_teachers_query(query: Any, user: AppUser) -> Any:
     return query
 
 
-SUPPRESSION_MESSAGE = "समूह छोटा है (n<10) — गोपनीयता हेतु छिपाया गया"
+SUPPRESSION_MESSAGE = "समूह छोटा है (n<10): गोपनीयता हेतु छिपाया गया"
 
 
 def apply_aggregation_suppression(

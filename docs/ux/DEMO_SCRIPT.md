@@ -206,7 +206,7 @@ subtraction, from check-in to trainer view."
 **3. Follow-up** (the next school day, when the chat opens):
 
 ```
-कल का अभ्यास कैसा रहा? 'हासिल वाला घटाव' के लिए जो तरीका आज़माना था, उसके बारे में एक बटन दबाइए।
+कल आपने कक्षा के बाद बताया था कि 'हासिल वाला घटाव' में ज़्यादातर बच्चे अटके। आज अभ्यास कैसा रहा? 'हासिल वाला घटाव' के लिए जो तरीका आज़माना था, उसके बारे में एक बटन दबाइए।
    buttons: [काम किया] [अब भी अटके हैं] [आज़मा नहीं सके]
 ```
 
@@ -219,6 +219,15 @@ Tap "अब भी अटके हैं":
 ```
 
 (Tap "आज़मा नहीं सके" instead and it asks why with four buttons; "कई कक्षाएँ साथ" answers with the level sorter button.)
+
+Order on landing: the follow-up comes first, before the scene's next prompt. It never appears once you have sent a line in a scene, and never twice on the same day. Every answer ends with a next step. Inside a scene it is the way back:
+
+```
+अब वापस रवि के पास: बोर्ड पर 43 − 27 है। रवि से पूछिए कि उसने यह कैसे किया।
+   buttons: [वापस अभ्यास पर]
+```
+
+If you are lost mid-scene, type "Ab kya karien ?" (or "अब क्या करें", "help"): the coach says what to ask next and that "बस" ends the practice. Ravi never answers a question meant for the app.
 
 **4. Observation** (`arp.demo`, **कक्षा-भ्रमण सूची**): talk moves the ARP can tick, then one next step, no typing:
 

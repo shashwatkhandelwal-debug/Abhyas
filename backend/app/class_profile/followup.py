@@ -43,10 +43,12 @@ BTN_STUCK = "btn_fu_stuck"
 BTN_CANT = "btn_fu_cant"
 BTN_PRACTICE = "btn_fu_practice"
 BTN_HANDBOOK = "btn_fu_handbook"
+BTN_BACK = "btn_fu_back"  # "Back to practice": returns to the open scene
 WHY_PREFIX = "btn_fu_why_"
 OUTCOME_BUTTONS = {BTN_WORKED: OUTCOME_WORKED, BTN_STUCK: OUTCOME_STUCK, BTN_CANT: OUTCOME_CANT}
 WHY_BUTTONS = {f"{WHY_PREFIX}{r}": r for r in REASONS}
-ALL_BUTTONS = frozenset({*OUTCOME_BUTTONS, *WHY_BUTTONS, BTN_PRACTICE, BTN_HANDBOOK})
+ALL_BUTTONS = frozenset({*OUTCOME_BUTTONS, *WHY_BUTTONS, BTN_PRACTICE, BTN_HANDBOOK, BTN_BACK})
+LEADIN_OUTCOME_KEYS = {"well": "fu_leadin_well", "some": "fu_leadin_some", "most": "fu_leadin_most"}
 
 
 def enabled() -> bool:
@@ -82,13 +84,40 @@ def _btn(button_id: str) -> Button:
     return Button(id=button_id, title_hi=get_message(button_id)[: settings.WEB_BUTTON_TITLE_MAX])
 
 
-def ask_message(struggle: ClassStruggle | None) -> OutboundMessage:
+def ask_message(
+    struggle: ClassStruggle | None,
+    *,
+    module_id: str | None = None,
+    checkin_outcome: str | None = None,
+) -> OutboundMessage:
+    """The three options, led in by what she told us after class (module and outcome) when stored."""
     label = struggle_label(struggle) if struggle is not None else get_message("fu_unknown_label")
+    module_key = f"btn_chk_mod_{module_id}"
+    outcome_key = LEADIN_OUTCOME_KEYS.get(checkin_outcome or "")
+    if module_id and outcome_key and has_message(module_key):
+        text = get_message(
+            "fu_ask_leadin",
+            module=get_message(module_key),
+            outcome=get_message(outcome_key),
+            label=label,
+        )
+    else:
+        text = get_message("fu_ask", label=label)
     return OutboundMessage(
-        kind="buttons",
-        text_hi=get_message("fu_ask", label=label),
-        buttons=[_btn(b) for b in OUTCOME_BUTTONS],
+        kind="buttons", text_hi=text, buttons=[_btn(b) for b in OUTCOME_BUTTONS]
     )
+
+
+def back_to_scene_message(scene: dict[str, object] | None) -> OutboundMessage:
+    """One line that returns her to the scene with the board's problem and one thing to ask."""
+    board = str((scene or {}).get("board") or "")
+    if scene and board and scene.get("mode") == "one_on_one":
+        text = get_message("fu_back_one", child=scene.get("child_name"), board=board)
+    elif scene and board:
+        text = get_message("fu_back_group", board=board)
+    else:
+        text = get_message("fu_back_setup")
+    return OutboundMessage(kind="buttons", text_hi=text, buttons=[_btn(BTN_BACK)])
 
 
 def why_message() -> OutboundMessage:
@@ -291,6 +320,7 @@ def tomorrow_focus(
 
 __all__ = [
     "ALL_BUTTONS",
+    "BTN_BACK",
     "BTN_CANT",
     "BTN_HANDBOOK",
     "BTN_PRACTICE",
@@ -301,6 +331,7 @@ __all__ = [
     "REASONS",
     "TomorrowFocus",
     "ask_message",
+    "back_to_scene_message",
     "cant_messages",
     "due_date_for",
     "enabled",

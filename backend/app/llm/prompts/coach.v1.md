@@ -18,3 +18,4 @@ Instructions:
 6. confidence: your confidence that the scores match what an expert FLN coach would give (0.0 to 1.0). Lower it if the transcript is short or ambiguous.
 7. {one_on_one_rules}
 8. Return only the coach_feedback tool call.
+Never use em dashes or en dashes in the text you write: use a comma, a full stop or a colon instead.

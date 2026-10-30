@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#1F6F5C">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <title>{{ get_message('ui_arp_title') }} — {{ get_message('ui_app_name') }}</title>
+  <title>{{ get_message('ui_arp_title') }}: {{ get_message('ui_app_name') }}</title>
   <link rel="stylesheet" href="/static/app.css">
   <style>
+{% include "_dash_css.html" %}
     .arp-container {
       max-width: 960px;
       margin: 0 auto;
@@ -253,7 +254,7 @@
     }
   </style>
 </head>
-<body>
+<body class="dash-page">
   <div class="arp-container">
     <!-- Header -->
     <header class="arp-header">
@@ -315,6 +316,7 @@
 
     <!-- Section 2: Who is practicing (Consenting Only Table + Non-Consenting Aggregate Row) -->
     {% if (digest.consenting_teachers | length) >= 10 %}
+    {% set export_base = "/arp/export" %}
     {% include "_module_progress.html" %}
     {% endif %}
 
@@ -327,8 +329,9 @@
       <p class="arp-share-summary" style="margin: 0.5rem 0 1rem; color: var(--muted); font-size: 0.95rem;">
         {{ get_message('ui_arp_share_ratio', shared=digest.consenting_teachers | length, total=digest.total_teachers) }}
       </p>
-      <div class="arp-table-wrap">
-        <table class="arp-table">
+      <p class="csv-row"><a class="csv-link" id="csv-teachers" href="/arp/export/teachers.csv{% if request.url.query %}?{{ request.url.query }}{% endif %}">{{ get_message('ui_export_csv') }}</a></p>
+      <div class="arp-table-wrap table-scroll">
+        <table class="arp-table" data-export="teachers">
           <thead>
             <tr>
               <th>{{ get_message('ui_arp_col_teacher') }}</th>
@@ -346,9 +349,9 @@
               <td><strong>{{ t.name }}</strong></td>
               <td>{{ t.school }}</td>
               <td>{{ t.move_title }}</td>
-              <td><code>{{ t.step_reached }}</code></td>
+              <td>{{ state_label(t.step_reached) }}</td>
               <td>{{ get_message('ui_arp_level') }} {{ t.max_evidence_level }}</td>
-              <td>
+              <td data-csv="{% if t.rubric_dots %}{% for d in t.rubric_dots %}{{ d.score }}{% if not loop.last %} {% endif %}{% endfor %}{% else %}-{% endif %}">
                 {% if t.rubric_dots %}
                 <div class="rubric-dots" title="{{ get_message('ui_arp_score_colon') }} {% for d in t.rubric_dots %}{{ d.score }} {% endfor %}">
                   {% for d in t.rubric_dots %}
@@ -356,7 +359,7 @@
                   {% endfor %}
                 </div>
                 {% else %}
-                <span style="color: var(--muted);">—</span>
+                <span style="color: var(--muted);">-</span>
                 {% endif %}
               </td>
               <td>
@@ -410,9 +413,9 @@
       <article class="visit-card" id="visit-card-{{ v.teacher_id }}">
         <div class="visit-card-header">
           <div>
-            <div class="visit-card-title">{{ v.name }} — {{ v.school }}</div>
+            <div class="visit-card-title">{{ v.name }}: {{ v.school }}</div>
             <div style="font-size: 0.85rem; color: var(--muted); margin-top: 0.2rem;">
-              {{ get_message('ui_arp_move_colon') }} <strong>{{ v.move_title }}</strong> · {{ get_message('ui_arp_avg_score') }} <strong>{{ v.avg_score if v.avg_score is not none else '—' }} / 2.0</strong>
+              {{ get_message('ui_arp_move_colon') }} <strong>{{ v.move_title }}</strong> · {{ get_message('ui_arp_avg_score') }} <strong>{{ v.avg_score if v.avg_score is not none else '-' }} / 2.0</strong>
             </div>
           </div>
           <span class="badge-help">{{ get_message('ui_arp_visit_reason') }}</span>

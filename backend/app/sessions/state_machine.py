@@ -16,7 +16,8 @@ from backend.app.core.intents import (
     Intent,
     match_intent,
 )
-from backend.app.core.messages import get_message
+from backend.app.core.messages import get_message, get_ui_lang
+from backend.app.core.name_extract import extract_name
 
 
 class SessionStateEnum(StrEnum):
@@ -540,6 +541,7 @@ class SessionContext(BaseModel):
     # Follow-up loop (class_profile/followup.py): the open follow-up row and where she is in it
     followup_id: str = ""
     followup_stage: str = ""  # "", "ask", "why"
+    scene_line_at: str = ""  # ISO time of her last line sent to a scene ("" if none)
     # "Group my class by level" (class_profile/level_sorter.py): "" (not in it), "subject", "count",
     # "result"; the tapped range per level is kept for this conversation only (never stored)
     level_stage: str = ""
@@ -1088,7 +1090,14 @@ class OnboardingStateMachine:
             )
 
         if prev == OnboardingStateEnum.PROFILE_NAME:
-            self.ctx.name = raw_text[:40].strip()
+            name = extract_name(raw_text, get_ui_lang())
+            if name is None:  # not plainly a name: ask again, store nothing
+                return TransitionResult(
+                    previous_state=str(prev),
+                    new_state=str(OnboardingStateEnum.PROFILE_NAME),
+                    message_keys=["ask_name_again"],
+                )
+            self.ctx.name = name
             self.ctx.onboarding_state = OnboardingStateEnum.PROFILE_ADDRESS
             return TransitionResult(
                 previous_state=str(prev),

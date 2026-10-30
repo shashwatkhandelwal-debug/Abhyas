@@ -5,8 +5,9 @@
   {% if not modules %}
     <p style="margin: 0; color: var(--muted, #5E6662);">{{ get_message("ui_modprog_none") }}</p>
   {% else %}
-  <div style="overflow-x: auto;">
-  <table class="data-table" style="width: 100%;">
+  <p class="csv-row"><a class="csv-link" id="csv-module-progress" href="{{ export_base }}/module_progress.csv{% if request.url.query %}?{{ request.url.query }}{% endif %}">{{ get_message("ui_export_csv") }}</a></p>
+  <div class="table-scroll">
+  <table class="data-table" data-export="module_progress" style="width: 100%;">
     <thead>
       <tr>
         <th>{{ get_message("ui_modprog_col_module") }}</th>

@@ -846,7 +846,7 @@ async def test_arp_dashboard_renders_suggested_visits(
 
     assert res.status_code == 200, res.text[:500]
     assert "विज़िट शिक्षिका अ" in res.text and "विज़िट शिक्षिका ब" in res.text
-    assert "— / 2.0" in res.text  # avg_score None
+    assert "- / 2.0" in res.text  # avg_score None
     assert "1.25 / 2.0" in res.text
 
 

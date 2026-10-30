@@ -15,10 +15,12 @@
   td.t { width: 5.5rem; white-space: nowrap; font-weight: 700; }
   .src { color: #4a524e; font-size: 0.8rem; display: block; }
   .hint { color: #4a524e; font-size: 0.8rem; margin-top: 0.8rem; }
-  @media print { .hint { display: none; } }
+  .print-btn { font: inherit; padding: 0.6rem 1rem; min-height: 44px; border: 1px solid #1c211f; border-radius: 0.5rem; background: #fff; color: #1c211f; cursor: pointer; margin: 0.4rem 0 0.8rem; }
+  @media print { .hint, .print-btn { display: none; } }
 </style>
 </head>
 <body>
+<button type="button" class="print-btn" id="pack-print-btn">{{ get_message("ui_pack_print_button") }}</button>
 <h1 id="pack-print-title">{{ get_message("ui_pack_print_title") }}</h1>
 <p class="meta">{{ scope_text }} &middot; {{ get_message("ui_pack_period", days=pack.window_days) }} &middot; {{ today }}</p>
 {% if pack.includes_demo %}<div class="demo" id="pack-print-demo">{% if pack.all_demo %}{{ get_message("ui_pack_demo_all") }}{% else %}{{ get_message("ui_pack_demo_some") }}{% endif %}</div>{% endif %}
@@ -37,5 +39,6 @@
 </table>
 {% endif %}
 <p class="hint">{{ get_message("ui_pack_print_hint") }}</p>
+<script>document.getElementById('pack-print-btn').addEventListener('click', function () { window.print(); });</script>
 </body>
 </html>

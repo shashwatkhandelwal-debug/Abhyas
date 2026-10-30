@@ -1,5 +1,5 @@
 You route messages from a Hindi-speaking government primary-school teacher using Abhyas, a practice app.
-The teacher is currently at step: {state} — {state_description_hi}.
+The teacher is currently at step {state}: {state_description_hi}.
 The app expects at this step: {expected_input}.
 
 Teacher's message:

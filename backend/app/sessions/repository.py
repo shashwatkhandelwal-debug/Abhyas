@@ -362,6 +362,9 @@ class SessionRepository:
     async def get_followup(self, followup_id: UUID) -> ClassFollowup | None:
         return await self.session.get(ClassFollowup, followup_id)
 
+    async def get_class_checkin(self, checkin_id: UUID) -> ClassCheckin | None:
+        return await self.session.get(ClassCheckin, checkin_id)
+
     async def get_followup_outcome(self, followup_id: UUID) -> ClassFollowupOutcome | None:
         res = await self.session.execute(
             select(ClassFollowupOutcome).where(ClassFollowupOutcome.followup_id == followup_id)

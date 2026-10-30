@@ -3,7 +3,7 @@
 District-level training view backed by AggModuleBatch:
 - Tables: batch x move aggregates with completion %, missed key points, inline SVG rubric bars, ladder distribution.
 - Privacy-by-design: all metrics for groups with n < 10 are replaced with:
-  "समूह छोटा है (n<10) — गोपनीयता हेतु छिपाया गया"
+  "समूह छोटा है (n<10): गोपनीयता हेतु छिपाया गया"
 - Zero individual teacher data or PII is exposed anywhere.
 - Deterministic training insight box computed from top missed key point where rate >= 40%.
 - GET /trainer/export.csv provides export with identical privacy suppression.
@@ -42,6 +42,7 @@ from backend.app.sessions.training_rating import (
 )
 from backend.app.web import visit_observation
 from backend.app.web.cluster_pack_page import card_context, pack_enabled, print_context
+from backend.app.web.csv_export import export_response
 from backend.app.web.ui_lang import register_ui_globals
 
 logger = logging.getLogger("abhyas.web.trainer")
@@ -168,6 +169,22 @@ async def get_cluster_pack_print(
     )
     resp.headers["Cache-Control"] = "no-store"
     return resp
+
+
+@router.get("/export/{table}.csv")
+async def export_trainer_table_csv(
+    table: str,
+    request: Request,
+    current_user: Annotated[AppUser, Depends(require_role("trainer"))],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    batch_id: Annotated[str | None, Query()] = None,
+    move_id: Annotated[str | None, Query()] = None,
+) -> Response:
+    """One table of the trainer page as CSV: the page's own data, same role check, same suppression."""
+    page = await get_trainer_dashboard(request, current_user, db, batch_id, move_id)
+    return export_response(
+        role=current_user.role, view="trainer", table=table, html=bytes(page.body).decode("utf-8")
+    )
 
 
 @router.get("/export.csv")

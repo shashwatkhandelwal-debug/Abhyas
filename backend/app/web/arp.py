@@ -47,6 +47,7 @@ from backend.app.reports.cluster_pack import build_cluster_pack
 from backend.app.reports.module_progress import module_progress_summary
 from backend.app.web import visit_observation
 from backend.app.web.cluster_pack_page import card_context, pack_enabled, print_context
+from backend.app.web.csv_export import export_response
 from backend.app.web.ui_lang import register_ui_globals
 
 logger = logging.getLogger("abhyas.web.arp")
@@ -146,6 +147,22 @@ async def get_arp_dashboard(
     if token_to_set:
         set_csrf_cookie(resp, token_to_set)
     return resp
+
+
+@router.get("/export/{table}.csv")
+async def export_arp_csv(
+    table: str,
+    request: Request,
+    response: Response,
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    current_user: Annotated[AppUser, Depends(require_role("arp"))],
+    week: str | None = None,
+) -> Response:
+    """One table of the ARP page as CSV: the page's own data, same role check, same suppression."""
+    page = await get_arp_dashboard(request, response, db, current_user, week)
+    return export_response(
+        role=current_user.role, view="arp", table=table, html=bytes(page.body).decode("utf-8")
+    )
 
 
 @router.get("/cluster-pack/print", response_class=HTMLResponse)

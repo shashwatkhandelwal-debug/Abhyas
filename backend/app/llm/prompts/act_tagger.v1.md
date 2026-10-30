@@ -9,7 +9,7 @@ Teaching-act taxonomy (use only these ids):
 - ask_to_explain: asks a child HOW/WHY they got their answer ("कैसे किया?", "समझाओ", "बताओ तुमने क्या सोचा")
 - concrete_representation: uses or asks to use bundles/sticks/objects/fingers/drawings ("10-10 तीलियों के बंडल", "गिनकर देखो")
 - probe_simpler_case: gives an easier related problem to test understanding ("पहले 12 में से 7 करके दिखाओ")
-- contrast_answers: puts two answers side by side and asks which is right / why ("रवि ने 45 कहा, प्रिया ने 35 — किसका सही?")
+- contrast_answers: puts two answers side by side and asks which is right / why ("रवि ने 45 कहा, प्रिया ने 35, किसका सही?")
 - model_step_aloud: teacher demonstrates the procedure step by step aloud
 - tell_answer: teacher states the correct answer herself, including as a correction to a child ("सही answer 16 है, याद रखो")
 - repeat_question: repeats or rephrases the same question without new support
