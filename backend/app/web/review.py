@@ -221,7 +221,7 @@ async def review_dashboard(
                 "status": m.status,
                 "approvals_count": len(distinct_approvers),
                 "approvals_required": settings.MOVE_APPROVALS_REQUIRED,
-                "sankul_month": m.sankul_month or "—",
+                "sankul_month": m.sankul_month or "-",
             }
         )
 

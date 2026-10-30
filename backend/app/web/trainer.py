@@ -3,7 +3,7 @@
 District-level training view backed by AggModuleBatch:
 - Tables: batch x move aggregates with completion %, missed key points, inline SVG rubric bars, ladder distribution.
 - Privacy-by-design: all metrics for groups with n < 10 are replaced with:
-  "समूह छोटा है (n<10) — गोपनीयता हेतु छिपाया गया"
+  "समूह छोटा है (n<10): गोपनीयता हेतु छिपाया गया"
 - Zero individual teacher data or PII is exposed anywhere.
 - Deterministic training insight box computed from top missed key point where rate >= 40%.
 - GET /trainer/export.csv provides export with identical privacy suppression.

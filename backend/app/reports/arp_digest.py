@@ -156,8 +156,8 @@ class ARPDigestData:
 
 def _load_move_metadata(move_id: str) -> tuple[str, list[str]]:
     """Loads move title_hi and peer_checklist from content YAML, with fallback."""
-    if not move_id or move_id == "—":
-        return "—", []
+    if not move_id or move_id == "-":
+        return "-", []
     yaml_path = MOVES_DIR / f"{move_id}.yaml"
     if yaml_path.is_file():
         try:
@@ -290,7 +290,7 @@ async def build_arp_digest(
             continue
 
         ss = session_map.get(t.id)
-        move_id = ss.move_id if ss else "—"
+        move_id = ss.move_id if ss else "-"
         step_reached = ss.state if ss else "NEW"
         move_title, peer_checklist = get_move_meta(move_id)
         max_evidence = evidence_map.get(t.id, 1)

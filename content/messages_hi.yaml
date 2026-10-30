@@ -9,7 +9,7 @@
 
 # ── Onboarding ───────────────────────────────────────────────
 welcome:
-  text: "नमस्ते! मैं अभ्यास हूँ — आपकी अभ्यास-साथी। हर हफ्ते लगभग 15 मिनट में हम कक्षा का एक तरीका सीखेंगे, और तीन बच्चों के साथ बोलकर उसका अभ्यास करेंगे।"
+  text: "नमस्ते! मैं अभ्यास हूँ, आपकी अभ्यास-साथी। हर हफ्ते लगभग 15 मिनट में हम कक्षा का एक तरीका सीखेंगे, और तीन बच्चों के साथ बोलकर उसका अभ्यास करेंगे।"
   audio: true
 consent_service:
   text: "शुरू करने से पहले: आपकी आवाज़ को लिखित रूप में बदलकर आवाज़ तुरंत मिटा दी जाती है। आपके अंक केवल आपको दिखेंगे, जब तक आप स्वयं ARP के साथ साझा करने की अनुमति न दें। 'मेरा डेटा हटाएँ' लिखकर कभी भी सब कुछ मिटाया जा सकता है। क्या आप सहमत हैं?"
@@ -49,8 +49,8 @@ consent_share_scores:
   text_m: "क्या आप अपने अभ्यास के अंक अपने ARP से साझा करना चाहते हैं? साझा करने पर आपके ARP अभ्यास का तरीका और आपके अंक देख सकेंगे, ताकि वे अगले भ्रमण से पहले इसी पर आपकी मदद की तैयारी कर सकें। केवल वह सवाल जिसका उत्तर हैंडबुक नहीं दे पाती ARP को भेजा जाता है, चैट से इसके अलावा कुछ भी नहीं। आपके ARP आपकी आवाज़ की रिकॉर्डिंग कभी नहीं देख सकते। इसे आप 'मेरी कक्षा' से कभी भी बदल सकते हैं।"
   audio: false
 placement_intro:
-  text: "चलिए, एक छोटा-सा अभ्यास करते हैं। यह कोई परीक्षा नहीं है। बोर्ड पर लिखा है: 52 − 17। कक्षा 2 का रवि कहता है: '45!' आप रवि से वैसे ही बात कीजिए जैसे कक्षा में करती हैं — बोलकर या लिखकर।"
-  text_m: "चलिए, एक छोटा-सा अभ्यास करते हैं। यह कोई परीक्षा नहीं है। बोर्ड पर लिखा है: 52 − 17। कक्षा 2 का रवि कहता है: '45!' आप रवि से वैसे ही बात कीजिए जैसे कक्षा में करते हैं — बोलकर या लिखकर।"
+  text: "चलिए, एक छोटा-सा अभ्यास करते हैं। यह कोई परीक्षा नहीं है। बोर्ड पर लिखा है: 52 − 17। कक्षा 2 का रवि कहता है: '45!' आप रवि से वैसे ही बात कीजिए जैसे कक्षा में करती हैं, बोलकर या लिखकर।"
+  text_m: "चलिए, एक छोटा-सा अभ्यास करते हैं। यह कोई परीक्षा नहीं है। बोर्ड पर लिखा है: 52 − 17। कक्षा 2 का रवि कहता है: '45!' आप रवि से वैसे ही बात कीजिए जैसे कक्षा में करते हैं, बोलकर या लिखकर।"
   audio: true
 placement_done:
   text: "बहुत अच्छा! अब मुझे पता है कि आपके लिए कहाँ से शुरू करें।"
@@ -246,7 +246,7 @@ stt_failed:
   text: "आवाज़ साफ़ नहीं आई। कृपया फिर से बोलें या लिखकर भेजें।"
   audio: false
 stt_confirm:
-  text: "मैंने सुना: \"{text}\" — सही है?"
+  text: "मैंने सुना: \"{text}\"। सही है?"
   audio: false
 stt_budget_type_please:
   text: "अभी आवाज़ सुविधा बंद है, कृपया लिखकर भेजें।"
@@ -319,13 +319,13 @@ ui_app_name: {text: "अभ्यास", audio: false}
 ui_hold_to_talk: {text: "बोलने के लिए दबाकर रखें", audio: false}
 ui_type_here: {text: "यहाँ लिखें…", audio: false}
 ui_type_instead: {text: "बोलने की जगह लिखें", audio: false}
-ui_offline_banner: {text: "आप ऑफ़लाइन हैं — इंटरनेट नहीं है, संदेश भेजे जाने के लिए रखे गए हैं", audio: false}
+ui_offline_banner: {text: "आप ऑफ़लाइन हैं: इंटरनेट नहीं है, संदेश भेजे जाने के लिए रखे गए हैं", audio: false}
 ui_offline_short: {text: "आप ऑफ़लाइन हैं", audio: false}
-ui_slow_banner: {text: "नेटवर्क धीमा है — लाइट मोड चालू करें?", audio: false}
+ui_slow_banner: {text: "नेटवर्क धीमा है। लाइट मोड चालू करें?", audio: false}
 ui_mic_denied: {text: "माइक की अनुमति नहीं मिली। ब्राउज़र की सेटिंग में माइक चालू करें, या लिखकर भेजें।", audio: false}
-ui_demo_banner: {text: "डेमो डेटा — वास्तविक शिक्षक नहीं", audio: false}
+ui_demo_banner: {text: "डेमो डेटा: वास्तविक शिक्षक नहीं", audio: false}
 ui_in_review: {text: "समीक्षा में", audio: false}
-ui_suppressed: {text: "समूह छोटा है (n<10) — गोपनीयता हेतु छिपाया गया", audio: false}
+ui_suppressed: {text: "समूह छोटा है (n<10): गोपनीयता हेतु छिपाया गया", audio: false}
 ui_samples_title: {text: "नमूना आवाज़ें (मूल्यांकन हेतु)", audio: false}
 ui_logout: {text: "लॉग आउट", audio: false}
 ui_delete_data: {text: "मेरा डेटा हटाएँ", audio: false}
@@ -341,7 +341,7 @@ ui_default_teacher_name: {text: "शिक्षिका", text_m: "शिक�
 # ── Chat page: visible acknowledgment states (web/static/chat.js reads ui_chat_* as JSON) ──
 ui_chat_msg_sending: {text: "भेजा जा रहा है…", audio: false}
 ui_chat_msg_sent: {text: "भेज दिया", audio: false}
-ui_chat_msg_failed: {text: "भेजा नहीं जा सका — दोबारा भेजने के लिए छुएँ", audio: false}
+ui_chat_msg_failed: {text: "भेजा नहीं जा सका। दोबारा भेजने के लिए छुएँ", audio: false}
 ui_chat_typing_generic: {text: "जवाब आ रहा है…", audio: false}
 ui_chat_typing_ravi: {text: "रवि सोच रहा है…", audio: false}
 ui_chat_typing_priya: {text: "प्रिया सोच रही है…", audio: false}
@@ -350,7 +350,7 @@ ui_chat_typing_timeout: {text: "जवाब आने में देर ह�
 ui_chat_audio_loading: {text: "आवाज़ आ रही है…", audio: false}
 ui_chat_audio_ready: {text: "ऑडियो संदेश", audio: false}
 ui_chat_audio_playing: {text: "बज रही है…", audio: false}
-ui_chat_audio_error: {text: "आवाज़ नहीं चली — दोबारा छुएँ", audio: false}
+ui_chat_audio_error: {text: "आवाज़ नहीं चली। दोबारा छुएँ", audio: false}
 ui_chat_audio_play: {text: "आवाज़ सुनें", audio: false}
 ui_chat_audio_pause: {text: "रोकें", audio: false}
 ui_chat_audio_retry: {text: "दोबारा कोशिश करें", audio: false}
@@ -359,14 +359,14 @@ ui_chat_rec_uploading: {text: "आवाज़ भेजी जा रही ह
 ui_chat_rec_transcribing: {text: "आपकी आवाज़ को लिखा जा रहा है…", audio: false}
 ui_chat_voice_note: {text: "🎤 वॉयस नोट ({sec} सेकंड)", audio: false}
 ui_chat_chip_done: {text: "भेज दिया ✓", audio: false}
-ui_chat_cold_start: {text: "सर्वर जाग रहा है — इसमें करीब एक मिनट लग सकता है। कृपया रुकें, आपका संदेश सुरक्षित है।", audio: false}
+ui_chat_cold_start: {text: "सर्वर जाग रहा है। इसमें करीब एक मिनट लग सकता है। कृपया रुकें, आपका संदेश सुरक्षित है।", audio: false}
 ui_chat_source_page: {text: "पृष्ठ {page}", audio: false}
 ui_chat_source_printed: {text: "मुद्रित पृष्ठ {page}", audio: false}
 ui_chat_source_summary: {text: "हिंदी सार", audio: false}
 ui_chat_source_original_en: {text: "यह अंश मूल दस्तावेज़ से अंग्रेज़ी में है।", audio: false}
 ui_chat_source_ocr: {text: "यह अंश स्कैन किए गए पन्ने से मशीन द्वारा पढ़ा गया है, इसमें छोटी-मोटी गलतियाँ हो सकती हैं।", text_m: "यह अंश स्कैन किए गए पन्ने से मशीन द्वारा पढ़ा गया है, इसमें छोटी-मोटी गलतियाँ हो सकती हैं।", audio: false}
-ui_chat_source_error: {text: "स्रोत नहीं खुल सका — दोबारा छुएँ", audio: false}
-ui_chat_reconnecting: {text: "इंटरनेट लौट आया — दोबारा जुड़ रहे हैं…", audio: false}
+ui_chat_source_error: {text: "स्रोत नहीं खुल सका। दोबारा छुएँ", audio: false}
+ui_chat_reconnecting: {text: "इंटरनेट लौट आया। दोबारा जुड़ रहे हैं…", audio: false}
 ui_chat_quote_tag: {text: "आपकी कही बात", audio: false}
 ui_fast_track_title: {text: "डेमो शॉर्टकट", audio: false}
 ui_fast_track_hint: {text: "A1, A2, B घटाव के अभ्यास में 30 सेकंड कुछ न करने पर दिखते हैं।", audio: false}
@@ -436,7 +436,7 @@ ui_review_transcript_title: {text: "अभ्यास बातचीत (ट�
 ui_review_ai_score: {text: "AI द्वारा दिया गया स्कोर", audio: false}
 ui_review_coach_score: {text: "कोच द्वारा संशोधित स्कोर", audio: false}
 ui_review_notes_label: {text: "कोच की टिप्पणी", audio: false}
-ui_review_blind_banner: {text: "ब्लाइंड कैलिब्रेशन मोड — यहाँ AI स्कोर छिपाए गए हैं।", audio: false}
+ui_review_blind_banner: {text: "ब्लाइंड कैलिब्रेशन मोड: यहाँ AI स्कोर छिपाए गए हैं।", audio: false}
 ui_review_success_notice: {text: "समीक्षा सफलतापूर्वक दर्ज हुई।", audio: false}
 ui_review_calibrate_empty: {text: "सभी उपलब्ध रिहर्सल जांची जा चुकी हैं", audio: false}
 
@@ -458,9 +458,9 @@ ui_trainer_col_rubric: {text: "रुब्रिक वितरण (0/1/2)", a
 ui_trainer_col_ladder: {text: "प्रमाण सोपान (स्तर 1-5)", audio: false}
 ui_trainer_export_csv: {text: "CSV डाउनलोड करें", audio: false}
 ui_trainer_no_data: {text: "कोई डेटा उपलब्ध नहीं है", audio: false}
-ui_trainer_suppression_notice: {text: "समूह छोटा है (n<10) — गोपनीयता हेतु छिपाया गया", audio: false}
+ui_trainer_suppression_notice: {text: "समूह छोटा है (n<10): गोपनीयता हेतु छिपाया गया", audio: false}
 ui_trainer_insight_all_good: {text: "सभी बैचों में मुख्य बिंदुओं पर शिक्षकों की समझ अच्छी है।", audio: false}
-ui_trainer_insight_recommendation: {text: "बैच {batch} में {pct}% शिक्षक '{key_point}' वाला बिंदु छोड़ रहे हैं — अगली ट्रेनिंग में इस पर 10 मिनट दें।", audio: false}
+ui_trainer_insight_recommendation: {text: "बैच {batch} में {pct}% शिक्षक '{key_point}' वाला बिंदु छोड़ रहे हैं, अगली ट्रेनिंग में इस पर 10 मिनट दें।", audio: false}
 
 # ── ARP Digest UI Strings (spec/09 §9.3) ─────────────────────
 ui_arp_title: {text: "ARP साप्ताहिक संकलन", audio: false}
@@ -631,7 +631,7 @@ ui_chat_main_menu: {text: "मुख्य मेनू", audio: false}
 ui_delete_effects: {text: "पुष्टि करने पर आपका खाता, सभी अभ्यास अंक, प्रमाण सीढ़ी की प्रगति, चैट संदेश और ऑडियो रिकॉर्ड डेटाबेस से हमेशा के लिए मिटा दिए जाएँगे।", audio: false}
 ui_delete_irreversible_html: {text: "यह प्रक्रिया <strong>स्थायी और अपरिवर्तनीय</strong> है।", audio: false}
 ui_delete_question: {text: "क्या आप वाकई अपना सारा डेटा हटाना चाहती हैं?", text_m: "क्या आप वाकई अपना सारा डेटा हटाना चाहते हैं?", audio: false}
-ui_delete_title: {text: "मेरा डेटा हटाएँ — पुष्टि", audio: false}
+ui_delete_title: {text: "मेरा डेटा हटाएँ: पुष्टि", audio: false}
 ui_delete_back_progress: {text: "प्रगति पर वापस जाएँ", audio: false}
 ui_delete_confirm_no: {text: "नहीं, वापस जाएँ", audio: false}
 ui_delete_confirm_yes: {text: "हाँ, मिटाएँ", audio: false}
@@ -650,7 +650,7 @@ ui_progress_share_scores: {text: "ARP के साथ स्कोर साझ
 ui_progress_consent_heading: {text: "गोपनीयता व सहमति सेटिंग्स", audio: false}
 ui_progress_research: {text: "शोध व सुधार में भागीदारी", audio: false}
 ui_progress_moves_label: {text: "शिक्षण तरीके और प्रगति", audio: false}
-ui_progress_page_title: {text: "मेरी प्रगति — अभ्यास", audio: false}
+ui_progress_page_title: {text: "मेरी प्रगति: अभ्यास", audio: false}
 ui_progress_ladder_levels: {text: "प्रमाण सीढ़ी के स्तर", audio: false}
 ui_progress_data_heading: {text: "खाता व डेटा प्रबंधन", audio: false}
 ui_progress_back_chat: {text: "चैट पर वापस जाएँ", audio: false}
@@ -729,7 +729,7 @@ ui_review_move_title: {text: "मूव समीक्षा:", audio: false}
 ui_lang_label: {text: "भाषा", audio: false}
 ui_lang_name_hi: {text: "हिन्दी", audio: false}
 ui_lang_name_en: {text: "English", audio: false}
-ui_login_page_title: {text: "लॉगिन — अभ्यास (Abhyas)", audio: false}
+ui_login_page_title: {text: "लॉगिन: अभ्यास (Abhyas)", audio: false}
 ui_login_subtitle: {text: "प्राथमिक शिक्षकों का अभ्यास साथी", audio: false}
 ui_login_username: {text: "यूज़रनेम (Username)", audio: false}
 ui_login_password: {text: "पासवर्ड (Password)", audio: false}
@@ -750,7 +750,7 @@ ui_chat_translate: {text: "अंग्रेज़ी में देखें
 ui_chat_translate_loading: {text: "अनुवाद हो रहा है…", audio: false}
 ui_chat_translate_hide: {text: "अनुवाद छिपाएँ", audio: false}
 ui_chat_translate_error: {text: "अनुवाद नहीं हो सका", audio: false}
-ui_chat_translate_limit: {text: "अनुरोध बहुत जल्दी-जल्दी आ रहे हैं — थोड़ी देर बाद फिर कोशिश करें", audio: false}
+ui_chat_translate_limit: {text: "अनुरोध बहुत जल्दी-जल्दी आ रहे हैं। थोड़ी देर बाद फिर कोशिश करें", audio: false}
 ui_chat_translate_retry: {text: "दोबारा कोशिश करें", audio: false}
 ui_chat_translation_label: {text: "अंग्रेज़ी अनुवाद", audio: false}
 ui_chat_rec_unsupported: {text: "इस ब्राउज़र में आवाज़ रिकॉर्ड करने की सुविधा नहीं है। संदेश लिखकर भेजें, या Chrome में खोलें।", audio: false}
@@ -758,16 +758,16 @@ ui_chat_rec_permission: {text: "माइक्रोफ़ोन की अन�
 ui_chat_rec_start_failed: {text: "माइक्रोफ़ोन शुरू नहीं हो सका ({error})। दोबारा छुएँ, या लिखकर भेजें।", audio: false}
 ui_chat_rec_unknown_error: {text: "अज्ञात त्रुटि", audio: false}
 stt_unclear_label: {text: "(आवाज़ साफ़ नहीं आई)", audio: false}
-ui_chat_rec_auto_sent: {text: "एक मिनट पूरा हुआ — आपकी आवाज़ भेजी जा चुकी है।", audio: false}
+ui_chat_rec_auto_sent: {text: "एक मिनट पूरा हुआ। आपकी आवाज़ भेजी जा चुकी है।", audio: false}
 ui_chat_rec_busy: {text: "माइक्रोफ़ोन किसी और ऐप में चल रहा है। उसे बंद करके फिर कोशिश करें।", audio: false}
 ui_chat_rec_insecure: {text: "माइक्रोफ़ोन के लिए सुरक्षित (https) पेज चाहिए। कृपया https वाले लिंक से खोलें या लिखकर भेजें।", audio: false}
 ui_chat_rec_no_mic: {text: "माइक्रोफ़ोन नहीं मिला। माइक्रोफ़ोन जोड़ें या संदेश लिखकर भेजें।", audio: false}
 ui_chat_rec_too_short: {text: "आवाज़ बहुत छोटी थी। बटन दबाकर कम से कम 1 सेकंड बोलें।", audio: false}
 ui_chat_stop_send: {text: "भेजें", audio: false}
 ui_chat_rec_recording_tap: {text: "रिकॉर्ड हो रहा है… बोलना पूरा होने पर ‘भेजें’ दबाएँ", audio: false}
-ui_offline_title: {text: "ऑफ़लाइन — अभ्यास (Abhyas)", audio: false}
+ui_offline_title: {text: "ऑफ़लाइन: अभ्यास (Abhyas)", audio: false}
 ui_offline_retry: {text: "पुनः प्रयास करें", audio: false}
-ui_offline_notice: {text: "आप ऑफ़लाइन हैं — पुराना इतिहास और कक्षा चेकलिस्ट उपलब्ध हैं।", audio: false}
+ui_offline_notice: {text: "आप ऑफ़लाइन हैं: पुराना इतिहास और कक्षा चेकलिस्ट उपलब्ध हैं।", audio: false}
 ui_offline_checklist_badge: {text: "कक्षा-अभ्यास चेकलिस्ट (ऑफ़लाइन उपलब्ध)", audio: false}
 ui_offline_checklist_title: {text: "दो अंकों की हासिल वाली घटाव (52 − 17)", audio: false}
 ui_offline_checklist_intro: {text: "कक्षा में पढ़ाते समय इन 4 चरणों का ध्यान रखें। आपके टिक यहाँ सुरक्षित रहेंगे।", audio: false}
@@ -843,7 +843,7 @@ module_check_reply_more: {text: "अच्छी कोशिश। एक ब�
 module_check_done_pass: {text: "मॉड्यूल की जाँच पूरी हुई। आगे बढ़ें?", audio: false}
 module_check_done_more: {text: "आपकी जाँच दर्ज है। चाहें तो फिर से अभ्यास करें, या आगे बढ़ें।", audio: false}
 ui_chat_menu_modules: {text: "मॉड्यूल", audio: false}
-ui_modules_page_title: {text: "अभ्यास — मॉड्यूल", audio: false}
+ui_modules_page_title: {text: "अभ्यास: मॉड्यूल", audio: false}
 ui_modules_title: {text: "मॉड्यूल", audio: false}
 ui_modules_intro: {text: "हर मॉड्यूल में चार कदम हैं: सीखना, किसी बच्चे की उलझन पहचानना (1-1), अभ्यास करना और अंत में एक छोटी जाँच।", audio: false}
 ui_modules_step_learn: {text: "सीखना", audio: false}
@@ -874,8 +874,8 @@ ui_modprog_label_demo: {text: "डेमो (काल्पनिक)", audio: 
 
 # ── Cold start, error pages, send failures (overnight part 1) ──
 ui_nav_opening: {text: "खुल रहा है…", audio: false}
-ui_nav_waking: {text: "सर्वर जाग रहा है — इसमें करीब एक मिनट लग सकता है। कृपया रुकें, पेज अपने आप खुल जाएगा।", audio: false}
-ui_chat_send_failed_network: {text: "इंटरनेट नहीं मिला। संदेश फ़ोन में रखा है — इंटरनेट आने पर ‘!’ छूकर दोबारा भेजें।", audio: false}
+ui_nav_waking: {text: "सर्वर जाग रहा है। इसमें करीब एक मिनट लग सकता है। कृपया रुकें, पेज अपने आप खुल जाएगा।", audio: false}
+ui_chat_send_failed_network: {text: "इंटरनेट नहीं मिला। संदेश फ़ोन में रखा है। इंटरनेट आने पर ‘!’ छूकर दोबारा भेजें।", audio: false}
 ui_chat_send_failed_rejected: {text: "संदेश भेजा नहीं जा सका। पेज ताज़ा करके दोबारा कोशिश करें, या लिखकर भेजें।", audio: false}
 ui_chat_lite_save_failed: {text: "लाइट मोड इस फ़ोन में बदल गया, पर सर्वर तक नहीं पहुँचा। इंटरनेट आने पर फिर छुएँ।", audio: false}
 ui_error_404_title: {text: "यह पेज नहीं मिला", audio: false}
@@ -883,11 +883,11 @@ ui_error_404_body: {text: "लिंक पुराना या गलत ह�
 ui_error_500_title: {text: "यहाँ कुछ ठीक नहीं चला", audio: false}
 ui_error_500_body: {text: "यह हमारी तरफ़ की समस्या है, आपकी नहीं। आपका काम सुरक्षित है। थोड़ी देर बाद दोबारा कोशिश करें।", audio: false}
 ui_error_503_title: {text: "सेवा अभी तैयार हो रही है", audio: false}
-ui_error_503_body: {text: "सर्वर जाग रहा है — इसमें करीब एक मिनट लग सकता है। कृपया रुकें, पेज अपने आप दोबारा खुलेगा।", audio: false}
+ui_error_503_body: {text: "सर्वर जाग रहा है। इसमें करीब एक मिनट लग सकता है। कृपया रुकें, पेज अपने आप दोबारा खुलेगा।", audio: false}
 ui_error_home: {text: "होम पेज पर जाएँ", audio: false}
 ui_error_retry: {text: "दोबारा कोशिश करें", audio: false}
 ui_waking_title: {text: "अभ्यास जाग रहा है…", audio: false}
-ui_waking_body: {text: "मुफ़्त सर्वर कुछ देर सोने के बाद जागता है। इसमें करीब एक मिनट लगता है। इस पेज को खुला रखें — तैयार होते ही आप अपने आप पहुँच जाएँगे।", audio: false}
+ui_waking_body: {text: "मुफ़्त सर्वर कुछ देर सोने के बाद जागता है। इसमें करीब एक मिनट लगता है। इस पेज को खुला रखें। तैयार होते ही आप अपने आप पहुँच जाएँगे।", audio: false}
 ui_waking_still: {text: "अभी भी जाग रहा है… कृपया थोड़ा और रुकें।", audio: false}
 learn_buttons_reminder: {text: "इस चरण में नीचे दिए दो बटनों में से एक दबाइए: “{next}” या “{replay}”। लिखा हुआ जवाब यहाँ आगे नहीं बढ़ाता।", audio: false}
 realism_prompt_one_on_one: {text: "{child} असली कक्षा के बच्चे जैसा लगा? 1 (बिल्कुल नहीं) से 5 (बिल्कुल वैसा ही) चुनें।", audio: false}
@@ -952,7 +952,7 @@ ui_class_no_match: {text: "यह बात सूची की किसी च
 ui_class_saved: {text: "आपकी कक्षा का चुनाव सुरक्षित है।", audio: false}
 ui_class_cleared: {text: "आपकी कक्षा का चुनाव हटा दिया गया।", audio: false}
 ui_class_too_many: {text: "ज़्यादा से ज़्यादा {max} चुनिए; पहले {max} रखे गए हैं।", audio: false}
-ui_class_chosen_because: {text: "आपकी कक्षा के लिए चुना गया: बच्चे यहाँ अटकते हैं — {label}", audio: false}
+ui_class_chosen_because: {text: "आपकी कक्षा के लिए चुना गया: बच्चे यहाँ अटकते हैं, {label}", audio: false}
 ui_trainer_class_title: {text: "कक्षाओं की आम दिक्कतें", audio: false}
 ui_trainer_class_desc: {text: "शिक्षकों ने अपनी कक्षा के बारे में जो बताया (केवल सहमति देने वाले शिक्षक; 10 से कम पर छिपा)।", audio: false}
 ui_trainer_class_teachers: {text: "बताने वाले शिक्षक", audio: false}

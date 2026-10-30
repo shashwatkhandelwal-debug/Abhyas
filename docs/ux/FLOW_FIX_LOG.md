@@ -24,3 +24,28 @@
 - `test_state_machine` edge test now feeds a real name for the `name_text` edge (the literal token is not a name).
 - Known, not caused by this change: `test_full_happy_path_new_to_done_with_session_service_and_db_evidence` fails when run alone against the local DB (scene FK warnings, 0 counted turns); it also fails on the untouched V3 worktree. It is checked again in the final gate through `scripts/pytest_fresh_db.py`.
 - Gate run: ruff, mypy --strict, test_name_extract (46 tests), test_state_machine (other tests pass), test_teacher_address, test_conversation, test_messages_en, test_whatsapp_channel, test_placeholder_leaks.
+
+## F4 No em dashes: DONE
+Count of U+2014 (em) and U+2013 (en) in our own text, before and after:
+
+| files | em before | en before | em after | en after |
+|---|---|---|---|---|
+| content/messages_hi.yaml | 29 | 0 | 0 | 0 |
+| content/messages_en.yaml | 29 | 1 | 0 | 1 (the range "Class 1–3") |
+| content/class_struggles.yaml (tip texts) | 0 | 0 | 0 | 0 |
+| content/whatsapp_templates.yaml | 0 | 0 | 0 | 0 |
+| content/act_examples_hi.yaml (few-shot) | 9 | 0 | 0 | 0 |
+| content/moves/*.yaml | 6 | 0 | 4 | 0 (4 are "# DRAFT" comment headers, never shown) |
+| backend/app/llm/prompts/*.md | 4 | 2 | 0 | 2 (digit ranges "0.0–1.0", "Classes 1–3") |
+| backend/app/web/templates/*.html | 14 | 0 | 1 | 0 (teacher.html tab title, byte-frozen) |
+| auth/access.py, web/trainer.py, web/review.py, reports/*.py (shown strings) | 13 | 0 | 0 | 0 |
+| content/sources/sources.yaml (source documents) | 5 | 0 | 5 | 0 (not ours, left alone) |
+
+Left alone on purpose, listed: chunk summaries and source titles from documents (`sources.yaml`); regex character classes in `llm/guards.py` and `llm/hindi_numbers.py` that strip dashes from model output; `config.py` comment banners; the minus sign U+2212 in arithmetic; digit ranges; syllable hyphens; the `«...»` teacher quotes; `docs/*.md` (not product text).
+- Replaced with a comma, a danda or full stop, or a colon (rewritten per sentence). Empty-value placeholders "—" in the ARP, trainer and coach tables became "-". The suppression text is now `समूह छोटा है (n<10): गोपनीयता हेतु छिपाया गया` (hi, constant in `auth/access.py`, trainer docs, catalog) and `Group is small (n<10): hidden to protect privacy`.
+- One line "Never use em dashes or en dashes ..." added to the prompts of the roles that write user-facing text: coach, coach_suggestion, module_check, translator, guide_answerer, child_voice.
+- Normalizer: `backend/app/core/outbound_text.py`, applied in `SessionService.handle_inbound` (after the guards, final text), to the early-persisted scene lines and to the follow-up offer. It is not in the channel delivery code (WhatsApp delivery is untouched). Exceptions kept: `« »`, digit ranges, minus sign, syllable hyphen, citation lines.
+- `test_dash_free.py`: normalizer tests per exception, and a catalog test over catalog, content and prompt files and templates with the allow-list `ALLOW` (sources.yaml, teacher.html).
+- Existing tests that asserted the old placeholder were updated (`test_trainer_report`, `test_arp_digest`).
+- check_first_load: first-load 130210 bytes (was 130226): 16 bytes fewer, only because catalog strings embedded in the teacher page lost their dashes. No static file was edited.
+- Gate run: ruff, mypy --strict, test_dash_free, test_trainer_report, test_arp_digest, test_teacher_address, test_demo_data, test_act_tagger, test_security, test_wording_polish, test_followup, test_flow_followup, test_messages_en, test_llm, test_review_console, test_teacher_pwa, test_score_sharing_consent.

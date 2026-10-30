@@ -4,7 +4,7 @@ Privacy-by-design guarantees:
 1. Backed by AggModuleBatch - no teacher names, phones, or teacher-level data are ever queried or loaded.
 2. If sample size n < 10, all metric cells (completion %, missed key points, rubric distribution,
    ladder distribution) are strictly replaced by:
-   "समूह छोटा है (n<10) — गोपनीयता हेतु छिपाया गया"
+   "समूह छोटा है (n<10): गोपनीयता हेतु छिपाया गया"
 3. Insight box is purely deterministic (computed in code, not LLM) highlighting top missed key points
    where missing rate >= 40%.
 4. CSV export respects identical suppression rules.
@@ -110,7 +110,7 @@ def generate_rubric_svg(rubric_dist: dict[str, Any] | None) -> str:
 def format_ladder_summary(ladder_dist: dict[str, Any] | None) -> str:
     """Formats adoption evidence ladder counts across levels 1 to 5."""
     if not ladder_dist:
-        return "—"
+        return "-"
     parts: list[str] = []
     for lvl in range(1, 6):
         c = int(ladder_dist.get(str(lvl), 0))
@@ -142,7 +142,7 @@ def get_top_missed_key_point(
 ) -> tuple[str | None, int, str]:
     """Finds the most missed key point and its descriptive Hindi text."""
     if not explain_missing or not move:
-        return (None, 0, "—")
+        return (None, 0, "-")
 
     max_kpid: str | None = None
     max_count = 0
@@ -153,7 +153,7 @@ def get_top_missed_key_point(
             max_kpid = kpid
 
     if not max_kpid or max_count == 0:
-        return (None, 0, "—")
+        return (None, 0, "-")
 
     # Look up key point text from move
     text_desc = max_kpid
@@ -182,7 +182,7 @@ async def build_trainer_report(
     # 1. District scoping: fail closed when district is None or has no batches
     if user.role != "admin" and not user.district:
         return TrainerReport(
-            district="—",
+            district="-",
             batches=[],
             moves=[],
             selected_batch_id=selected_batch_id,
@@ -191,7 +191,7 @@ async def build_trainer_report(
             insight_text=None,
         )
 
-    user_district = user.district or ("Kanpur Nagar" if user.role == "admin" else "—")
+    user_district = user.district or ("Kanpur Nagar" if user.role == "admin" else "-")
 
     stmt_batches = select(Batch)
     if user.role != "admin":
@@ -383,7 +383,7 @@ def generate_trainer_csv(report: TrainerReport) -> str:
                     r.n_teachers,
                     r.pct_completed,
                     r.most_missed_point,
-                    f"{r.rubric_avg:.2f}" if r.rubric_avg is not None else "—",
+                    f"{r.rubric_avg:.2f}" if r.rubric_avg is not None else "-",
                     lc.get("1", 0),
                     lc.get("2", 0),
                     lc.get("3", 0),

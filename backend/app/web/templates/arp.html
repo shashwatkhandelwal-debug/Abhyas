@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#1F6F5C">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <title>{{ get_message('ui_arp_title') }} — {{ get_message('ui_app_name') }}</title>
+  <title>{{ get_message('ui_arp_title') }}: {{ get_message('ui_app_name') }}</title>
   <link rel="stylesheet" href="/static/app.css">
   <style>
     .arp-container {
@@ -356,7 +356,7 @@
                   {% endfor %}
                 </div>
                 {% else %}
-                <span style="color: var(--muted);">—</span>
+                <span style="color: var(--muted);">-</span>
                 {% endif %}
               </td>
               <td>
@@ -410,9 +410,9 @@
       <article class="visit-card" id="visit-card-{{ v.teacher_id }}">
         <div class="visit-card-header">
           <div>
-            <div class="visit-card-title">{{ v.name }} — {{ v.school }}</div>
+            <div class="visit-card-title">{{ v.name }}: {{ v.school }}</div>
             <div style="font-size: 0.85rem; color: var(--muted); margin-top: 0.2rem;">
-              {{ get_message('ui_arp_move_colon') }} <strong>{{ v.move_title }}</strong> · {{ get_message('ui_arp_avg_score') }} <strong>{{ v.avg_score if v.avg_score is not none else '—' }} / 2.0</strong>
+              {{ get_message('ui_arp_move_colon') }} <strong>{{ v.move_title }}</strong> · {{ get_message('ui_arp_avg_score') }} <strong>{{ v.avg_score if v.avg_score is not none else '-' }} / 2.0</strong>
             </div>
           </div>
           <span class="badge-help">{{ get_message('ui_arp_visit_reason') }}</span>

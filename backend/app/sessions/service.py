@@ -34,6 +34,7 @@ from backend.app.core.intents import (
     match_intent,
 )
 from backend.app.core.messages import get_message, get_ui_lang
+from backend.app.core.outbound_text import normalize_outbound
 from backend.app.core.types import Button, Citation, InboundMessage, OutboundMessage
 from backend.app.db.models import Message
 from backend.app.handbook.fallback import fallback_reply, match_handbook_question
@@ -826,7 +827,7 @@ class SessionService:
 
     async def handle_inbound(self, inbound: InboundMessage) -> list[OutboundMessage]:
         """Handles one teacher message, then records which module steps it completed."""
-        out = await self._handle_inbound(inbound)
+        out = normalize_outbound(await self._handle_inbound(inbound))  # after the guards
         try:
             await self._track_module_progress(inbound.teacher_id)
         except SQLAlchemyError:
@@ -955,13 +956,15 @@ class SessionService:
         ctx.followup_stage = followup.STAGE_ASK
         await self._sync_context_to_db(ctx, teacher_id)
         checkin = await self.repo.get_class_checkin(row.checkin_id)
-        return [
-            followup.ask_message(
-                load_library().get(row.struggle_id),
-                module_id=checkin.module_id if checkin is not None else None,
-                checkin_outcome=checkin.outcome if checkin is not None else None,
-            )
-        ]
+        return normalize_outbound(
+            [
+                followup.ask_message(
+                    load_library().get(row.struggle_id),
+                    module_id=checkin.module_id if checkin is not None else None,
+                    checkin_outcome=checkin.outcome if checkin is not None else None,
+                )
+            ]
+        )
 
     # Quick replies that match what each step's hint tells her to press (ids the flow handles)
     _HELP_BUTTONS: dict[str, tuple[str, ...]] = {
@@ -2013,7 +2016,7 @@ class SessionService:
                 child_lines: list[ChildLineRecord], text_msgs: list[OutboundMessage]
             ) -> None:
                 if inbound.channel == "web" and self.repo.session is not None:
-                    for tm in text_msgs:
+                    for tm in normalize_outbound(text_msgs):
                         row_id = uuid.uuid4()
                         tm.message_id = row_id
                         db_msg = Message(
@@ -2041,6 +2044,7 @@ class SessionService:
                 on_text_ready=_on_text_ready,
             )
 
+            normalize_outbound(turn_res.outbound)  # same text as the early rows, for the match
             if early_text_rows and self.repo.session is not None:
                 for outbound in turn_res.outbound:
                     for early_row in early_text_rows:

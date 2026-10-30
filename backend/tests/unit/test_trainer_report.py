@@ -47,7 +47,7 @@ def test_format_ladder_summary() -> None:
     summary = format_ladder_summary(ladder_dist)
     assert summary == "L1: 4 · L2: 6 · L3: 7 · L4: 5 · L5: 3"
 
-    assert format_ladder_summary(None) == "—"
+    assert format_ladder_summary(None) == "-"
 
 
 def test_compute_rubric_average() -> None:
