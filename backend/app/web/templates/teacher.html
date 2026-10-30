@@ -103,7 +103,7 @@
           {% endif %}
 
           <div class="bubble-meta">
-            <span>{{ msg.time_str or get_message('ui_time_just_now') }}</span>
+            <span class="msg-time" data-ts="{{ msg.created_at or '' }}">{{ msg.time_str or get_message('ui_time_just_now') }}</span>
             {% if msg.direction == "in" %}<span class="status-icon sent" data-state="sent" role="img" aria-label="{{ (ui_strings or {}).get('ui_chat_msg_sent', '') }}">✓</span>{% else %}<span class="status-icon"></span>{% endif %}
           </div>
         </div>

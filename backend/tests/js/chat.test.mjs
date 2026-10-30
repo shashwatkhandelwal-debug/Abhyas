@@ -1477,3 +1477,21 @@ test('Fast-Track chips lock on tap, and open again on reply, failure or the 90 s
   assert.equal(shown(t.c), true);
   assert.equal(c.state.fastTrackInFlight, false);
 });
+
+// ── fix3 K7: one clock format for seeded (server-rendered) and live bubbles ──
+test('server-rendered bubble times are rewritten with the same formatter as live ones', () => {
+  const c = load();
+  const row = new El('div');
+  row.classList.add('msg-row');
+  const span = new El('span');
+  span.classList.add('msg-time');
+  span.setAttribute('data-ts', '2026-10-30T12:26:00+00:00');
+  span._textContent = '17:56';
+  row.appendChild(span);
+  c.container.appendChild(row);
+  c.localizeServerTimes(c.container);
+  assert.equal(span.textContent, c.formatBubbleTime('2026-10-30T12:26:00+00:00'));
+  assert.match(span.textContent, /[ap]m/i);
+  assert.doesNotMatch(span.textContent, /^17:56$/);
+  assert.equal(c.formatBubbleTime(''), null);
+});

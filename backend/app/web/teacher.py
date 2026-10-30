@@ -86,6 +86,8 @@ TEMPLATES_DIR = WEB_DIR / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 register_ui_globals(templates.env)
 
+_IST = ZoneInfo("Asia/Kolkata")  # no-JS fallback for the bubble clock (JS shows the local time)
+
 router = APIRouter(tags=["Teacher Web PWA"])
 
 # Demo logins that open on a prepared chat (seeded messages); demo1 starts empty
@@ -195,7 +197,7 @@ async def teacher_chat_page(
             "citations": m.citations,
             "created_at": m.created_at.isoformat() if m.created_at else "",
             "time_str": (
-                m.created_at.astimezone(UTC).strftime("%H:%M")
+                m.created_at.astimezone(_IST).strftime("%I:%M %p").lower()
                 if m.created_at
                 else get_message("ui_time_just_now")
             ),
