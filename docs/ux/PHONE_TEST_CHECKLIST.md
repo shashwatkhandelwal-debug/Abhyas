@@ -95,6 +95,24 @@ Needs the hosted site seeded with this code (`SEED_ON_BOOT=true` once, or the se
 | J10 | Log in as a new teacher up to the name step and type "मेरा नाम रिया है।". Then try a long sentence. | The name is stored as "रिया" (the next question greets "रिया जी"). The long sentence gets "सिर्फ़ अपना नाम लिखिए, जैसे: रिया।" and the step does not move on. |
 | J11 | Read any bot message, the banners and the error lines on the above. | No long dash (em dash or en dash) as a separator anywhere. |
 
+## L. My progress and "what worked for other teachers" (last adds)
+
+Run the freeze check first (`python -m pytest backend/tests/unit/test_freeze_check.py -q`, and `make freeze` before the real freeze) so the docs are consistent, then seed the hosted site with this code (`SEED_ON_BOOT=true` once, or the seed command). All of it is demo data.
+
+| # | Taps | Expected |
+|---|---|---|
+| L1 | Log in as `teacher.demo3`. On the learning screen type **मेरी प्रगति** (or use the mic). | One message: "आपकी प्रगति, पिछले 4 अभ्यास:", four rows with dates, a "तुलना" block with four lines "पहले ..., अब ...", one strength, one next step, and two buttons ("समझ गई, आगे", "अभ्यास करें"). The buttons are not cut off and the input bar stays visible. |
+| L2 | Log in as `teacher.demo2`. Finish the scene, then on the feedback screen look at the buttons. | Three buttons fit on one screen at 360 px: "फिर से अभ्यास", "आगे बढ़ें", "मेरी प्रगति". Tap the third: the progress message with up to five rows, and the two practice buttons below it. |
+| L3 | In L2, before finishing the scene, type **मेरी प्रगति** inside the scene. | It is treated as a line to the child. No progress message appears inside a scene. |
+| L4 | Log in as `teacher.demo1`, finish onboarding, type **मेरी प्रगति**. | "अभी तुलना के लिए कम अभ्यास हैं" and a practice button. Never a dead end. |
+| L5 | Switch to English and repeat L1 and L4. | Same screens in English, no Hindi in buttons or text, button titles not cut. |
+| L6 | Log in as `arp.demo`, then `trainer.demo`, then `coach.demo`. Open every page and every CSV link. | No practice history and no "मेरी प्रगति" text anywhere. |
+| L7 | Log in as `teacher.demo2`, tap **अब भी अटके हैं**. | The other source chip, then one line "इस दिक्कत में 11 शिक्षकों ने बताया कि ... वाला तरीका काम किया।" (a count of 10 or more), then the way back. No names or school codes. |
+| L8 | Log out, log in, tap **आज़मा नहीं सके**, then **समय नहीं था**. | The reason question has no peer line; the answer after the reason has it, with a button below. |
+| L9 | Log in, tap **काम किया**. | No peer line. |
+| L10 | Tap **कक्षा के बाद: कैसा रहा?**, first module, "ज़्यादातर अटके", "हासिल वाला घटाव". | The tip with its chips, the peer line, then the practice button. Pick a difficulty that few teachers reported: no line at all. |
+| L11 | Read the new messages and buttons in both languages. | No long dash (em or en) anywhere, WhatsApp-sized button titles (at most 20 characters). |
+
 ## K. Dashboards on a phone, downloads and print (F6, F7)
 
 Log in as `arp.demo`, `trainer.demo` and `coach.demo` in turn (360 to 412 px wide).

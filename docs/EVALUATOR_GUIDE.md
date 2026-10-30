@@ -72,6 +72,45 @@ set `DEMO_MODE=false` and leave the flags unset. With a flag off the screens are
 The demo rows are created only by the seed (`SEED_ON_BOOT=true` or `python -m backend.app.db.seed`) and only in demo mode, so the trainer
 cards are empty until a seed has run with this code.
 
+## Last adds: "My progress" and "what worked for other teachers" (exact taps)
+
+Two small additions on the teacher chat. Both are demo data on the shared logins, labelled as demo, and both are on in demo mode.
+
+| Flag | What it controls | Default |
+|---|---|---|
+| `MY_PROGRESS_ENABLED` | the "मेरी प्रगति" message with her last practices and a plain trend | off, on in demo mode |
+| `PEER_WORKED_ENABLED` | one line "इस दिक्कत में N शिक्षकों ने बताया ..." after a struggle | off, on in demo mode |
+
+With a flag off, the old behaviour stays: "मेरी प्रगति" gives the one-line summary and no peer line appears. The demo rows are created only by the seed
+(`SEED_ON_BOOT=true` or `python -m backend.app.db.seed`) and only in demo mode, and every demo login resets them, so seed with this code first.
+
+### My progress (only the teacher sees it)
+
+It lists her last up to 5 practices (move and date) and compares her earliest and latest practice of the same move on four plain facts: asked a child how or why,
+told the answer, used sticks or bundles, called a child by name. It ends with one strength, one next step, and a button. It is built from the tagged acts only
+(no model, no child data, her own words are never quoted). It never appears on the ARP, trainer or coach pages or in any CSV.
+
+| Account | Exact taps | What you should see |
+|---|---|---|
+| `teacher.demo3` | Log in. On the learning screen, type or say **मेरी प्रगति**. | "आपकी प्रगति, पिछले 4 अभ्यास:" with four rows (dates), then "तुलना, ...": asking how or why "पहले नहीं, अब हाँ", telling the answer "पहले हाँ, अब नहीं", sticks or bundles "पहले नहीं, अब हाँ". One strength, one next step ("अगला कदम: एक बच्चे को नाम से बुलाकर पूछिए।"). Buttons "समझ गई, आगे" and "अभ्यास करें". |
+| `teacher.demo2` | Log in (she is inside a scene, where the button is deliberately not offered). Finish the scene as in the suggested hour; the feedback screen now has a third button **मेरी प्रगति**. Tap it. | Her four demo practices plus the one you just did (up to five rows), the same comparison block, and the buttons "फिर से अभ्यास" and "आगे बढ़ें" (the practice buttons of the feedback screen) so you can go on. Typing **मेरी प्रगति** inside a scene is a line to the child, not this screen. |
+| `teacher.demo1` | Log in, finish onboarding, and on the first learning screen type **मेरी प्रगति**. | "अभी तुलना के लिए कम अभ्यास हैं।" and a practice button. A new teacher has no history, so there is nothing to compare yet. |
+| `arp.demo`, `trainer.demo`, `coach.demo` | Open `/arp`, `/trainer`, `/review` and their CSV links. | Nothing about anyone's practice history or "मेरी प्रगति" anywhere. |
+
+### What worked for other teachers
+
+One line is added only when enough data exists: "इस दिक्कत में 11 शिक्षकों ने बताया कि 'हासिल वाला घटाव: बंडल खोलकर' वाला तरीका काम किया।" It counts
+different teachers who agreed to share scores and answered a follow-up "काम किया" for the same difficulty in the last 60 days (not counting you). It uses your cluster when
+10 or more teachers there said so, otherwise all teachers when 10 or more did, otherwise the line is left out. No names, no schools. Demo and real teachers are never mixed.
+
+| Account | Exact taps | What you should see |
+|---|---|---|
+| `teacher.demo2` | Log in. Answer the follow-up question with **अब भी अटके हैं**. | The other cited source, then the line with 11 (the demo cluster has only 7 consenting teachers, so it falls back to all teachers), then the way back to the practice. |
+| `teacher.demo2` | Log in (or log out and in again). Tap **आज़मा नहीं सके**, then any reason. | After the reason, the practical line and the same peer line, then a next-step button. Before the reason there is no peer line. |
+| `teacher.demo2` | Log in. Tap **काम किया**. | The short acknowledgement only. The line is for the people who are stuck. |
+| `teacher.demo2` or `teacher.demo3` | Tap **कक्षा के बाद: कैसा रहा?**, the first module, "ज़्यादातर अटके", then "हासिल वाला घटाव". | The cited tip, then the peer line, then the practice button. For another difficulty with fewer than 10 teachers who said it worked, no line appears. |
+| `teacher.demo1` | Same check-in taps once onboarding is done. | The same line for the same difficulty; the count is the demo cohort's. |
+
 ## The seven logins
 
 | Login | Password | Start here | What it shows |
