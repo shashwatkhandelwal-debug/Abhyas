@@ -649,6 +649,9 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
 
     # 4d. Demo class check-ins so the cluster meeting pack is not empty (demo data, see below)
     await _seed_demo_checkins(session, teachers, now)
+    from backend.app.db.demo_loop import seed_cohort_loop
+
+    await seed_cohort_loop(session, teachers, now)
 
     # 5. Compute AggModuleBatch using compute_aggregates_for_batch (no hard-coded or random numbers)
     for b_id in ["KNP-B1", "KNP-B2", "KNP-B3"]:

@@ -1286,3 +1286,67 @@ lvl_after: {text: "इनमें से किसी गतिविधि क
 lvl_scene_waiting: {text: "आपका अभ्यास वहीं रुका है, जहाँ आपने छोड़ा था। जब चाहें वापस जाइए।", audio: false}
 lvl_already: {text: "यह समूह-योजना पूरी हो चुकी है। नई योजना के लिए 'स्तर से समूह बनाएँ' दबाएँ।", audio: false}
 lvl_command_words: {text: "कक्षा को समूहों में बाँटें, स्तर के हिसाब से समूह, स्तर से समूह बनाएँ, group my class, group by level, level sorter", audio: false}
+
+# ── Follow-up loop (flag FOLLOWUP_ENABLED): "How did yesterday's practice go?" ──
+fu_ask: {text: "कल का अभ्यास कैसा रहा? '{label}' के लिए जो तरीका आज़माना था, उसके बारे में एक बटन दबाइए।", audio: false}
+fu_unknown_label: {text: "पिछली कक्षा की दिक्कत", audio: false}
+btn_fu_worked: {text: "काम किया", audio: false}
+btn_fu_stuck: {text: "अब भी अटके हैं", audio: false}
+btn_fu_cant: {text: "आज़मा नहीं सके", audio: false}
+fu_why_ask: {text: "कोई बात नहीं। क्या वजह रही? एक चुनिए।", audio: false}
+btn_fu_why_time: {text: "समय नहीं था", audio: false}
+btn_fu_why_multigrade: {text: "कई कक्षाएँ साथ", audio: false}
+btn_fu_why_absent: {text: "बच्चे नहीं आए", audio: false}
+btn_fu_why_other: {text: "कोई और वजह", audio: false}
+btn_fu_practice: {text: "रवि के साथ अभ्यास", audio: false}
+btn_fu_handbook: {text: "हैंडबुक से पूछें", audio: false}
+fu_worked_ack: {text: "ठीक है, दर्ज कर लिया: '{label}' में यह तरीका काम किया।", audio: false}
+fu_stuck_other: {text: "'{label}': दर्ज कर लिया। इस पर एक दूसरे स्रोत में भी बात है। स्रोत पर टैप करके पूरा अंश पढ़ें:\n{sources}", audio: false}
+fu_stuck_same: {text: "'{label}': दर्ज कर लिया। इसके लिए अभी एक ही स्रोत उपलब्ध है, इसलिए वही सुझाव फिर से:\n{tip}\n{sources}", audio: false}
+fu_stuck_practice: {text: "इस दिक्कत के लिए अभ्यास का केस है: {move_title}। रवि के साथ यह गलती अभ्यास करें, या हैंडबुक से और पूछें।", audio: false}
+fu_stuck_missing: {text: "दर्ज कर लिया। इसके लिए पुस्तिका की सामग्री अभी उपलब्ध नहीं है। आप हैंडबुक से पूछ सकते हैं।", audio: false}
+fu_cant_multigrade: {text: "एक कमरे में कई कक्षाएँ हों तो 'स्तर से समूह बनाएँ' में कक्षा को समूहों में बाँटने की योजना मिलती है। चाहें तो हैंडबुक से भी पूछ सकते हैं।", audio: false}
+fu_cant_time: {text: "दर्ज कर लिया। जब मौका मिले, हैंडबुक से पूछ सकते हैं कि इसे कम समय में कैसे करें।", audio: false}
+fu_cant_absent: {text: "दर्ज कर लिया। जब बच्चे आएँ, तब इसे आज़मा सकते हैं। हैंडबुक से और पूछ सकते हैं।", audio: false}
+fu_cant_other: {text: "दर्ज कर लिया। जब मौका मिले, इसे आज़माइए। हैंडबुक से भी पूछ सकते हैं।", audio: false}
+fu_already: {text: "यह जवाब दर्ज हो चुका है।", audio: false}
+fu_tomorrow_focus: {text: "कल का एक कदम, '{label}' के लिए:\n{tip}\n{sources}", audio: false}
+
+# ── ARP class-visit checklist and "reported vs observed" (flag OBSERVATION_ENABLED) ──
+ui_visit_title: {text: "कक्षा-भ्रमण सूची", audio: false}
+ui_visit_desc: {text: "कक्षा देखने के बाद सिर्फ़ चुनें: कोई नाम या बच्चे की जानकारी नहीं, कुछ लिखना नहीं। यह सूची उन्हीं शिक्षकों की है जिन्होंने स्कोर साझा करने की सहमति दी है।", audio: false}
+ui_visit_open: {text: "भ्रमण दर्ज करें: {name}", audio: false}
+ui_visit_talk_head: {text: "कौन सी बातचीत दिखी? (जो दिखीं, उन पर निशान लगाएँ)", audio: false}
+ui_visit_talk_named_child: {text: "किसी बच्चे को नाम लेकर बुलाया", audio: false}
+ui_visit_talk_why_how: {text: "'क्यों' या 'कैसे' पूछा", audio: false}
+ui_visit_talk_not_told: {text: "सीधा जवाब नहीं बताया", audio: false}
+ui_visit_talk_think_time: {text: "बच्चों को सोचने का समय दिया", audio: false}
+ui_visit_practice_head: {text: "पिछली कक्षा-जाँच का अभ्यास", audio: false}
+ui_visit_practice_seen: {text: "'{label}' का अभ्यास दिखा", audio: false}
+ui_visit_practice_none: {text: "पिछली कक्षा-जाँच में किसी दिक्कत का ज़िक्र नहीं है, इसलिए देखने के लिए कोई अभ्यास नहीं है।", audio: false}
+ui_visit_next_head: {text: "एक अगला कदम चुनें", audio: false}
+ui_visit_next_ask_named: {text: "अगली बार नाम लेकर पूछें", audio: false}
+ui_visit_next_ask_why: {text: "अगली बार 'क्यों' या 'कैसे' पूछें", audio: false}
+ui_visit_next_hold_answer: {text: "अगली बार जवाब बताने से पहले रुकें", audio: false}
+ui_visit_next_wait_time: {text: "अगली बार सोचने का समय दें", audio: false}
+ui_visit_next_repeat: {text: "यही अभ्यास एक बार और करें", audio: false}
+ui_visit_save: {text: "भ्रमण दर्ज करें", audio: false}
+ui_visit_saved: {text: "कक्षा-भ्रमण दर्ज हो गया।", audio: false}
+ui_visit_none: {text: "अभी कोई शिक्षक नहीं है जिसने स्कोर साझा करने की सहमति दी हो।", audio: false}
+ui_rvo_title: {text: "शिक्षकों ने बताया बनाम भ्रमण में दिखा", audio: false}
+ui_rvo_caption: {text: "पिछले {days} दिनों के आँकड़े: सहमति देने वाले शिक्षकों के अपने जवाब और भ्रमण में जो बातें दिखीं। ये सीखने के नतीजे नहीं हैं। सिर्फ़ गिनती दिखती है; कोई नाम या बच्चे की जानकारी नहीं।", audio: false}
+ui_rvo_none: {text: "पिछले {days} दिनों में सहमति देने वाले शिक्षकों का कोई जवाब या भ्रमण दर्ज नहीं है।", audio: false}
+ui_rvo_few: {text: "कोई एक दिक्कत इतने शिक्षकों ने नहीं बताई कि उसे दिखाया जाए (कम से कम {n} शिक्षक चाहिए)।", audio: false}
+ui_rvo_demo_all: {text: "डेमो डेटा: ये जवाब और भ्रमण काल्पनिक डेमो शिक्षकों के हैं।", audio: false}
+ui_rvo_demo_some: {text: "इसमें डेमो डेटा भी शामिल है।", audio: false}
+ui_rvo_row: {text: "{label}: {n} शिक्षकों ने अगले दिन का हाल बताया", audio: false}
+ui_rvo_reported: {text: "बताया: काम किया {worked}, अब भी अटके {stuck}, आज़मा नहीं सके {cant}", audio: false}
+ui_rvo_observed: {text: "भ्रमण में अभ्यास दिखा: {n} बार", audio: false}
+ui_rvo_observed_hidden: {text: "भ्रमण की गिनती छिपी है (कम से कम {n} शिक्षकों का भ्रमण चाहिए)।", audio: false}
+
+# ── Adaptive next practice (flag ADAPTIVE_PATH_ENABLED): one-line "why this next" ──
+adp_why_most: {text: "क्यों अभी यह: हाल की कक्षा-जाँच में आपने '{label}' में ज़्यादातर बच्चे अटके बताए।", audio: false}
+adp_why_some: {text: "क्यों अभी यह: हाल की कक्षा-जाँच में आपने '{label}' में कुछ बच्चे अटके बताए।", audio: false}
+adp_why_stuck: {text: "क्यों अभी यह: अगले दिन के हाल में आपने बताया कि '{label}' में बच्चे अब भी अटके हैं।", audio: false}
+adp_why_worked: {text: "क्यों अभी यह: '{label}' का तरीका आपके यहाँ काम किया, इसलिए पहले दूसरा अभ्यास।", audio: false}
+adp_why_new: {text: "क्यों अभी यह: शुरुआत में पहले बुनियादी अभ्यास, जिसमें मॉडल शिक्षक का तरीका पहले देखने को मिलता है।", audio: false}

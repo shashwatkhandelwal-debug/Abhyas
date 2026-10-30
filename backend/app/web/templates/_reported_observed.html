@@ -1,0 +1,24 @@
+{# Trainer: reported vs observed. Context: rvo (ReportedVsObserved), suppression_message, suppression_n, get_message. Counts only. #}
+<section class="card table-card" id="reported-observed" aria-label="{{ get_message('ui_rvo_title') }}" style="margin: 1rem 0; padding: 1rem 1.25rem; background: var(--surface, #fff); border: 1px solid var(--border, #ddd); border-radius: 12px;">
+  <h2 style="margin: 0 0 0.25rem 0; font-size: 1.1rem;">{{ get_message("ui_rvo_title") }}</h2>
+  <p id="rvo-caption" style="margin: 0 0 0.75rem 0; color: var(--muted, #5E6662); font-size: 0.9rem;">{{ get_message("ui_rvo_caption", days=rvo.window_days) }}</p>
+  {% if rvo.n_teachers == 0 %}
+    <p id="rvo-empty" style="margin: 0; color: var(--muted, #5E6662);">{{ get_message("ui_rvo_none", days=rvo.window_days) }}</p>
+  {% elif rvo.suppressed %}
+    <p id="rvo-suppressed" style="margin: 0;">{{ suppression_message }}</p>
+  {% else %}
+    {% if rvo.includes_demo %}<p id="rvo-demo" style="margin: 0 0 0.5rem 0;"><span class="module-label module-label-demo">{% if rvo.all_demo %}{{ get_message("ui_rvo_demo_all") }}{% else %}{{ get_message("ui_rvo_demo_some") }}{% endif %}</span></p>{% endif %}
+    {% if not rvo.rows %}
+      <p id="rvo-few" style="margin: 0;">{{ get_message("ui_rvo_few", n=suppression_n) }}</p>
+    {% else %}
+    <ul id="rvo-rows" style="margin: 0; padding-left: 1.2rem;">
+      {% for r in rvo.rows %}
+      <li data-struggle="{{ r.struggle_id }}" style="margin-bottom: 0.5rem;"><strong>{{ get_message("ui_rvo_row", label=r.label, n=r.teachers) }}</strong><br>
+        <span data-kind="reported">{{ get_message("ui_rvo_reported", worked=r.worked, stuck=r.stuck, cant=r.cant) }}</span><br>
+        {% if r.observed is none %}<span data-kind="observed-hidden">{{ get_message("ui_rvo_observed_hidden", n=suppression_n) }}</span>{% else %}<span data-kind="observed">{{ get_message("ui_rvo_observed", n=r.observed) }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  {% endif %}
+</section>

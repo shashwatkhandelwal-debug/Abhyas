@@ -944,3 +944,67 @@ lvl_after: {text: "To know more about any of these activities, ask the handbook.
 lvl_scene_waiting: {text: "Your practice is waiting exactly where you left it. Go back whenever you like."}
 lvl_already: {text: "This grouping plan is finished. Tap 'Group by level' for a new one."}
 lvl_command_words: {text: "group my class, group by level, level sorter, group the class by level"}
+
+# ── Follow-up loop (flag FOLLOWUP_ENABLED): "How did yesterday's practice go?" ──
+fu_ask: {text: "How did yesterday's practice go? Tap one button about the method you planned to try for '{label}'."}
+fu_unknown_label: {text: "the difficulty from your last class"}
+btn_fu_worked: {text: "It worked"}
+btn_fu_stuck: {text: "Still stuck"}
+btn_fu_cant: {text: "Could not try"}
+fu_why_ask: {text: "That is fine. What got in the way? Pick one."}
+btn_fu_why_time: {text: "No time"}
+btn_fu_why_multigrade: {text: "Several grades"}
+btn_fu_why_absent: {text: "Children absent"}
+btn_fu_why_other: {text: "Something else"}
+btn_fu_practice: {text: "Practise with Ravi"}
+btn_fu_handbook: {text: "Ask the handbook"}
+fu_worked_ack: {text: "Noted: the method worked for '{label}'."}
+fu_stuck_other: {text: "'{label}': noted. Another source also covers this. Tap the source to read the full passage:\n{sources}"}
+fu_stuck_same: {text: "'{label}': noted. Only one source is available for this so far, so here is the same tip again:\n{tip}\n{sources}"}
+fu_stuck_practice: {text: "There is a practice case for this difficulty: {move_title}. Practise this mistake with Ravi, or ask the handbook more."}
+fu_stuck_missing: {text: "Noted. The handbook material for this is not available yet. You can ask the handbook."}
+fu_cant_multigrade: {text: "If several grades share one room, 'Group by level' gives a plan for splitting the class into groups. You can also ask the handbook."}
+fu_cant_time: {text: "Noted. When you get a chance, you can ask the handbook how to do this in less time."}
+fu_cant_absent: {text: "Noted. You can try it when the children are back. You can ask the handbook for more."}
+fu_cant_other: {text: "Noted. Try it when you get a chance. You can also ask the handbook."}
+fu_already: {text: "This answer is already saved."}
+fu_tomorrow_focus: {text: "One step for tomorrow, for '{label}':\n{tip}\n{sources}"}
+
+# ── ARP class-visit checklist and "reported vs observed" (flag OBSERVATION_ENABLED) ──
+ui_visit_title: {text: "Class visit checklist"}
+ui_visit_desc: {text: "After a visit, only tick and choose: no names, no child data, nothing to type. This list covers only teachers who agreed to share scores."}
+ui_visit_open: {text: "Record a visit: {name}"}
+ui_visit_talk_head: {text: "Which talk moves did you see? (tick what you saw)"}
+ui_visit_talk_named_child: {text: "Asked a named child"}
+ui_visit_talk_why_how: {text: "Asked why or how"}
+ui_visit_talk_not_told: {text: "Did not just tell the answer"}
+ui_visit_talk_think_time: {text: "Gave children time to think"}
+ui_visit_practice_head: {text: "Practice from the last check-in"}
+ui_visit_practice_seen: {text: "I saw the practice for '{label}'"}
+ui_visit_practice_none: {text: "No difficulty was reported in the last check-in, so there is no practice to look for."}
+ui_visit_next_head: {text: "Choose one next step"}
+ui_visit_next_ask_named: {text: "Next time, ask by name"}
+ui_visit_next_ask_why: {text: "Next time, ask why or how"}
+ui_visit_next_hold_answer: {text: "Next time, hold back the answer"}
+ui_visit_next_wait_time: {text: "Next time, give time to think"}
+ui_visit_next_repeat: {text: "Practise the same move once more"}
+ui_visit_save: {text: "Save the visit"}
+ui_visit_saved: {text: "Class visit saved."}
+ui_visit_none: {text: "No teacher has agreed to share scores yet."}
+ui_rvo_title: {text: "Reported vs observed"}
+ui_rvo_caption: {text: "Counts from the last {days} days: what consenting teachers reported themselves and what was seen on visits. These are self-reported and observed counts, not learning outcomes. Counts only; no names or child data."}
+ui_rvo_none: {text: "No follow-up answers or visits from consenting teachers in the last {days} days."}
+ui_rvo_few: {text: "No single difficulty was reported by enough teachers to show (at least {n} teachers needed)."}
+ui_rvo_demo_all: {text: "Demo data: these answers and visits belong to made-up demo teachers."}
+ui_rvo_demo_some: {text: "This includes demo data."}
+ui_rvo_row: {text: "{label}: {n} teachers said how the next day went"}
+ui_rvo_reported: {text: "Reported: worked {worked}, still stuck {stuck}, could not try {cant}"}
+ui_rvo_observed: {text: "Observed: practice seen on {n} visits"}
+ui_rvo_observed_hidden: {text: "Visit count hidden (visits to at least {n} teachers needed)."}
+
+# ── Adaptive next practice (flag ADAPTIVE_PATH_ENABLED): one-line "why this next" ──
+adp_why_most: {text: "Why this next: in a recent check-in you said most children got stuck on '{label}'."}
+adp_why_some: {text: "Why this next: in a recent check-in you said some children got stuck on '{label}'."}
+adp_why_stuck: {text: "Why this next: the next day you said children are still stuck on '{label}'."}
+adp_why_worked: {text: "Why this next: the method for '{label}' worked for you, so a different practice comes first."}
+adp_why_new: {text: "Why this next: at the start, the basic practice first, where the model teacher shows the method before you try it."}

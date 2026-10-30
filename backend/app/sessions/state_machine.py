@@ -537,6 +537,9 @@ class SessionContext(BaseModel):
     checkin_struggle: str = ""
     checkin_page: int = 0
     checkin_jump_move: str = ""  # a move opened from a check-in: its learn step was skipped
+    # Follow-up loop (class_profile/followup.py): the open follow-up row and where she is in it
+    followup_id: str = ""
+    followup_stage: str = ""  # "", "ask", "why"
     # "Group my class by level" (class_profile/level_sorter.py): "" (not in it), "subject", "count",
     # "result"; the tapped range per level is kept for this conversation only (never stored)
     level_stage: str = ""

@@ -343,6 +343,29 @@ class Settings(BaseSettings):
     CLUSTER_PACK_ENABLED: bool = False  # ARP/trainer "Cluster meeting pack" from check-in counts
     CLUSTER_PACK_WINDOW_DAYS: int = 30  # check-ins counted: the last this many days
     CLUSTER_PACK_TOP: int = 2  # struggles named in the pack
+
+    # ── V3 features (same pattern: ON in demo mode, OFF otherwise) ──
+    FOLLOWUP_ENABLED: bool = False  # next-school-day "how did the practice go?" after a struggle
+    FOLLOWUP_MAX_AGE_DAYS: int = 7  # a follow-up due longer ago than this is no longer offered
+    FOLLOWUP_SCHOOL_DAYS: tuple[int, ...] = (0, 1, 2, 3, 4, 5)  # weekday numbers, Monday to Saturday
+    OBSERVATION_ENABLED: bool = False  # ARP visit checklist and "reported vs observed"
+    ADAPTIVE_PATH_ENABLED: bool = False  # next practice chosen from check-ins and follow-ups
+    ADAPTIVE_MOST_WEIGHT: int = 3  # a "most struggled" check-in
+    ADAPTIVE_SOME_WEIGHT: int = 1  # a "some struggled" check-in
+    ADAPTIVE_STUCK_WEIGHT: int = 2  # a follow-up "still stuck"
+    ADAPTIVE_WORKED_WEIGHT: int = 2  # a follow-up "worked" lowers the score by this much
+    ADAPTIVE_HISTORY_DAYS: int = 30  # check-ins and follow-ups older than this are ignored
+    ADAPTIVE_NEW_TEACHER_BANDS: tuple[str, ...] = ("0-1",)  # experience bands that get model practice first
+    OBSERVATION_WINDOW_DAYS: int = 30  # observations and follow-ups counted in "reported vs observed"
+    OBSERVATION_ROWS_MAX: int = 3  # struggles shown in "reported vs observed"
+    OBSERVATION_TALK_MOVES: tuple[str, ...] = ("named_child", "why_how", "not_told", "think_time")
+    OBSERVATION_NEXT_STEPS: tuple[str, ...] = (
+        "ask_named",
+        "ask_why",
+        "hold_answer",
+        "wait_time",
+        "repeat",
+    )
     CLUSTER_PACK_AGENDA_MINUTES: tuple[int, int, int, int] = (5, 15, 10, 5)  # share, practise, read, plan
     CHILD_STRIP_ENABLED: bool = (
         False  # scene bar shows each child's state label (stuck / getting it / got it)

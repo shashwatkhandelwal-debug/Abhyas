@@ -30,6 +30,7 @@ from backend.app.db.session import get_db_session
 from backend.app.reports.class_struggles import class_struggle_summary
 from backend.app.reports.cluster_pack import build_cluster_pack
 from backend.app.reports.module_progress import module_progress_summary
+from backend.app.reports.reported_vs_observed import build_reported_vs_observed
 from backend.app.reports.teaching_skills import teaching_skill_summary
 from backend.app.reports.trainer_aggregates import (
     build_trainer_report,
@@ -39,6 +40,7 @@ from backend.app.sessions.training_rating import (
     TrainingRatingSummary,
     training_rating_summary,
 )
+from backend.app.web import visit_observation
 from backend.app.web.cluster_pack_page import card_context, pack_enabled, print_context
 from backend.app.web.ui_lang import register_ui_globals
 
@@ -110,6 +112,15 @@ async def get_trainer_dashboard(
         else None
     )
 
+    # Reported vs observed (flag OBSERVATION_ENABLED, on in demo mode): own district, consenting only
+    rvo = (
+        await build_reported_vs_observed(
+            db, district=current_user.district if current_user.role != "admin" else None
+        )
+        if visit_observation.enabled()
+        else None
+    )
+
     csrf_token = generate_csrf_token()
     demo_banner_text = get_message("ui_demo_banner")
 
@@ -123,6 +134,8 @@ async def get_trainer_dashboard(
             "modules": modules,
             "class_struggles": class_struggles,
             "teaching_skills": teaching_skills,
+            "rvo": rvo,
+            "suppression_n": settings.AGGREGATION_SUPPRESSION_N,
             "suppression_message": SUPPRESSION_MESSAGE,
             "user": current_user,
             "csrf_token": csrf_token,

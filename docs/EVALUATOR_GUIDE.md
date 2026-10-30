@@ -18,6 +18,60 @@ whose answers come from a rule engine, never from the language model, and gets c
   anything surviving a logout. The login page carries the same warning ("Demo accounts are shared: pick one not in
   use; chats reset on login and logout"), and offers `teacher.demo1`, `teacher.demo2` and `teacher.demo3`, so two judges can each take a different one.
 
+## 10-minute judge path
+
+Three checkpoints, one account each. Log out between accounts (the three teacher logins reset on login and logout).
+
+1. **The relapse (about 3 min, `teacher.demo2`).** Log in, open `/teacher`: you are already inside the one-on-one scene with Ravi (43 - 27).
+   Tap the sample chip that tells the answer (the Hinglish "tell the answer" line) or type "उत्तर 16 होता है।". Ravi repeats it without
+   understanding. Then type "अब ये करो: 61 में से 28।". Ravi gives the old mistake again and the strip beside him reads "अटका हुआ · फिर अटका".
+   No language model decides what Ravi says; a fixed rule engine does.
+2. **The check-in with a cited tip (about 3 min, `teacher.demo2`).** Tap **कक्षा के बाद: कैसा रहा?**, tap the first module "हासिल वाला घटाव",
+   tap "ज़्यादातर अटके", tap "हासिल वाला घटाव". You get one tip from the handbook with two source chips ("स्रोत: ..., पृष्ठ N"); tap a chip to read the
+   passage it came from. Nothing about any child is stored.
+3. **The trainer view (about 3 min, `trainer.demo`).** Open `/trainer`. Scroll to **संकुल बैठक पैक** (the most-reported difficulty with a move to
+   practise together) and to **शिक्षकों ने बताया बनाम भ्रमण में दिखा** (reported versus observed, with the caption that these are self-reported and
+   observed counts, not learning outcomes). Groups below 10 teachers show the privacy message instead.
+
+### Go deeper
+
+- The follow-up the next school day: see "The regrouping thread" below (`teacher.demo2`).
+- The ARP visit checklist (`arp.demo`) and the privacy case on the same page (7 consenting teachers of 12).
+- The adaptive "why this next" line (`teacher.demo3`, after finishing a week).
+- Level sorter, talk-move feedback, national and state labels: the table "New in V2" further down.
+- Low connectivity: the last item of "A suggested hour".
+
+## The regrouping thread
+
+One demo story runs through five screens, all about **regrouping in subtraction** (हासिल वाला घटाव). All rows behind it are demo data and
+are labelled that way; none belongs to a real teacher.
+
+| Step | Account | Exact taps | What you should see |
+|---|---|---|---|
+| 1. Check-in | `teacher.demo2` | **कक्षा के बाद: कैसा रहा?**, first module, "ज़्यादातर अटके", "हासिल वाला घटाव". | The cited tip (two source chips). A follow-up is stored for the next school day. |
+| 2. Follow-up | `teacher.demo2` | Log in (or reopen `/teacher`). `teacher.demo2` already has a check-in from yesterday and a follow-up that is due on every login. | A message at the end of the chat: "कल का अभ्यास कैसा रहा?" with three buttons: "काम किया", "अब भी अटके हैं", "आज़मा नहीं सके". "अब भी अटके हैं" gives a different source chip plus the practice button; "आज़मा नहीं सके" asks why with four buttons, and "कई कक्षाएँ साथ" points to the level sorter. A second tap says the answer is already saved. |
+| 3. Observation | `arp.demo` | Open `/arp`, find **कक्षा-भ्रमण सूची**, tap "भ्रमण दर्ज करें: ..." for a teacher, tick talk moves, pick one next step, save. | A saved message. No free text, no child data. The practice to look for is the difficulty from that teacher's last check-in, if there is one. |
+| 4. Trainer view | `trainer.demo` | Open `/trainer`, scroll to the pack and to **शिक्षकों ने बताया बनाम भ्रमण में दिखा**. | Regrouping at the top: 14 teachers answered the follow-up (worked 5, still stuck 7, could not try 2) and the practice was seen on 12 visits. The second row (addition with carrying) has no visit counts, so its observed cell is hidden under the 10 rule. |
+| 5. Adaptive path | `teacher.demo3` | Finish the week (the literacy group scene, feedback, reflection, rating). | On the week-done message and on the next learn message, one line "क्यों अभी यह: ..." names why the next practice was chosen (demo3 has an older regrouping check-in answered "still stuck"). This takes the whole weekly loop, so allow time; the logic is covered by tests. |
+
+Two judges on one account interfere with each other: logging in or out resets that demo teacher, and a second login wipes the first
+judge's follow-up answers and chat. Pick an account nobody else is using.
+
+### Flags and how to toggle them
+
+Three settings flags control the new screens. They are environment settings on the host; this guide does not change them.
+
+| Flag | What it controls | Default |
+|---|---|---|
+| `FOLLOWUP_ENABLED` | the next-school-day follow-up (steps 1 and 2) | off, on in demo mode |
+| `OBSERVATION_ENABLED` | the ARP visit checklist and "reported versus observed" (steps 3 and 4) | off, on in demo mode |
+| `ADAPTIVE_PATH_ENABLED` | the adaptive next practice and its "why" line (step 5) | off, on in demo mode |
+
+`DEMO_MODE=true` turns all three on (and the other demo-only screens). To turn one on outside demo mode set it to `true`; to turn all off
+set `DEMO_MODE=false` and leave the flags unset. With a flag off the screens are simply absent and the behaviour is the one before the flag existed.
+The demo rows are created only by the seed (`SEED_ON_BOOT=true` or `python -m backend.app.db.seed`) and only in demo mode, so the trainer
+cards are empty until a seed has run with this code.
+
 ## The seven logins
 
 | Login | Password | Start here | What it shows |

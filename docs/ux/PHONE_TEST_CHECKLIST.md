@@ -77,6 +77,21 @@ Do these on a real phone, not desktop emulation, with Chrome's address bar showi
 - [ ] Five cycles of log out and log in: the sheet and every section inside it start closed (handbook questions open) each time.
 - [ ] Dark and light themes both show readable text and all buttons at least thumb size.
 
+## J. Follow-up, visit checklist, reported vs observed, adaptive path (V3)
+
+Needs the hosted site seeded with this code (`SEED_ON_BOOT=true` once, or the seed command). All of it is demo data.
+
+| # | Taps | Expected |
+|---|---|---|
+| J1 | Log in as `teacher.demo2`, open the chat. | At the end of the thread a message "कल का अभ्यास कैसा रहा? ..." with 3 buttons: "काम किया", "अब भी अटके हैं", "आज़मा नहीं सके". Header, scene bar and input stay fully on screen. |
+| J2 | Tap "काम किया". Tap it again. | First tap: one short acknowledgement, no praise words. Second tap: "यह जवाब दर्ज हो चुका है।" and nothing else. |
+| J3 | Log out, log in again, tap "अब भी अटके हैं". | A different source chip than the check-in tip (tap it: the passage opens), then "रवि के साथ अभ्यास" and "हैंडबुक से पूछें". |
+| J4 | Log out, log in, tap "आज़मा नहीं सके", then "कई कक्षाएँ साथ". | Four reason buttons (all fit on screen, titles not cut). Then a line about "स्तर से समूह बनाएँ" with that button. Nothing shaming. |
+| J5 | Log in as `arp.demo`, open `/arp`, scroll to **कक्षा-भ्रमण सूची**. Tap one teacher, tick two talk moves, pick one next step, save. | A closed form with no text box. After saving, the page reloads with "कक्षा-भ्रमण दर्ज हो गया।". Tap targets are at least finger size at 360 px. |
+| J6 | Log in as `trainer.demo`, scroll to **शिक्षकों ने बताया बनाम भ्रमण में दिखा**. | Two rows with "बताया: काम किया ..., अब भी अटके ..., आज़मा नहीं सके ..." and, for the first, "भ्रमण में अभ्यास दिखा: 12 बार"; the second row says the visit count is hidden. The caption says these are not learning outcomes. A "डेमो डेटा" label is visible. |
+| J7 | Log in as `teacher.demo3`, finish the week to the week-done message. | One line "क्यों अभी यह: ..." inside the week-done message (no new strip). After the "next" tap, the same line leads the learn message. |
+| J8 | Switch the interface to English on each of the above. | The same screens in English, no Hindi left in buttons, button titles not cut. |
+
 ## Not testable on web
 
 - WhatsApp reply buttons (3 max) and the interactive list (more than 3 options); the check-in start from "After class" on the week-done message.

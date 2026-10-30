@@ -38,6 +38,7 @@ from backend.app.auth.csrf import (
 from backend.app.auth.guards import get_current_user, require_role
 from backend.app.auth.session import clear_session_cookie
 from backend.app.channels.web import WebChannel
+from backend.app.class_profile.followup import enabled as followup_enabled
 from backend.app.class_profile.skills import skill_progress
 from backend.app.class_profile.views import views_for
 from backend.app.config import settings, v2_enabled
@@ -122,6 +123,17 @@ async def teacher_chat_page(
         and not request.query_params.get("ask")
     ):
         return RedirectResponse(url="/teacher/start", status_code=status.HTTP_303_SEE_OTHER)
+
+    # The follow-up that is due ("How did yesterday's practice go?", flag FOLLOWUP_ENABLED) is
+    # offered once, as a message in the thread, before the thread is read below
+    if followup_enabled() and teacher.onboarding_state == OnboardingStateEnum.READY.value:
+        try:
+            offer = await SessionService(db_session=db).offer_followup(teacher.id)
+            if offer:
+                await WebChannel().send(teacher, offer, session=db)
+                await db.commit()
+        except Exception:
+            logger.warning("follow-up offer failed", exc_info=True)
 
     # CSRF cookie resolution for client scripts and forms
     csrf_token = request.cookies.get(CSRF_COOKIE_NAME)

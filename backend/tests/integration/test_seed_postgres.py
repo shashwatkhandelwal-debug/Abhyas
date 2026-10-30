@@ -196,11 +196,12 @@ def test_seed_runs_on_fresh_postgres_and_is_idempotent(scratch_db: str) -> None:
     assert all(found for _kind, _ref, _status, found in queue), "every item points at a real row"
     assert first["review_item"] == len(queue) and first["question"] == 1
     # demo class check-ins behind the cluster meeting pack: exactly the planned rows, all demo
-    assert first["class_checkin"] == sum(c for _, c in DEMO_CHECKIN_REPORTS) + DEMO_CHECKIN_WELL
+    # cohort check-ins, plus the one seeded check-in each of demo2 and demo3 (db/demo_loop.py)
+    assert first["class_checkin"] == sum(c for _, c in DEMO_CHECKIN_REPORTS) + DEMO_CHECKIN_WELL + 2
     district_pack, c01_pack, c02_pack = asyncio.run(_demo_packs(scratch_db))
     assert not district_pack.suppressed and district_pack.all_demo
     assert [(i.struggle_id, i.teachers) for i in district_pack.items] == [
-        ("NUM_SUB_REGROUP", 14),
+        ("NUM_SUB_REGROUP", 14 + 1),  # the cohort, plus demo2 (consenting) in the same struggle
         ("NUM_ADD_CARRY", 11),
     ]
     assert [i.move_id for i in district_pack.items] == [
