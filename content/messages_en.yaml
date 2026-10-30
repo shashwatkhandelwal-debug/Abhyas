@@ -1060,6 +1060,7 @@ adp_why_new: {text: "Why this next: at the start, the basic practice first, wher
 btn_mp_practice: {text: "Practise"}
 mp_head: {text: "Your progress, last {n} practices:"}
 mp_row: {text: "{i}. {move} ({date})"}
+mp_months: {text: "Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec"}
 mp_trend_head: {text: "Comparison, {move}: first practice and latest practice"}
 mp_trend_line: {text: "{label}: before {before}, now {after}."}
 mp_yes: {text: "yes"}

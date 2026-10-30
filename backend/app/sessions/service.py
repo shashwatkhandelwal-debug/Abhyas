@@ -1189,6 +1189,13 @@ class SessionService:
         }
     )
 
+    @staticmethod
+    def _in_scene_state(ctx: SessionContext) -> bool:
+        return ctx.current_state in (
+            SessionStateEnum.REHEARSE_INTRO,
+            SessionStateEnum.REHEARSE,
+        )
+
     async def _my_progress_messages(
         self, ctx: SessionContext, teacher_id: UUID
     ) -> list[OutboundMessage]:
@@ -1198,7 +1205,9 @@ class SessionService:
         ids = [
             b for b in self._HELP_BUTTONS.get(state, ()) if b != "btn_progress" and b != "btn_skip"
         ]
-        if state == SessionStateEnum.FEEDBACK.value:
+        if self._in_scene_state(ctx):
+            ids = []  # the scene's own next step follows (back to the scene), no other buttons
+        elif state == SessionStateEnum.FEEDBACK.value:
             ids = ["btn_retry", "btn_continue"]  # the practice buttons of this very screen
         elif len(ids) < 3:
             ids.append(my_progress.BTN_PRACTICE)
@@ -1657,15 +1666,26 @@ class SessionService:
             my_progress.enabled()
             and ctx.onboarding_state == OnboardingStateEnum.READY
             and not ctx.awaiting_delete_confirm
-            and ctx.current_state in self._PROGRESS_STATES
             and (
-                btn_id in ("btn_progress", my_progress.BTN_PRACTICE)
-                or matched_intent == Intent.PROGRESS
+                (
+                    ctx.current_state in self._PROGRESS_STATES
+                    and (
+                        btn_id in ("btn_progress", my_progress.BTN_PRACTICE)
+                        or matched_intent == Intent.PROGRESS
+                    )
+                )
+                # fix3 B07: inside a scene only the exact command (the whole line is "my progress",
+                # never something said to a child) opens it, and the scene stays where it was
+                or (self._in_scene_state(ctx) and not btn_id and matched_intent == Intent.PROGRESS)
             )
         ):
             if btn_id == my_progress.BTN_PRACTICE:
                 return await self._launch_checkin_practice(ctx, teacher_id, ctx.current_move_id)
-            return await self._my_progress_messages(ctx, teacher_id)
+            progress = await self._my_progress_messages(ctx, teacher_id)
+            if self._in_scene_state(ctx):
+                _, header, _ = await self._followup_scene(ctx, teacher_id)
+                return [*progress, followup.back_to_scene_message(header)]
+            return progress
 
         # 2. Delete confirmation flow (§8.3 step 7)
         if ctx.awaiting_delete_confirm:

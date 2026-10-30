@@ -1424,6 +1424,7 @@ adp_why_new: {text: "क्यों अभी यह: शुरुआत मे
 btn_mp_practice: {text: "अभ्यास करें", audio: false}
 mp_head: {text: "आपकी प्रगति, पिछले {n} अभ्यास:", audio: false}
 mp_row: {text: "{i}. {move} ({date})", audio: false}
+mp_months: {text: "जनवरी,फ़रवरी,मार्च,अप्रैल,मई,जून,जुलाई,अगस्त,सितंबर,अक्टूबर,नवंबर,दिसंबर", audio: false}
 mp_trend_head: {text: "तुलना, {move}: पहला अभ्यास और सबसे नया अभ्यास", audio: false}
 mp_trend_line: {text: "{label}: पहले {before}, अब {after}।", audio: false}
 mp_yes: {text: "हाँ", audio: false}
