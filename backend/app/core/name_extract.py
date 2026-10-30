@@ -18,6 +18,14 @@ _ALLOWED_PUNCT = frozenset(".'-’")
 _HONORIFICS = frozenset(
     {"जी", "मैडम", "मैम", "मेम", "दीदी", "सर", "ji", "madam", "mam", "maam", "ma'am", "sir", "didi"}
 )
+# Yes/no and filler replies are never names; a leading one ("हाँ, मेरा नाम रिया है") is dropped.
+_FILLERS = frozenset(
+    {
+        "हाँ", "हां", "हा", "जी", "नहीं", "नही", "ना", "ठीक", "है", "अच्छा", "हम्म",
+        "ok", "okay", "yes", "no", "yeah", "yep", "nope", "hmm", "hm", "haan", "han", "ji",
+        "nahi", "nahin", "na", "theek", "thik", "hai", "achha", "accha", "sure", "fine",
+    }
+)
 _HU = r"हू[ँं]|हु"  # हूँ, हूं, हु
 
 # Frames, tried in this order; group 1 is the name. Hindi and romanised Hindi are lower-cased
@@ -54,6 +62,14 @@ def _clean(text: str) -> str:
     return " ".join(unicodedata.normalize("NFC", text).strip(_TRAILING).split()).strip(_TRAILING)
 
 
+def _drop_leading_fillers(text: str) -> str:
+    """Remove yes/no words at the start; "हाँ, मेरा नाम रिया है" -> "मेरा नाम रिया है"."""
+    words = text.split()
+    while words and words[0].strip(_TRAILING).lower() in _FILLERS:
+        words.pop(0)
+    return " ".join(words)
+
+
 def _is_name_word(word: str) -> bool:
     """Letters and combining marks (matras) of any script, plus . ' - inside the word."""
     if not any(unicodedata.category(c).startswith("L") for c in word):
@@ -71,7 +87,7 @@ def extract_name(text: str | None, lang: str = "hi") -> str | None:
     """
     if not text:
         return None
-    cleaned = _clean(text)
+    cleaned = _clean(_drop_leading_fillers(_clean(text)))
     if not cleaned or any(c.isdigit() for c in cleaned):
         return None
     lowered = cleaned.lower()
@@ -88,6 +104,8 @@ def extract_name(text: str | None, lang: str = "hi") -> str | None:
         candidate = cleaned
     words = [w.strip(_TRAILING) for w in candidate.split()]
     words = [w for w in words if w and w.lower() not in _HONORIFICS]
+    if words and all(w.lower() in _FILLERS for w in words):
+        return None
     if not words:
         return None
     if len(words) > settings.NAME_MAX_UNFRAMED_WORDS:

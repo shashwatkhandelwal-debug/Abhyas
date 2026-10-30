@@ -952,6 +952,7 @@ async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence(
         or "तरीका" in str(m.text_hi or "")
         for m in out8
     )
+    assert any("इसलिए हम" in str(m.text_hi or "") for m in out8)  # F5: specific feedback line
     ctx = await service.get_or_create_context(t_id)
     assert ctx.onboarding_state == OnboardingStateEnum.READY
     assert ctx.current_state == SessionStateEnum.LEARN

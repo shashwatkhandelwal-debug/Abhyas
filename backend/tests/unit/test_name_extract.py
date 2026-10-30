@@ -46,6 +46,10 @@ CASES = [
     ("  मेरा   नाम   रिया   है  ", "रिया"),
     ("मेरा नाम रिया है!!", "रिया"),
     ("रिया‍", None),
+    ("हाँ, मेरा नाम रिया है", "रिया"),
+    ("हाँ, मेरा नाम रिया है।", "रिया"),
+    ("जी मेरा नाम रिया है", "रिया"),
+    ("yes, my name is Riya", "Riya"),
 ]
 
 
@@ -68,6 +72,21 @@ def test_extract_name(text: str, expected: str | None) -> None:
         "   ",
         "।",
         "@#$%",
+        "हाँ।",
+        "हां",
+        "जी",
+        "नहीं",
+        "ना",
+        "ठीक है",
+        "ok",
+        "okay",
+        "yes",
+        "no",
+        "hmm",
+        "haan",
+        "ji",
+        "nahi",
+        "theek hai",
     ],
 )
 def test_not_a_name_is_not_stored(text: str) -> None:
@@ -122,7 +141,7 @@ async def test_the_service_stores_the_name_and_moves_on() -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("text", ["<b>रिया</b>", "आज मैं स्कूल जा रही हूँ और बच्चों को पढ़ाना है"])
+@pytest.mark.parametrize("text", ["हाँ।", "जी", "yes", "ok", "<b>रिया</b>", "आज मैं स्कूल जा रही हूँ और बच्चों को पढ़ाना है"])
 async def test_the_service_asks_again_and_stores_nothing(text: str) -> None:
     name, state, said = await _run(text)
     assert not name and state == "PROFILE_NAME"

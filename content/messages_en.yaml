@@ -19,6 +19,15 @@ ask_classes: {text: "Which class do you teach this year?"}
 consent_share_scores: {text: "Would you like to share your practice scores with your ARP? If you share, your ARP will see the move you practised and your scores so they can prepare help on exactly this before their next visit. A question the handbook cannot answer is sent to the ARP, and nothing else from the chat is. Your ARP will not see your voice recordings. You can change this at any time in My class."}
 placement_intro: {text: "Let's do a short practice. This is not a test. The board says: 52 − 17. Ravi from Class 2 says: '45!' Talk to Ravi the way you would in class, by voice or by typing."}
 placement_done: {text: "Very good! Now I know where to start for you."}
+placement_fb_asked: {text: "You asked Ravi how he got 45, good."}
+placement_fb_words: {text: "You explained the method in words, but Ravi is still making the same mistake."}
+placement_fb_objects: {text: "You showed it with bundles and sticks, which is the easiest way for children to see it."}
+placement_fb_told: {text: "You told Ravi the right answer, but he did not work it out himself."}
+placement_fb_none: {text: "You talked with Ravi."}
+placement_fb_why_told: {text: "So we will start with '{move_title}', where the child gets the chance to think for himself."}
+placement_fb_why_words: {text: "So we will start with '{move_title}'."}
+placement_fb_why_objects: {text: "So we will start with '{move_title}', to make this way of teaching stronger."}
+placement_fb_why_default: {text: "So we will start with '{move_title}'."}
 ready_first_move: {text: "Your first move is: {move_title}. Let's begin!"}
 learn_intro: {text: "This week's move: {move_title}. The key points are written below:"}
 learn_intro_audio: {text: "This week's move: {move_title}. First listen to this 2-minute voice note. The key points are written below:"}

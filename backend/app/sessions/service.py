@@ -70,6 +70,7 @@ from backend.app.sessions import modules, rehearse_setup
 from backend.app.sessions.outcome import outcome_line
 from backend.app.sessions.path import MovePathEntry, compute_move_path, load_induction_order
 from backend.app.sessions.path_score import DONE_MIN_EVIDENCE
+from backend.app.sessions.placement_feedback import placement_feedback
 from backend.app.sessions.repository import SessionRepository
 from backend.app.sessions.state_machine import (
     ONBOARDING_PROMPT_KEYS,
@@ -2007,6 +2008,9 @@ class SessionService:
                     await self._sync_context_to_db(ctx, teacher_id)
 
                     first_move = load_move_card(ctx.current_move_id)
+                    placement_acts = [a for t in (scene.turns if scene else []) for a in t.acts]
+                    if turn_res:
+                        placement_acts.extend(turn_res.turn.acts)
                     ready_outbounds: list[OutboundMessage] = []
                     if turn_res:
                         ready_outbounds.extend(turn_res.outbound)
@@ -2014,7 +2018,11 @@ class SessionService:
                         [
                             OutboundMessage(
                                 kind="text",
-                                text_hi=get_message("placement_done", ctx.address_form),
+                                text_hi=placement_feedback(
+                                    placement_acts,
+                                    move_title(first_move.id),
+                                    ctx.address_form,
+                                ),
                             ),
                             OutboundMessage(
                                 kind="text",

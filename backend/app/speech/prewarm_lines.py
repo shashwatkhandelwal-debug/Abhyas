@@ -147,9 +147,15 @@ async def engine_template_targets(moves_dir: Path) -> list[Target]:
         last_4_lines: list[str] | None = None,
         turn_idx: int = 0,
         address_form: str = "f",
+        previous_line: str | None = None,
+        teacher_said: str | None = None,
     ) -> str:
         return child_voice.template_line(
-            response=response, persona=persona, turn_idx=turn_idx, address_form=address_form
+            response=response,
+            persona=persona,
+            turn_idx=turn_idx,
+            address_form=address_form,
+            previous_line=previous_line,
         )
 
     async def keyword_tagger(*, transcript: str, **kwargs: Any) -> Any:

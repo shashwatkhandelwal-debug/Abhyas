@@ -55,6 +55,33 @@ placement_intro:
 placement_done:
   text: "बहुत अच्छा! अब मुझे पता है कि आपके लिए कहाँ से शुरू करें।"
   audio: true
+placement_fb_asked:
+  text: "आपने रवि से पूछा कि 45 कैसे आया, अच्छा।"
+  audio: false
+placement_fb_words:
+  text: "आपने तरीका शब्दों में समझाया, पर रवि अभी भी वही गलती कर रहा है।"
+  audio: false
+placement_fb_objects:
+  text: "आपने बंडल और तीलियों से करके दिखाया, यह बच्चों को सबसे आसानी से समझ आता है।"
+  audio: false
+placement_fb_told:
+  text: "आपने रवि को सही उत्तर बता दिया, पर उसने खुद सोचकर नहीं निकाला।"
+  audio: false
+placement_fb_none:
+  text: "आपने रवि से बात की।"
+  audio: false
+placement_fb_why_told:
+  text: "इसलिए हम '{move_title}' से शुरू करेंगे, जहाँ बच्चे को खुद सोचने का मौका मिलता है।"
+  audio: false
+placement_fb_why_words:
+  text: "इसलिए हम '{move_title}' से शुरू करेंगे।"
+  audio: false
+placement_fb_why_objects:
+  text: "इसलिए हम '{move_title}' से शुरू करेंगे, ताकि यह तरीका और पक्का हो।"
+  audio: false
+placement_fb_why_default:
+  text: "इसलिए हम '{move_title}' से शुरू करेंगे।"
+  audio: false
 ready_first_move:
   text: "आपका पहला तरीका है: {move_title}। चलिए शुरू करते हैं!"
   audio: true
