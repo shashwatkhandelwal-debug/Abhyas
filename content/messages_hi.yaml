@@ -1350,3 +1350,10 @@ adp_why_some: {text: "क्यों अभी यह: हाल की कक�
 adp_why_stuck: {text: "क्यों अभी यह: अगले दिन के हाल में आपने बताया कि '{label}' में बच्चे अब भी अटके हैं।", audio: false}
 adp_why_worked: {text: "क्यों अभी यह: '{label}' का तरीका आपके यहाँ काम किया, इसलिए पहले दूसरा अभ्यास।", audio: false}
 adp_why_new: {text: "क्यों अभी यह: शुरुआत में पहले बुनियादी अभ्यास, जिसमें मॉडल शिक्षक का तरीका पहले देखने को मिलता है।", audio: false}
+# Track B scenes
+ui_board_compare: {text: "{a} और {b}: कौन बड़ा?", audio: false}
+hint_example_compare: {text: "{child}, तुमने कैसे तय किया कि कौन-सी संख्या बड़ी है?", audio: false}
+move_title_NUM_COMPARE_BUNDLES: {text: "दो अंकों की संख्याओं की तुलना: पहले बंडल गिनकर", audio: false}
+move_title_LIT_LETTER_SOUND_PAIRS: {text: "अक्षर का नाम नहीं, ध्वनि: शब्द की पहली ध्वनि पर काम", audio: false}
+btn_chk_mod_NUM_COMPARE_BUNDLES: {text: "संख्याओं की तुलना", audio: false}
+btn_chk_mod_LIT_LETTER_SOUND_PAIRS: {text: "अक्षर की ध्वनि", audio: false}

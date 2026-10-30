@@ -16,7 +16,7 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, Field, field_validator
 
-from backend.app.config import settings
+from backend.app.config import FLAGGED_MOVES, move_offered, settings
 
 CONTENT_DIR = Path(__file__).resolve().parents[3] / "content"
 LIBRARY_PATH = CONTENT_DIR / "class_struggles.yaml"
@@ -90,9 +90,27 @@ class StruggleLibrary(BaseModel):
 
 
 @lru_cache(maxsize=4)
-def load_library(path: str | None = None) -> StruggleLibrary:
+def _load_raw(path: str | None = None) -> StruggleLibrary:
     source = Path(path) if path else LIBRARY_PATH
     return StruggleLibrary.model_validate(yaml.safe_load(source.read_text(encoding="utf-8")))
+
+
+def load_library(path: str | None = None) -> StruggleLibrary:
+    """The library; a struggle whose practice move is a flag-gated scene that is off has no move.
+
+    The flags are read on every call (not cached), so with every Track B flag off the library
+    is exactly the one before the scenes existed.
+    """
+    lib = _load_raw(path)
+    if not any(s.move_id in FLAGGED_MOVES and not move_offered(s.move_id) for s in lib.struggles):
+        return lib
+    struggles = [
+        s.model_copy(update={"move_id": None, "misconception_ids": []})
+        if s.move_id in FLAGGED_MOVES and not move_offered(s.move_id)
+        else s
+        for s in lib.struggles
+    ]
+    return lib.model_copy(update={"struggles": struggles})
 
 
 class Citation(BaseModel):

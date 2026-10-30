@@ -26,8 +26,9 @@ def sources_and_personas() -> tuple[set[str], set[str]]:
 def test_seed_moves_pass_all_checks() -> None:
     """All 4 seed moves must pass checks 1, 2, 5, 6, 7 cleanly."""
     validated = validate_all_content(Path("content"))
-    assert len(validated) == 4
+    assert len(validated) == 6  # the four originals and the two Track B scenes
     ids = {m.id for m in validated}
+    assert {"NUM_COMPARE_BUNDLES", "LIT_LETTER_SOUND_PAIRS"} <= ids
     assert "NUM_SUB_REGROUP_BUNDLES" in ids
     assert "NUM_ADD_CARRY_BUNDLES" in ids
     assert "NUM_PLACE_VALUE_BUNDLES" in ids

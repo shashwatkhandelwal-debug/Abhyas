@@ -9,6 +9,7 @@ from uuid import UUID
 
 import yaml
 
+from backend.app.config import FLAGGED_MOVES
 from backend.app.content_models import MoveCard
 from backend.app.sessions.path_score import MoveFacts, TeacherFacts, rank_moves
 
@@ -99,7 +100,8 @@ def compute_move_path(
         question_tags=frozenset(matched_question_tags or ()),
     )
 
-    cards = load_all_move_cards(moves_dir)
+    # Track B scenes are practised on demand (check-in, set-up), never placed in the weekly path
+    cards = [c for c in load_all_move_cards(moves_dir) if c.id not in FLAGGED_MOVES]
     if cards:
         move_facts = [move_card_to_facts(card) for card in cards]
     else:

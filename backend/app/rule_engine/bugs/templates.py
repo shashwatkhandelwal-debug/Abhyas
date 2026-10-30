@@ -28,7 +28,14 @@ STEP_TEMPLATES: dict[str, str] = {
     # Literacy
     "READ_AKSHARS": "{aksharas}",
     "READ_NO_MATRA": "{bare}",
+    "LETTER_NAME": "{cons} से {kw}",
     "READ_GUESS": "{first} से {guess}",
+    # Comparing two-digit numbers
+    "CMP_ONES_FIRST": "{u_a} और {u_b} में {u_big} बड़ा है, तो {big} बड़ा",
+    "CMP_TENS_FIRST": "{t_a} बंडल और {t_b} बंडल, {t_big} बंडल ज़्यादा, तो {big} बड़ा",
+    "CMP_TENS_SAME": "दोनों में {t} बंडल हैं",
+    "CMP_ONES_AFTER": "तीलियाँ {u_a} और {u_b}, {u_big} ज़्यादा, तो {big} बड़ा",
+    "CMP_EQUAL": "दोनों {a} हैं, बराबर",
     # Common
     "ANSWER": "{answer}",
 }

@@ -22,7 +22,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.access import SUPPRESSION_MESSAGE
-from backend.app.config import settings
+from backend.app.config import FLAGGED_MOVES, settings
 from backend.app.content_models import MoveCard
 from backend.app.core.messages import get_message
 from backend.app.db.models import AggModuleBatch, AppUser, Batch, SessionState, Teacher
@@ -212,7 +212,7 @@ async def build_trainer_report(
         )
 
     # 2. Load all MoveCards
-    all_moves = load_all_move_cards()
+    all_moves = [m for m in load_all_move_cards() if m.id not in FLAGGED_MOVES]
 
     # Filter targets
     target_batches = [b for b in batches if not selected_batch_id or b.id == selected_batch_id]

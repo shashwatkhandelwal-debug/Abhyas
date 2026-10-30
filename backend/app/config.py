@@ -371,6 +371,19 @@ class Settings(BaseSettings):
         False  # scene bar shows each child's state label (stuck / getting it / got it)
     )
 
+    # ── Track B features (same pattern: ON in demo mode, OFF otherwise) ──
+    SCENE_NUM_COMPARE_ENABLED: bool = False  # practice scene: comparing two-digit numbers
+    COMPARE_MIN_OPERAND: int = 1  # smallest number the teacher may pose in the comparing scene
+    SCENE_LIT_LETTER_SOUND_ENABLED: bool = False  # practice scene: confusable Hindi letter sounds
+    TRAINING_GAP_ENABLED: bool = False  # trainer view: "Where training is not landing"
+    TRAINING_GAP_WINDOW_DAYS: int = 30  # rehearsals counted: the last this many days
+    FOCUS_CARD_ENABLED: bool = False  # "आज का सुझाव": one cited step when an opted-in teacher opens the chat
+    FOCUS_OFFER_INTERVAL_DAYS: int = 7  # the opt-in is offered at most once in this many days
+    FOCUS_CARD_INTERVAL_HOURS: int = 20  # at most one focus card in this many hours
+    FAST_START_ENABLED: bool = False  # experienced teachers may go straight to practice
+    FAST_START_BANDS: tuple[str, ...] = ("6-10", "10+")  # experience bands offered the shortcut
+    MODEL_AUDIO_ENABLED: bool = False  # model-practice message carries cached audio when it exists
+
     # ── Demo / Evaluation & Observability ────────────────────────────────
     SERVE_IN_REVIEW_TO_DEMO: bool = True
     DEMO_MODE: bool = True
@@ -449,3 +462,17 @@ settings = Settings()
 def v2_enabled(flag: bool) -> bool:
     """A v2 feature flag is on when set, or in demo mode (the hosted judge-facing site)."""
     return bool(flag or settings.DEMO_MODE)
+
+
+# Track B practice scenes: the move card always exists on disk (content and tests read it), but
+# the scene is offered (check-in practice button, move path) only while its flag is on.
+FLAGGED_MOVES: dict[str, str] = {
+    "NUM_COMPARE_BUNDLES": "SCENE_NUM_COMPARE_ENABLED",
+    "LIT_LETTER_SOUND_PAIRS": "SCENE_LIT_LETTER_SOUND_ENABLED",
+}
+
+
+def move_offered(move_id: str | None) -> bool:
+    """False for a flag-gated Track B move whose flag is off; True for every other move."""
+    flag = FLAGGED_MOVES.get(move_id or "")
+    return True if flag is None else v2_enabled(bool(getattr(settings, flag)))

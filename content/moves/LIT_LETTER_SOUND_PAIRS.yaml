@@ -1,0 +1,155 @@
+# DRAFT, written by the team for the Track B prototype. Needs FLN coach review (HUMAN INPUT H8) and
+# verification of module_ref against the actual UP teacher guide (H7) before status: approved.
+# Design note: the stored chunks name no confusable letter pair (such as ब and व), so the scene
+# uses the letter name versus letter sound confusion that the NIPUN glossary describes ("letters
+# have specific names and specific sounds"). The child gives the chart name ("ब से बतख").
+# Key points that carry source_chunk_ids paraphrase only what those stored chunks say.
+id: LIT_LETTER_SOUND_PAIRS
+version: 1
+status: in_review
+domain: literacy
+grade: [1, 2]
+title_hi: "अक्षर का नाम नहीं, ध्वनि: शब्द की पहली ध्वनि पर काम"
+summary_hi: "जब बच्चा शब्द पढ़ने के बजाय 'ब से बतख' बोले, तो उसे अक्षर की ध्वनि पर लौटाएँ और ध्वनियाँ जोड़कर शब्द पढ़वाएँ।"
+tags: [reading, phonics, letter_sound, akshar, bhasha]
+module_ref:
+  source_id: nipun_guidelines_2021
+  section: "अक्षर और ध्वनि"
+  page: null
+  verified: false
+sankul_month: October
+
+key_points:
+  - id: kp1
+    text_hi: "कुछ बच्चे शब्द पढ़ने के बजाय अक्षर का चार्ट वाला नाम बोल देते हैं: बकरी को 'ब से बतख'। पहले बच्चे से पूछें कि उसने कैसे पढ़ा।"
+    text_en: "Some children say the chart name of a letter instead of reading the word: 'ba se batakh' for the word bakri. First ask the child how they read it."
+    must_have: true
+    keywords_hi: [पूछें, कैसे, नाम, चार्ट, बतख]
+    source_chunk_ids: []
+  - id: kp2
+    text_hi: "हर अक्षर का एक नाम होता है और एक खास ध्वनि भी। पढ़ते समय बच्चे को ध्वनि बोलनी है, नाम नहीं।"
+    text_en: "Every letter has a name and also a specific sound. When reading, the child has to say the sound, not the name."
+    must_have: true
+    keywords_hi: [नाम, ध्वनि, अक्षर, खास]
+    source_chunk_ids: ["nipun_guidelines_2021:p004:001"]
+  - id: kp3
+    text_hi: "अक्षर की ध्वनि जाने-पहचाने शब्दों से सिखाएँ, वर्णमाला के क्रम से नहीं।"
+    text_en: "Teach the sound of a letter through familiar words, not in alphabet order."
+    must_have: true
+    keywords_hi: [जाने-पहचाने, शब्द, ध्वनि, क्रम]
+    source_chunk_ids: ["nipun_guidelines_2021:p074:068"]
+  - id: kp4
+    text_hi: "शब्द की शुरू, बीच और अंत की ध्वनि पहचानने के खेल कराएँ, और ध्वनियाँ जोड़कर शब्द बनवाएँ, जैसे खा और ना से खाना।"
+    text_en: "Play games on the beginning, middle and end sounds of a word, and have children put sounds together to make a word, such as kha and na making khana."
+    must_have: false
+    keywords_hi: [शुरू, बीच, अंत, ध्वनि, जोड़]
+    source_chunk_ids: ["ncert_vidya_pravesh:p032:031"]
+  - id: kp5
+    text_hi: "शब्द खुद न बताएँ। पहले अक्षर पर उँगली रखवाकर उसकी ध्वनि बुलवाएँ, फिर ध्वनियाँ मिलवाएँ।"
+    text_en: "Do not tell the word yourself. Have the child put a finger on the first letter and say its sound, then blend the sounds."
+    must_have: true
+    keywords_hi: [न बताएँ, उँगली, ध्वनि, मिल]
+    source_chunk_ids: []
+
+teaching_acts_effective: [phonics_sound_out, model_step_aloud, contrast_answers, ask_to_explain, involve_peer]
+target_causes: [LETTER_NAME_FOR_SOUND]
+
+rubric:
+  criteria:
+    - id: crit_sound_focus
+      text_hi: "पहले अक्षर की ध्वनि पर काम करना"
+      levels:
+        0: "ध्वनि पर काम नहीं किया"
+        1: "पूरा शब्द दोहरवाया, पहले अक्षर की ध्वनि नहीं"
+        2: "पहले अक्षर पर उँगली रखवाकर उसकी ध्वनि बुलवाई"
+      signal_acts: [phonics_sound_out]
+      negative_acts: []
+    - id: crit_blend_model
+      text_hi: "ध्वनियाँ मिलाकर पढ़ना करके दिखाना"
+      levels:
+        0: "नहीं दिखाया"
+        1: "शब्द पढ़कर सुना दिया"
+        2: "धीरे-धीरे ध्वनियाँ मिलाकर दिखाया और बच्चों से साथ में करवाया"
+      signal_acts: [model_step_aloud]
+      negative_acts: []
+    - id: crit_no_telling
+      text_hi: "शब्द बताने के बजाय बच्चे को पढ़ने देना"
+      levels:
+        0: "शब्द खुद बता दिया"
+        1: "न बताया, न जाँच करवाई"
+        2: "बच्चे से ध्वनि मिलवाकर खुद पढ़वाया"
+      signal_acts: [phonics_sound_out, contrast_answers, involve_peer]
+      negative_acts: [tell_answer, scold]
+
+feedback_bank:
+  crit_sound_focus:
+    strength_hi: "आपने पहले अक्षर की ध्वनि बुलवाई, नाम नहीं।"
+    change_hi: "बच्चा 'ब से बतख' कहे तो उसे पहले अक्षर पर उँगली रखवाकर उसकी ध्वनि बुलवाइए।"
+    exact_words_hi: "अमन, पहले अक्षर पर उँगली रखकर उसकी ध्वनि बोलो, नाम नहीं।"
+  crit_blend_model:
+    strength_hi: "आपने ध्वनियाँ मिलाकर पढ़ना धीरे-धीरे करके दिखाया।"
+    change_hi: "शब्द पढ़कर सुनाने से पहले धीरे-धीरे ध्वनियाँ मिलाकर दिखाइए, फिर बच्चों से साथ में करवाइए।"
+    exact_words_hi: "मेरे साथ बोलो: ब… क… री… बकरी!"
+  crit_no_telling:
+    strength_hi: "आपने शब्द खुद नहीं बताया, बच्चे को पढ़ने दिया।"
+    change_hi: "बच्चा नाम बोले तो उसे ध्वनि पर लौटाइए, शब्द मत बताइए।"
+    exact_words_hi: "प्रिया, नाम नहीं, पहले अक्षर की आवाज़ निकालो।"
+
+learn_script_hi: >-
+  नमस्ते! इस हफ्ते हम अक्षर की ध्वनि पर काम करने का एक तरीका सीखेंगे। कभी-कभी बच्चे शब्द पढ़ने के बजाय अक्षर का
+  चार्ट वाला नाम बोल देते हैं। बोर्ड पर बकरी लिखा हो, तो वे कहते हैं, ब से बतख। हर अक्षर का एक नाम होता है और एक खास
+  ध्वनि भी। पढ़ते समय हमें ध्वनि चाहिए, नाम नहीं। पहला कदम: बच्चे से पूछिए, तुमने कैसे पढ़ा? दूसरा कदम: बच्चे से पहले
+  अक्षर पर उँगली रखवाइए और उसकी ध्वनि बुलवाइए। नाम नहीं, आवाज़। तीसरा कदम: आप खुद धीरे-धीरे ध्वनियाँ मिलाकर दिखाइए,
+  ब… क… री… बकरी, फिर बच्चों से साथ में करवाइए। शब्द खुद मत बताइए और डाँटिए भी नहीं। अक्षर की ध्वनि जाने-पहचाने शब्दों
+  से सिखाइए, वर्णमाला के क्रम से नहीं, और शब्द की शुरू, बीच और अंत की ध्वनि पहचानने के खेल कराइए। अब आप यह तरीका अपने
+  शब्दों में बताइए, फिर तीन बच्चों के साथ अभ्यास करेंगे।
+learn_summary_hi:
+  - "1. पहले पूछें: तुमने कैसे पढ़ा?"
+  - "2. पहले अक्षर पर उँगली: नाम नहीं, ध्वनि बुलवाएँ"
+  - "3. करके दिखाएँ: ब… क… री… बकरी, फिर साथ में"
+  - "4. शब्द न बताएँ, डाँटें नहीं"
+
+scenario:
+  intro_hi: "कक्षा 1। बोर्ड पर शब्द लिखा है: बकरी। रवि, प्रिया और अमन ने उसे पढ़ने की कोशिश की है। अब आप उनसे बात करें।"
+  items:
+    - {type: read_word, word: "बकरी"}
+    - {type: read_word, word: "कमल"}
+    - {type: read_word, word: "गमला"}
+    - {type: read_word, word: "नदी"}
+  children:
+    - {persona_id: ravi,  misconception: LETTER_NAME_FOR_SOUND}     # ब से बतख
+    - {persona_id: priya, misconception: LETTER_NAME_FOR_SOUND}     # ब से बतख
+    - {persona_id: aman,  misconception: LETTER_NAME_FOR_SOUND}     # ब से बतख
+  guess_lexicon: {}
+
+model_rehearsal:
+  - speaker: teacher
+    text_hi: "रवि, शाबाश कोशिश की। अब पहले अक्षर पर उँगली रखो। इसकी आवाज़ निकालो, नाम नहीं।"
+    acts: [phonics_sound_out, praise_effort]
+    addressed: ravi
+    problem: null
+  - speaker: teacher
+    text_hi: "प्रिया, पहला अक्षर फिर से देखो। उसकी ध्वनि धीरे से निकालो।"
+    acts: [phonics_sound_out]
+    addressed: priya
+    problem: null
+  - speaker: teacher
+    text_hi: "अमन, इस अक्षर पर उँगली रखो। नाम नहीं, आवाज़ निकालो। बोलो।"
+    acts: [phonics_sound_out]
+    addressed: aman
+    problem: null
+  - speaker: teacher
+    text_hi: "अब सब मेरे साथ धीरे-धीरे मिलाओ: ब… क… री… बकरी!"
+    acts: [model_step_aloud]
+    addressed: all
+    problem: null
+
+peer_checklist:
+  - "शिक्षक ने बच्चों से अक्षर पर उँगली रखवाई।"
+  - "नाम के बजाय अक्षर की ध्वनि बुलवाई गई।"
+  - "शिक्षक ने धीरे-धीरे ध्वनियाँ मिलाकर पढ़ना करके दिखाया।"
+  - "बच्चे को डाँटा नहीं गया और शब्द नहीं बताया गया।"
+reflection_questions:
+  - "आपकी कक्षा में कौन-से अक्षर नाम से बोले जाते हैं, ध्वनि से नहीं?"
+  - "ध्वनि बुलवाने पर किस बच्चे में बदलाव दिखा?"
+approvals: []

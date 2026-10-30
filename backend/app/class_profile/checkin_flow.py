@@ -25,7 +25,7 @@ from backend.app.class_profile.library import (
     citations,
     load_library,
 )
-from backend.app.config import settings
+from backend.app.config import FLAGGED_MOVES, settings
 from backend.app.core.intents import Intent
 from backend.app.core.messages import get_message, get_ui_lang, has_message
 from backend.app.core.types import Button, Citation, OutboundMessage
@@ -101,6 +101,7 @@ def modules(lib: StruggleLibrary | None = None) -> list[CheckinModule]:
     moves = [
         CheckinModule(k, tuple(v)) for k, v in groups.items() if not k.startswith(_OTHER_PREFIX)
     ]
+    moves.sort(key=lambda m: m.id in FLAGGED_MOVES)  # Track B scenes come after the original moves
     others = [CheckinModule(k, tuple(v)) for k, v in groups.items() if k.startswith(_OTHER_PREFIX)]
     return moves + others
 

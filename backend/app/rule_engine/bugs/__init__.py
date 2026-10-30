@@ -11,6 +11,8 @@ from backend.app.rule_engine.bugs.akshar import (
     split_akshars,
     strip_matras,
 )
+from backend.app.rule_engine.bugs.compare import cmp_correct, cmp_ones_first
+from backend.app.rule_engine.bugs.letter_sound import letter_name_for_sound
 from backend.app.rule_engine.bugs.literacy import (
     akshar_by_akshar,
     first_akshar_guess,
@@ -57,7 +59,11 @@ __all__ = [
     "pv_bundle_as_one",
     "pv_concat_spoken",
     "pv_reversal",
+    # Comparing numbers
+    "cmp_correct",
+    "cmp_ones_first",
     # Literacy
+    "letter_name_for_sound",
     "read_correct",
     "matra_drop",
     "first_akshar_guess",

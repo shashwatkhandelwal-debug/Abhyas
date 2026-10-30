@@ -145,11 +145,37 @@ def format_act_examples_block(examples: Sequence[dict[str, Any]]) -> str:
     return "\n".join(blocks)
 
 
+_COMPARE_PAIR = re.compile(
+    r"(?P<x>[ऀ-ॿ\w]+)\s*(?:,|और|या|and|vs\.?|versus)\s*(?P<y>[ऀ-ॿ\w]+)",
+    re.IGNORECASE,
+)
+_COMPARE_CUE = re.compile(r"कौन|बड़ा|बड़ी|छोटा|छोटी|तुलना|compare|bigger|नया सवाल|अगला सवाल")
+
+
+def _detect_compare_problem(clean_text: str, current_item: Problem) -> Problem | None:
+    """A new pair to compare ("28 और 33, कौन बड़ा?"); the pair already on the board is not new."""
+    cue = bool(_COMPARE_CUE.search(clean_text))
+    current = {current_item.a, current_item.b}
+    for m in _COMPARE_PAIR.finditer(clean_text):
+        nx = extract_numbers(m.group("x"))
+        ny = extract_numbers(m.group("y"))
+        if not nx or not ny:
+            continue
+        x, y = nx[0], ny[0]
+        if {x, y} == current:
+            return None
+        if cue or (x >= 10 and y >= 10):
+            return Problem(type="compare", a=x, b=y)
+    return None
+
+
 def detect_problem_in_fallback(
     clean_text: str,
     current_item: Problem | None = None,
 ) -> Problem | None:
     """Detects problem posed in teacher speech and validates against current_item domain (spec/05 §5.4)."""
+    if current_item is not None and current_item.type == "compare":
+        return _detect_compare_problem(clean_text, current_item)
     candidate: Problem | None = None
 
     # 1. Subtraction phrases: "X में से Y", "X - Y", "X माइनस Y", "X से Y घटाओ"
