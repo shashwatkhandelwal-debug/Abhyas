@@ -1382,3 +1382,8 @@ focus_card_body: {text: "'{label}' के लिए एक कदम:\n{tip}\n{s
 focus_on_ack: {text: "ठीक है। अब हर दिन चैट खोलने पर एक सुझाव दिखेगा। आप 'बंद करें' दबाकर इसे कभी भी रोक सकते हैं।", audio: false}
 focus_snooze_ack: {text: "ठीक है, अभी नहीं। एक हफ्ते से पहले दोबारा नहीं पूछेंगे।", audio: false}
 focus_off_ack: {text: "ठीक है, रोज़ के सुझाव बंद कर दिए।", audio: false}
+fast_start_note: {text: "आपके अनुभव के हिसाब से आप सीधे अभ्यास से शुरू कर सकते हैं; मुख्य बातें कभी भी देख सकते हैं।", audio: false}
+btn_fast_start: {text: "सीधे अभ्यास", audio: false}
+btn_fast_keypoints: {text: "मुख्य बातें देखें", audio: false}
+fast_keypoints_head: {text: "इस तरीके की मुख्य बातें:", audio: false}
+fast_keypoints_sources: {text: "स्रोत: {sources}", audio: false}

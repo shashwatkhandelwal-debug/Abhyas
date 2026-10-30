@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.class_profile import (
     adaptive,
     checkin_flow,
+    fast_start,
     focus,
     followup,
     level_sorter,
@@ -110,6 +111,7 @@ class SessionService:
         address_form: str,
         struggle_ids: list[str] | None = None,
         audio_ref: str | None = None,
+        experience_band: str | None = None,
     ) -> list[OutboundMessage]:
         """Builds one or two bubbles for the learn step according to one-language-per-bubble rule.
 
@@ -141,6 +143,11 @@ class SessionService:
             ),
             Button(id="btn_replay", title_hi=get_message("btn_replay", address_form)),
         ]
+        if fast_start.eligible(experience_band):  # FAST_START_ENABLED: experienced teachers
+            buttons.append(fast_start.fast_button(address_form))
+            intro_note = f"\n\n{fast_start.note(address_form)}"
+        else:
+            intro_note = ""
 
         tip_text, tip_cites = await self._learn_tip(move, address_form)
 
@@ -179,7 +186,7 @@ class SessionService:
         ]
 
         if guide_parts:
-            guide_body = "\n\n".join(guide_parts)
+            guide_body = "\n\n".join(guide_parts) + intro_note
             return [
                 OutboundMessage(
                     kind="audio" if audio_ref else "text",
@@ -199,7 +206,7 @@ class SessionService:
         return [
             OutboundMessage(
                 kind="buttons",
-                text_hi=intro,
+                text_hi=intro + intro_note,
                 audio_ref=audio_ref,
                 buttons=buttons,
             )
@@ -881,7 +888,9 @@ class SessionService:
         ctx.checkin_jump_move = ""
         await self._sync_context_to_db(ctx, teacher_id)
         move = load_move_card(module_id)
-        return await self._build_learn_messages(move, address_form, ctx.class_struggles)
+        return await self._build_learn_messages(
+            move, address_form, ctx.class_struggles, experience_band=ctx.experience_band
+        )
 
     async def _checkin_messages(
         self, ctx: SessionContext, teacher_id: UUID, chk: checkin_flow.CheckinResult
@@ -1027,6 +1036,41 @@ class SessionService:
         await self._sync_context_to_db(ctx, teacher_id)
         return res.messages
 
+    async def _handle_fast_start(
+        self, ctx: SessionContext, teacher_id: UUID, button_id: str
+    ) -> list[OutboundMessage] | None:
+        """The "straight to practice" button of the learn step and the key-points button; None: not mine."""
+        af = ctx.address_form
+        move = load_move_card(ctx.current_move_id)
+        if button_id == fast_start.BTN_FAST:
+            if ctx.current_state != SessionStateEnum.LEARN or not fast_start.eligible(
+                ctx.experience_band
+            ):
+                return None
+            ctx.current_state = SessionStateEnum.REHEARSE_INTRO
+            ctx.rehearsal_turns_count = 0
+            ctx.retries_count = 0
+            ctx.rating_stage = ""
+            ctx.resume_scene_id = ""
+            ctx.module_check_stage = modules.CHECK_IDLE
+            # the learn step is skipped: the same marker a check-in jump to practice leaves
+            ctx.checkin_jump_move = move.id
+            setup = await self._begin_rehearse_setup(ctx, teacher_id, move)
+            return fast_start.add_keypoints_button(setup, af)
+        if ctx.current_state not in (SessionStateEnum.REHEARSE_INTRO, SessionStateEnum.REHEARSE):
+            return None
+        mode_buttons = (
+            [
+                Button(id=rehearse_setup.BTN_ONE, title_hi=get_message(rehearse_setup.BTN_ONE, af)),
+                Button(
+                    id=rehearse_setup.BTN_GROUP, title_hi=get_message(rehearse_setup.BTN_GROUP, af)
+                ),
+            ]
+            if ctx.rehearse_stage == rehearse_setup.STAGE_CHOOSE_MODE
+            else None
+        )
+        return [fast_start.keypoints_message(move, af, mode_buttons)]
+
     async def _handle_followup_button(
         self, ctx: SessionContext, teacher_id: UUID, button_id: str
     ) -> list[OutboundMessage]:
@@ -1155,7 +1199,9 @@ class SessionService:
                 ctx.last_inbound_at = now
                 await self._sync_context_to_db(ctx, teacher_id)
                 move = load_move_card(ctx.current_move_id)
-                return await self._build_learn_messages(move, address_form, ctx.class_struggles)
+                return await self._build_learn_messages(
+                    move, address_form, ctx.class_struggles, experience_band=ctx.experience_band
+                )
 
         ctx.last_inbound_at = now
 
@@ -1182,6 +1228,17 @@ class SessionService:
             and not ctx.awaiting_delete_confirm
         ):
             return await self._handle_focus_button(ctx, teacher_id, str(btn_id))
+
+        # 1'''. "Straight to practice" for experienced teachers (flag FAST_START_ENABLED)
+        if (
+            btn_id in fast_start.ALL_BUTTONS
+            and fast_start.enabled()
+            and ctx.onboarding_state == OnboardingStateEnum.READY
+            and not ctx.awaiting_delete_confirm
+        ):
+            fast_msgs = await self._handle_fast_start(ctx, teacher_id, str(btn_id))
+            if fast_msgs is not None:
+                return fast_msgs
 
         # 1a. "After class: how did it go?" (flag CLASS_CHECKIN_ENABLED): closed-list buttons only
         if (
@@ -1774,7 +1831,10 @@ class SessionService:
                                 ),
                             ),
                             *await self._build_learn_messages(
-                                first_move, ctx.address_form, ctx.class_struggles
+                                first_move,
+                                ctx.address_form,
+                                ctx.class_struggles,
+                                experience_band=ctx.experience_band,
                             ),
                         ]
                     )
@@ -1794,7 +1854,9 @@ class SessionService:
         if curr == SessionStateEnum.LEARN:
             move = load_move_card(ctx.current_move_id)
             if matched_intent == Intent.REPEAT or btn_id == "btn_replay":
-                return await self._build_learn_messages(move, address_form, ctx.class_struggles)
+                return await self._build_learn_messages(
+                    move, address_form, ctx.class_struggles, experience_band=ctx.experience_band
+                )
             if matched_intent == Intent.NEXT or btn_id == "btn_understood":
                 wsm.transition("btn_understood")
                 await self._sync_context_to_db(ctx, teacher_id)
@@ -2623,7 +2685,9 @@ class SessionService:
                     move = load_move_card(choice.move_id)
                 wsm.transition("btn_next_move")
                 await self._sync_context_to_db(ctx, teacher_id)
-                learn = await self._build_learn_messages(move, address_form, ctx.class_struggles)
+                learn = await self._build_learn_messages(
+                    move, address_form, ctx.class_struggles, experience_band=ctx.experience_band
+                )
                 if choice is not None and learn:
                     learn[0] = learn[0].model_copy(
                         update={"text_hi": f"{adaptive.reason_text(choice)}\n\n{learn[0].text_hi}"}

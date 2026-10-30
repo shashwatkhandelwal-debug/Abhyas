@@ -1040,3 +1040,8 @@ focus_card_body: {text: "One step for '{label}':\n{tip}\n{sources}"}
 focus_on_ack: {text: "Done. You will now see one tip each day when you open the chat. Tap 'Turn off' any time to stop."}
 focus_snooze_ack: {text: "Okay, not now. We will not ask again for a week."}
 focus_off_ack: {text: "Done, the daily tips are turned off."}
+fast_start_note: {text: "With your experience you can start straight with practice; you can see the key points any time."}
+btn_fast_start: {text: "Straight to practice"}
+btn_fast_keypoints: {text: "See key points"}
+fast_keypoints_head: {text: "Key points of this method:"}
+fast_keypoints_sources: {text: "Source: {sources}"}
