@@ -234,6 +234,7 @@ def trainer_patches(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(base + "teaching_skill_summary", AsyncMock(return_value=[]))
     monkeypatch.setattr(base + "pack_enabled", lambda: False)
     monkeypatch.setattr(base + "visit_observation.enabled", lambda: False)
+    monkeypatch.setattr(base + "training_gap_enabled", lambda: False)
 
 
 @pytest.mark.asyncio
