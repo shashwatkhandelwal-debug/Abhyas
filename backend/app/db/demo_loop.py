@@ -3,7 +3,8 @@
 All of it is labelled demo data and exists only when `settings.DEMO_MODE` is on:
 
 * demo2: a check-in for the struggle one day ago and a follow-up due TODAY (dates are computed from
-  "now", so it is due on every login). The chat offers it when she opens it.
+  "now", so it is due on every login). Its card is seeded in the thread, marked offered, older than
+  the seeded rehearsal messages, so it never lands between Ravi's turns (fix3 K6).
 * demo3: an older check-in on the same struggle, answered "still stuck", so the adaptive path
   picks a different next practice than it does for a teacher with no history.
 * the synthetic cohort (consenting teachers only): a follow-up and an answer for each seeded check-in
@@ -25,7 +26,9 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.class_profile import followup
 from backend.app.class_profile.followup import next_school_day
+from backend.app.class_profile.library import load_library
 from backend.app.config import settings
 from backend.app.db.demo_history import seed_peer_worked, seed_rehearsal_history
 from backend.app.db.models import (
@@ -33,6 +36,7 @@ from backend.app.db.models import (
     ClassFollowup,
     ClassFollowupOutcome,
     ClassVisitObservation,
+    Message,
     Teacher,
 )
 
@@ -56,6 +60,8 @@ def _id(kind: int, n: int) -> uuid.UUID:
 
 
 CHECKIN_KIND, FOLLOWUP_KIND, OUTCOME_KIND, VISIT_KIND = 0x0008, 0x0009, 0x000A, 0x000B
+# demo2's seeded follow-up card is older than its seeded rehearsal chat (which starts 2 minutes ago)
+DEMO2_CARD_AGE = timedelta(minutes=3)
 DEMO2_N, DEMO3_N = 0xD02001, 0xD03001
 
 
@@ -92,12 +98,33 @@ async def seed_login_loop(session: AsyncSession, teacher_id: uuid.UUID, now: dat
             checkin_id=_id(CHECKIN_KIND, n),
             struggle_id=STRUGGLE,
             due_date=due,
-            offered_at=None if is_two else now - timedelta(days=3),
+            offered_at=now - DEMO2_CARD_AGE if is_two else now - timedelta(days=3),
             is_demo=True,
             created_at=checkin_at,
         )
     )
     await session.flush()
+    if is_two:
+        card = followup.ask_message(
+            load_library().get(STRUGGLE), module_id=MODULE, checkin_outcome="most"
+        )
+        stamp = now - DEMO2_CARD_AGE
+        card_id = uuid.uuid5(_id(FOLLOWUP_KIND, n), "card")
+        await session.execute(delete(Message).where(Message.id == card_id))  # a re-seed replaces it
+        session.add(
+            Message(
+                id=card_id,
+                teacher_id=teacher_id,
+                direction="out",
+                channel="web",
+                channel_msg_id="seed-demo2-followup",
+                kind=card.kind,
+                text=card.text_hi,
+                buttons=[b.model_dump() for b in card.buttons],
+                created_at=stamp,
+                updated_at=stamp,
+            )
+        )
     if not is_two:  # demo3 already answered: still stuck
         session.add(
             ClassFollowupOutcome(

@@ -315,7 +315,9 @@ async def test_logout_resets_demo_teacher_to_seed(session: AsyncSession, login: 
         assert scene is not None and scene.status == "active"
         assert scene.engine_state["one_on_one"] is True
         assert scene.engine_state["teacher_turns"] == 1
-        assert len(after["messages"]) == 5
+        assert (
+            len(after["messages"]) == 6
+        )  # the five seeded rehearsal messages + the follow-up card
 
 
 async def test_logout_does_not_reset_a_non_demo_teacher(session: AsyncSession) -> None:
@@ -393,7 +395,7 @@ async def test_admin_reset_restores_one_on_one_and_modules_like_logout(
     admin_state = await _scene_one_on_one_state(session, demo2)
     assert admin_state["rehearse_mode"] == "one_on_one"
     assert admin_state["scene_active"] is True
-    assert admin_state["messages"] == 5
+    assert admin_state["messages"] == 6  # five rehearsal messages + the seeded follow-up card
     modules = (
         (await session.execute(select(ModuleProgress).where(ModuleProgress.teacher_id == demo3)))
         .scalars()
