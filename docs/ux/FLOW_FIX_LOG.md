@@ -49,3 +49,8 @@ Left alone on purpose, listed: chunk summaries and source titles from documents 
 - Existing tests that asserted the old placeholder were updated (`test_trainer_report`, `test_arp_digest`).
 - check_first_load: first-load 130210 bytes (was 130226): 16 bytes fewer, only because catalog strings embedded in the teacher page lost their dashes. No static file was edited.
 - Gate run: ruff, mypy --strict, test_dash_free, test_trainer_report, test_arp_digest, test_teacher_address, test_demo_data, test_act_tagger, test_security, test_wording_polish, test_followup, test_flow_followup, test_messages_en, test_llm, test_review_console, test_teacher_pwa, test_score_sharing_consent.
+
+## F5 Docs: DONE
+- `docs/ux/PHONE_TEST_CHECKLIST.md`: J1 to J3 updated for the lead-in, the order and the way back; new J9 (help question mid-scene), J10 (name step), J11 (no long dashes).
+- `docs/ux/DEMO_SCRIPT.md`: follow-up text with the lead-in, the landing order, the way-back line and the help line.
+- Gate run: test_freeze_check (11 passed) before and after the edit.

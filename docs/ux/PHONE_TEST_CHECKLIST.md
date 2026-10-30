@@ -83,14 +83,17 @@ Needs the hosted site seeded with this code (`SEED_ON_BOOT=true` once, or the se
 
 | # | Taps | Expected |
 |---|---|---|
-| J1 | Log in as `teacher.demo2`, open the chat. | At the end of the thread a message "कल का अभ्यास कैसा रहा? ..." with 3 buttons: "काम किया", "अब भी अटके हैं", "आज़मा नहीं सके". Header, scene bar and input stay fully on screen. |
-| J2 | Tap "काम किया". Tap it again. | First tap: one short acknowledgement, no praise words. Second tap: "यह जवाब दर्ज हो चुका है।" and nothing else. |
-| J3 | Log out, log in again, tap "अब भी अटके हैं". | A different source chip than the check-in tip (tap it: the passage opens), then "रवि के साथ अभ्यास" and "हैंडबुक से पूछें". |
-| J4 | Log out, log in, tap "आज़मा नहीं सके", then "कई कक्षाएँ साथ". | Four reason buttons (all fit on screen, titles not cut). Then a line about "स्तर से समूह बनाएँ" with that button. Nothing shaming. |
+| J1 | Log in as `teacher.demo2`, open the chat. | The follow-up is the first message, before any scene line: "कल आपने कक्षा के बाद बताया था कि 'हासिल वाला घटाव' में ज़्यादातर बच्चे अटके। आज अभ्यास कैसा रहा? ..." with 3 buttons: "काम किया", "अब भी अटके हैं", "आज़मा नहीं सके". Header, scene bar and input stay fully on screen. |
+| J2 | Tap "काम किया". Tap it again. | First tap: one short acknowledgement, no praise words, then a line "अब वापस ...: बोर्ड पर 43 − 27 है। ..." with the button "वापस अभ्यास पर" (never a dead end). Second tap: "यह जवाब दर्ज हो चुका है।", again with the way back. Tap "वापस अभ्यास पर": "अब वापस रवि के पास: अपनी अगली बात कहिए।" and the scene is as it was. |
+| J3 | Log out, log in again, tap "अब भी अटके हैं". | A different source chip than the check-in tip (tap it: the passage opens), then "रवि के साथ अभ्यास" and "हैंडबुक से पूछें" (inside a scene: the way back to the scene instead of the practice button). |
+| J4 | Log out, log in, tap "आज़मा नहीं सके", then "कई कक्षाएँ साथ". | Four reason buttons (all fit on screen, titles not cut). Then a line about "स्तर से समूह बनाएँ" with that button, and inside a scene also "वापस अभ्यास पर". Nothing shaming. |
 | J5 | Log in as `arp.demo`, open `/arp`, scroll to **कक्षा-भ्रमण सूची**. Tap one teacher, tick two talk moves, pick one next step, save. | A closed form with no text box. After saving, the page reloads with "कक्षा-भ्रमण दर्ज हो गया।". Tap targets are at least finger size at 360 px. |
 | J6 | Log in as `trainer.demo`, scroll to **शिक्षकों ने बताया बनाम भ्रमण में दिखा**. | Two rows with "बताया: काम किया ..., अब भी अटके ..., आज़मा नहीं सके ..." and, for the first, "भ्रमण में अभ्यास दिखा: 12 बार"; the second row says the visit count is hidden. The caption says these are not learning outcomes. A "डेमो डेटा" label is visible. |
 | J7 | Log in as `teacher.demo3`, finish the week to the week-done message. | One line "क्यों अभी यह: ..." inside the week-done message (no new strip). After the "next" tap, the same line leads the learn message. |
 | J8 | Switch the interface to English on each of the above. | The same screens in English, no Hindi left in buttons, button titles not cut. |
+| J9 | Open a scene with Ravi, send one line (for example "तुमने कैसे किया?"), then type "Ab kya karien ?" (also try "अब क्या करें" and "help"). | A coach bubble tells you what to do next (ask Ravi how he did it, use bundles and sticks) and ends with "अभ्यास पूरा करने के लिए 'बस' लिखें।". Ravi does not answer, the turn counter does not move. A line to Ravi such as "रवि, अब क्या करोगे?" still reaches Ravi. |
+| J10 | Log in as a new teacher up to the name step and type "मेरा नाम रिया है।". Then try a long sentence. | The name is stored as "रिया" (the next question greets "रिया जी"). The long sentence gets "सिर्फ़ अपना नाम लिखिए, जैसे: रिया।" and the step does not move on. |
+| J11 | Read any bot message, the banners and the error lines on the above. | No long dash (em dash or en dash) as a separator anywhere. |
 
 ## Not testable on web
 
