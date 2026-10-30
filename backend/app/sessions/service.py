@@ -50,6 +50,7 @@ from backend.app.llm.roles.module_check import check_module
 from backend.app.llm.roles.question_classifier import classify_question
 from backend.app.llm.schemas import RetrievedChunk
 from backend.app.rehearsal.diagnosis import DiagnosisResult
+from backend.app.rehearsal.header import scene_header
 from backend.app.rehearsal.scene_runner import ChildLineRecord, SceneRunner, load_move_card
 from backend.app.rehearsal.scene_store import scene_store
 from backend.app.retrieval.search import GuideRetriever, get_guide_retriever
@@ -936,15 +937,63 @@ class SessionService:
         )
         if ctx.onboarding_state != OnboardingStateEnum.READY or busy:
             return []
-        row = await self.repo.next_due_followup(teacher_id, followup.ist_date(followup.utcnow()))
+        now = followup.utcnow()
+        today = followup.ist_date(now)
+        row = await self.repo.next_due_followup(teacher_id, today)
         if row is None or row.offered_at is not None:
             return []
+        day_start = datetime.combine(today, datetime.min.time(), tzinfo=followup.IST)
+        if await self.repo.recent_followup_outcomes(teacher_id, day_start.astimezone(UTC)):
+            return []  # she already answered one today: never a second the same day
+        _, scene, spoken = await self._followup_scene(ctx, teacher_id)
+        if spoken:
+            return []  # never in the middle of a scene she has started talking in
         await self.repo.mark_followup_offered(row.id)
         checkin_flow.finish(ctx)
         ctx.followup_id = str(row.id)
         ctx.followup_stage = followup.STAGE_ASK
         await self._sync_context_to_db(ctx, teacher_id)
-        return [followup.ask_message(load_library().get(row.struggle_id))]
+        checkin = await self.repo.get_class_checkin(row.checkin_id)
+        return [
+            followup.ask_message(
+                load_library().get(row.struggle_id),
+                module_id=checkin.module_id if checkin is not None else None,
+                checkin_outcome=checkin.outcome if checkin is not None else None,
+            )
+        ]
+
+    async def _followup_scene(
+        self, ctx: SessionContext, teacher_id: UUID
+    ) -> tuple[bool, dict[str, Any] | None, bool]:
+        """(in a scene screen, the scene bar data if a scene is running, she has spoken in it)."""
+        in_scene = ctx.current_state in (
+            SessionStateEnum.REHEARSE_INTRO,
+            SessionStateEnum.REHEARSE,
+        )
+        if not in_scene:
+            return False, None, False
+        record = await scene_store.get_active_for_teacher(teacher_id)
+        header = scene_header(record.scene_state, record.active, record.turns) if record else None
+        spoken = bool(header and int(header.get("turn", 0)) >= 1)
+        return True, header, spoken or ctx.rehearsal_turns_count >= 1
+
+    async def _followup_close(
+        self, ctx: SessionContext, teacher_id: UUID, messages: list[OutboundMessage]
+    ) -> list[OutboundMessage]:
+        """Every answer ends with a next step: back to the scene, or the usual next buttons."""
+        in_scene, header, _ = await self._followup_scene(ctx, teacher_id)
+        if in_scene:
+            return [*messages, followup.back_to_scene_message(header)]
+        if messages and messages[-1].buttons:
+            return messages
+        buttons = [
+            Button(id="btn_progress", title_hi=get_message("btn_progress", ctx.address_form)),
+            *self._checkin_entry_buttons(),
+        ]
+        return [
+            *messages,
+            OutboundMessage(kind="buttons", text_hi=get_message("fu_next_idle"), buttons=buttons),
+        ]
 
     async def _handle_followup_button(
         self, ctx: SessionContext, teacher_id: UUID, button_id: str
@@ -959,10 +1008,12 @@ class SessionService:
         if row is not None and row.teacher_id != teacher_id:
             row = None
         answered = row is not None and await self.repo.get_followup_outcome(row.id) is not None
-        in_scene = ctx.current_state in (
-            SessionStateEnum.REHEARSE_INTRO,
-            SessionStateEnum.REHEARSE,
-        )
+        in_scene, _, _ = await self._followup_scene(ctx, teacher_id)
+        if button_id == followup.BTN_BACK:
+            if not in_scene:
+                return await self._followup_close(ctx, teacher_id, [followup.already_message()])
+            prompt = self._get_resume_prompt(ctx, SessionStateEnum.REHEARSE, ctx.address_form)
+            return [OutboundMessage(kind="text", text_hi=prompt)]
         res = followup.handle_button(
             ctx,
             button_id,
@@ -1001,7 +1052,9 @@ class SessionService:
         if res.went_worked:
             ctx.followup_id = ""
         await self._sync_context_to_db(ctx, teacher_id)
-        return messages
+        if ctx.followup_stage == followup.STAGE_WHY:  # the reason screen is the next step itself
+            return messages
+        return await self._followup_close(ctx, teacher_id, messages)
 
     async def _launch_checkin_practice(
         self, ctx: SessionContext, teacher_id: UUID, move_id: str

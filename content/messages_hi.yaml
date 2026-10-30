@@ -1290,6 +1290,15 @@ lvl_command_words: {text: "कक्षा को समूहों में �
 # ── Follow-up loop (flag FOLLOWUP_ENABLED): "How did yesterday's practice go?" ──
 fu_ask: {text: "कल का अभ्यास कैसा रहा? '{label}' के लिए जो तरीका आज़माना था, उसके बारे में एक बटन दबाइए।", audio: false}
 fu_unknown_label: {text: "पिछली कक्षा की दिक्कत", audio: false}
+fu_ask_leadin: {text: "कल आपने कक्षा के बाद बताया था कि '{module}' में {outcome}। आज अभ्यास कैसा रहा? '{label}' के लिए जो तरीका आज़माना था, उसके बारे में एक बटन दबाइए।", audio: false}
+fu_leadin_well: {text: "अभ्यास अच्छा रहा", audio: false}
+fu_leadin_some: {text: "कुछ बच्चे अटके", audio: false}
+fu_leadin_most: {text: "ज़्यादातर बच्चे अटके", audio: false}
+btn_fu_back: {text: "वापस अभ्यास पर", audio: false}
+fu_back_one: {text: "अब वापस {child} के पास: बोर्ड पर {board} है। {child} से पूछिए कि उसने यह कैसे किया।", audio: false}
+fu_back_group: {text: "अब वापस बच्चों के पास: बोर्ड पर {board} है। किसी एक बच्चे का नाम लेकर पूछिए कि उसने यह कैसे किया।", audio: false}
+fu_back_setup: {text: "अब वापस अभ्यास पर: ऊपर दिए बटनों में से चुनकर आगे बढ़िए।", audio: false}
+fu_next_idle: {text: "आगे के लिए: अपनी प्रगति देखिए, या कक्षा के बाद की जाँच दर्ज कीजिए।", audio: false}
 btn_fu_worked: {text: "काम किया", audio: false}
 btn_fu_stuck: {text: "अब भी अटके हैं", audio: false}
 btn_fu_cant: {text: "आज़मा नहीं सके", audio: false}

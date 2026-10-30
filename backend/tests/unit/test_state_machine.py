@@ -699,6 +699,9 @@ class FakeSessionRepository(SessionRepository):
     async def get_followup(self, followup_id: UUID) -> ClassFollowup | None:
         return next((f for f in self._followups if f.id == followup_id), None)
 
+    async def get_class_checkin(self, checkin_id: UUID) -> ClassCheckin | None:
+        return next((c for c in self._class_checkins if c.id == checkin_id), None)
+
     async def get_followup_outcome(self, followup_id: UUID) -> ClassFollowupOutcome | None:
         return next((o for o in self._followup_outcomes if o.followup_id == followup_id), None)
 
