@@ -316,12 +316,20 @@ class SceneRunner:
             persona = self.personas.get(resp.persona_id)
             if not persona:
                 return None
+            own_lines = [
+                cl.line_hi
+                for past_turn in scene.turns
+                for cl in past_turn.child_lines
+                if cl.persona_id == resp.persona_id and cl.line_hi
+            ]
             spoken_line = await voice_child_line(
                 response=resp,
                 persona=persona,
                 last_4_lines=last_4,
                 turn_idx=scene_state.teacher_turns,
                 address_form=address_form,
+                previous_line=own_lines[-1] if own_lines else None,
+                teacher_said=transcript,
             )
             return ChildLineRecord(
                 persona_id=resp.persona_id,

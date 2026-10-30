@@ -239,6 +239,7 @@ class Settings(BaseSettings):
     FIDELITY_CONFIDENCE_THRESHOLD: float = 0.60
     GUIDE_CONFIDENCE_THRESHOLD: float = 0.60
     MAX_CHILD_LINE_WORDS: int = 25
+    TEACHER_SAID_MAX_CHARS: int = 400  # how much of her last turn the child_voice prompt sees
     # Lines that voice 2-3 reasoning steps (explain_bug, relapse, scaffolded_correct,
     # correct_explained) must carry opener + steps (~20 words, measured on regroup items) +
     # the answer; 25 forced truncation that dropped the answer. 30 words is ~10-12 s of child TTS

@@ -56,6 +56,7 @@ def template_line(
     persona: PersonaCard | None = None,
     turn_idx: int = 0,
     address_form: str | None = "f",
+    previous_line: str | None = None,
 ) -> str:
     """Deterministic template fallback line for a child response (spec/05 §5.5).
 
@@ -69,8 +70,43 @@ def template_line(
     - CONFUSED: "<दीदी or सर>, ये तो बहुत बड़ा है… समझ नहीं आया।" (no address word if unknown)
 
     The address word follows `address_form` (f: दीदी, m: सर, unknown: none); see `fix_address`.
+    Given `previous_line` (this child's last line), the line differs from it: the variants in
+    `_VARIANTS` are tried in order, plain line first, and only guard-clean ones are used.
     """
-    return fix_address(_template_line(response, persona, turn_idx, address_word(address_form)), address_form)
+    word = address_word(address_form)
+    base = fix_address(_template_line(response, persona, turn_idx, word), address_form)
+    if not previous_line or not base:
+        return base
+    prior = _norm(previous_line)
+    for lead, tail in _VARIANTS.get(response.kind, ()):
+        candidate = _variant(base, response, lead, tail)
+        if _norm(fix_address(candidate, address_form)) != prior and guard_child_line(
+            candidate, response
+        )[0]:
+            return fix_address(candidate, address_form)
+    return base
+
+
+# (lead-in, ending) pairs per kind; ("", "") is the plain line. No numbers, no digressions.
+_VARIANTS: dict[ResponseKind, tuple[tuple[str, str], ...]] = {
+    ResponseKind.ANSWER: (("", ""), ("मेरा तो ", " आया!"), ("", " ही है!"), ("मुझे तो ", " आया।")),
+    ResponseKind.EXPLAIN_BUG: (("", ""), ("देखो, ", ""), ("मैंने तो ऐसे किया: ", ""), ("सुनो, ", "")),
+    ResponseKind.RELAPSE: (("", ""), ("देखो, ", ""), ("मैंने तो ऐसे किया: ", ""), ("सुनो, ", "")),
+    ResponseKind.CORRECT_EXPLAINED: (("", ""), ("देखो, ", ""), ("सुनो, ", "")),
+    ResponseKind.SCAFFOLDED_CORRECT: (("", ""), ("हम्म, देखो… ", ""), ("सोचने दो… ", "")),
+    ResponseKind.PARROT: (("", ""), ("हम्म… ", ""), ("सच में? ", "")),
+}
+
+
+def _norm(line: str) -> str:
+    return " ".join(line.split())
+
+
+def _variant(base: str, response: ChildResponse, lead: str, tail: str) -> str:
+    """`base` with a lead-in; a bare answer line is rebuilt around the answer instead."""
+    if response.kind == ResponseKind.ANSWER:
+        return f"{lead}{response.answer}{tail or '!'}"
+    return f"{lead}{base}"
 
 
 def _template_line(
@@ -196,15 +232,36 @@ def _answer_rule(response: ChildResponse) -> str:
     return f"You MUST say the answer {response.answer}, and finish the line with it."
 
 
+def _no_repeat_rule(previous_line: str | None) -> str:
+    """The prompt sentence that stops the child repeating himself while keeping the same mistake."""
+    if not previous_line or not previous_line.strip():
+        return ""
+    return (
+        f"\nYour previous line in this scene was: «{_norm(previous_line)}»\n"
+        "Do not repeat it. React to what the teacher just said, in new words, while keeping the "
+        "same mistake. If she explained a method in words, answer that explanation: say you did "
+        "not follow it and that you still do it your own way (for example «मुझे समझ नहीं आया, "
+        "मैं तो अपने तरीके से ही करता हूँ...»), using only the numbers you are allowed."
+    )
+
+
 async def voice_child_line(
     response: ChildResponse,
     persona: PersonaCard,
     last_4_lines: list[str] | None = None,
     turn_idx: int = 0,
     address_form: str | None = "f",
+    previous_line: str | None = None,
+    teacher_said: str | None = None,
 ) -> str:
-    """One child line, with the address word forced to the teacher's form (text-only last check)."""
-    line = await _voice_child_line(response, persona, last_4_lines, turn_idx, address_form)
+    """One child line, with the address word forced to the teacher's form (text-only last check).
+
+    `previous_line` is this child's last line in the scene; the new line is never identical to it.
+    `teacher_said` is what the teacher just said, so the child can react to it.
+    """
+    line = await _voice_child_line(
+        response, persona, last_4_lines, turn_idx, address_form, previous_line, teacher_said
+    )
     return fix_address(line, address_form)
 
 
@@ -214,6 +271,8 @@ async def _voice_child_line(
     last_4_lines: list[str] | None,
     turn_idx: int,
     address_form: str | None,
+    previous_line: str | None,
+    teacher_said: str | None,
 ) -> str:
     """Voices one child line using Claude fast model, with guard and template fallback.
 
@@ -225,7 +284,7 @@ async def _voice_child_line(
         return ""
     if response.kind == ResponseKind.CONFUSED:
         # Out-of-range problem: the child just says it is too big. Nothing to voice, no answer.
-        return template_line(response, persona, turn_idx, address_form)
+        return template_line(response, persona, turn_idx, address_form, previous_line)
 
     prompt_path = Path(__file__).resolve().parent.parent / "prompts" / f"{PROMPT_VERSION}.md"
     if prompt_path.exists():
@@ -250,11 +309,16 @@ async def _voice_child_line(
         allowed_numbers=sorted(response.allowed_numbers),
         forbidden=sorted(response.forbidden),
         address_rule=address_rule(address_form),
+        no_repeat_rule=_no_repeat_rule(previous_line),
     )
 
     context_lines = "\n".join(last_4_lines) if last_4_lines else "कक्षा में अभ्यास चल रहा है।"
+    said = ""
+    if teacher_said and teacher_said.strip():
+        said = f"The teacher just said: «{_norm(teacher_said)[: settings.TEACHER_SAID_MAX_CHARS]}»\n\n"
     user_message = (
-        f"Recent dialogue in classroom:\n{context_lines}\n\nVoice {persona.name_hi}'s next line."
+        f"Recent dialogue in classroom:\n{context_lines}\n\n{said}"
+        f"Voice {persona.name_hi}'s next line."
     )
     messages: list[dict[str, Any]] = [{"role": "user", "content": user_message}]
 
@@ -278,6 +342,12 @@ async def _voice_child_line(
             parsed = ChildVoiceOutput.model_validate(tool_input)
             is_valid, err_msg = guard_child_line(parsed.line_hi, response)
             record_guard_event("child_voice", attempt, is_valid, err_msg)
+            if (
+                is_valid
+                and previous_line
+                and _norm(fix_address(parsed.line_hi, address_form)) == _norm(previous_line)
+            ):
+                is_valid, err_msg = False, "identical to your previous line"
             if is_valid:
                 latency_ms = int((time.perf_counter() - started) * 1000)
                 logger.info(
@@ -342,4 +412,5 @@ async def _voice_child_line(
         persona=persona,
         turn_idx=turn_idx,
         address_form=address_form,
+        previous_line=previous_line,
     )

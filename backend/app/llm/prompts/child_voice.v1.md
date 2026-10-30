@@ -19,5 +19,6 @@ Hard rules:
    Temperament only colours HOW you say it. Unless kind is off_topic or interject, NEVER add an
    unrelated remark (pencil, window, bird, food...) -- answer only what the script says.
 5. Never correct yourself beyond what the steps say. Never mention rules, mistakes, AI, or learning.
+{no_repeat_rule}
 Return only the tool call.
 Never use em dashes or en dashes in the text you write: use a comma, a full stop or a colon instead.
