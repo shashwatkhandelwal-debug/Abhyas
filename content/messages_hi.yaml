@@ -67,6 +67,9 @@ placement_fb_objects:
 placement_fb_told:
   text: "आपने रवि को सही उत्तर बता दिया, पर उसने खुद सोचकर नहीं निकाला।"
   audio: false
+placement_fb_told_later:
+  text: "फिर आपने खुद तरीका बता दिया; अगली बार रवि को खुद करने दें।"
+  audio: false
 placement_fb_none:
   text: "आपने रवि से बात की।"
   audio: false
@@ -87,6 +90,9 @@ ready_first_move:
   audio: true
 
 # ── Weekly loop ───────────────────────────────────────────────
+learn_intro_announced:
+  text: "मुख्य बातें नीचे लिखी हैं:"
+  audio: false
 learn_intro:
   text: "इस हफ्ते का तरीका: {move_title}। मुख्य बातें नीचे लिखी हैं:"
   audio: false

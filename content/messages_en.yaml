@@ -23,12 +23,14 @@ placement_fb_asked: {text: "You asked Ravi how he got 45, good."}
 placement_fb_words: {text: "You explained the method in words, but Ravi is still making the same mistake."}
 placement_fb_objects: {text: "You showed it with bundles and sticks, which is the easiest way for children to see it."}
 placement_fb_told: {text: "You told Ravi the right answer, but he did not work it out himself."}
+placement_fb_told_later: {text: "Then you told the method yourself; next time let Ravi do it himself."}
 placement_fb_none: {text: "You talked with Ravi."}
 placement_fb_why_told: {text: "So we will start with '{move_title}', where the child gets the chance to think for himself."}
 placement_fb_why_words: {text: "So we will start with '{move_title}'."}
 placement_fb_why_objects: {text: "So we will start with '{move_title}', to make this way of teaching stronger."}
 placement_fb_why_default: {text: "So we will start with '{move_title}'."}
 ready_first_move: {text: "Your first move is: {move_title}. Let's begin!"}
+learn_intro_announced: {text: "The key points are written below:"}
 learn_intro: {text: "This week's move: {move_title}. The key points are written below:"}
 learn_intro_audio: {text: "This week's move: {move_title}. First listen to this 2-minute voice note. The key points are written below:"}
 explain_back_prompt: {text: "Now, in 1 minute, tell me in your own words: what is the most important thing in this move? Send it by voice or by typing."}

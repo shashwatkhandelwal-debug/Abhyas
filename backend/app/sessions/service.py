@@ -44,6 +44,7 @@ from backend.app.core.types import Button, Citation, InboundMessage, OutboundMes
 from backend.app.db.models import Message
 from backend.app.handbook.fallback import fallback_reply, match_handbook_question
 from backend.app.llm.client import LLMUnavailable
+from backend.app.llm.roles.child_voice import teacher_is_telling
 from backend.app.llm.roles.coach import coach_feedback
 from backend.app.llm.roles.coach_suggestion import SuggestionResult, suggest_from_sources
 from backend.app.llm.roles.fidelity_checker import check_fidelity
@@ -119,14 +120,20 @@ class SessionService:
         struggle_ids: list[str] | None = None,
         audio_ref: str | None = None,
         experience_band: str | None = None,
+        move_announced: bool = False,
     ) -> list[OutboundMessage]:
         """Builds one or two bubbles for the learn step according to one-language-per-bubble rule.
+
+        `move_announced`: the move's name was just said (the onboarding feedback), so the intro
+        goes straight to the key points instead of naming it again.
 
         Bubble 1 is the move introduction (in the teacher's UI language). If official tips or
         excerpts exist in Hindi, they form their own separate bubble (Bubble 2, speaker="guide")
         so English and Hindi text never mix inside a single bubble.
         """
         intro_key = "learn_intro_audio" if audio_ref else "learn_intro"
+        if move_announced and not audio_ref:
+            intro_key = "learn_intro_announced"
         intro = get_message(intro_key, address_form, move_title=move_title(move.id))
         reason = personalise.because(move.id, struggle_ids or [])
         if reason is not None:
@@ -2101,6 +2108,12 @@ class SessionService:
                     placement_acts = [a for t in (scene.turns if scene else []) for a in t.acts]
                     if turn_res:
                         placement_acts.extend(turn_res.turn.acts)
+                    later_turns = [(t.transcript, t.acts) for t in (scene.turns if scene else [])][
+                        1:
+                    ]
+                    if turn_res:
+                        later_turns.append((text_content, list(turn_res.turn.acts)))
+                    told_later = any(teacher_is_telling(said, acts) for said, acts in later_turns)
                     ready_outbounds: list[OutboundMessage] = []
                     if turn_res:
                         ready_outbounds.extend(turn_res.outbound)
@@ -2112,21 +2125,16 @@ class SessionService:
                                     placement_acts,
                                     move_title(first_move.id),
                                     ctx.address_form,
+                                    told_later=told_later,
                                 ),
                             ),
-                            OutboundMessage(
-                                kind="text",
-                                text_hi=get_message(
-                                    "ready_first_move",
-                                    ctx.address_form,
-                                    move_title=move_title(first_move.id),
-                                ),
-                            ),
+                            # the feedback above names the move once; no second announcement
                             *await self._build_learn_messages(
                                 first_move,
                                 ctx.address_form,
                                 ctx.class_struggles,
                                 experience_band=ctx.experience_band,
+                                move_announced=True,
                             ),
                         ]
                     )
