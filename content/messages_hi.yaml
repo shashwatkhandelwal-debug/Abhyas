@@ -1371,3 +1371,14 @@ ui_gap_card_link: {text: "कार्ड देखें", audio: false}
 ui_gap_back: {text: "वापस प्रशिक्षक पृष्ठ पर", audio: false}
 ui_gap_card_points: {text: "मुख्य बातें", audio: false}
 ui_gap_card_source: {text: "स्रोत", audio: false}
+focus_offer: {text: "क्या हर दिन चैट खोलने पर एक छोटा सुझाव दिखाएँ?", audio: false}
+btn_focus_yes: {text: "हाँ", audio: false}
+btn_focus_no: {text: "अभी नहीं", audio: false}
+btn_focus_off: {text: "बंद करें", audio: false}
+btn_focus_practice: {text: "अभ्यास करें", audio: false}
+btn_focus_ask: {text: "हैंडबुक से पूछें", audio: false}
+focus_card_head: {text: "आज का सुझाव", audio: false}
+focus_card_body: {text: "'{label}' के लिए एक कदम:\n{tip}\n{sources}", audio: false}
+focus_on_ack: {text: "ठीक है। अब हर दिन चैट खोलने पर एक सुझाव दिखेगा। आप 'बंद करें' दबाकर इसे कभी भी रोक सकते हैं।", audio: false}
+focus_snooze_ack: {text: "ठीक है, अभी नहीं। एक हफ्ते से पहले दोबारा नहीं पूछेंगे।", audio: false}
+focus_off_ack: {text: "ठीक है, रोज़ के सुझाव बंद कर दिए।", audio: false}

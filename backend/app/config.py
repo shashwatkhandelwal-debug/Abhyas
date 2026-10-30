@@ -379,7 +379,6 @@ class Settings(BaseSettings):
     TRAINING_GAP_WINDOW_DAYS: int = 30  # rehearsals counted: the last this many days
     FOCUS_CARD_ENABLED: bool = False  # "आज का सुझाव": one cited step when an opted-in teacher opens the chat
     FOCUS_OFFER_INTERVAL_DAYS: int = 7  # the opt-in is offered at most once in this many days
-    FOCUS_CARD_INTERVAL_HOURS: int = 20  # at most one focus card in this many hours
     FAST_START_ENABLED: bool = False  # experienced teachers may go straight to practice
     FAST_START_BANDS: tuple[str, ...] = ("6-10", "10+")  # experience bands offered the shortcut
     MODEL_AUDIO_ENABLED: bool = False  # model-practice message carries cached audio when it exists

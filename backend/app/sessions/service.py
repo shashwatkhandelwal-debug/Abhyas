@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.class_profile import (
     adaptive,
     checkin_flow,
+    focus,
     followup,
     level_sorter,
     personalise,
@@ -946,6 +947,86 @@ class SessionService:
         await self._sync_context_to_db(ctx, teacher_id)
         return [followup.ask_message(load_library().get(row.struggle_id))]
 
+    async def offer_focus(self, teacher_id: UUID) -> list[OutboundMessage]:
+        """She opened the chat: the opt-in question, or today's focus card (flag FOCUS_CARD_ENABLED).
+
+        After any due follow-up (the caller offers that first). Never in the middle of a scene she
+        has started, never with a screen of another tool open, and the card only with a citation.
+        """
+        if not focus.enabled():
+            return []
+        ctx = await self.get_or_create_context(teacher_id)
+        busy = (
+            ctx.checkin_stage not in ("", checkin_flow.STAGE_RESULT)
+            or ctx.level_stage
+            or ctx.rating_stage
+            or ctx.class_stage
+            or ctx.skill_stage
+            or ctx.awaiting_delete_confirm
+            or (ctx.current_state == SessionStateEnum.REHEARSE and ctx.rehearsal_turns_count > 0)
+        )
+        if ctx.onboarding_state != OnboardingStateEnum.READY or busy:
+            return []
+        teacher = await self.repo.get_or_create_teacher(teacher_id)
+        opted_in = bool(teacher.tomorrow_focus_opt_in)
+        now = followup.utcnow()
+        if opted_in:
+            last_card = await self.repo.last_outbound_button_time(teacher_id, (focus.CARD_MARKER,))
+            if not focus.card_due(opted_in=True, last_card_at=last_card, now=now):
+                return []
+            return focus.card_messages(
+                await self._focus_struggle(ctx, teacher_id, now), address_form=ctx.address_form
+            )
+        since = now - timedelta(days=settings.ADAPTIVE_HISTORY_DAYS)
+        has_activity = bool(await self.repo.recent_checkins(teacher_id, since)) or bool(
+            await self.repo.done_move_ids(teacher_id, DONE_MIN_EVIDENCE)
+        )
+        # asked before, or had the daily card and turned it off: not again within the week
+        last_offer = await self.repo.last_outbound_button_time(
+            teacher_id, (focus.OFFER_MARKER, focus.CARD_MARKER)
+        )
+        if focus.offer_due(
+            opted_in=False, has_activity=has_activity, last_offer_at=last_offer, now=now
+        ):
+            return [focus.offer_message(ctx.address_form)]
+        return []
+
+    async def _focus_struggle(
+        self, ctx: SessionContext, teacher_id: UUID, now: datetime
+    ) -> str | None:
+        since = now - timedelta(days=settings.ADAPTIVE_HISTORY_DAYS)
+        checkins = await self.repo.recent_checkins(teacher_id, since)
+        return focus.last_struggle([list(c.struggle_ids) for c in checkins], ctx.class_struggles)
+
+    async def _handle_focus_button(
+        self, ctx: SessionContext, teacher_id: UUID, button_id: str
+    ) -> list[OutboundMessage]:
+        res = focus.handle_button(button_id, ctx.address_form)
+        if res.opt_in is not None:
+            teacher = await self.repo.get_or_create_teacher(teacher_id)
+            teacher.tomorrow_focus_opt_in = res.opt_in
+            await self.repo.save_teacher(teacher)
+        if res.practice:
+            sid = await self._focus_struggle(ctx, teacher_id, followup.utcnow())
+            struggle = load_library().get(sid) if sid else None
+            if (
+                struggle is None
+                or struggle.move_id is None
+                or ctx.current_state == SessionStateEnum.REHEARSE
+            ):
+                return [followup.already_message()]
+            return await self._launch_checkin_practice(ctx, teacher_id, struggle.move_id)
+        if res.handbook:
+            if ctx.current_state != SessionStateEnum.ASK:
+                ctx.prior_state_before_ask = ctx.current_state
+                ctx.current_state = SessionStateEnum.ASK
+            await self._sync_context_to_db(ctx, teacher_id)
+            return [
+                OutboundMessage(kind="text", text_hi=get_message("ask_prompt", ctx.address_form))
+            ]
+        await self._sync_context_to_db(ctx, teacher_id)
+        return res.messages
+
     async def _handle_followup_button(
         self, ctx: SessionContext, teacher_id: UUID, button_id: str
     ) -> list[OutboundMessage]:
@@ -1092,6 +1173,15 @@ class SessionService:
             and not ctx.awaiting_delete_confirm
         ):
             return await self._handle_followup_button(ctx, teacher_id, str(btn_id))
+
+        # 1''. "Today's focus" opt-in and card buttons (flag FOCUS_CARD_ENABLED)
+        if (
+            btn_id in focus.ALL_BUTTONS
+            and focus.enabled()
+            and ctx.onboarding_state == OnboardingStateEnum.READY
+            and not ctx.awaiting_delete_confirm
+        ):
+            return await self._handle_focus_button(ctx, teacher_id, str(btn_id))
 
         # 1a. "After class: how did it go?" (flag CLASS_CHECKIN_ENABLED): closed-list buttons only
         if (

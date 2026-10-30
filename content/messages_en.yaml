@@ -1029,3 +1029,14 @@ ui_gap_card_link: {text: "See the card"}
 ui_gap_back: {text: "Back to the trainer page"}
 ui_gap_card_points: {text: "Key points"}
 ui_gap_card_source: {text: "Source"}
+focus_offer: {text: "Show one short tip each day when you open the chat?"}
+btn_focus_yes: {text: "Yes"}
+btn_focus_no: {text: "Not now"}
+btn_focus_off: {text: "Turn off"}
+btn_focus_practice: {text: "Practise"}
+btn_focus_ask: {text: "Ask the handbook"}
+focus_card_head: {text: "Today's tip"}
+focus_card_body: {text: "One step for '{label}':\n{tip}\n{sources}"}
+focus_on_ack: {text: "Done. You will now see one tip each day when you open the chat. Tap 'Turn off' any time to stop."}
+focus_snooze_ack: {text: "Okay, not now. We will not ask again for a week."}
+focus_off_ack: {text: "Done, the daily tips are turned off."}

@@ -270,6 +270,7 @@ def tomorrow_focus(
     opted_in: bool,
     address_form: str = "f",
     lib: StruggleLibrary | None = None,
+    message_key: str = "fu_tomorrow_focus",
 ) -> TomorrowFocus | None:
     """A pure function: the one step (the struggle's stored tip and its citations) or None.
 
@@ -285,7 +286,7 @@ def tomorrow_focus(
     if not cites:
         return None
     tip = s.tip_en if get_ui_lang() == "en" else s.tip_hi
-    text = get_message("fu_tomorrow_focus", label=struggle_label(s), tip=tip, sources=sources)
+    text = get_message(message_key, label=struggle_label(s), tip=tip, sources=sources)
     return TomorrowFocus(s.id, text, tuple(cites))
 
 

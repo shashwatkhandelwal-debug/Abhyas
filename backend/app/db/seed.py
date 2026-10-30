@@ -554,6 +554,7 @@ async def reset_demo_teacher(session: AsyncSession, login: str) -> bool:
         teacher.class_struggles = list(_DEMO_CLASS_STRUGGLES[login])
         teacher.teaching_skills = list(_DEMO_TEACHING_SKILLS[login])
         teacher.class_profile_prompted_at = None
+        teacher.tomorrow_focus_opt_in = login == "teacher.demo2"
         teacher.start_seen_at = None  # the Start here screen shows again after every reset
         teacher.phone_hash = None
         teacher.preferred_channel = "web"
@@ -675,10 +676,12 @@ async def seed_database() -> None:
                 is_demo=True,
                 onboarding_state=OnboardingStateEnum.READY,
                 last_inbound_at=datetime.now(UTC),
+                tomorrow_focus_opt_in=True,  # demo2 sees "आज का सुझाव" (FOCUS_CARD_ENABLED)
             )
             session.add(t2)
         else:
             repair_onboarding_state(t2, OnboardingStateEnum.READY)
+            t2.tomorrow_focus_opt_in = True
 
         # Demo 3: Completed 3 moves
         t3 = await session.get(Teacher, TEACHER_DEMO3_ID)
