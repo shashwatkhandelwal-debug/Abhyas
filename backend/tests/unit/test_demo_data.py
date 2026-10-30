@@ -33,7 +33,12 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import settings
-from backend.app.db.demo_data import SEED_TEACHER_IDS, populate_demo_cohort, repair_onboarding_state
+from backend.app.db.demo_data import (
+    DEMO_GAP_SCENE_PREFIX,
+    SEED_TEACHER_IDS,
+    populate_demo_cohort,
+    repair_onboarding_state,
+)
 from backend.app.db.models import (
     AdoptionEvidence,
     AggModuleBatch,
@@ -314,9 +319,12 @@ async def test_populate_demo_cohort_rehearsals_link_to_scenes_with_turns() -> No
     session = FakeDemoSession()
     await populate_demo_cohort(cast(AsyncSession, session))
 
-    scenes = [o for o in session.added if isinstance(o, Scene)]
+    # the trainer's "Where training is not landing" demo scenes (T3) carry no score: leave them out
+    gap = DEMO_GAP_SCENE_PREFIX
+    scenes = [o for o in session.added if isinstance(o, Scene) and not str(o.id).startswith(gap)]
     rscores = [o for o in session.added if isinstance(o, RehearsalScore)]
-    turns = [o for o in session.added if isinstance(o, Turn)]
+    scene_ids = {s.id for s in scenes}
+    turns = [o for o in session.added if isinstance(o, Turn) and o.scene_id in scene_ids]
 
     assert len(rscores) == 51
     assert len(scenes) == 51

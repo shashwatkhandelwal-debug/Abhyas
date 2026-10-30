@@ -10,7 +10,10 @@
         <thead>
           <tr style="text-align: left;">
             <th style="padding: 0.4rem 0.5rem;">{{ get_message("ui_gap_move_col") }}</th>
-            {% for h in ["told_answer", "no_ask_why", "no_named_child", "no_concrete"] %}<th style="padding: 0.4rem 0.5rem;">{{ get_message("ui_gap_h_" ~ h) }}</th>{% endfor %}
+            <th style="padding: 0.4rem 0.5rem;">{{ get_message("ui_gap_h_told_answer") }}</th>
+            <th style="padding: 0.4rem 0.5rem;">{{ get_message("ui_gap_h_no_ask_why") }}</th>
+            <th style="padding: 0.4rem 0.5rem;">{{ get_message("ui_gap_h_no_named_child") }}</th>
+            <th style="padding: 0.4rem 0.5rem;">{{ get_message("ui_gap_h_no_concrete") }}</th>
           </tr>
         </thead>
         <tbody>

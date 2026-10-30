@@ -762,8 +762,11 @@ DEMO_GAP_MOVES = (
 _GAP_CHILDREN = ("ravi", "priya", "aman")
 
 
+DEMO_GAP_SCENE_PREFIX = "00000000-0000-0001-0009-"
+
+
 def _gap_scene_id(n: int) -> uuid.UUID:
-    return uuid.UUID(f"00000000-0000-0001-0009-{n:012x}")
+    return uuid.UUID(f"{DEMO_GAP_SCENE_PREFIX}{n:012x}")
 
 
 def _gap_turn_id(n: int, t: int) -> uuid.UUID:
