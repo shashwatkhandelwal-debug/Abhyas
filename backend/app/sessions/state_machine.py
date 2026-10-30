@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -78,6 +79,26 @@ STATE_PROMPT_KEYS: dict[str, str] = {
     SessionStateEnum.DONE: "week_done",
     SessionStateEnum.ASK: "ask_prompt",
 }
+
+
+def _fold(text: str) -> str:
+    return " ".join(unicodedata.normalize("NFC", text or "").split()).casefold()
+
+
+def address_form_of(token: str) -> str | None:
+    """'m' or 'f' for a clear choice (button id, button title in either language, or the word)."""
+    male = {"btn_male", "m", "male", "he", "man"}
+    female = {"btn_female", "f", "female", "she", "woman"}
+    for lang in ("hi", "en"):
+        male.add(_fold(get_message("btn_male", "m", lang=lang)))
+        female.add(_fold(get_message("btn_female", "f", lang=lang)))
+    t = _fold(token)
+    if t in male:
+        return "m"
+    if t in female:
+        return "f"
+    return None
+
 
 ONBOARDING_PROMPT_KEYS: dict[str, str] = {
     OnboardingStateEnum.NEW: "welcome",
@@ -1106,10 +1127,14 @@ class OnboardingStateMachine:
             )
 
         if prev == OnboardingStateEnum.PROFILE_ADDRESS:
-            if token in ("btn_male", get_message("btn_male", "m"), "m"):
-                self.ctx.address_form = "m"
-            else:
-                self.ctx.address_form = "f"
+            form = address_form_of(token)
+            if form is None:  # not one of the two choices: ask again, never guess a gender
+                return TransitionResult(
+                    previous_state=str(prev),
+                    new_state=str(OnboardingStateEnum.PROFILE_ADDRESS),
+                    message_keys=["ask_address_form"],
+                )
+            self.ctx.address_form = form
             self.ctx.onboarding_state = OnboardingStateEnum.PROFILE_EXPERIENCE
             return TransitionResult(
                 previous_state=str(prev),

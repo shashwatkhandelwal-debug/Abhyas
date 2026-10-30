@@ -566,6 +566,18 @@ class SessionService:
         ]
 
     @staticmethod
+    def _address_form_question(address_form: str) -> OutboundMessage:
+        """The address-form question with its two buttons (asked again on an unclear reply)."""
+        return OutboundMessage(
+            kind="buttons",
+            text_hi=get_message("ask_address_form", address_form),
+            buttons=[
+                Button(id="btn_female", title_hi=get_message("btn_female", address_form)),
+                Button(id="btn_male", title_hi=get_message("btn_male", address_form)),
+            ],
+        )
+
+    @staticmethod
     def _rating_buttons(address_form: str) -> list[Button]:
         """Three quick taps for the anchors; 2 and 4 (and all of 1-5) can be typed or spoken."""
         return [
@@ -1152,9 +1164,7 @@ class SessionService:
         history = await self.repo.rehearsal_history(teacher_id, settings.MY_PROGRESS_HISTORY_MAX)
         state = ctx.current_state.value
         ids = [
-            b
-            for b in self._HELP_BUTTONS.get(state, ())
-            if b != "btn_progress" and b != "btn_skip"
+            b for b in self._HELP_BUTTONS.get(state, ()) if b != "btn_progress" and b != "btn_skip"
         ]
         if state == SessionStateEnum.FEEDBACK.value:
             ids = ["btn_retry", "btn_continue"]  # the practice buttons of this very screen
@@ -1616,7 +1626,10 @@ class SessionService:
             and ctx.onboarding_state == OnboardingStateEnum.READY
             and not ctx.awaiting_delete_confirm
             and ctx.current_state in self._PROGRESS_STATES
-            and (btn_id in ("btn_progress", my_progress.BTN_PRACTICE) or matched_intent == Intent.PROGRESS)
+            and (
+                btn_id in ("btn_progress", my_progress.BTN_PRACTICE)
+                or matched_intent == Intent.PROGRESS
+            )
         ):
             if btn_id == my_progress.BTN_PRACTICE:
                 return await self._launch_checkin_practice(ctx, teacher_id, ctx.current_move_id)
@@ -1968,26 +1981,13 @@ class SessionService:
                             kind="text", text_hi=get_message("ask_name_again", address_form)
                         )
                     ]
-                return [
-                    OutboundMessage(
-                        kind="buttons",
-                        text_hi=get_message("ask_address_form", address_form),
-                        buttons=[
-                            Button(
-                                id="btn_female",
-                                title_hi=get_message("btn_female", address_form),
-                            ),
-                            Button(
-                                id="btn_male",
-                                title_hi=get_message("btn_male", address_form),
-                            ),
-                        ],
-                    )
-                ]
+                return [self._address_form_question(address_form)]
 
             elif current_onboarding == OnboardingStateEnum.PROFILE_ADDRESS:
                 osm.transition(btn_id or text_content)
                 await self._sync_context_to_db(ctx, teacher_id)
+                if ctx.onboarding_state == OnboardingStateEnum.PROFILE_ADDRESS:
+                    return [self._address_form_question(address_form)]  # unclear reply: ask again
                 default_name = (
                     get_message("btn_female", ctx.address_form)
                     if ctx.address_form == "f"

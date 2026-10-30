@@ -625,7 +625,9 @@ async def test_post_delete_on_shared_demo_login_resets_instead_of_deleting(
         cookies={SESSION_COOKIE_NAME: token},
     ) as client:
         resp = await client.post(
-            "/teacher/delete", headers={"Authorization": "Bearer test-token"}, follow_redirects=False
+            "/teacher/delete",
+            headers={"Authorization": "Bearer test-token"},
+            follow_redirects=False,
         )
     assert resp.status_code == 303
     assert resp.headers["location"] == "/login"
