@@ -23,10 +23,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.auth.access import SUPPRESSION_MESSAGE
 from backend.app.auth.csrf import generate_csrf_token, set_csrf_cookie
 from backend.app.auth.guards import require_role
+from backend.app.class_profile.library import citations
 from backend.app.config import settings
-from backend.app.core.messages import get_message
+from backend.app.core.messages import get_message, get_ui_lang
 from backend.app.db.models import AppUser
 from backend.app.db.session import get_db_session
+from backend.app.rehearsal.scene_runner import load_move_card
 from backend.app.reports.class_struggles import class_struggle_summary
 from backend.app.reports.cluster_pack import build_cluster_pack
 from backend.app.reports.module_progress import module_progress_summary
@@ -36,6 +38,9 @@ from backend.app.reports.trainer_aggregates import (
     build_trainer_report,
     generate_trainer_csv,
 )
+from backend.app.reports.training_gap import build_training_gap
+from backend.app.reports.training_gap import enabled as training_gap_enabled
+from backend.app.sessions.titles import move_title
 from backend.app.sessions.training_rating import (
     TrainingRatingSummary,
     training_rating_summary,
@@ -121,6 +126,18 @@ async def get_trainer_dashboard(
         else None
     )
 
+    # "Where training is not landing" (flag TRAINING_GAP_ENABLED, on in demo mode)
+    training_gap = (
+        await build_training_gap(
+            db, district=current_user.district if current_user.role != "admin" else None
+        )
+        if training_gap_enabled()
+        else None
+    )
+    gap_titles = (
+        {r.move_id: move_title(r.move_id) for r in training_gap.rows} if training_gap else {}
+    )
+
     csrf_token = generate_csrf_token()
     demo_banner_text = get_message("ui_demo_banner")
 
@@ -135,6 +152,8 @@ async def get_trainer_dashboard(
             "class_struggles": class_struggles,
             "teaching_skills": teaching_skills,
             "rvo": rvo,
+            "training_gap": training_gap,
+            "gap_titles": gap_titles,
             "suppression_n": settings.AGGREGATION_SUPPRESSION_N,
             "suppression_message": SUPPRESSION_MESSAGE,
             "user": current_user,
@@ -147,6 +166,40 @@ async def get_trainer_dashboard(
     )
     set_csrf_cookie(resp, csrf_token)
     return resp
+
+
+@router.get("/move/{move_id}", response_class=HTMLResponse)
+async def get_trainer_move_card(
+    request: Request,
+    move_id: str,
+    current_user: Annotated[AppUser, Depends(require_role("trainer"))],
+) -> HTMLResponse:
+    """A move card's key points with their handbook citations (linked from the training-gap table)."""
+    if not training_gap_enabled():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    try:
+        card = load_move_card(move_id)
+    except (FileNotFoundError, ValueError) as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND) from exc
+    english = get_ui_lang() == "en"
+    points = [
+        {
+            "text": (kp.text_en or kp.text_hi) if english else kp.text_hi,
+            "cites": [c.label_hi() for c in citations(kp.source_chunk_ids)],
+        }
+        for kp in card.key_points
+    ]
+    return templates.TemplateResponse(
+        request=request,
+        name="trainer_move.html",
+        context={
+            "request": request,
+            "title": move_title(move_id),
+            "summary": "" if english else card.summary_hi,
+            "points": points,
+            "get_message": get_message,
+        },
+    )
 
 
 @router.get("/cluster-pack/print", response_class=HTMLResponse)

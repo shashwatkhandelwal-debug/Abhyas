@@ -1357,3 +1357,17 @@ move_title_NUM_COMPARE_BUNDLES: {text: "दो अंकों की संख�
 move_title_LIT_LETTER_SOUND_PAIRS: {text: "अक्षर का नाम नहीं, ध्वनि: शब्द की पहली ध्वनि पर काम", audio: false}
 btn_chk_mod_NUM_COMPARE_BUNDLES: {text: "संख्याओं की तुलना", audio: false}
 btn_chk_mod_LIT_LETTER_SOUND_PAIRS: {text: "अक्षर की ध्वनि", audio: false}
+ui_gap_title: {text: "प्रशिक्षण कहाँ नहीं पहुँच रहा", audio: false}
+ui_gap_caption: {text: "यह सिम्युलेटेड अभ्यासों पर आधारित है, कक्षा के अवलोकन पर नहीं। हर शिक्षक का पिछले {days} दिनों का सबसे हाल का अभ्यास गिना गया है; केवल वे शिक्षक जो अंक साझा करते हैं।", audio: false}
+ui_gap_demo_note: {text: "इसमें डेमो डेटा शामिल है।", audio: false}
+ui_gap_empty: {text: "पिछले {days} दिनों में अंक साझा करने वाले शिक्षकों का कोई अभ्यास नहीं है।", audio: false}
+ui_gap_move_col: {text: "अभ्यास", audio: false}
+ui_gap_h_told_answer: {text: "उत्तर बता दिया", audio: false}
+ui_gap_h_no_ask_why: {text: "कैसे या क्यों नहीं पूछा", audio: false}
+ui_gap_h_no_named_child: {text: "बच्चे का नाम लेकर नहीं पूछा", audio: false}
+ui_gap_h_no_concrete: {text: "ठोस चीज़ें नहीं लीं", audio: false}
+ui_gap_na: {text: "लागू नहीं", audio: false}
+ui_gap_card_link: {text: "कार्ड देखें", audio: false}
+ui_gap_back: {text: "वापस प्रशिक्षक पृष्ठ पर", audio: false}
+ui_gap_card_points: {text: "मुख्य बातें", audio: false}
+ui_gap_card_source: {text: "स्रोत", audio: false}

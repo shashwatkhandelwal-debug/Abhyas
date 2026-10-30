@@ -1015,3 +1015,17 @@ move_title_NUM_COMPARE_BUNDLES: {text: "Comparing two-digit numbers: count the b
 move_title_LIT_LETTER_SOUND_PAIRS: {text: "Letter sound, not letter name: working on the first sound"}
 btn_chk_mod_NUM_COMPARE_BUNDLES: {text: "Compare numbers"}
 btn_chk_mod_LIT_LETTER_SOUND_PAIRS: {text: "Letter sounds"}
+ui_gap_title: {text: "Where training is not landing"}
+ui_gap_caption: {text: "Based on simulated rehearsals, not classroom observation. Each teacher's most recent rehearsal in the last {days} days is counted; only teachers who share their scores."}
+ui_gap_demo_note: {text: "This includes demo data."}
+ui_gap_empty: {text: "No rehearsals from teachers who share scores in the last {days} days."}
+ui_gap_move_col: {text: "Practice"}
+ui_gap_h_told_answer: {text: "Told the answer"}
+ui_gap_h_no_ask_why: {text: "Did not ask how or why"}
+ui_gap_h_no_named_child: {text: "Did not address a named child"}
+ui_gap_h_no_concrete: {text: "Did not use concrete objects"}
+ui_gap_na: {text: "Not applicable"}
+ui_gap_card_link: {text: "See the card"}
+ui_gap_back: {text: "Back to the trainer page"}
+ui_gap_card_points: {text: "Key points"}
+ui_gap_card_source: {text: "Source"}

@@ -37,7 +37,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.passwords import hash_password
-from backend.app.config import settings
+from backend.app.config import settings, v2_enabled
 from backend.app.content_models import MoveCard
 from backend.app.db.models import (
     AdoptionEvidence,
@@ -649,6 +649,9 @@ async def populate_demo_cohort(session: AsyncSession) -> None:
 
     # 4d. Demo class check-ins so the cluster meeting pack is not empty (demo data, see below)
     await _seed_demo_checkins(session, teachers, now)
+
+    # 4e. Latest rehearsals behind the trainer's "Where training is not landing" (demo data)
+    await _seed_training_gap_demo(session, teachers, now)
     from backend.app.db.demo_loop import seed_cohort_loop
 
     await seed_cohort_loop(session, teachers, now)
@@ -740,6 +743,94 @@ async def _seed_demo_checkins(
                 created_at=now - timedelta(days=2 + k),
             )
         )
+    await session.flush()
+
+
+# Demo rehearsals behind the trainer's "Where training is not landing" (flag TRAINING_GAP_ENABLED).
+# Synthetic cohort teachers only (`is_demo=True`), only those who agreed to share, never the three
+# shared logins. Each is that teacher's LATEST rehearsal of the move (newer than the older seeded
+# scene), with scripted acts and no text of a teacher or a child. The page labels them demo data.
+# A re-seed deletes and re-creates them (ids below); with the flag off they are not created.
+# (move, how many consenting cohort teachers rehearsed it): the last one stays under n=10 so the
+# trainer sees the suppression message.
+DEMO_GAP_MOVES = (
+    ("NUM_SUB_REGROUP_BUNDLES", 24),
+    ("NUM_ADD_CARRY_BUNDLES", 14),
+    ("LIT_MATRA_BLENDING", 11),
+    ("NUM_PLACE_VALUE_BUNDLES", 9),
+)
+_GAP_CHILDREN = ("ravi", "priya", "aman")
+
+
+def _gap_scene_id(n: int) -> uuid.UUID:
+    return uuid.UUID(f"00000000-0000-0001-0009-{n:012x}")
+
+
+def _gap_turn_id(n: int, t: int) -> uuid.UUID:
+    return uuid.UUID(f"00000000-0000-0004-0000-{n * 10 + t:012x}")
+
+
+def _gap_script(k: int, literacy: bool) -> list[tuple[str, str]]:
+    """(act, addressed child) for one teacher: the habits follow k so the table has a spread."""
+    told = k % 10 in (0, 3, 6)
+    no_ask = k % 2 == 0
+    no_named = k % 5 in (0, 1)
+    no_concrete = k % 5 == 2
+    child = "all" if no_named else _GAP_CHILDREN[k % 3]
+    practice = "phonics_sound_out" if literacy else "concrete_representation"
+    return [
+        ("repeat_question" if no_ask else "ask_to_explain", child),
+        ("praise_effort" if (no_concrete and not literacy) else practice, child),
+        ("tell_answer" if told else "contrast_answers", child),
+    ]
+
+
+async def _seed_training_gap_demo(
+    session: AsyncSession, teachers: list[Teacher], now: datetime
+) -> None:
+    pool = [t for t in teachers[3:] if t.is_demo and t.consent_share_scores]
+    scene_ids = [_gap_scene_id(n) for n in range(1, 200)]
+    await session.execute(delete(Turn).where(Turn.scene_id.in_(scene_ids)))
+    await session.execute(delete(Scene).where(Scene.id.in_(scene_ids)))
+    if not v2_enabled(settings.TRAINING_GAP_ENABLED):
+        await session.flush()
+        return
+    n = 0
+    for move_id, count in DEMO_GAP_MOVES:
+        literacy = move_id.startswith("LIT_")
+        for k, teacher in enumerate(pool[:count]):
+            n += 1
+            started = now - timedelta(days=1, hours=k % 6)
+            session.add(
+                Scene(
+                    id=_gap_scene_id(n),
+                    teacher_id=teacher.id,
+                    move_id=move_id,
+                    week_start=now.date() - timedelta(days=now.weekday()),
+                    attempt=1,
+                    mode="normal",
+                    engine_state={"one_on_one": False, "demo": True},
+                    status="ended",
+                    teacher_turns=3,
+                    started_at=started,
+                    ended_at=started + timedelta(minutes=8),
+                )
+            )
+            await session.flush()  # the models define no relationship(): scene row first
+            for t, (act, child) in enumerate(_gap_script(k, literacy), start=1):
+                session.add(
+                    Turn(
+                        id=_gap_turn_id(n, t),
+                        teacher_id=teacher.id,
+                        scene_id=_gap_scene_id(n),
+                        idx=t,
+                        role="teacher",
+                        transcript=None,
+                        acts=[act],
+                        addressed_child=child,
+                        created_at=started,
+                    )
+                )
     await session.flush()
 
 

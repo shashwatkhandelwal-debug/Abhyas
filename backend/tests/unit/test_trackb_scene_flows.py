@@ -190,3 +190,21 @@ async def test_letter_scene_3_sound_out_then_new_word_relapses(
     )
     kinds = await last_kinds(h)
     assert kinds["ravi"] == ResponseKind.RELAPSE
+
+
+@pytest.mark.asyncio
+async def test_compare_one_on_one_setup_diagnoses_and_reveals(
+    harness: Callable[[], Harness],
+) -> None:
+    h = harness()
+    await h.start("NUM_COMPARE_BUNDLES")
+    out = await h.say(button="btn_listen")
+    assert [b.id for b in out[-1].buttons or []] == ["btn_rehearse_one", "btn_rehearse_group"]
+    await h.say(button="btn_rehearse_one")
+    out = await h.say(button="btn_child_ravi")
+    assert "39 और 41, कौन बड़ा?" in (out[0].text_hi or "") and "39" in (out[0].text_hi or "")
+    out = await h.say("उसने पहले इकाई देखी, 9 बड़ा है")
+    show("तुलना 1-1", "उसने पहले इकाई देखी, 9 बड़ा है", out)
+    assert "बंडल" in "".join(m.text_hi or "" for m in out)
+    out = await h.say("रवि, तुमने इसे कैसे तय किया?")
+    assert "39" in (out[0].text_hi or "")
