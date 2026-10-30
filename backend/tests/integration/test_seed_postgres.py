@@ -198,7 +198,13 @@ def test_seed_runs_on_fresh_postgres_and_is_idempotent(scratch_db: str) -> None:
     assert first["review_item"] == len(queue) and first["question"] == 1
     # demo class check-ins behind the cluster meeting pack: exactly the planned rows, all demo
     # cohort check-ins, plus the one seeded check-in each of demo2 and demo3 (db/demo_loop.py)
-    assert first["class_checkin"] == sum(c for _, c in DEMO_CHECKIN_REPORTS) + DEMO_CHECKIN_WELL + 2
+    # and the older check-ins behind the peer line (db/demo_history.py): 11 consenting teachers with
+    # a "worked" answer on regrouping, minus the 5 whose cohort answer already was "worked"
+    peer_extra = 6
+    assert (
+        first["class_checkin"]
+        == sum(c for _, c in DEMO_CHECKIN_REPORTS) + DEMO_CHECKIN_WELL + 2 + peer_extra
+    )
     district_pack, c01_pack, c02_pack = asyncio.run(_demo_packs(scratch_db))
     assert not district_pack.suppressed and district_pack.all_demo
     assert [(i.struggle_id, i.teachers) for i in district_pack.items] == [

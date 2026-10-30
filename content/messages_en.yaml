@@ -1051,6 +1051,31 @@ adp_why_some: {text: "Why this next: in a recent check-in you said some children
 adp_why_stuck: {text: "Why this next: the next day you said children are still stuck on '{label}'."}
 adp_why_worked: {text: "Why this next: the method for '{label}' worked for you, so a different practice comes first."}
 adp_why_new: {text: "Why this next: at the start, the basic practice first, where the model teacher shows the method before you try it."}
+# Last adds: "My progress" (L1) and "what worked for other teachers" (L2)
+btn_mp_practice: {text: "Practise"}
+mp_head: {text: "Your progress, last {n} practices:"}
+mp_row: {text: "{i}. {move} ({date})"}
+mp_trend_head: {text: "Comparison, {move}: first practice and latest practice"}
+mp_trend_line: {text: "{label}: before {before}, now {after}."}
+mp_yes: {text: "yes"}
+mp_no: {text: "no"}
+mp_l_asked: {text: "asking the child how or why"}
+mp_l_told: {text: "telling the answer yourself"}
+mp_l_concrete: {text: "using sticks or bundles"}
+mp_l_named: {text: "calling a child by name"}
+mp_no_pair: {text: "To compare, practise the same move again. Below is about your latest practice."}
+mp_too_few: {text: "There are too few practices to compare yet. Do one more practice and the difference will show here."}
+mp_s_asked: {text: "One strength: you ask the child how or why they did it."}
+mp_s_notold: {text: "One strength: you do not tell the answer, you let the child think."}
+mp_s_concrete: {text: "One strength: you use things like sticks or bundles."}
+mp_s_named: {text: "One strength: you call children by name when you ask."}
+mp_s_none: {text: "One strength: you tried the practice, and that is the first step."}
+mp_n_told: {text: "Next step: before telling the answer, ask 'How did you do it?'"}
+mp_n_asked: {text: "Next step: ask the child 'How did you do it?'"}
+mp_n_concrete: {text: "Next step: hold sticks or bundles in your hand while you explain."}
+mp_n_named: {text: "Next step: call one child by name and ask."}
+mp_n_keep: {text: "Next step: try the same way in your own class."}
+pw_line: {text: "{n} teachers said the '{move}' way worked for this problem."}
 # Track B scenes
 ui_board_compare: {text: "{a} and {b}: which is bigger?"}
 hint_example_compare: {text: "{child}, how did you decide which number is bigger?"}

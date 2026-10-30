@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.class_profile.followup import next_school_day
 from backend.app.config import settings
+from backend.app.db.demo_history import seed_peer_worked, seed_rehearsal_history
 from backend.app.db.models import (
     ClassCheckin,
     ClassFollowup,
@@ -108,6 +109,7 @@ async def seed_login_loop(session: AsyncSession, teacher_id: uuid.UUID, now: dat
             )
         )
     await session.flush()
+    await seed_rehearsal_history(session, teacher_id, now, is_two=is_two, n=n)
 
 
 async def seed_cohort_loop(session: AsyncSession, teachers: list[Teacher], now: datetime) -> None:
@@ -183,6 +185,7 @@ async def seed_cohort_loop(session: AsyncSession, teachers: list[Teacher], now: 
                 )
             )
     await session.flush()
+    await seed_peer_worked(session, teachers, now)
 
 
 __all__ = ["DEMO_VISIT_TEACHERS", "seed_cohort_loop", "seed_login_loop"]

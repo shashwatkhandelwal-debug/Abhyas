@@ -767,6 +767,34 @@ class FakeSessionRepository(SessionRepository):
         ]
         return sorted(rows, key=lambda r: r[2])
 
+    async def rehearsal_history(self, teacher_id: UUID, limit: int) -> list[Any]:
+        """Tests set `_rehearsal_history[teacher_id]` (oldest first); nothing else is stored here."""
+        return list(getattr(self, "_rehearsal_history", {}).get(teacher_id, []))[-limit:]
+
+    async def peer_worked_teachers(
+        self,
+        struggle_id: str,
+        since: datetime,
+        *,
+        exclude_teacher: UUID,
+        is_demo: bool,
+        cluster_id: str | None = None,
+    ) -> int:
+        """Tests set `_peer_worked` rows: (teacher, struggle, when, consent, is_demo, cluster)."""
+        rows = getattr(self, "_peer_worked", [])
+        return len(
+            {
+                t
+                for t, sid, when, consent, demo, cluster in rows
+                if sid == struggle_id
+                and when >= since
+                and consent
+                and demo == is_demo
+                and t != exclude_teacher
+                and (cluster_id is None or cluster == cluster_id)
+            }
+        )
+
     async def record_realism_rating(
         self, teacher_id: UUID, rating: int, scene_id: UUID | None = None
     ) -> RealismRating:

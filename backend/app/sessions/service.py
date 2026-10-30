@@ -20,6 +20,8 @@ from backend.app.class_profile import (
     focus,
     followup,
     level_sorter,
+    my_progress,
+    peer_worked,
     personalise,
     skills_flow,
     visit_note,
@@ -529,6 +531,13 @@ class SessionService:
         ]
 
     @staticmethod
+    def _progress_entry_buttons(address_form: str) -> list[Button]:
+        """The "My progress" quick reply (flag MY_PROGRESS_ENABLED, ON in demo mode)."""
+        if not my_progress.enabled():
+            return []
+        return [Button(id="btn_progress", title_hi=get_message("btn_progress", address_form))]
+
+    @staticmethod
     def _checkin_entry_buttons() -> list[Button]:
         """The "After class" quick reply (flag CLASS_CHECKIN_ENABLED, ON in demo mode)."""
         if not v2_enabled(settings.CLASS_CHECKIN_ENABLED):
@@ -935,7 +944,38 @@ class SessionService:
             return messages
         if chk.launch_move_id is not None:
             return await self._launch_checkin_practice(ctx, teacher_id, chk.launch_move_id)
+        if chk.record is not None and chk.record.struggle_ids:
+            return await self._with_peer_line(teacher_id, chk.record.struggle_ids[0], chk.messages)
         return chk.messages
+
+    async def _with_peer_line(
+        self, teacher_id: UUID, struggle_id: str, messages: list[OutboundMessage]
+    ) -> list[OutboundMessage]:
+        """The "what worked for other teachers" line (flag PEER_WORKED_ENABLED) before the buttons.
+
+        Added only when the counts allow it (`peer_worked.peer_line`); the buttons stay last so the
+        screen never ends on the line.
+        """
+        if not peer_worked.enabled() or not messages:
+            return messages
+        teacher = await self.repo.get_or_create_teacher(teacher_id)
+        since = peer_worked.window_start(followup.utcnow())
+
+        async def count(cluster_id: str | None) -> int:
+            return await self.repo.peer_worked_teachers(
+                struggle_id,
+                since,
+                exclude_teacher=teacher_id,
+                is_demo=bool(teacher.is_demo),
+                cluster_id=cluster_id,
+            )
+
+        line = await peer_worked.peer_line(struggle_id, cluster_id=teacher.cluster_id, count=count)
+        if line is None:
+            return messages
+        extra = OutboundMessage(kind="text", text_hi=line)
+        at = len(messages) - 1 if messages[-1].buttons else len(messages)
+        return [*messages[:at], extra, *messages[at:]]
 
     async def offer_followup(self, teacher_id: UUID) -> list[OutboundMessage]:
         """She opened the chat: the follow-up that is due (flag FOLLOWUP_ENABLED), offered once."""
@@ -1093,6 +1133,40 @@ class SessionService:
             *messages,
             OutboundMessage(kind="buttons", text_hi=get_message("fu_next_idle"), buttons=buttons),
         ]
+
+    # Screens where "My progress" is answered (button taps and the typed words); a scene, a rating,
+    # a check-in or any free-answer step keeps its own meaning for the same words
+    _PROGRESS_STATES = frozenset(
+        {
+            SessionStateEnum.LEARN,
+            SessionStateEnum.MODEL,
+            SessionStateEnum.FEEDBACK,
+            SessionStateEnum.DONE,
+        }
+    )
+
+    async def _my_progress_messages(
+        self, ctx: SessionContext, teacher_id: UUID
+    ) -> list[OutboundMessage]:
+        """Her last rehearsals and trend, ending in the next step for the screen she is on."""
+        history = await self.repo.rehearsal_history(teacher_id, settings.MY_PROGRESS_HISTORY_MAX)
+        state = ctx.current_state.value
+        ids = [
+            b
+            for b in self._HELP_BUTTONS.get(state, ())
+            if b != "btn_progress" and b != "btn_skip"
+        ]
+        if state == SessionStateEnum.FEEDBACK.value:
+            ids = ["btn_retry", "btn_continue"]  # the practice buttons of this very screen
+        elif len(ids) < 3:
+            ids.append(my_progress.BTN_PRACTICE)
+        if state == SessionStateEnum.DONE.value:
+            ids = [*ids[:2], *(b.id for b in self._checkin_entry_buttons())][:3]
+        buttons = [
+            Button(id=b, title_hi=get_message(b, ctx.address_form)[: settings.WEB_BUTTON_TITLE_MAX])
+            for b in ids
+        ]
+        return [my_progress.progress_message(history, ctx.address_form, buttons)]
 
     async def offer_visit_note(self, teacher_id: UUID) -> list[OutboundMessage]:
         """She opened the chat: what her ARP saw in her class, once (flag OBSERVATION_TO_TEACHER_ENABLED).
@@ -1297,6 +1371,9 @@ class SessionService:
         await self._sync_context_to_db(ctx, teacher_id)
         if ctx.followup_stage == followup.STAGE_WHY:  # the reason screen is the next step itself
             return messages
+        if row is not None and (res.outcome == followup.OUTCOME_STUCK or res.reason is not None):
+            # "still stuck", or "could not try" once the reason is given: what worked for others
+            messages = await self._with_peer_line(teacher_id, row.struggle_id, messages)
         return await self._followup_close(ctx, teacher_id, messages)
 
     async def _launch_checkin_practice(
@@ -1531,6 +1608,19 @@ class SessionService:
                 return messages
             if ctx.class_stage != stage_before:
                 await self._sync_context_to_db(ctx, teacher_id)
+
+        # 1d. "My progress" (flag MY_PROGRESS_ENABLED): her own last rehearsals, only on screens
+        # that are not a scene or a free-answer step (those never offer the button)
+        if (
+            my_progress.enabled()
+            and ctx.onboarding_state == OnboardingStateEnum.READY
+            and not ctx.awaiting_delete_confirm
+            and ctx.current_state in self._PROGRESS_STATES
+            and (btn_id in ("btn_progress", my_progress.BTN_PRACTICE) or matched_intent == Intent.PROGRESS)
+        ):
+            if btn_id == my_progress.BTN_PRACTICE:
+                return await self._launch_checkin_practice(ctx, teacher_id, ctx.current_move_id)
+            return await self._my_progress_messages(ctx, teacher_id)
 
         # 2. Delete confirmation flow (§8.3 step 7)
         if ctx.awaiting_delete_confirm:
@@ -2523,6 +2613,7 @@ class SessionService:
                                     id="btn_continue",
                                     title_hi=get_message("btn_continue", address_form),
                                 ),
+                                *self._progress_entry_buttons(address_form),
                             ],
                         ),
                     ]
