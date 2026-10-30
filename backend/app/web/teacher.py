@@ -92,10 +92,18 @@ router = APIRouter(tags=["Teacher Web PWA"])
 PREPARED_DEMO_LOGINS = frozenset({"teacher.demo2", "teacher.demo3"})
 
 
+# Each shared demo teacher login says what its demo shows (fix3 K5).
+_DEMO_BANNER_KEYS = {
+    "teacher.demo1": "ui_demo_banner_demo1",
+    "teacher.demo2": "ui_demo_banner_demo2",
+    "teacher.demo3": "ui_demo_banner_demo3",
+}
+
+
 def _demo_banner_text(current_user: AppUser) -> str:
     """Shared demo logins are reset on login/logout; other demo views only show synthetic data."""
     if current_user.is_demo and current_user.role == "teacher":
-        return get_message("ui_demo_account_banner")
+        return get_message(_DEMO_BANNER_KEYS.get(current_user.username, "ui_demo_account_banner"))
     return get_message("ui_demo_banner")
 
 

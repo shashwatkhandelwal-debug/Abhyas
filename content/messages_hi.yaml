@@ -951,6 +951,9 @@ scene_too_short: {text: "अभी तक आपने {done} बार बा�
 scene_resumed: {text: "ठीक है, सीन वहीं से जारी है। अपनी अगली बात कहिए।", audio: false}
 btn_scene_continue: {text: "सीन जारी रखें", audio: false}
 ui_demo_account_banner: {text: "डेमो: लॉगिन/लॉगआउट पर चैट रीसेट", audio: false}
+ui_demo_banner_demo1: {text: "डेमो: नई शुरुआत। पूरा परिचय और पहला अभ्यास करें।", audio: false}
+ui_demo_banner_demo2: {text: "डेमो: दूसरे हफ़्ते की शिक्षिका। रवि से 43 − 27 पर बात करें, फिर 'अब भी अटके हैं' दबाएँ, और 'मेरी प्रगति' खोलें।", audio: false}
+ui_demo_banner_demo3: {text: "डेमो: कक्षा के बारे में बताने के बाद ऐप ने पढ़ने का तरीका चुना (मात्रा)। 'समझ गई, आगे' दबाकर अभ्यास करें।", audio: false}
 
 # ── "My class": where is your class struggling (class_profile/flow.py) ─────────────
 class_ask:

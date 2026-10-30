@@ -77,7 +77,7 @@ def test_the_demo_banner_is_one_small_line_with_log_out_and_can_be_dismissed(
     page = teacher.page
     banner = page.locator("#demo-banner")
     assert banner.is_visible()
-    assert banner.inner_text().replace("\n", " ").startswith(_text("en", "ui_demo_account_banner"))
+    assert banner.inner_text().replace("\n", " ").startswith(_text("en", "ui_demo_banner_demo1"))
     assert banner.bounding_box()["height"] < 40, "one small line"  # type: ignore[index]
     assert page.evaluate(CLIPPED, "#demo-banner, #demo-banner *") == []
     assert banner.locator("a[href='/logout']").is_visible()
