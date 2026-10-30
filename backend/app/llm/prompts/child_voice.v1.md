@@ -7,7 +7,7 @@ What the child says this turn (kind = {kind}):
 
 Hard rules:
 1. Use ONLY these numbers: {allowed_numbers}. {answer_rule} NEVER say {forbidden}.
-2. At most {max_words} words in total (count them; shorter is better). One or two short sentences. Address the teacher as "{teacher_address}".
+2. At most {max_words} words in total (count them; shorter is better). One or two short sentences. {address_rule}
 3. kind=answer: just the answer, confidently, no explanation.
    kind=explain_bug: explain the steps as if they are obviously right (the child believes them).
    kind=relapse: same as explain_bug (the child forgot what was taught).

@@ -12,6 +12,7 @@ from typing import Any
 
 from backend.app.config import settings
 from backend.app.content_models import PersonaCard
+from backend.app.llm.address import address_rule, address_word, fix_address
 from backend.app.llm.client import LLMUnavailable, call_tool, log_role_call
 from backend.app.llm.guard_stats import record_guard_event
 from backend.app.llm.guards import child_line_word_cap, guard_child_line
@@ -54,7 +55,7 @@ def template_line(
     response: ChildResponse,
     persona: PersonaCard | None = None,
     turn_idx: int = 0,
-    address_form: str = "f",
+    address_form: str | None = "f",
 ) -> str:
     """Deterministic template fallback line for a child response (spec/05 §5.5).
 
@@ -65,9 +66,19 @@ def template_line(
     - PARROT: "{answer}… ?"
     - SILENT: ""
     - OFF_TOPIC / INTERJECT: persona off_topic line or default childlike remark
-    - CONFUSED: "दीदी/सर, ये तो बहुत बड़ा है… समझ नहीं आया।"
+    - CONFUSED: "<दीदी or सर>, ये तो बहुत बड़ा है… समझ नहीं आया।" (no address word if unknown)
+
+    The address word follows `address_form` (f: दीदी, m: सर, unknown: none); see `fix_address`.
     """
-    teacher_address = "सर" if address_form == "m" else "दीदी"
+    return fix_address(_template_line(response, persona, turn_idx, address_word(address_form)), address_form)
+
+
+def _template_line(
+    response: ChildResponse,
+    persona: PersonaCard | None,
+    turn_idx: int,
+    teacher_address: str,
+) -> str:
 
     if response.kind == ResponseKind.SILENT:
         return ""
@@ -97,15 +108,12 @@ def template_line(
         return f"हम्म… {response.answer}!"
 
     if response.kind == ResponseKind.CONFUSED:
-        return f"{teacher_address}, ये तो बहुत बड़ा है… समझ नहीं आया।"
+        return f"{teacher_address + ', ' if teacher_address else ''}ये तो बहुत बड़ा है… समझ नहीं आया।"
 
     if response.kind in (ResponseKind.OFF_TOPIC, ResponseKind.INTERJECT):
         if persona and persona.off_topic_lines_hi:
-            line = persona.off_topic_lines_hi[turn_idx % len(persona.off_topic_lines_hi)]
-            if address_form == "m":
-                line = line.replace("दीदी", "सर").replace("मैडम", "सर")
-            return line
-        return f"{teacher_address}, बाहर तितली उड़ रही है!"
+            return persona.off_topic_lines_hi[turn_idx % len(persona.off_topic_lines_hi)]
+        return f"{teacher_address + ', ' if teacher_address else ''}बाहर तितली उड़ रही है!"
 
     # Default fallback
     return f"{response.answer}!" if response.answer is not None else ""
@@ -193,7 +201,19 @@ async def voice_child_line(
     persona: PersonaCard,
     last_4_lines: list[str] | None = None,
     turn_idx: int = 0,
-    address_form: str = "f",
+    address_form: str | None = "f",
+) -> str:
+    """One child line, with the address word forced to the teacher's form (text-only last check)."""
+    line = await _voice_child_line(response, persona, last_4_lines, turn_idx, address_form)
+    return fix_address(line, address_form)
+
+
+async def _voice_child_line(
+    response: ChildResponse,
+    persona: PersonaCard,
+    last_4_lines: list[str] | None,
+    turn_idx: int,
+    address_form: str | None,
 ) -> str:
     """Voices one child line using Claude fast model, with guard and template fallback.
 
@@ -213,7 +233,6 @@ async def voice_child_line(
     else:
         system_template = "You voice a child line. Return tool call."
 
-    teacher_address = "सर" if address_form == "m" else "दीदी"
     max_words = child_line_word_cap(response.kind)
     # Hand the model steps already compressed to fit the cap, so it does not pad and overrun.
     steps_text = _format_steps(response.steps, max_words=max_words - 10) if response.steps else ""
@@ -230,7 +249,7 @@ async def voice_child_line(
         max_words=max_words,
         allowed_numbers=sorted(response.allowed_numbers),
         forbidden=sorted(response.forbidden),
-        teacher_address=teacher_address,
+        address_rule=address_rule(address_form),
     )
 
     context_lines = "\n".join(last_4_lines) if last_4_lines else "कक्षा में अभ्यास चल रहा है।"
