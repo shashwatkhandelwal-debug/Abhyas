@@ -192,6 +192,29 @@ state_FEEDBACK: {text: "Suggestions"}
 state_TRY_IN_CLASS: {text: "Trying it in class"}
 state_REFLECT_PEER: {text: "Peer checklist"}
 state_REFLECT_SELF: {text: "Sharing your experience"}
+ui_step_state_LEARN: {text: "Learn"}
+ui_step_state_EXPLAIN_BACK: {text: "Own words"}
+ui_step_state_MODEL: {text: "Model"}
+ui_step_state_REHEARSE_INTRO: {text: "Practice"}
+ui_step_state_REHEARSE: {text: "Practice"}
+ui_step_state_FEEDBACK: {text: "Feedback"}
+ui_step_state_TRY_IN_CLASS: {text: "Try in class"}
+ui_step_state_REFLECT_PEER: {text: "Peer checklist"}
+ui_step_state_REFLECT_SELF: {text: "Reflection"}
+ui_step_state_DONE: {text: "Done"}
+ui_step_state_ASK: {text: "Handbook question"}
+ui_step_state_NEW: {text: "Not started"}
+ui_export_csv: {text: "Download (CSV)"}
+ui_pack_print_button: {text: "Download / Print"}
+ui_review_kind_rehearsal_score: {text: "Practice score"}
+ui_review_kind_explain_score: {text: "Explain-back score"}
+ui_review_kind_question: {text: "Question"}
+ui_review_kind_guard_failure: {text: "Guard failure"}
+ui_role_coach: {text: "Coach"}
+ui_role_arp: {text: "ARP"}
+ui_role_trainer: {text: "Trainer"}
+ui_role_admin: {text: "Admin"}
+ui_role_teacher: {text: "Teacher"}
 coach_exact_words_contrast_math: {text: "दोनों के उत्तर देखो, तीलियाँ गिनकर बताओ कि कौन-सा सही है और क्यों?"}
 coach_exact_words_contrast_lit: {text: "दोनों के पढ़े शब्द सुनो, अक्षर मिलाकर बताओ कि कौन-सा सही है?"}
 coach_fallback_neutral: {text: "I could not clearly see this move in your words yet; try the suggestion below and have another go."}

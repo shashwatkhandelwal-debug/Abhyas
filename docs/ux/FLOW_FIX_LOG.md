@@ -54,3 +54,18 @@ Left alone on purpose, listed: chunk summaries and source titles from documents 
 - `docs/ux/PHONE_TEST_CHECKLIST.md`: J1 to J3 updated for the lead-in, the order and the way back; new J9 (help question mid-scene), J10 (name step), J11 (no long dashes).
 - `docs/ux/DEMO_SCRIPT.md`: follow-up text with the lead-in, the landing order, the way-back line and the help line.
 - Gate run: test_freeze_check (11 passed) before and after the edit.
+
+## F6 Dashboards on a phone: DONE
+- Cause of the cut-off left edge: `app.css` centres the body (`display:flex; justify-content:center`) for the chat, so a wide dashboard overflowed to the left. Fix is scoped: `<body class="dash-page">` plus a shared dashboard-only stylesheet block `templates/_dash_css.html` included in the `<style>` of `arp.html`, `trainer.html` and `review.html` (block body, container `width:100%`, one-column cards under 600 px, `.table-scroll` boxes with a sticky first column, text wrapping). `app.css`, `chat.js` and `teacher.html` are untouched.
+- Raw codes: new catalog keys `ui_step_state_<STATE>` (hi, en; REHEARSE reads "अभ्यास" / "Practice"), `ui_review_kind_*`, `ui_role_*`; Jinja helpers `state_label` and `code_label` in `web/ui_lang.py`. Used for the ARP step column and the coach queue (kind and role).
+- Em dash strings: handled in F4 (the two banners, the templates).
+- `scripts/dashboard_layout_check.py`: starts the real app on a scratch seeded database, logs in as arp.demo, trainer.demo and coach.demo, 360x640 and 412x915, dark and light, asserts no sideways page scroll, the h1 fully visible and not clipped, and no text sticking out of the window outside a scrolling box. Before: 11 of 12 FAIL (ARP h1 started at -77 px). After: 12 of 12 PASS.
+- Tests: `test_dashboard_labels.py` (no raw state code in the ARP table, hi and en; every state has a label in both languages).
+
+## F7 Downloads: DONE (committed together with F6: the template and catalog edits overlap, so they could not be split into two commits)
+- `backend/app/web/csv_export.py`: the CSV is cut out of the same rendered page (`<table data-export="...">`), so it is what the page shows and the n<10 rule is the page's own. Cells marked `data-csv-skip` (links, the coach's free-text reason) are left out; `data-csv` overrides a cell's text (rubric scores). A column-spanning suppressed cell repeats the suppression text in each column. A cell that a spreadsheet would read as a formula gets a leading apostrophe. UTF-8 with BOM, `Content-Disposition: attachment; filename="abhyas_<view>_<table>_<YYYY-MM-DD>.csv"`, one log line per export (role, view, table, time).
+- Endpoints (same `require_role` dependency as the page): `GET /arp/export/{table}.csv` (tables: teachers, module_progress), `GET /trainer/export/{table}.csv` (batches, module_progress), `GET /review/export/{table}.csv` (items, moves). The existing `/trainer/export.csv` is unchanged. The ARP module table is on the page only from 10 consenting teachers, so its link appears then.
+- Not exported (not tables on the page): class struggles, teaching skills, training ratings, reported vs observed, the cluster pack cards and the visit form.
+- Agenda page (`cluster_pack_print.html`, both roles): a "डाउनलोड / प्रिंट" button with a three-line inline script on that page only; hidden in print; the demo label prints.
+- Tests: `test_csv_export.py` (CSV equals the page, headers/BOM/filename/Hindi, suppression at 9 and 10 for module progress and the trainer batch table, 403 for every other role, 404 for an unknown table, parser behaviour, agenda page with print button and demo label).
+- Docs: `docs/EVALUATOR_GUIDE.md` (new section) and `docs/ux/PHONE_TEST_CHECKLIST.md` (section K); freeze-check test run before and after (11 passed).

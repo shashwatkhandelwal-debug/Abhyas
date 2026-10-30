@@ -84,6 +84,20 @@ cards are empty until a seed has run with this code.
 | `coach.demo` | `<DEMO_PASSWORD>` | `/review` | **Coach review console**: queue of AI scores and escalations that need a human look, per-item resolve, calibration labelling, move-card review. |
 | `admin` | `<ADMIN_PASSWORD>` | `/admin` | **Admin dashboard**: latency, token use, guard results, scheduler jobs, WhatsApp templates, the **training ratings** card (all teachers, no suppression) and the demo controls (*Reset demo*, *fast-forward*). |
 
+## Downloads (CSV) and the printable agenda
+
+Every table on the three dashboards has a **डाउनलोड (CSV)** link (English: **Download (CSV)**) just above it. The file is exactly the table you see, with the same privacy rule: a group of fewer than 10 is exported as the privacy text, never as hidden numbers. UTF-8 with a byte-order mark, so Excel opens the Hindi correctly. File name: `abhyas_<view>_<table>_<date>.csv`.
+
+| Login | Page | Download links |
+|---|---|---|
+| `arp.demo` | `/arp` | **Teachers** table (above the table; the module-progress table has its own link once the cluster has 10 consenting teachers). |
+| `trainer.demo` | `/trainer` | **Module progress** table and the **batch x move** table (above it). The older `/trainer/export.csv` still works. |
+| `coach.demo` | `/review` | The review-queue table on each tab, and the **moves** table on the content tab. Links and the free-text reason column are not exported. |
+
+Each role can download only its own tables; another role gets a 403. Each export is logged (role, page, table, time) with no personal data.
+
+The **meeting agenda** page (`/trainer/cluster-pack/print`, or `/arp/cluster-pack/print`) has a **डाउनलोड / प्रिंट** button at the top. It opens the phone's print dialog (save as PDF there). The demo-data label shows on screen and in the print.
+
 ## Shared accounts and the first visit
 
 - **One judge per account.** `teacher.demo1`, `teacher.demo2` and `teacher.demo3` are shared logins with one state

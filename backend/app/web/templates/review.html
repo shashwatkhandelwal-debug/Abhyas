@@ -6,6 +6,7 @@
   <title>{{ get_message("ui_review_title") }}: {{ get_message("ui_app_name") }}</title>
   <link rel="stylesheet" href="/static/app.css">
   <style>
+{% include "_dash_css.html" %}
     .review-container {
       width: 100%;
       max-width: 960px;
@@ -190,7 +191,7 @@
     }
   </style>
 </head>
-<body>
+<body class="dash-page">
   <div class="review-container">
     <header class="review-header">
       <div class="review-title-group">
@@ -199,7 +200,7 @@
           <span style="color:var(--muted); font-size:1.2rem; font-weight:normal;">/</span>
           <span>{{ get_message("ui_review_title") }}</span>
         </h1>
-        <small style="color:var(--muted);">{{ get_message('ui_review_reviewer') }} {{ user.display_name or user.username }} ({{ get_message('ui_review_role') }} {{ user.role }})</small>
+        <small style="color:var(--muted);">{{ get_message('ui_review_reviewer') }} {{ user.display_name or user.username }} ({{ get_message('ui_review_role') }} {{ code_label('ui_role_', user.role) }})</small>
       </div>
 
       <div class="review-actions">
@@ -270,30 +271,31 @@
     </div>
 
     <!-- Review Items Table -->
-    <div class="data-card">
+    <div class="data-card table-scroll">
       {% if items %}
-      <table>
+      <p class="csv-row"><a class="csv-link" id="csv-items" href="/review/export/items.csv?{{ request.url.query }}">{{ get_message('ui_export_csv') }}</a></p>
+      <table data-export="items">
         <thead>
           <tr>
             <th>{{ get_message('ui_review_col_time') }}</th>
             <th>{{ get_message('ui_review_col_kind') }}</th>
-            <th>{{ get_message('ui_review_col_reason') }}</th>
+            <th data-csv-skip>{{ get_message('ui_review_col_reason') }}</th>
             <th>{{ get_message('ui_review_col_status') }}</th>
-            <th>{{ get_message('ui_review_col_action') }}</th>
+            <th data-csv-skip>{{ get_message('ui_review_col_action') }}</th>
           </tr>
         </thead>
         <tbody>
           {% for it in items %}
           <tr>
             <td style="color:var(--muted); font-size:0.85rem;">{{ it.created_at }}</td>
-            <td><strong>{{ it.kind }}</strong></td>
-            <td>{{ it.reason | safe }}</td>
+            <td><strong>{{ code_label('ui_review_kind_', it.kind) }}</strong></td>
+            <td data-csv-skip>{{ it.reason | safe }}</td>
             <td>
               <span class="status-badge {% if it.status == 'open' %}status-open{% else %}status-resolved{% endif %}">
                 {% if it.status == 'open' %}{{ get_message("ui_review_filter_open") }}{% else %}{{ get_message("ui_review_filter_resolved") }}{% endif %}
               </span>
             </td>
-            <td>
+            <td data-csv-skip>
               <a href="/review/items/{{ it.id }}" class="btn-action" style="padding:0.35rem 0.8rem; font-size:0.85rem; min-height:36px;">
                 {{ get_message('ui_review_do_review') }}
               </a>
@@ -311,8 +313,9 @@
 
     {% else %}
     <!-- Moves Management Tab -->
-    <div class="data-card">
-      <table>
+    <div class="data-card table-scroll">
+      <p class="csv-row"><a class="csv-link" id="csv-moves" href="/review/export/moves.csv?{{ request.url.query }}">{{ get_message('ui_export_csv') }}</a></p>
+      <table data-export="moves">
         <thead>
           <tr>
             <th>{{ get_message('ui_review_col_move_code') }}</th>
@@ -321,7 +324,7 @@
             <th>{{ get_message('ui_review_col_sankul_month') }}</th>
             <th>{{ get_message('ui_review_col_approval') }}</th>
             <th>{{ get_message('ui_review_col_status') }}</th>
-            <th>{{ get_message('ui_review_col_action') }}</th>
+            <th data-csv-skip>{{ get_message('ui_review_col_action') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -340,7 +343,7 @@
                 {% if m.status == 'approved' %}{{ get_message("ui_review_approved_badge") }}{% else %}{{ get_message("ui_review_pending_badge") }}{% endif %}
               </span>
             </td>
-            <td>
+            <td data-csv-skip>
               <a href="/review/moves/{{ m.id }}" class="btn-action" style="padding:0.35rem 0.8rem; font-size:0.85rem; min-height:36px;">
                 {{ get_message('ui_review_review_approve') }}
               </a>

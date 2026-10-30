@@ -95,6 +95,17 @@ Needs the hosted site seeded with this code (`SEED_ON_BOOT=true` once, or the se
 | J10 | Log in as a new teacher up to the name step and type "मेरा नाम रिया है।". Then try a long sentence. | The name is stored as "रिया" (the next question greets "रिया जी"). The long sentence gets "सिर्फ़ अपना नाम लिखिए, जैसे: रिया।" and the step does not move on. |
 | J11 | Read any bot message, the banners and the error lines on the above. | No long dash (em dash or en dash) as a separator anywhere. |
 
+## K. Dashboards on a phone, downloads and print (F6, F7)
+
+Log in as `arp.demo`, `trainer.demo` and `coach.demo` in turn (360 to 412 px wide).
+
+| # | Taps | Expected |
+|---|---|---|
+| K1 | Open `/arp`, `/trainer`, `/review`. Try dark and light. | The page never scrolls sideways; the heading is fully visible from its first letter. Cards are one column. Long tables scroll inside their own box and keep the first column in view. |
+| K2 | On `/arp`, find the teachers table. | The step column reads a word (for example "अभ्यास"), never a code such as REHEARSE. No long dash in "डेमो डेटा: वास्तविक शिक्षक नहीं" or in the small-group notice. |
+| K3 | Tap **डाउनलोड (CSV)** above the teachers table (ARP), the batch table or the module table (trainer), the queue table (coach). | A file `abhyas_<view>_<table>_<date>.csv` downloads. Open it in a spreadsheet: Hindi reads correctly and the rows match the table. Small groups show the privacy text, not numbers. |
+| K4 | On `/trainer`, open the meeting agenda page and tap **डाउनलोड / प्रिंट**. | The print dialog opens (choose Save as PDF). The page shows the demo-data label; the print has no button. |
+
 ## Not testable on web
 
 - WhatsApp reply buttons (3 max) and the interactive list (more than 3 options); the check-in start from "After class" on the week-done message.

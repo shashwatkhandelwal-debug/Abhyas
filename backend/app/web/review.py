@@ -52,6 +52,7 @@ from backend.app.db.models import (
 )
 from backend.app.db.session import get_db_session
 from backend.app.sessions.path import load_all_move_cards
+from backend.app.web.csv_export import export_response
 from backend.app.web.ui_lang import register_ui_globals
 
 logger = logging.getLogger("abhyas.web.review")
@@ -248,6 +249,22 @@ async def review_dashboard(
 
 
 # ── Review Item Detail & Resolution ──────────────────────────────────────
+
+
+@router.get("/export/{table}.csv")
+async def export_review_csv(
+    table: str,
+    request: Request,
+    current_user: Annotated[AppUser, Depends(require_role("coach"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    tab: str = "scores",
+    status_filter: str = "open",
+) -> Response:
+    """One table of the coach console as CSV (links and free-text reasons are left out)."""
+    page = await review_dashboard(request, current_user, session, tab, status_filter)
+    return export_response(
+        role=current_user.role, view="coach", table=table, html=bytes(page.body).decode("utf-8")
+    )
 
 
 @router.get("/items/{item_id}", response_class=HTMLResponse)
