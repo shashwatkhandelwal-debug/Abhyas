@@ -346,6 +346,10 @@ class Settings(BaseSettings):
 
     # ── V3 features (same pattern: ON in demo mode, OFF otherwise) ──
     FOLLOWUP_ENABLED: bool = False  # next-school-day "how did the practice go?" after a struggle
+    HELP_QUESTION_MAX_WORDS: int = 8  # a longer line is never treated as "what do I do now?"
+    HELP_QUESTION_MIN_SIMILARITY: float = 0.86  # typo tolerance of the help-phrase matcher
+    NAME_MAX_TOKENS: int = 2  # first and last name kept from the onboarding name step
+    NAME_MAX_UNFRAMED_WORDS: int = 4  # more words than this with no "my name is" frame: ask again
     FOLLOWUP_MAX_AGE_DAYS: int = 7  # a follow-up due longer ago than this is no longer offered
     FOLLOWUP_SCHOOL_DAYS: tuple[int, ...] = (0, 1, 2, 3, 4, 5)  # weekday numbers, Monday to Saturday
     OBSERVATION_ENABLED: bool = False  # ARP visit checklist and "reported vs observed"

@@ -1290,6 +1290,7 @@ lvl_command_words: {text: "कक्षा को समूहों में �
 # ── Follow-up loop (flag FOLLOWUP_ENABLED): "How did yesterday's practice go?" ──
 fu_ask: {text: "कल का अभ्यास कैसा रहा? '{label}' के लिए जो तरीका आज़माना था, उसके बारे में एक बटन दबाइए।", audio: false}
 fu_unknown_label: {text: "पिछली कक्षा की दिक्कत", audio: false}
+help_scene_stop: {text: "अभ्यास पूरा करने के लिए 'बस' लिखें।", audio: false}
 fu_ask_leadin: {text: "कल आपने कक्षा के बाद बताया था कि '{module}' में {outcome}। आज अभ्यास कैसा रहा? '{label}' के लिए जो तरीका आज़माना था, उसके बारे में एक बटन दबाइए।", audio: false}
 fu_leadin_well: {text: "अभ्यास अच्छा रहा", audio: false}
 fu_leadin_some: {text: "कुछ बच्चे अटके", audio: false}

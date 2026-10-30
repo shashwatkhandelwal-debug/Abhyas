@@ -948,6 +948,7 @@ lvl_command_words: {text: "group my class, group by level, level sorter, group t
 # ── Follow-up loop (flag FOLLOWUP_ENABLED): "How did yesterday's practice go?" ──
 fu_ask: {text: "How did yesterday's practice go? Tap one button about the method you planned to try for '{label}'."}
 fu_unknown_label: {text: "the difficulty from your last class"}
+help_scene_stop: {text: "To finish the practice, type 'stop'."}
 fu_ask_leadin: {text: "Yesterday, after class, you told me that in '{module}' {outcome}. How did today's practice go? Tap one button about the method you planned to try for '{label}'."}
 fu_leadin_well: {text: "the practice went well"}
 fu_leadin_some: {text: "some children got stuck"}

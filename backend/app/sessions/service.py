@@ -26,6 +26,7 @@ from backend.app.class_profile.library import load_library
 from backend.app.class_profile.skills import clean_skill_ids, load_skills, skill_levels
 from backend.app.config import settings, v2_enabled
 from backend.app.content_models import MoveCard
+from backend.app.core.help_question import is_help_question
 from backend.app.core.intents import (
     BUTTON_INTENT_MAP,
     Intent,
@@ -962,6 +963,79 @@ class SessionService:
             )
         ]
 
+    # Quick replies that match what each step's hint tells her to press (ids the flow handles)
+    _HELP_BUTTONS: dict[str, tuple[str, ...]] = {
+        SessionStateEnum.LEARN.value: ("btn_understood",),
+        SessionStateEnum.MODEL.value: ("btn_listen", "btn_skip"),
+        SessionStateEnum.FEEDBACK.value: ("btn_retry", "btn_continue"),
+        SessionStateEnum.DONE.value: ("btn_next_move", "btn_progress"),
+    }
+
+    async def _help_reply(
+        self, ctx: SessionContext, teacher_id: UUID, text: str
+    ) -> list[OutboundMessage] | None:
+        """The coach's hint for this screen when the line is clearly a help question, else None."""
+        if not text or not is_help_question(text):
+            return None
+        free_text = (
+            ctx.onboarding_state == OnboardingStateEnum.NEW
+            or ctx.awaiting_delete_confirm
+            or ctx.current_state == SessionStateEnum.ASK
+            or ctx.rating_stage
+            or ctx.class_stage
+            or ctx.skill_stage
+        )  # these steps take a free line, so the line is theirs
+        if free_text:
+            return None
+        from backend.app.web.next_action import next_action  # lazy: the web package imports us
+
+        ready = ctx.onboarding_state == OnboardingStateEnum.READY
+        in_scene, header, _ = await self._followup_scene(ctx, teacher_id)
+        hint = next_action(
+            onboarding=ctx.onboarding_state.value,
+            state=ctx.current_state.value,
+            context={
+                "class_stage": ctx.class_stage,
+                "skill_stage": ctx.skill_stage,
+                "checkin_stage": ctx.checkin_stage,
+                "level_stage": ctx.level_stage,
+                "rating_stage": ctx.rating_stage,
+                "module_mode": ctx.module_mode,
+                "module_check_stage": ctx.module_check_stage,
+                "resume_scene_id": ctx.resume_scene_id,
+                "rehearse_stage": ctx.rehearse_stage,
+                "rehearse_mode": ctx.rehearse_mode,
+            },
+            retries=ctx.retries_count,
+            address_form=ctx.address_form,
+            started=True,
+            scene=header,
+        )
+        if hint is None:
+            return None
+        body = str(hint["text"])
+        buttons: list[Button] = []
+        if in_scene and header is not None and ctx.rehearse_stage != "diagnose":
+            body = f"{body} {get_message('help_scene_stop', ctx.address_form)}"
+        elif ready and not ctx.checkin_stage and not ctx.level_stage:
+            buttons = [
+                Button(id=b, title_hi=get_message(b, ctx.address_form))
+                for b in self._HELP_BUTTONS.get(ctx.current_state.value, ())
+            ]
+        elif ctx.onboarding_state == OnboardingStateEnum.PROFILE_ADDRESS:
+            buttons = [
+                Button(id=b, title_hi=get_message(b, ctx.address_form))
+                for b in ("btn_female", "btn_male")
+            ]
+        return [
+            OutboundMessage(
+                kind="buttons" if buttons else "text",
+                text_hi=body,
+                buttons=buttons,
+                speaker="coach",
+            )
+        ]
+
     async def _followup_scene(
         self, ctx: SessionContext, teacher_id: UUID
     ) -> tuple[bool, dict[str, Any] | None, bool]:
@@ -1136,6 +1210,13 @@ class SessionService:
             checkin_flow.finish(ctx)
         elif btn_id == checkin_flow.BTN_START:
             level_sorter.reset(ctx)
+
+        # 0'. A question to the app ("what do I do now?") is answered by the coach and never reaches
+        # the scene, the check-in or the onboarding step; no state changes.
+        if btn_id is None:
+            help_reply = await self._help_reply(ctx, teacher_id, text_content)
+            if help_reply is not None:
+                return help_reply
 
         # 1'. "How did yesterday's practice go?" (flag FOLLOWUP_ENABLED): closed-list buttons only
         if (
