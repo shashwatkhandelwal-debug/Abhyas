@@ -69,3 +69,8 @@ Left alone on purpose, listed: chunk summaries and source titles from documents 
 - Agenda page (`cluster_pack_print.html`, both roles): a "डाउनलोड / प्रिंट" button with a three-line inline script on that page only; hidden in print; the demo label prints.
 - Tests: `test_csv_export.py` (CSV equals the page, headers/BOM/filename/Hindi, suppression at 9 and 10 for module progress and the trainer batch table, 403 for every other role, 404 for an unknown table, parser behaviour, agenda page with print button and demo label).
 - Docs: `docs/EVALUATOR_GUIDE.md` (new section) and `docs/ux/PHONE_TEST_CHECKLIST.md` (section K); freeze-check test run before and after (11 passed).
+
+## FINAL
+- Full gate (`scripts/pytest_fresh_db.py`): 2452 passed, 2 skipped. node chat tests 77 passed. phone_layout_check 0 of 144 failing. composer_layout_check 0 failures. check_first_load PASS (130210 bytes).
+- Fix after the first full run: "she is talking in the scene" is now `scene_line_at` (time of her last line sent to a scene), because the seeded demo2 already has one scene turn and a recent inbound time. The agenda-page test now allows its one print script.
+- Report: `docs/ux/FLOW_FIX_REPORT.md`.

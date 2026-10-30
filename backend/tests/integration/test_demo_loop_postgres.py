@@ -150,7 +150,7 @@ async def test_demo2_follow_up_is_due_on_login_and_offered(session: AsyncSession
         followup.BTN_STUCK,
         followup.BTN_CANT,
     ]
-    assert get_message("fu_ask", label="").split("{")[0].split("?")[0] in out[0].text_hi
+    assert get_message("fu_leadin_most") in out[0].text_hi  # led in by the stored check-in
     assert await service.offer_followup(TEACHER_DEMO2_ID) == []  # once
 
 

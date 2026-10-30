@@ -292,6 +292,7 @@ class SessionService:
             checkin_jump_move=str(ctx_data.get("checkin_jump_move", "")),
             followup_id=str(ctx_data.get("followup_id", "")),
             followup_stage=str(ctx_data.get("followup_stage", "")),
+            scene_line_at=str(ctx_data.get("scene_line_at", "")),
             level_stage=str(ctx_data.get("level_stage", "")),
             level_subject=str(ctx_data.get("level_subject", "")),
             level_idx=int(ctx_data.get("level_idx", 0)),
@@ -379,6 +380,7 @@ class SessionService:
             "checkin_jump_move": ctx.checkin_jump_move,
             "followup_id": ctx.followup_id,
             "followup_stage": ctx.followup_stage,
+            "scene_line_at": ctx.scene_line_at,
             "level_stage": ctx.level_stage,
             "level_subject": ctx.level_subject,
             "level_idx": ctx.level_idx,
@@ -1051,8 +1053,16 @@ class SessionService:
             return False, None, False
         record = await scene_store.get_active_for_teacher(teacher_id)
         header = scene_header(record.scene_state, record.active, record.turns) if record else None
-        spoken = bool(header and int(header.get("turn", 0)) >= 1)
-        return True, header, spoken or ctx.rehearsal_turns_count >= 1
+        # "Talking in the scene": she sent a line to it recently. A scene resumed from an earlier
+        # visit (or seeded, like demo2's) is a fresh landing, so the follow-up still goes first.
+        quiet = timedelta(hours=settings.FOLLOWUP_SCENE_QUIET_HOURS)
+        spoken = False
+        if ctx.scene_line_at:
+            try:
+                spoken = datetime.now(UTC) - datetime.fromisoformat(ctx.scene_line_at) < quiet
+            except ValueError:
+                spoken = False
+        return True, header, spoken
 
     async def _followup_close(
         self, ctx: SessionContext, teacher_id: UUID, messages: list[OutboundMessage]
@@ -1673,7 +1683,9 @@ class SessionService:
             elif current_onboarding == OnboardingStateEnum.PROFILE_NAME:
                 osm.transition(text_content)
                 await self._sync_context_to_db(ctx, teacher_id)
-                if ctx.onboarding_state == OnboardingStateEnum.PROFILE_NAME:  # not a name: ask again
+                if (
+                    ctx.onboarding_state == OnboardingStateEnum.PROFILE_NAME
+                ):  # not a name: ask again
                     return [
                         OutboundMessage(
                             kind="text", text_hi=get_message("ask_name_again", address_form)
@@ -1974,6 +1986,7 @@ class SessionService:
             ]
 
         elif curr == SessionStateEnum.REHEARSE_INTRO:
+            ctx.scene_line_at = datetime.now(UTC).isoformat()  # she is talking in the scene
             if ctx.rehearse_stage in rehearse_setup.SETUP_STAGES:
                 setup_messages = await rehearse_setup.handle_setup(
                     ctx=ctx,
@@ -2004,6 +2017,7 @@ class SessionService:
             return turn_res.outbound
 
         elif curr == SessionStateEnum.REHEARSE:
+            ctx.scene_line_at = datetime.now(UTC).isoformat()  # she is talking in the scene
             scene = await scene_store.get_active_for_teacher(teacher_id)
             if scene is None:
                 scene = await self.scene_runner.create_scene(

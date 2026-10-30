@@ -541,6 +541,7 @@ class SessionContext(BaseModel):
     # Follow-up loop (class_profile/followup.py): the open follow-up row and where she is in it
     followup_id: str = ""
     followup_stage: str = ""  # "", "ask", "why"
+    scene_line_at: str = ""  # ISO time of her last line sent to a scene ("" if none)
     # "Group my class by level" (class_profile/level_sorter.py): "" (not in it), "subject", "count",
     # "result"; the tapped range per level is kept for this conversation only (never stored)
     level_stage: str = ""

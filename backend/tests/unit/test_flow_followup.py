@@ -67,6 +67,14 @@ def button_ids(out: list[OutboundMessage]) -> list[str]:
 
 async def land_in_scene(h: Harness) -> None:
     await h.setup(MODULE, "ravi", "उल्टा घटा दिया")
+    await fresh_landing(h)
+
+
+async def fresh_landing(h: Harness) -> None:
+    """She opens the chat again: nothing sent recently."""
+    ctx = await h.ctx()
+    ctx.scene_line_at = ""
+    await h.service._sync_context_to_db(ctx, h.teacher_id)
 
 
 @pytest.mark.asyncio

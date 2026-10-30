@@ -351,6 +351,7 @@ class Settings(BaseSettings):
     NAME_MAX_CHARS: int = 40  # the stored name is cut here (as before)
     NAME_MAX_TOKENS: int = 2  # first and last name kept from the onboarding name step
     NAME_MAX_UNFRAMED_WORDS: int = 4  # more words than this with no "my name is" frame: ask again
+    FOLLOWUP_SCENE_QUIET_HOURS: int = 6  # sent something this recently in a scene: no follow-up now
     FOLLOWUP_MAX_AGE_DAYS: int = 7  # a follow-up due longer ago than this is no longer offered
     FOLLOWUP_SCHOOL_DAYS: tuple[int, ...] = (0, 1, 2, 3, 4, 5)  # weekday numbers, Monday to Saturday
     OBSERVATION_ENABLED: bool = False  # ARP visit checklist and "reported vs observed"
