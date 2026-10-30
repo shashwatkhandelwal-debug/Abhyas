@@ -30,6 +30,7 @@ join_code_invalid:
 ask_name:
   text: "आपका नाम क्या है?"
   audio: true
+ask_name_again: {text: "सिर्फ़ अपना नाम लिखिए, जैसे: रिया।", audio: false}
 ask_address_form:
   text: "आपको कैसे संबोधित करें?"
   audio: false

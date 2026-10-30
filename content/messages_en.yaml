@@ -10,6 +10,7 @@ consent_declined: {text: "No problem. Whenever you want to start, send 'hello'."
 ask_join_code: {text: "Send the code your ARP gave you. If you do not have a code, write 'no'."}
 join_code_invalid: {text: "That code was not found. Please send it again, or write 'no'."}
 ask_name: {text: "What is your name?"}
+ask_name_again: {text: "Please write only your name, for example: Riya."}
 ask_address_form: {text: "How should I address you?"}
 btn_female: {text: "Teacher (she)"}
 btn_male: {text: "Teacher (he)"}

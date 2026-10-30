@@ -1670,6 +1670,12 @@ class SessionService:
             elif current_onboarding == OnboardingStateEnum.PROFILE_NAME:
                 osm.transition(text_content)
                 await self._sync_context_to_db(ctx, teacher_id)
+                if ctx.onboarding_state == OnboardingStateEnum.PROFILE_NAME:  # not a name: ask again
+                    return [
+                        OutboundMessage(
+                            kind="text", text_hi=get_message("ask_name_again", address_form)
+                        )
+                    ]
                 return [
                     OutboundMessage(
                         kind="buttons",

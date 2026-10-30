@@ -182,7 +182,9 @@ def test_table_driven_transitions_coverage(edge: TransitionEdge) -> None:
             ctx.placement_turns_count = 1
 
         osm = OnboardingStateMachine(ctx)
-        result = osm.transition(edge.input_kind)
+        # the name step needs a real name; every other token is the edge's own input kind
+        token = "रिया" if edge.input_kind == "name_text" else edge.input_kind
+        result = osm.transition(token)
 
         assert result.new_state == edge.target_state, f"Failed on edge {edge}"
         assert tuple(result.message_keys) == edge.message_keys, f"Failed message keys on {edge}"

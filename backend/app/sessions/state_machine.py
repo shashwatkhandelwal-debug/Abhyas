@@ -16,7 +16,8 @@ from backend.app.core.intents import (
     Intent,
     match_intent,
 )
-from backend.app.core.messages import get_message
+from backend.app.core.messages import get_message, get_ui_lang
+from backend.app.core.name_extract import extract_name
 
 
 class SessionStateEnum(StrEnum):
@@ -1088,7 +1089,14 @@ class OnboardingStateMachine:
             )
 
         if prev == OnboardingStateEnum.PROFILE_NAME:
-            self.ctx.name = raw_text[:40].strip()
+            name = extract_name(raw_text, get_ui_lang())
+            if name is None:  # not plainly a name: ask again, store nothing
+                return TransitionResult(
+                    previous_state=str(prev),
+                    new_state=str(OnboardingStateEnum.PROFILE_NAME),
+                    message_keys=["ask_name_again"],
+                )
+            self.ctx.name = name
             self.ctx.onboarding_state = OnboardingStateEnum.PROFILE_ADDRESS
             return TransitionResult(
                 previous_state=str(prev),
