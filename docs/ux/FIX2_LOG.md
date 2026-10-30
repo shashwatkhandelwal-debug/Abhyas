@@ -19,3 +19,8 @@ Tests: test_child_no_repeat.py.
 chat.js handleSendAudio makes an object URL from the recorded Blob (memory only, nothing uploaded or stored) and puts a play control (reused .bubble-audio) at the top of the outgoing bubble at once; the existing "sending your voice" then "writing out what you said" phase line and the transcript appear under it and the control stays for the page session. URLs are revoked on pagehide and on logout click. Offline outbox and rejected sends keep the control. Server deletes audio after transcription as before.
 Payload after: first-load 130791 B, all assets 151912 B, headroom 1688 B measured (real ~1188 B, above the 1000 B floor).
 Tests: 3 new node tests in backend/tests/js/chat.test.mjs (harness gained URL stub, firstChild, windowListeners).
+
+## F5 specific feedback after onboarding practice: DONE
+New backend/app/sessions/placement_feedback.py builds the line from the tagged acts of the scene (asked how / explained in words / used objects / told the answer) in a fixed order, then why the first move (told, words only, objects, default). Catalog keys placement_fb_* in messages_hi.yaml and messages_en.yaml (twins, no dashes, no feminine verbs so no text_m needed). service.py uses it instead of placement_done (key kept, now unused). Acts come from earlier scene turns plus the current turn.
+Tests: test_placement_feedback.py (all 16 act combinations, English, no dashes); test_state_machine.py asserts the line appears at the end of onboarding.
+content-seed/messages_hi.yaml was not updated (it is already behind content/ and nothing loads it at runtime).
