@@ -856,6 +856,7 @@ async def get_delete_confirm_page(
         context={
             "request": request,
             "csrf_token": csrf_token,
+            "address_form": teacher.address_form,
             "teacher_name": (
                 teacher.name or current_user.display_name or get_message("ui_default_teacher_name")
             ),
@@ -887,7 +888,13 @@ async def delete_teacher_account_data(
         )
 
     teacher_id = teacher.id
-    await purge_teacher_data(db, teacher_id)
+    from backend.app.db.seed import DEMO_TEACHER_LOGINS, reset_demo_teacher
+
+    if current_user.username in DEMO_TEACHER_LOGINS:
+        # A shared demo login must survive: "delete" restores its seeded state (like logout does).
+        await reset_demo_teacher(db, current_user.username)
+    else:
+        await purge_teacher_data(db, teacher_id)
     await db.commit()
 
     accept = request.headers.get("accept", "")
