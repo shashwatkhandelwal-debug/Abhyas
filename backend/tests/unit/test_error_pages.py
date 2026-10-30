@@ -43,6 +43,17 @@ def test_404_page_is_bilingual_and_has_no_raw_error() -> None:
     assert "Not Found" not in res.text and "detail" not in res.text
 
 
+def test_page_request_without_session_redirects_to_login() -> None:
+    """fix3 B03: a browser hitting /teacher logged out gets the login page, API callers keep JSON."""
+    client = TestClient(real_app, raise_server_exceptions=False, follow_redirects=False)
+    for path in ("/teacher", "/arp", "/trainer", "/review", "/admin"):
+        res = client.get(path, headers=HTML)
+        assert res.status_code == 303 and res.headers["location"] == "/login", path
+    res = client.get("/api/auth/me", headers={"accept": "application/json"})
+    assert res.status_code == 401
+    assert res.headers["content-type"].startswith("application/json")
+
+
 def test_500_page_hides_the_stack_trace() -> None:
     res = TestClient(_app(), raise_server_exceptions=False).get("/boom", headers=HTML)
     assert res.status_code == 500

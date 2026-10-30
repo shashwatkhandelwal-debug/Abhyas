@@ -10,7 +10,7 @@ import logging
 
 from fastapi import FastAPI, Request
 from fastapi.exception_handlers import http_exception_handler
-from fastapi.responses import Response
+from fastapi.responses import RedirectResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend.app.core.messages import get_message
@@ -67,6 +67,9 @@ def render_error_page(request: Request, status_code: int) -> Response:
 def install_error_pages(app: FastAPI) -> None:
     @app.exception_handler(StarletteHTTPException)
     async def _http_error(request: Request, exc: StarletteHTTPException) -> Response:
+        if exc.status_code == 401 and request.method == "GET" and _wants_page(request):
+            # a browser opening a page without a session goes to the login page, not raw JSON
+            return RedirectResponse("/login", status_code=303)
         if exc.status_code in _PAGE_FOR_STATUS and _wants_page(request):
             return render_error_page(request, exc.status_code)
         return await http_exception_handler(request, exc)
