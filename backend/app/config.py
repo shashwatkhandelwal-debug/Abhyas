@@ -255,6 +255,20 @@ class Settings(BaseSettings):
     # numbers and carries one of these procedure-verb stems (the act tagger may miss it).
     CHILD_TELLING_MIN_NUMBERS: int = 3
     CHILD_TELLING_VERB_STEMS: tuple[str, ...] = ("घटा", "जोड़", "लिखो", "उधार", "निकाल", "काट")
+    # fix3 K4: a handbook tip or excerpt shown with a move must be about its topic (the move title's
+    # key words appear in the passage summary), not about the home or parents, not an overview of
+    # other topics, and for a male teacher must not address him with a feminine verb form.
+    TIP_MIN_TOPIC_HITS: int = 1
+    TIP_EXCERPT_POOL: int = 6  # passages looked at to find one that qualifies
+    TIP_HOME_MARKERS: tuple[str, ...] = (
+        "घर पर", "अभिभावक", "माता-पिता", "माता पिता", "पालक", "parents",
+    )  # fmt: skip
+    TIP_OTHER_TOPIC_MARKERS: tuple[str, ...] = (
+        "गुणा", "भाग", "मुद्रा", "लंबाई", "वज़न", "पौधों", "जीव", "कक्षा 1 से 6",
+    )  # fmt: skip
+    TIP_FEMININE_VERB_STEMS: tuple[str, ...] = (
+        "सकती", "करती", "कराती", "करवाती", "चाहती", "पाती", "देती", "लेती", "रखती",
+    )  # fmt: skip
     MAX_DISTRACTIONS_PER_SCENE: int = 1
     # Everyday things a distracted child may mention ONLY in an engine-chosen off-topic / interject
     # line; a child answering the lesson must not (the live 1-1 run showed the model adding

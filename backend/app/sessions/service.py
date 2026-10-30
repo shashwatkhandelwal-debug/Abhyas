@@ -69,7 +69,7 @@ from backend.app.rule_engine.domain import (
     SceneTurn,
     TeachingAct,
 )
-from backend.app.sessions import modules, rehearse_setup
+from backend.app.sessions import modules, rehearse_setup, tip_filter
 from backend.app.sessions.outcome import outcome_line
 from backend.app.sessions.path import MovePathEntry, compute_move_path, load_induction_order
 from backend.app.sessions.path_score import DONE_MIN_EVIDENCE
@@ -167,11 +167,20 @@ class SessionService:
 
         query = f"{move.title_hi} {' '.join(t.replace('_', ' ') for t in move.tags)}"
         hits = await self.retriever.retrieve(
-            query, top_k=1, min_score=settings.RETRIEVAL_MIN_SCORE, official_only=True
+            query,
+            top_k=settings.TIP_EXCERPT_POOL,
+            min_score=settings.RETRIEVAL_MIN_SCORE,
+            official_only=True,
         )
+        # the best passage that is about this move (never an unrelated overview or a home activity)
+        hits = [
+            h
+            for h in hits
+            if h.gloss_hi and tip_filter.chunk_qualifies(move, h.gloss_hi, *(h.keywords_hi or []))
+        ][:1]
         hit_cites: list[Citation] = []
         ref_text = ""
-        if hits and hits[0].gloss_hi:
+        if hits:
             hit = hits[0]
             chunk = RetrievedChunk(
                 chunk_id=hit.chunk_id,
@@ -593,13 +602,23 @@ class SessionService:
         ]
 
     async def _cited_tip(
-        self, query: str, move_title_hi: str, change_hi: str, *, pool: int, candidates: int
+        self,
+        query: str,
+        move: MoveCard,
+        change_hi: str,
+        *,
+        address_form: str,
+        pool: int,
+        candidates: int,
     ) -> SuggestionResult | None:
         """One guarded tip from the FLN training package, or None.
 
         Official chunks only (`official_only`), the retrieval score and matched-terms gates, then
         `suggest_from_sources` (schema, cited chunk must be one retrieved, grounded wording, one
         retry). No support or a failed guard means no tip: nothing is invented.
+
+        fix3 K4: only passages about this move, not about the home or parents, are offered, and a
+        tip with a feminine verb to a male teacher (or a home tip) is dropped, never rewritten.
         """
         try:
             hits = await self.retriever.retrieve(
@@ -622,12 +641,16 @@ class SessionService:
                 )
                 for c in hits
                 if c.source == settings.COACH_SUGGESTION_SOURCE_ID
+                and tip_filter.chunk_qualifies(move, c.gloss_hi or c.text, *(c.keywords_hi or []))
             ][:candidates]
-            result = await suggest_from_sources(move_title_hi, change_hi, chunks)
+            result = await suggest_from_sources(move.title_hi, change_hi, chunks)
         except (LLMUnavailable, TimeoutError, ValueError, OSError) as exc:
             logger.warning("source tip skipped: %s", exc)
             return None
         if not result.suggestion_hi or result.chunk is None:
+            return None
+        if not tip_filter.tip_text_qualifies(result.suggestion_hi, address_form):
+            logger.info("source tip dropped: home passage or feminine verb for a male teacher")
             return None
         return result
 
@@ -637,8 +660,9 @@ class SessionService:
         """One tip from the FLN training package after a scene, with a tappable citation."""
         result = await self._cited_tip(
             f"{move.title_hi} {change_hi}",
-            move.title_hi,
+            move,
             change_hi,
+            address_form=address_form,
             pool=settings.COACH_SUGGESTION_POOL,
             candidates=settings.COACH_SUGGESTION_CANDIDATES,
         )
@@ -661,8 +685,9 @@ class SessionService:
         query = f"{move.title_hi} {' '.join(t.replace('_', ' ') for t in move.tags)}"
         result = await self._cited_tip(
             query,
-            move.title_hi,
+            move,
             get_message("learn_tip_focus", address_form),
+            address_form=address_form,
             pool=settings.HANDBOOK_TIP_POOL,
             candidates=settings.HANDBOOK_TIP_CANDIDATES,
         )
