@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="{{ ui_lang() }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }} - {{ get_message('ui_app_name') }}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <style>
+    .move-card-page { width: 100%; max-width: 760px; margin: 0 auto; padding: 1rem; color: var(--text, #1c1f1d); }
+    .move-card-page h1 { font-size: 1.25rem; }
+    .move-card-page li { margin: 0.4rem 0; line-height: 1.5; }
+    .move-card-page .src { color: var(--muted, #5E6662); font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <main class="move-card-page">
+    <p><a href="/trainer#training-gap">{{ get_message("ui_gap_back") }}</a></p>
+    <h1>{{ title }}</h1>
+    <p>{{ summary }}</p>
+    <h2>{{ get_message("ui_gap_card_points") }}</h2>
+    <ol>
+      {% for kp in points %}
+      <li>{{ kp.text }}{% if kp.cites %}<br><span class="src">{{ get_message("ui_gap_card_source") }}: {{ kp.cites | join("; ") }}</span>{% endif %}</li>
+      {% endfor %}
+    </ol>
+  </main>
+</body>
+</html>

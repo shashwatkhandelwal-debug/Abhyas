@@ -79,6 +79,9 @@ def board_text(item: Problem) -> str:
         return f"{item.a} + {item.b}"
     if item.type == "place_value":
         return f"{item.tens} × 10 + {item.ones}"
+    if item.type == "compare":
+        # text-only board: the bundles-and-sticks drawing shows one number, not two
+        return get_message("ui_board_compare", a=item.a, b=item.b)
     return str(item.word or "")
 
 

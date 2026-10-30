@@ -1384,3 +1384,47 @@ adp_why_some: {text: "क्यों अभी यह: हाल की कक�
 adp_why_stuck: {text: "क्यों अभी यह: अगले दिन के हाल में आपने बताया कि '{label}' में बच्चे अब भी अटके हैं।", audio: false}
 adp_why_worked: {text: "क्यों अभी यह: '{label}' का तरीका आपके यहाँ काम किया, इसलिए पहले दूसरा अभ्यास।", audio: false}
 adp_why_new: {text: "क्यों अभी यह: शुरुआत में पहले बुनियादी अभ्यास, जिसमें मॉडल शिक्षक का तरीका पहले देखने को मिलता है।", audio: false}
+# Track B scenes
+ui_board_compare: {text: "{a} और {b}: कौन बड़ा?", audio: false}
+hint_example_compare: {text: "{child}, तुमने कैसे तय किया कि कौन-सी संख्या बड़ी है?", audio: false}
+move_title_NUM_COMPARE_BUNDLES: {text: "दो अंकों की संख्याओं की तुलना: पहले बंडल गिनकर", audio: false}
+move_title_LIT_LETTER_SOUND_PAIRS: {text: "अक्षर का नाम नहीं, ध्वनि: शब्द की पहली ध्वनि पर काम", audio: false}
+btn_chk_mod_NUM_COMPARE_BUNDLES: {text: "संख्याओं की तुलना", audio: false}
+btn_chk_mod_LIT_LETTER_SOUND_PAIRS: {text: "अक्षर की ध्वनि", audio: false}
+ui_gap_title: {text: "प्रशिक्षण कहाँ नहीं पहुँच रहा", audio: false}
+ui_gap_caption: {text: "यह सिम्युलेटेड अभ्यासों पर आधारित है, कक्षा के अवलोकन पर नहीं। हर शिक्षक का पिछले {days} दिनों का सबसे हाल का अभ्यास गिना गया है; केवल वे शिक्षक जो अंक साझा करते हैं।", audio: false}
+ui_gap_demo_note: {text: "इसमें डेमो डेटा शामिल है।", audio: false}
+ui_gap_empty: {text: "पिछले {days} दिनों में अंक साझा करने वाले शिक्षकों का कोई अभ्यास नहीं है।", audio: false}
+ui_gap_move_col: {text: "अभ्यास", audio: false}
+ui_gap_h_told_answer: {text: "उत्तर बता दिया", audio: false}
+ui_gap_h_no_ask_why: {text: "कैसे या क्यों नहीं पूछा", audio: false}
+ui_gap_h_no_named_child: {text: "बच्चे का नाम लेकर नहीं पूछा", audio: false}
+ui_gap_h_no_concrete: {text: "ठोस चीज़ें नहीं लीं", audio: false}
+ui_gap_na: {text: "लागू नहीं", audio: false}
+ui_gap_card_link: {text: "कार्ड देखें", audio: false}
+ui_gap_back: {text: "वापस प्रशिक्षक पृष्ठ पर", audio: false}
+ui_gap_card_points: {text: "मुख्य बातें", audio: false}
+ui_gap_card_source: {text: "स्रोत", audio: false}
+focus_offer: {text: "क्या हर दिन चैट खोलने पर एक छोटा सुझाव दिखाएँ?", audio: false}
+btn_focus_yes: {text: "हाँ", audio: false}
+btn_focus_no: {text: "अभी नहीं", audio: false}
+btn_focus_off: {text: "बंद करें", audio: false}
+btn_focus_practice: {text: "अभ्यास करें", audio: false}
+btn_focus_ask: {text: "हैंडबुक से पूछें", audio: false}
+focus_card_head: {text: "आज का सुझाव", audio: false}
+focus_card_body: {text: "'{label}' के लिए एक कदम:\n{tip}\n{sources}", audio: false}
+focus_on_ack: {text: "ठीक है। अब हर दिन चैट खोलने पर एक सुझाव दिखेगा। आप 'बंद करें' दबाकर इसे कभी भी रोक सकते हैं।", audio: false}
+focus_snooze_ack: {text: "ठीक है, अभी नहीं। एक हफ्ते से पहले दोबारा नहीं पूछेंगे।", audio: false}
+focus_off_ack: {text: "ठीक है, रोज़ के सुझाव बंद कर दिए।", audio: false}
+fast_start_note: {text: "आपके अनुभव के हिसाब से आप सीधे अभ्यास से शुरू कर सकते हैं; मुख्य बातें कभी भी देख सकते हैं।", audio: false}
+btn_fast_start: {text: "सीधे अभ्यास", audio: false}
+btn_fast_keypoints: {text: "मुख्य बातें देखें", audio: false}
+fast_keypoints_head: {text: "इस तरीके की मुख्य बातें:", audio: false}
+fast_keypoints_sources: {text: "स्रोत: {sources}", audio: false}
+ui_arp_practise_together: {text: "साथ में अभ्यास करें", audio: false}
+ui_support_line: {text: "ये शिक्षक अपनी मर्ज़ी से आपके साथ अंक साझा करते हैं। यह मूल्यांकन नहीं, सहयोग के लिए है।", audio: false}
+obs_note: {text: "आपके ARP ने देखा: {worked}। एक बात आज़माएँ: {step}।", audio: false}
+obs_note_no_step: {text: "आपके ARP ने देखा: {worked}।", audio: false}
+obs_worked_none: {text: "आपकी कक्षा का भ्रमण हुआ", audio: false}
+btn_obs_ok: {text: "ठीक है", audio: false}
+obs_ok_ack: {text: "धन्यवाद। यह सिर्फ़ आपके लिए एक सुझाव है, कोई अंक नहीं।", audio: false}

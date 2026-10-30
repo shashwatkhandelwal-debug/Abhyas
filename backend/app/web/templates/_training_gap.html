@@ -1,0 +1,36 @@
+{# "Where training is not landing". Context: training_gap (TrainingGap), gap_titles (move_id -> title), suppression_message, get_message. Counts only, never a teacher. #}
+<section class="card table-card" id="training-gap" style="margin: 1rem 0; padding: 1rem 1.25rem; background: var(--surface, #fff); border: 1px solid var(--border, #ddd); border-radius: 12px;">
+  <h2 style="margin: 0 0 0.25rem 0; font-size: 1.1rem;">{{ get_message("ui_gap_title") }}</h2>
+  <p id="training-gap-caption" style="margin: 0 0 0.75rem 0; color: var(--muted, #5E6662); font-size: 0.9rem;">{{ get_message("ui_gap_caption", days=training_gap.window_days) }}{% if training_gap.includes_demo %} {{ get_message("ui_gap_demo_note") }}{% endif %}</p>
+  {% if training_gap.empty %}
+    <p id="training-gap-empty" style="margin: 0; color: var(--muted, #5E6662);">{{ get_message("ui_gap_empty", days=training_gap.window_days) }}</p>
+  {% else %}
+    <div style="overflow-x: auto;">
+      <table id="training-gap-table" style="width: 100%; border-collapse: collapse; font-size: 0.92rem;">
+        <thead>
+          <tr style="text-align: left;">
+            <th style="padding: 0.4rem 0.5rem;">{{ get_message("ui_gap_move_col") }}</th>
+            <th style="padding: 0.4rem 0.5rem;">{{ get_message("ui_gap_h_told_answer") }}</th>
+            <th style="padding: 0.4rem 0.5rem;">{{ get_message("ui_gap_h_no_ask_why") }}</th>
+            <th style="padding: 0.4rem 0.5rem;">{{ get_message("ui_gap_h_no_named_child") }}</th>
+            <th style="padding: 0.4rem 0.5rem;">{{ get_message("ui_gap_h_no_concrete") }}</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for r in training_gap.rows %}
+          <tr data-move="{{ r.move_id }}" style="border-top: 1px solid var(--border, #ddd);">
+            <td style="padding: 0.4rem 0.5rem;">{{ gap_titles[r.move_id] }}<br><a href="/trainer/move/{{ r.move_id }}">{{ get_message("ui_gap_card_link") }}</a></td>
+            {% for c in r.cells %}
+              <td data-habit="{{ c.habit }}" style="padding: 0.4rem 0.5rem;">
+                {% if not c.applicable %}{{ get_message("ui_gap_na") }}
+                {% elif c.n is none %}<span class="gap-withheld" style="color: var(--muted, #5E6662);">{{ suppression_message }}</span>
+                {% else %}<strong>{{ c.share }}%</strong> ({{ c.count }}/{{ c.n }}){% endif %}
+              </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+</section>

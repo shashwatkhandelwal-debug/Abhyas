@@ -300,7 +300,7 @@ def test_compose_fidelity_reply_both_missing_must_have_and_misconception() -> No
 def test_fallback_fidelity_all_seed_moves() -> None:
     """Fallback fidelity produces guard-valid output for all 4 seed moves."""
     moves = _load_all_seed_moves()
-    assert len(moves) == 4
+    assert len(moves) == 6  # the four originals and the two Track B scenes
 
     for move in moves:
         # Transcript with no keywords -> all missing

@@ -29,7 +29,7 @@ from backend.app.auth.csrf import (
     verify_csrf_token,
 )
 from backend.app.auth.guards import require_role
-from backend.app.config import settings
+from backend.app.config import settings, v2_enabled
 from backend.app.core.messages import get_message
 from backend.app.db.models import (
     AdoptionEvidence,
@@ -140,6 +140,7 @@ async def get_arp_dashboard(
             "demo_mode": current_user.is_demo_account,
             "demo_banner_text": demo_banner_text,
             "saved_msg": saved_msg,
+            "support_framing": v2_enabled(settings.SUPPORT_FRAMING_ENABLED),
             **visit_context,
             **card_context(pack, "/arp/cluster-pack/print"),
         },

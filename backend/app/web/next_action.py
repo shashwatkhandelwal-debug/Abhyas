@@ -48,6 +48,7 @@ EXAMPLE_KEYS = {
     "add": "hint_example_add",
     "place_value": "hint_example_place_value",
     "read_word": "hint_example_read",
+    "compare": "hint_example_compare",
 }
 
 

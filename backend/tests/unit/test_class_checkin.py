@@ -12,6 +12,7 @@ import re
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from typing import Any
+from unittest.mock import patch
 from uuid import UUID, uuid4
 
 import pytest
@@ -22,7 +23,7 @@ from test_teacher_pwa import mock_teacher, mock_teacher_id, teacher_pwa_app  # n
 
 from backend.app.class_profile import checkin_flow
 from backend.app.class_profile.library import load_library
-from backend.app.config import settings, v2_enabled
+from backend.app.config import FLAGGED_MOVES, settings, v2_enabled
 from backend.app.core.messages import (
     FEMININE_MARKERS,
     get_message,
@@ -36,7 +37,19 @@ from backend.app.sessions.service import SessionService
 from backend.app.sessions.state_machine import OnboardingStateEnum, SessionStateEnum
 from backend.app.sessions.titles import move_title
 
-LIB = load_library()
+
+@pytest.fixture(autouse=True)
+def _track_b_scenes_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    """These tests describe the check-in as it was before the Track B scenes (flags off)."""
+    monkeypatch.setattr(
+        "backend.app.class_profile.library.move_offered", lambda m: m not in FLAGGED_MOVES
+    )
+
+
+with patch(  # the library as it was before the Track B scenes (flags off)
+    "backend.app.class_profile.library.move_offered", lambda m: m not in FLAGGED_MOVES
+):
+    LIB = load_library()
 MODULES = checkin_flow.modules(LIB)
 MAPPED = [s for s in LIB.struggles if s.move_id]
 MAPPED_ONLY = [s for s in LIB.struggles if not s.move_id]

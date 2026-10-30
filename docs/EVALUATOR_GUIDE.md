@@ -188,6 +188,26 @@ change them. The national / state source labels have no flag.
 Reminders: the first request after idle takes about 40-60 seconds on Render's free plan (open `/healthz` first), and two
 judges on one account interfere with each other (logging in or out resets that teacher).
 
+## Track B: two new practice scenes and five new screens (exact taps)
+
+All of these are on in demo mode and controlled by settings flags (off outside demo mode; `DEMO_MODE=true` turns them on, and with
+every flag off the app behaves as before). Flags: `SCENE_NUM_COMPARE_ENABLED`, `SCENE_LIT_LETTER_SOUND_ENABLED`,
+`TRAINING_GAP_ENABLED`, `FOCUS_CARD_ENABLED`, `FAST_START_ENABLED`, `SUPPORT_FRAMING_ENABLED`, `OBSERVATION_TO_TEACHER_ENABLED`.
+(`MODEL_AUDIO_ENABLED` exists but does nothing: no cached model-practice audio exists, see `docs/ux/TRACKB_LOG.md`.) The scenes are
+reached from the check-in and the practice set-up, not from the weekly path, so the weekly loop is unchanged.
+
+| Feature | Account | Taps | What you see |
+|---|---|---|---|
+| **Scene: comparing two-digit numbers** | `teacher.demo3` | Tray chip "कक्षा के बाद: कैसा रहा?"; on the module list tap "और विषय देखें" until "संख्याओं की तुलना" appears and tap it; "ज़्यादातर अटके"; "संख्याओं की तुलना"; read the cited tip; tap "रवि के साथ अभ्यास"; then "तीनों बच्चे" (or one child). | Board "39 और 41: कौन बड़ा?" (text only; no bundles drawing). Ravi says "39!". Type "रवि, तुमने कैसे तय किया कि 39 बड़ा है?": he explains "9 और 1 में 9 बड़ा है, तो 39 बड़ा". Type "सब लोग देखो, ये रहे 3 बंडल और 9 खुली तीलियाँ, यानी 39, और 4 बंडल और 1 तीली, यानी 41।": he now says 41 with the bundles. Hero beat: "रवि, सही उत्तर 41 है।" (he only repeats it), then "रवि, अब ये सवाल: 28 और 33, कौन बड़ा?": he says "28!" and the strip shows "अटका हुआ · फिर अटका". |
+| **Scene: letter name versus letter sound** | `teacher.demo3` | Same check-in; module "अक्षर की ध्वनि"; "ज़्यादातर अटके"; "अक्षर और ध्वनि"; practice button. | Board word "बकरी". The children say "ब से बतख" (the chart name, not the sound). Type "रवि, तुमने इसे कैसे पढ़ा?", then "सब लोग, पहले अक्षर पर उँगली रखो और उसकी ध्वनि निकालो।", then "सब लोग, मैं करके दिखाती हूँ, मेरे साथ: ब, क, री, बकरी।". Hero beat: "रवि, सही उत्तर बकरी है।" then "रवि, अब शब्द कमल पढ़ो।": "क से कबूतर!". `teacher.demo2` is inside a scene, where the check-in only offers the way back, so use demo3. |
+| **Where training is not landing** | `trainer.demo` | Open `/trainer`, scroll to "प्रशिक्षण कहाँ नहीं पहुँच रहा"; tap "कार्ड देखें" on a row. | Four moves, sorted by the largest gap. Per move and habit: share and count of teachers whose latest rehearsal still shows it (told the answer, did not ask how or why, did not name a child, did not use concrete objects). "स्थानीय मान" has 9 teachers, so every cell shows the privacy message. The caption says it is from simulated rehearsals, not classroom observation, and that it includes demo data. The card link opens the key points with their sources. |
+| **Today's tip** | `teacher.demo3` | Open `/teacher`: the question "क्या हर दिन चैट खोलने पर एक छोटा सुझाव दिखाएँ?" appears. Tap "हाँ", then reload the page. | One "आज का सुझाव" message with one step and its source chip, buttons "अभ्यास करें", "हैंडबुक से पूछें", "बंद करें". At most one a day; "बंद करें" turns it off. `teacher.demo2` is seeded as opted in but is inside a scene it has started, so its tip waits until you end the scene ("बस") and reload. |
+| **Straight to practice** | a new account, or `teacher.demo1` | During onboarding answer the experience question with "6-10 साल" (or "10+"), finish onboarding. | On the first learn message a third button "सीधे अभ्यास" and the line that you can start with practice and see the key points any time. Tap it: the practice set-up opens with "मुख्य बातें देखें" next to the mode buttons. Answer "2-5 साल" or "0-1" instead and the button is absent: model practice stays first. |
+| **Support wording on the ARP page** | `arp.demo` | Open `/arp`. | Where a teacher used to be marked "मदद चाहिए" in red, the neutral "साथ में अभ्यास करें"; above the teacher list, the visit checklist and the visit list the line "ये शिक्षक अपनी मर्ज़ी से आपके साथ अंक साझा करते हैं। यह मूल्यांकन नहीं, सहयोग के लिए है।" |
+| **The ARP's note reaches the teacher** | `arp.demo`, then `teacher.demo2` | As ARP: "भ्रमण दर्ज करें: डेमो शिक्षिका 2", tick talk moves, one next step, save. Then log in as `teacher.demo2` and open `/teacher`. | At the end of the thread: "आपके ARP ने देखा: ... एक बात आज़माएँ: ..." with one button "ठीक है". No score, no level; it changes nothing else. Tap "ठीक है" for a thank-you line. |
+
+Not built: a school-setting question at onboarding (it needs a database change), and audio on the model practice.
+
 ## A suggested hour
 
 1. **teacher.demo2 (10 min).** Continue the 1-1 scene with Ravi using the sample chips (including the Hinglish

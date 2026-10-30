@@ -76,8 +76,8 @@ struggles:
       - "बड़ी-छोटी संख्या में गलती करते हैं"
       - "ज़्यादा-कम में उलझते हैं"
     keywords: [तुलना, बड़ी संख्या, छोटी संख्या, संख्या बड़ी, संख्या छोटी, बड़ा-छोटा, ज़्यादा-कम, ज्यादा-कम, compare, bigger number]
-    misconception_ids: []
-    move_id: null
+    misconception_ids: [CMP_ONES_FIRST]
+    move_id: NUM_COMPARE_BUNDLES
     chunk_ids: ["nipun_guidelines_2021:p283:284", "up_ganit_sandarshika_c1:p030:039"]
     tip_hi: "चीज़ें सामने रखकर \"ज़्यादा\", \"कम\", \"बराबर\" जैसे शब्द बच्चों से बुलवाएँ। आकार में बड़ी चीज़ ज़्यादा हो, यह ज़रूरी नहीं; मात्रा से तुलना करवाएँ।"
     tip_en: "Put objects in front of children and have them use the words more, less and equal. A bigger-looking object need not be more; compare by quantity."
@@ -208,8 +208,8 @@ struggles:
       - "अक्षर की आवाज़ नहीं बता पाते"
       - "वर्ण नहीं पहचानते"
     keywords: [अक्षर पहचान, वर्ण, ध्वनि, आवाज़, letter sound, phonics]
-    misconception_ids: []
-    move_id: null
+    misconception_ids: [LETTER_NAME_FOR_SOUND]
+    move_id: LIT_LETTER_SOUND_PAIRS
     chunk_ids: ["nipun_guidelines_2021:p074:068", "ncert_vidya_pravesh:p032:031"]
     tip_hi: "अक्षर और ध्वनि का संबंध जाने-पहचाने शब्दों और पाठ से सिखाएँ, वर्णमाला के क्रम से नहीं। शब्द की शुरू, बीच और अंत की ध्वनि पहचानने के खेल कराएँ।"
     tip_en: "Teach the link between letters and sounds through familiar words and texts, not in alphabet order. Play games on the beginning, middle and end sounds of words."

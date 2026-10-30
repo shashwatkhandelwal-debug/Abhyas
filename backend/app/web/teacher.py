@@ -38,9 +38,11 @@ from backend.app.auth.csrf import (
 from backend.app.auth.guards import get_current_user, require_role
 from backend.app.auth.session import clear_session_cookie
 from backend.app.channels.web import WebChannel
+from backend.app.class_profile.focus import enabled as focus_enabled
 from backend.app.class_profile.followup import enabled as followup_enabled
 from backend.app.class_profile.skills import skill_progress
 from backend.app.class_profile.views import views_for
+from backend.app.class_profile.visit_note import enabled as visit_note_enabled
 from backend.app.config import settings, v2_enabled
 from backend.app.content_models import MoveCard
 from backend.app.core.messages import (
@@ -134,6 +136,27 @@ async def teacher_chat_page(
                 await db.commit()
         except Exception:
             logger.warning("follow-up offer failed", exc_info=True)
+
+    # What her ARP saw in her class (flag OBSERVATION_TO_TEACHER_ENABLED): a note, never a rating
+    if visit_note_enabled() and teacher.onboarding_state == OnboardingStateEnum.READY.value:
+        try:
+            note_msgs = await SessionService(db_session=db).offer_visit_note(teacher.id)
+            if note_msgs:
+                await WebChannel().send(teacher, note_msgs, session=db)
+                await db.commit()
+        except Exception:
+            logger.warning("visit note failed", exc_info=True)
+
+    # "Today's focus" (flag FOCUS_CARD_ENABLED): the opt-in question or one cited tip, after the
+    # follow-up above and before the thread is read, so it sits in order in the thread
+    if focus_enabled() and teacher.onboarding_state == OnboardingStateEnum.READY.value:
+        try:
+            focus_msgs = await SessionService(db_session=db).offer_focus(teacher.id)
+            if focus_msgs:
+                await WebChannel().send(teacher, focus_msgs, session=db)
+                await db.commit()
+        except Exception:
+            logger.warning("focus card failed", exc_info=True)
 
     # CSRF cookie resolution for client scripts and forms
     csrf_token = request.cookies.get(CSRF_COOKIE_NAME)

@@ -12,7 +12,7 @@ from datetime import UTC, date, datetime, timedelta
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import create_engine, func, select, text
+from sqlalchemy import create_engine, delete, func, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -303,3 +303,100 @@ async def test_flags_off_hide_everything(
 
     assert not visit_observation.enabled()
     _ = timedelta
+
+
+# ── today's focus (FOCUS_CARD_ENABLED, on in demo mode) ─────────────────────────────────────
+@pytest.mark.asyncio
+async def test_focus_card_demo2_opted_in_waits_for_the_scene_then_once_a_day(
+    session: AsyncSession,
+) -> None:
+    from backend.app.channels.web import WebChannel
+    from backend.app.class_profile import focus
+    from backend.app.sessions.state_machine import SessionStateEnum
+
+    await reset_demo_teacher(session, "teacher.demo2")
+    await seed_login_loop(session, TEACHER_DEMO2_ID, FIXED)
+    await session.commit()
+    service = SessionService(db_session=session)
+    teacher = await service.repo.get_or_create_teacher(TEACHER_DEMO2_ID)
+    assert teacher.tomorrow_focus_opt_in is True  # seeded opted in
+    # demo2 resumes inside a scene she has started: the card never interrupts it
+    assert await service.offer_focus(TEACHER_DEMO2_ID) == []
+    ctx = await service.get_or_create_context(TEACHER_DEMO2_ID)
+    ctx.current_state = SessionStateEnum.DONE
+    ctx.rehearsal_turns_count = 0
+    await service._sync_context_to_db(ctx, TEACHER_DEMO2_ID)
+    await session.commit()
+    out = await service.offer_focus(TEACHER_DEMO2_ID)
+    assert len(out) == 1 and out[0].citations
+    assert out[0].text_hi.startswith(get_message("focus_card_head"))
+    assert [b.id for b in out[0].buttons][-1] == focus.BTN_OFF
+    await WebChannel().send(teacher, out, session=session)  # what the chat page does
+    await session.commit()
+    assert await service.offer_focus(TEACHER_DEMO2_ID) == []  # once today
+    await reset_demo_teacher(session, "teacher.demo2")  # the next login clears the thread
+    await session.commit()
+    teacher = await service.repo.get_or_create_teacher(TEACHER_DEMO2_ID)
+    assert teacher.tomorrow_focus_opt_in is True
+
+
+@pytest.mark.asyncio
+async def test_focus_offer_demo3_is_asked_once_and_flag_off_hides_it(
+    session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from backend.app.channels.web import WebChannel
+    from backend.app.class_profile import focus
+
+    await reset_demo_teacher(session, "teacher.demo3")
+    await session.commit()
+    service = SessionService(db_session=session)
+    teacher = await service.repo.get_or_create_teacher(TEACHER_DEMO3_ID)
+    assert teacher.tomorrow_focus_opt_in is False
+    out = await service.offer_focus(TEACHER_DEMO3_ID)
+    assert [b.id for b in out[0].buttons] == [focus.BTN_YES, focus.BTN_NO]
+    await WebChannel().send(teacher, out, session=session)
+    await session.commit()
+    assert await service.offer_focus(TEACHER_DEMO3_ID) == []  # not again within the week
+    monkeypatch.setattr(settings, "DEMO_MODE", False)
+    monkeypatch.setattr(settings, "FOCUS_CARD_ENABLED", False)
+    assert await service.offer_focus(TEACHER_DEMO3_ID) == []
+
+
+# ── what an ARP saw, shown to the teacher (OBSERVATION_TO_TEACHER_ENABLED, on in demo mode) ──
+@pytest.mark.asyncio
+async def test_visit_note_reaches_demo2_once_after_an_arp_saves_an_observation(
+    session: AsyncSession,
+) -> None:
+    from backend.app.channels.web import WebChannel
+    from backend.app.class_profile import visit_note
+
+    await reset_demo_teacher(session, "teacher.demo2")
+    await session.commit()
+    service = SessionService(db_session=session)
+    assert await service.offer_visit_note(TEACHER_DEMO2_ID) == []  # nothing saved yet
+    session.add(
+        ClassVisitObservation(
+            id=uuid4(),
+            teacher_id=TEACHER_DEMO2_ID,
+            talk_moves=["why_how"],
+            practice_seen=True,
+            struggle_id=STRUGGLE,
+            next_step="hold_answer",
+            observed_on=TODAY,
+            is_demo=True,
+            created_at=datetime.now(UTC),
+        )
+    )
+    await session.commit()
+    out = await service.offer_visit_note(TEACHER_DEMO2_ID)
+    assert len(out) == 1 and [b.id for b in out[0].buttons] == [visit_note.BTN_OK]
+    assert out[0].text_hi.startswith("आपके ARP ने देखा:") and "एक बात आज़माएँ:" in out[0].text_hi
+    assert not any(ch.isdigit() for ch in out[0].text_hi)  # a note, never a score
+    teacher = await service.repo.get_or_create_teacher(TEACHER_DEMO2_ID)
+    await WebChannel().send(teacher, out, session=session)
+    await session.commit()
+    assert await service.offer_visit_note(TEACHER_DEMO2_ID) == []  # shown once
+    await session.execute(
+        delete(ClassVisitObservation).where(ClassVisitObservation.teacher_id == TEACHER_DEMO2_ID)
+    )
+    await session.commit()

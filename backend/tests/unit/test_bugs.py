@@ -289,7 +289,9 @@ def test_akshar_by_akshar(word: str, expected_joined: str) -> None:
 # ---------------------------------------------------------------------------
 def test_registry_size_and_metadata() -> None:
     """Exactly 12 procedural bug rules must be registered with complete metadata."""
-    assert len(BUG_REGISTRY) == 12
+    # the two Track B scene rules (CMP_ONES_FIRST, LETTER_NAME_FOR_SOUND) sit beside the original 12
+    track_b = {"CMP_ONES_FIRST", "LETTER_NAME_FOR_SOUND"}
+    assert len(set(BUG_REGISTRY) - track_b) == 12
     expected_ids = {
         "SUB_SMALLER_FROM_LARGER",
         "SUB_BORROW_NO_DECREMENT",
@@ -304,7 +306,7 @@ def test_registry_size_and_metadata() -> None:
         "FIRST_AKSHAR_GUESS",
         "AKSHAR_BY_AKSHAR",
     }
-    assert set(BUG_REGISTRY.keys()) == expected_ids
+    assert set(BUG_REGISTRY.keys()) - track_b == expected_ids
     for rule_id, info in BUG_REGISTRY.items():
         assert info.rule_id == rule_id
         assert callable(info.fn)

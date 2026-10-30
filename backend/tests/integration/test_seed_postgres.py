@@ -23,7 +23,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from backend.app.db.demo_data import DEMO_CHECKIN_REPORTS, DEMO_CHECKIN_WELL
+from backend.app.db.demo_data import DEMO_CHECKIN_REPORTS, DEMO_CHECKIN_WELL, DEMO_GAP_MOVES
 from backend.app.reports.cluster_pack import ClusterPack, build_cluster_pack
 from backend.app.sessions.service import SessionService
 from backend.app.sessions.state_machine import OnboardingStateEnum
@@ -180,7 +180,8 @@ def test_seed_runs_on_fresh_postgres_and_is_idempotent(scratch_db: str) -> None:
     first = _counts(scratch_db)
     assert first["scene"] > 0
     # every finished scene is scored; demo2's live one-on-one scene has no score yet
-    assert first["rehearsal_score"] == first["scene"] - 1
+    # (the training-gap demo scenes of the trainer view, T3, are the only unscored ones besides)
+    assert first["rehearsal_score"] == first["scene"] - 1 - sum(c for _, c in DEMO_GAP_MOVES)
     assert first["turn"] > 0
     assert first["app_user"] > 0
     assert _orphans(scratch_db) == {"rehearsal_score": 0, "turn": 0}

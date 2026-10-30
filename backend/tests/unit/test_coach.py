@@ -223,6 +223,8 @@ def test_fallback_passes_guard_all_4_seed_moves_typed_inputs() -> None:
         "NUM_ADD_CARRY_BUNDLES": 83,
         "NUM_PLACE_VALUE_BUNDLES": 47,
         "LIT_MATRA_BLENDING": "मेला",
+        "NUM_COMPARE_BUNDLES": 41,  # Track B scenes
+        "LIT_LETTER_SOUND_PAIRS": "बकरी",
     }
 
     for move in seed_moves:

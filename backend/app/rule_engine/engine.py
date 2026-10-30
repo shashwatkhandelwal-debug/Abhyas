@@ -89,6 +89,13 @@ def _validate_problem(problem: Problem, domain: Domain) -> bool:
                 and lo <= problem.b <= hi
                 and (problem.a + problem.b) <= settings.PROBLEM_MAX_SUM
             )
+        if problem.type == "compare":
+            return (
+                problem.a is not None
+                and problem.b is not None
+                and settings.COMPARE_MIN_OPERAND <= problem.a <= hi
+                and settings.COMPARE_MIN_OPERAND <= problem.b <= hi
+            )
         if problem.type == "place_value":
             return (
                 problem.tens is not None

@@ -45,7 +45,7 @@ class TeachingAct(StrEnum):
 class Problem(BaseModel):
     """An item the children work on (§4.1)."""
 
-    type: Literal["sub", "add", "place_value", "read_word"]
+    type: Literal["sub", "add", "place_value", "read_word", "compare"]
     a: int | None = None  # sub/add: a − b or a + b (two-digit)
     b: int | None = None
     tens: int | None = None  # place_value: bundles of 10
@@ -59,6 +59,8 @@ class Problem(BaseModel):
             return f"{self.type}:{self.a}{op}{self.b}"
         if self.type == "place_value":
             return f"pv:{self.tens}-{self.ones}"
+        if self.type == "compare":
+            return f"cmp:{self.a}-{self.b}"
         return f"word:{self.word}"
 
     def answer(self) -> int | str:
@@ -75,6 +77,10 @@ class Problem(BaseModel):
                     f"Problem of type 'place_value' requires non-None 'tens' and 'ones', got tens={self.tens}, ones={self.ones}"
                 )
             return self.tens * 10 + self.ones
+        if self.type == "compare":
+            if self.a is None or self.b is None:
+                raise ValueError("Problem of type 'compare' requires non-None 'a' and 'b'")
+            return max(self.a, self.b)
         if self.type == "read_word":
             if not self.word:
                 raise ValueError("Problem of type 'read_word' requires a non-empty 'word'")

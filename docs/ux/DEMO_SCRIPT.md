@@ -248,7 +248,7 @@ Say: "Self-reported and observed counts from consenting teachers. Not learning o
 
 ## 2:50 to 3:00. Close
 
-Say: "Built: these seven pieces, tested. Not built: regional languages, a WhatsApp pilot, any measure of learning."
+Say: "Built: these seven pieces, tested, and two more practice scenes. Not built: regional languages, a WhatsApp pilot, any measure of learning."
 (Fuller pilot wording is in `docs/submission/PITCH_NOTES.md`; it does not fit in ten seconds.)
 
 ## Rehearsal notes
@@ -271,4 +271,4 @@ Spoken words are the quoted "Say" lines only; at about 2 to 2.5 words a second t
 | Feedback | 1:35 to 2:05 | 24 |
 | Level sorter | 2:05 to 2:30 | 17 |
 | Cluster pack | 2:30 to 2:50 | 28 |
-| Close | 2:50 to 3:00 | 16 |
+| Close | 2:50 to 3:00 | 21 |

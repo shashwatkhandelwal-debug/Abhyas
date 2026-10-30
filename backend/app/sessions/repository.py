@@ -18,9 +18,11 @@ from backend.app.db.models import (
     ClassFollowup,
     ClassFollowupOutcome,
     ClassOutcome,
+    ClassVisitObservation,
     ConsentLog,
     ExplainScore,
     InviteCode,
+    Message,
     ModuleProgress,
     MovePath,
     Question,
@@ -386,6 +388,40 @@ class SessionRepository:
             .limit(1)
         )
         return res.scalar_one_or_none()
+
+    async def latest_visit_observation(
+        self, teacher_id: UUID, since: datetime
+    ) -> ClassVisitObservation | None:
+        """The newest class-visit observation an ARP saved about her since `since`."""
+        res = await self.session.execute(
+            select(ClassVisitObservation)
+            .where(
+                ClassVisitObservation.teacher_id == teacher_id,
+                ClassVisitObservation.created_at >= since,
+            )
+            .order_by(ClassVisitObservation.created_at.desc())
+            .limit(1)
+        )
+        return res.scalar_one_or_none()
+
+    async def last_outbound_button_time(
+        self, teacher_id: UUID, button_ids: tuple[str, ...]
+    ) -> datetime | None:
+        """When she was last sent a message carrying one of these buttons (None: never)."""
+        res = await self.session.execute(
+            select(Message.created_at, Message.buttons)
+            .where(
+                Message.teacher_id == teacher_id,
+                Message.direction == "out",
+                Message.buttons.is_not(None),
+            )
+            .order_by(Message.created_at.desc())
+            .limit(200)
+        )
+        for created_at, buttons in res.all():
+            if any(isinstance(b, dict) and b.get("id") in button_ids for b in buttons or []):
+                return created_at  # type: ignore[no-any-return]
+        return None
 
     async def mark_followup_offered(self, followup_id: UUID) -> None:
         row = await self.session.get(ClassFollowup, followup_id)

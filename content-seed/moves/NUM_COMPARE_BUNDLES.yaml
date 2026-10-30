@@ -1,0 +1,311 @@
+# DRAFT, written by the team for the Track B prototype. Needs FLN coach review (HUMAN INPUT H8) and
+# verification of module_ref against the actual UP teacher guide (H7) before status: approved.
+# Key points that carry source_chunk_ids paraphrase only what those stored chunks say; the
+# "tens first" step is the team's own scene design and carries no source.
+id: NUM_COMPARE_BUNDLES
+version: 1
+status: in_review
+domain: numeracy
+grade: [2]
+title_hi: "दो अंकों की संख्याओं की तुलना: पहले बंडल गिनकर"
+summary_hi: "जब बच्चा इकाई देखकर बड़ी संख्या बताए, तो उससे उसका तरीका पूछें और बंडल-तीली से दोनों संख्याएँ बनवाकर तुलना करवाएँ।"
+tags: [comparison, place_value, bundles, ganit]
+module_ref:
+  source_id: up_ganit_sandarshika_c1
+  section: "संख्याओं की तुलना"
+  page: null
+  verified: false
+sankul_month: October
+
+key_points:
+  - id: kp1
+    text_hi: "कई बच्चे 39 और 41 में पहले इकाई देखते हैं: 9 बड़ा है, तो 39 बड़ा। सबसे पहले बच्चे से पूछें कि उसने कैसे तय किया।"
+    text_en: "Many children look at the ones first for 39 and 41: 9 is bigger, so 39 is bigger. First ask the child how they decided."
+    must_have: true
+    keywords_hi: [पूछें, कैसे, तरीका, इकाई, पहले]
+    source_chunk_ids: []
+  - id: kp2
+    text_hi: "संख्याओं की तुलना कंकड़, ब्लॉक्स या तीलियों जैसी ठोस चीज़ों से करवाएँ और पूछें कि किसमें कम हैं और किसमें ज़्यादा।"
+    text_en: "Compare numbers with real things such as pebbles, blocks or sticks, and ask which has fewer and which has more."
+    must_have: true
+    keywords_hi: [कंकड़, तीली, ठोस, कम, ज़्यादा]
+    source_chunk_ids: ["up_ganit_sandarshika_c1:p041:060"]
+  - id: kp3
+    text_hi: "दोनों संख्याएँ बंडल और खुली तीलियों से बनवाएँ: 39 यानी 3 बंडल और 9 तीलियाँ, 41 यानी 4 बंडल और 1 तीली। पहले बंडल गिनें, जिसके बंडल ज़्यादा हों वही संख्या बड़ी है।"
+    text_en: "Build both numbers with bundles and loose sticks: 39 is 3 bundles and 9 sticks, 41 is 4 bundles and 1 stick. Count the bundles first; the number with more bundles is bigger."
+    must_have: true
+    keywords_hi: [बंडल, तीली, पहले, ज़्यादा, बड़ी]
+    source_chunk_ids: ["up_ganit_sandarshika_c1:p109:166"]
+  - id: kp4
+    text_hi: "बच्चों से 'ज़्यादा', 'कम', 'बराबर', 'बड़ा' और 'छोटा' जैसे शब्द खुद बुलवाएँ। बंडल बराबर हों, तभी खुली तीलियाँ देखें।"
+    text_en: "Have children say the words more, fewer, equal, bigger and smaller themselves. Look at the loose sticks only when the bundles are equal."
+    must_have: false
+    keywords_hi: [ज़्यादा, कम, बराबर, बड़ा, छोटा]
+    source_chunk_ids: ["up_ganit_sandarshika_c1:p030:039"]
+  - id: kp5
+    text_hi: "सही उत्तर खुद न बताएँ। बच्चे से बंडल गिनवाएँ और उसे खुद देखने दें कि कौन-सी संख्या बड़ी है।"
+    text_en: "Do not tell the answer yourself. Have the child count the bundles and see for themselves which number is bigger."
+    must_have: true
+    keywords_hi: [न बताएँ, गिनवाएँ, खुद, देखने]
+    source_chunk_ids: []
+
+teaching_acts_effective: [ask_to_explain, concrete_representation, probe_simpler_case, contrast_answers, model_step_aloud, involve_peer]
+target_causes: [CMP_ONES_FIRST]
+
+rubric:
+  criteria:
+    - id: crit_explain
+      text_hi: "बच्चे से उसका तरीका पूछना"
+      levels:
+        0: "बच्चे का तरीका नहीं पूछा"
+        1: "पूछा, पर केवल 'गलत है' कहकर आगे बढ़ गईं"
+        2: "बच्चे से पूछा कि उसने कैसे तय किया कि कौन-सी संख्या बड़ी है"
+      signal_acts: [ask_to_explain]
+      negative_acts: []
+    - id: crit_concrete
+      text_hi: "बंडल और तीलियों का उपयोग"
+      levels:
+        0: "केवल अंकों में समझाया"
+        1: "तीलियों का ज़िक्र किया, पर दोनों संख्याएँ बनवाकर बंडल नहीं गिनवाए"
+        2: "दोनों संख्याएँ बंडल-तीली से बनवाईं और पहले बंडल गिनवाए"
+      signal_acts: [concrete_representation, probe_simpler_case]
+      negative_acts: []
+    - id: crit_no_telling
+      text_hi: "उत्तर बताने के बजाय बच्चे को सोचने देना"
+      levels:
+        0: "सही उत्तर खुद बता दिया"
+        1: "उत्तर नहीं बताया, पर बच्चे से तुलना या जाँच नहीं करवाई"
+        2: "दो उत्तरों की तुलना करवाई या साथी बच्चे से समझवाया"
+      signal_acts: [contrast_answers, involve_peer]
+      negative_acts: [tell_answer]
+    - id: crit_all_children
+      text_hi: "सभी बच्चों को शामिल करना (शांत बच्चे सहित)"
+      levels:
+        0: "केवल एक बच्चे से बात की"
+        1: "दो बच्चों से बात की"
+        2: "तीनों बच्चों से बात की, शांत बच्ची को भी प्रोत्साहित किया"
+      signal_acts: [involve_peer, praise_effort]
+      negative_acts: [scold]
+
+feedback_bank:
+  crit_explain:
+    strength_hi: "आपने बच्चे से उसका तरीका पूछा, इससे उसकी असली उलझन सामने आई।"
+    change_hi: "अगली बार 'गलत है' कहने से पहले बच्चे से पूछिए कि उसने कैसे तय किया।"
+    exact_words_hi: "रवि, तुमने कैसे तय किया कि 39 बड़ा है? मुझे एक-एक कदम बताओ।"
+  crit_concrete:
+    strength_hi: "आपने दोनों संख्याएँ बंडल और तीलियों से बनवाईं, यह बच्चों को दिखता है।"
+    change_hi: "अगली बार दोनों संख्याओं के बंडल अलग-अलग रखवाइए और पहले बंडल गिनवाइए।"
+    exact_words_hi: "39 के 3 बंडल और 41 के 4 बंडल रखो। अब गिनो, किसके बंडल ज़्यादा हैं?"
+  crit_no_telling:
+    strength_hi: "आपने उत्तर खुद नहीं बताया, बच्चों को सोचने का मौका दिया।"
+    change_hi: "उत्तर बताने के बजाय दो उत्तर सामने रखकर पूछिए कि कौन-सा सही है।"
+    exact_words_hi: "रवि ने 39 कहा और प्रिया ने 41। बंडल गिनकर बताओ, कौन-सा बड़ा है?"
+  crit_all_children:
+    strength_hi: "आपने तीनों बच्चों को बातचीत में शामिल किया।"
+    change_hi: "शांत बच्ची प्रिया का नाम लेकर उसे धीरे से बोलने का मौका दीजिए।"
+    exact_words_hi: "प्रिया, तुम्हारा तरीका भी सुनना है। धीरे से बताओ, कोई बात नहीं।"
+
+learn_script_hi: >-
+  नमस्ते! इस हफ्ते हम दो अंकों की संख्याओं की तुलना का एक तरीका सीखेंगे। जब बच्चों से पूछा जाता है कि 39 और 41
+  में कौन बड़ा है, तो कई बच्चे इकाई देखते हैं। वे कहते हैं, 9 बड़ा है, इसलिए 39 बड़ा। यह लापरवाही नहीं है, बच्चे के मन
+  में एक नियम बैठा होता है। इसलिए पहला कदम है: बच्चे से पूछिए, तुमने कैसे तय किया? जब बच्चा अपना तरीका बताता है, तब
+  पता चलता है कि उलझन कहाँ है। दूसरा कदम: 10-10 तीलियों के बंडल लीजिए। दोनों संख्याएँ बनवाइए। 39 के 3 बंडल और 9
+  खुली तीलियाँ, 41 के 4 बंडल और 1 तीली। अब पूछिए, किसके बंडल ज़्यादा हैं? बच्चा खुद देखेगा कि 4 बंडल ज़्यादा हैं, तो 41 बड़ा
+  है। जब बंडल बराबर हों, तभी खुली तीलियाँ देखनी हैं। तीसरा कदम: उत्तर खुद मत बताइए। दो उत्तर सामने रखिए, 39 और 41, और
+  पूछिए कि कौन-सा बड़ा है और क्यों। बच्चों से ज़्यादा, कम, बराबर, बड़ा और छोटा जैसे शब्द खुद बुलवाइए। और ध्यान रखिए, कक्षा का
+  शांत बच्चा भी बोले। अब आप यह तरीका अपने शब्दों में बताइए, फिर तीन बच्चों के साथ अभ्यास करेंगे।
+learn_summary_hi:
+  - "1. पहले बच्चे से पूछें: तुमने कैसे तय किया?"
+  - "2. दोनों संख्याएँ बंडल-तीली से बनवाएँ: 39 = 3 बंडल + 9 तीलियाँ, 41 = 4 बंडल + 1 तीली"
+  - "3. पहले बंडल गिनें; बंडल बराबर हों तभी तीलियाँ देखें"
+  - "4. उत्तर न बताएँ, दो उत्तरों की तुलना करवाएँ"
+  - "5. शांत बच्चे को भी मौका दें"
+
+scenario:
+  intro_hi: "कक्षा 2। बोर्ड पर लिखा है: 39 और 41, कौन बड़ा? आपके सामने तीन बच्चे हैं: रवि, प्रिया और अमन। तीनों ने अपना उत्तर बताया है। अब आप उनसे बात करें।"
+  items:
+    - {type: compare, a: 39, b: 41}
+    - {type: compare, a: 28, b: 33}
+    - {type: compare, a: 47, b: 52}
+    - {type: compare, a: 19, b: 21}
+  children:
+    - {persona_id: ravi,  misconception: CMP_ONES_FIRST}     # 39 और 41 → 39
+    - {persona_id: priya, misconception: CMP_ONES_FIRST}     # 39 और 41 → 39
+    - {persona_id: aman,  misconception: CMP_ONES_FIRST}     # 39 और 41 → 39
+  guess_lexicon: {}
+
+model_rehearsal:
+  - speaker: teacher
+    text_hi: "रवि, तुमने कैसे तय किया कि 39 बड़ा है? मुझे एक-एक कदम बताओ।"
+    acts: [ask_to_explain]
+    addressed: ravi
+    problem: null
+  - speaker: teacher
+    text_hi: "प्रिया, अच्छा सोचा तुमने। धीरे से बताओ, तुमने कैसे तय किया?"
+    acts: [ask_to_explain, praise_effort]
+    addressed: priya
+    problem: null
+  - speaker: teacher
+    text_hi: "सब लोग देखो। ये रहे 3 बंडल और 9 खुली तीलियाँ, यानी 39। और ये रहे 4 बंडल और 1 तीली, यानी 41। चलो, पहले बंडल गिनते हैं।"
+    acts: [concrete_representation]
+    addressed: all
+    problem: null
+  - speaker: teacher
+    text_hi: "अमन, रवि ने पहले 39 कहा था और अब बंडल गिनकर 41 कह रहा है। कौन-सा सही है, और क्यों?"
+    acts: [contrast_answers]
+    addressed: aman
+    problem: null
+  - speaker: teacher
+    text_hi: "प्रिया, तुमने 39 कहा था। किसके बंडल ज़्यादा थे? तो 39 सही है या 41?"
+    acts: [contrast_answers]
+    addressed: priya
+    problem: null
+  - speaker: teacher
+    text_hi: "रवि, अब तुम बताओ, 39 और 41 में से कौन-सा बड़ा है?"
+    acts: [contrast_answers]
+    addressed: ravi
+    problem: null
+
+peer_checklist:
+  - "शिक्षक ने कम से कम एक बच्चे से पूछा कि उसने कैसे तय किया।"
+  - "बच्चों ने दोनों संख्याएँ बंडल-तीली (या चित्र) से बनाईं।"
+  - "पहले बंडल गिनवाए गए।"
+  - "शिक्षक ने सही उत्तर खुद नहीं बताया।"
+  - "कम से कम एक शांत बच्चे ने बोलकर बताया।"
+reflection_questions:
+  - "बंडल गिनते समय बच्चों को सबसे ज़्यादा उलझन कहाँ हुई?"
+  - "किस बच्चे ने अपना तरीका बताया, और उससे आपको क्या पता चला?"
+approvals: []
+
+# One-on-one practice (the teacher talks to ONE child; diagnose first)
+one_on_one_intro_hi: "बोर्ड पर लिखा है: {a} और {b}, कौन बड़ा? {child} ने उत्तर बताया: {answer}। उत्तर गलत है। पहले सोचिए: आपको क्या लगता है, {child} ने कहाँ गलती की? अपने शब्दों में बताइए।"
+one_on_one_intro_en: "The board says {a} and {b}: which is bigger? {child} answered {answer}, which is wrong. First think: where do you think {child} went wrong? Say it in your own words."
+
+diagnosis_topic_keywords:
+  - तुलना
+  - बड़ा
+  - छोटा
+  - बड़ी संख्या
+  - इकाई
+  - दहाई
+  - बंडल
+  - compare
+  - bigger
+  - smaller
+  - ikai
+  - dahai
+  - ones
+  - tens
+
+misconceptions:
+  CMP_ONES_FIRST:
+    label_hi: "पहले इकाई देखकर तय करता है कि कौन-सी संख्या बड़ी है (दहाई नहीं देखता)"
+    label_en: "Looks at the ones first to decide which number is bigger (does not look at the tens)"
+    reveal_hi: "{child} पहले इकाई देखता है: 9 और 1 में 9 बड़ा है, तो वह 39 को बड़ा कह देता है। दहाई, यानी बंडल, पर उसका ध्यान नहीं जाता: 3 बंडल और 4 बंडल।"
+    reveal_en: "{child} looks at the ones first: 9 is more than 1, so 39 is called bigger. The tens, the bundles, are not looked at: 3 bundles against 4 bundles."
+    keywords:
+      - इकाई पहले
+      - इकाई देखी
+      - इकाई देखकर
+      - इकाई देख
+      - इकाई वाला अंक
+      - पहले इकाई
+      - अंत का अंक
+      - आखिरी अंक
+      - आख़िरी अंक
+      - दाएँ वाला अंक
+      - दहाई नहीं देखी
+      - दहाई नहीं देखा
+      - दहाई नहीं देख
+      - दहाई को नहीं
+      - बंडल नहीं देखे
+      - 9 बड़ा
+      - 9 और 1
+      - looked at ones
+      - looks at the ones
+      - ones first
+      - last digit
+      - did not look at tens
+      - ignored the tens
+      - ikai pehle
+      - ikai dekhi
+
+rubric_one_on_one:
+  criteria:
+    - id: asks_to_explain
+      text_hi: "बच्चे से उसका तरीका पूछना"
+      levels:
+        0: "बच्चे का तरीका नहीं पूछा"
+        1: "पूछा, पर केवल 'गलत है' कहकर आगे बढ़ गए"
+        2: "पूछा कि उसने कैसे तय किया और उसकी बात सुनी"
+      signal_acts: [ask_to_explain]
+      negative_acts: []
+    - id: does_not_tell_answer
+      text_hi: "सही उत्तर बताने के बजाय बच्चे को खुद सोचने देना"
+      levels:
+        0: "सही उत्तर खुद बता दिया"
+        1: "उत्तर नहीं बताया, पर बच्चे से तुलना या जाँच नहीं करवाई"
+        2: "उत्तर नहीं बताया; दो उत्तरों की तुलना या जाँच बच्चे से करवाई"
+      signal_acts: [contrast_answers]
+      negative_acts: [tell_answer]
+    - id: uses_concrete_representation
+      text_hi: "बंडल और तीलियों का उपयोग"
+      levels:
+        0: "केवल अंकों में समझाया"
+        1: "तीलियों का ज़िक्र किया, पर दोनों संख्याएँ बनवाकर बंडल नहीं गिनवाए"
+        2: "दोनों संख्याएँ बंडल-तीली से बनवाईं और पहले बंडल गिनवाए"
+      signal_acts: [concrete_representation, model_step_aloud]
+      negative_acts: []
+    - id: probes_with_followup
+      text_hi: "बच्चे के जवाब पर अनुवर्ती सवाल पूछना"
+      levels:
+        0: "एक सवाल पूछकर आगे बढ़ गए"
+        1: "एक अनुवर्ती सवाल पूछा"
+        2: "बच्चे के जवाब पर 'क्यों?' या किसी आसान सवाल से उसकी समझ परखी"
+      signal_acts: [probe_simpler_case, contrast_answers]
+      negative_acts: []
+    - id: checks_on_new_problem
+      text_hi: "नए सवाल पर जाँचना"
+      levels:
+        0: "नया सवाल नहीं दिया"
+        1: "नया सवाल दिया, पर देखा नहीं कि बच्चा नया तरीका लगा रहा है या नहीं"
+        2: "नया सवाल देकर देखा कि बच्चा अब खुद पहले बंडल गिनता है"
+      signal_acts: [give_new_problem]
+      negative_acts: []
+
+feedback_bank_one_on_one:
+  asks_to_explain:
+    strength_hi: "आपने बच्चे से उसका तरीका पूछा, इससे उसकी असली उलझन सामने आई।"
+    change_hi: "अगली बार 'गलत है' कहने से पहले बच्चे से पूछिए कि उसने कैसे तय किया।"
+    exact_words_hi: "तुमने कैसे तय किया कि 39 बड़ा है? मुझे एक-एक कदम बताओ।"
+    strength_en: "You asked the child for their method, which brought the real confusion into the open."
+    change_en: "Next time, before saying 'wrong', ask the child how they decided."
+    exact_words_en: "How did you decide that 39 is bigger? Tell me each step."
+  does_not_tell_answer:
+    strength_hi: "आपने उत्तर खुद नहीं बताया, बच्चे को सोचने का मौका दिया।"
+    change_hi: "उत्तर बताने के बजाय दो उत्तर सामने रखकर पूछिए कि कौन-सा सही है।"
+    exact_words_hi: "तुमने पहले एक उत्तर कहा था, अब बंडल गिनकर दूसरा आया। कौन-सा ठीक है, और क्यों?"
+    strength_en: "You did not tell the answer and gave the child room to think."
+    change_en: "Instead of telling the answer, put two answers side by side and ask which one is right."
+    exact_words_en: "You said one answer before and counting the bundles gives another. Which is right, and why?"
+  uses_concrete_representation:
+    strength_hi: "आपने दोनों संख्याएँ बंडल और तीलियों से बनवाईं, यह बच्चे को दिखता है।"
+    change_hi: "अगली बार दोनों संख्याओं के बंडल रखवाइए और बच्चे से पहले बंडल गिनवाइए।"
+    exact_words_hi: "39 के 3 बंडल और 41 के 4 बंडल रखो। अब गिनो, किसके बंडल ज़्यादा हैं?"
+    strength_en: "You had both numbers built with bundles and sticks, which the child can see."
+    change_en: "Next time, put out the bundles for both numbers and have the child count the bundles first."
+    exact_words_en: "Put out 3 bundles for 39 and 4 bundles for 41. Now count: which has more bundles?"
+  probes_with_followup:
+    strength_hi: "आपने बच्चे के जवाब के बाद एक और सवाल पूछा, इससे उसकी समझ परखी गई।"
+    change_hi: "बच्चे के जवाब के बाद 'क्यों?' पूछिए या कोई आसान सवाल दीजिए।"
+    exact_words_hi: "अच्छा, ये बताओ, तुमने यहाँ ऐसा क्यों किया? आसान सवाल 12 और 21 पर भी देखें?"
+    strength_en: "You asked one more question after the child's answer, which tested the understanding."
+    change_en: "After the child answers, ask 'why?' or give an easier question."
+    exact_words_en: "Tell me, why did you do it this way here? Shall we try an easier one, 12 and 21?"
+  checks_on_new_problem:
+    strength_hi: "आपने नया सवाल देकर देखा कि बच्चा अब खुद तरीका लगा पाता है या नहीं।"
+    change_hi: "समझ आने पर एक नया सवाल दीजिए और देखिए कि बच्चा खुद करता है।"
+    exact_words_hi: "अब ये नया सवाल तुम खुद करो: 28 और 33, कौन बड़ा? कैसे तय करोगे, बताओ।"
+    strength_en: "You gave a new problem to see whether the child can now use the method alone."
+    change_en: "Once the child gets it, give a new problem and watch them do it alone."
+    exact_words_en: "Now try this new one yourself: 28 and 33, which is bigger? Tell me how you will decide."

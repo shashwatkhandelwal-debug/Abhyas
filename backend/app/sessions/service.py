@@ -16,10 +16,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.class_profile import (
     adaptive,
     checkin_flow,
+    fast_start,
+    focus,
     followup,
     level_sorter,
     personalise,
     skills_flow,
+    visit_note,
 )
 from backend.app.class_profile import flow as class_flow
 from backend.app.class_profile.library import load_library
@@ -112,6 +115,7 @@ class SessionService:
         address_form: str,
         struggle_ids: list[str] | None = None,
         audio_ref: str | None = None,
+        experience_band: str | None = None,
     ) -> list[OutboundMessage]:
         """Builds one or two bubbles for the learn step according to one-language-per-bubble rule.
 
@@ -143,6 +147,11 @@ class SessionService:
             ),
             Button(id="btn_replay", title_hi=get_message("btn_replay", address_form)),
         ]
+        if fast_start.eligible(experience_band):  # FAST_START_ENABLED: experienced teachers
+            buttons.append(fast_start.fast_button(address_form))
+            intro_note = f"\n\n{fast_start.note(address_form)}"
+        else:
+            intro_note = ""
 
         tip_text, tip_cites = await self._learn_tip(move, address_form)
 
@@ -181,7 +190,7 @@ class SessionService:
         ]
 
         if guide_parts:
-            guide_body = "\n\n".join(guide_parts)
+            guide_body = "\n\n".join(guide_parts) + intro_note
             return [
                 OutboundMessage(
                     kind="audio" if audio_ref else "text",
@@ -201,7 +210,7 @@ class SessionService:
         return [
             OutboundMessage(
                 kind="buttons",
-                text_hi=intro,
+                text_hi=intro + intro_note,
                 audio_ref=audio_ref,
                 buttons=buttons,
             )
@@ -885,7 +894,9 @@ class SessionService:
         ctx.checkin_jump_move = ""
         await self._sync_context_to_db(ctx, teacher_id)
         move = load_move_card(module_id)
-        return await self._build_learn_messages(move, address_form, ctx.class_struggles)
+        return await self._build_learn_messages(
+            move, address_form, ctx.class_struggles, experience_band=ctx.experience_band
+        )
 
     async def _checkin_messages(
         self, ctx: SessionContext, teacher_id: UUID, chk: checkin_flow.CheckinResult
@@ -1082,6 +1093,150 @@ class SessionService:
             OutboundMessage(kind="buttons", text_hi=get_message("fu_next_idle"), buttons=buttons),
         ]
 
+    async def offer_visit_note(self, teacher_id: UUID) -> list[OutboundMessage]:
+        """She opened the chat: what her ARP saw in her class, once (flag OBSERVATION_TO_TEACHER_ENABLED).
+
+        A note built from the closed lists of the ARP's form, never a rating, and nothing is
+        written: it reads the observation and goes into her thread. It is shown once, found from
+        her own thread (the message carrying the OK button), so no state is stored.
+        """
+        if not visit_note.enabled():
+            return []
+        ctx = await self.get_or_create_context(teacher_id)
+        if ctx.onboarding_state != OnboardingStateEnum.READY or ctx.awaiting_delete_confirm:
+            return []
+        since = followup.utcnow() - timedelta(days=settings.OBSERVATION_WINDOW_DAYS)
+        obs = await self.repo.latest_visit_observation(teacher_id, since)
+        if obs is None:
+            return []
+        shown = await self.repo.last_outbound_button_time(teacher_id, (visit_note.BTN_OK,))
+        if shown is not None and obs.created_at <= shown:
+            return []
+        return [
+            visit_note.note_message(
+                list(obs.talk_moves),
+                obs.struggle_id,
+                bool(obs.practice_seen),
+                obs.next_step,
+                ctx.address_form,
+            )
+        ]
+
+    async def offer_focus(self, teacher_id: UUID) -> list[OutboundMessage]:
+        """She opened the chat: the opt-in question, or today's focus card (flag FOCUS_CARD_ENABLED).
+
+        After any due follow-up (the caller offers that first). Never in the middle of a scene she
+        has started, never with a screen of another tool open, and the card only with a citation.
+        """
+        if not focus.enabled():
+            return []
+        ctx = await self.get_or_create_context(teacher_id)
+        busy = (
+            ctx.checkin_stage not in ("", checkin_flow.STAGE_RESULT)
+            or ctx.level_stage
+            or ctx.rating_stage
+            or ctx.class_stage
+            or ctx.skill_stage
+            or ctx.awaiting_delete_confirm
+            or (ctx.current_state == SessionStateEnum.REHEARSE and ctx.rehearsal_turns_count > 0)
+        )
+        if ctx.onboarding_state != OnboardingStateEnum.READY or busy:
+            return []
+        teacher = await self.repo.get_or_create_teacher(teacher_id)
+        opted_in = bool(teacher.tomorrow_focus_opt_in)
+        now = followup.utcnow()
+        if opted_in:
+            last_card = await self.repo.last_outbound_button_time(teacher_id, (focus.CARD_MARKER,))
+            if not focus.card_due(opted_in=True, last_card_at=last_card, now=now):
+                return []
+            return focus.card_messages(
+                await self._focus_struggle(ctx, teacher_id, now), address_form=ctx.address_form
+            )
+        since = now - timedelta(days=settings.ADAPTIVE_HISTORY_DAYS)
+        has_activity = bool(await self.repo.recent_checkins(teacher_id, since)) or bool(
+            await self.repo.done_move_ids(teacher_id, DONE_MIN_EVIDENCE)
+        )
+        # asked before, or had the daily card and turned it off: not again within the week
+        last_offer = await self.repo.last_outbound_button_time(
+            teacher_id, (focus.OFFER_MARKER, focus.CARD_MARKER)
+        )
+        if focus.offer_due(
+            opted_in=False, has_activity=has_activity, last_offer_at=last_offer, now=now
+        ):
+            return [focus.offer_message(ctx.address_form)]
+        return []
+
+    async def _focus_struggle(
+        self, ctx: SessionContext, teacher_id: UUID, now: datetime
+    ) -> str | None:
+        since = now - timedelta(days=settings.ADAPTIVE_HISTORY_DAYS)
+        checkins = await self.repo.recent_checkins(teacher_id, since)
+        return focus.last_struggle([list(c.struggle_ids) for c in checkins], ctx.class_struggles)
+
+    async def _handle_focus_button(
+        self, ctx: SessionContext, teacher_id: UUID, button_id: str
+    ) -> list[OutboundMessage]:
+        res = focus.handle_button(button_id, ctx.address_form)
+        if res.opt_in is not None:
+            teacher = await self.repo.get_or_create_teacher(teacher_id)
+            teacher.tomorrow_focus_opt_in = res.opt_in
+            await self.repo.save_teacher(teacher)
+        if res.practice:
+            sid = await self._focus_struggle(ctx, teacher_id, followup.utcnow())
+            struggle = load_library().get(sid) if sid else None
+            if (
+                struggle is None
+                or struggle.move_id is None
+                or ctx.current_state == SessionStateEnum.REHEARSE
+            ):
+                return [followup.already_message()]
+            return await self._launch_checkin_practice(ctx, teacher_id, struggle.move_id)
+        if res.handbook:
+            if ctx.current_state != SessionStateEnum.ASK:
+                ctx.prior_state_before_ask = ctx.current_state
+                ctx.current_state = SessionStateEnum.ASK
+            await self._sync_context_to_db(ctx, teacher_id)
+            return [
+                OutboundMessage(kind="text", text_hi=get_message("ask_prompt", ctx.address_form))
+            ]
+        await self._sync_context_to_db(ctx, teacher_id)
+        return res.messages
+
+    async def _handle_fast_start(
+        self, ctx: SessionContext, teacher_id: UUID, button_id: str
+    ) -> list[OutboundMessage] | None:
+        """The "straight to practice" button of the learn step and the key-points button; None: not mine."""
+        af = ctx.address_form
+        move = load_move_card(ctx.current_move_id)
+        if button_id == fast_start.BTN_FAST:
+            if ctx.current_state != SessionStateEnum.LEARN or not fast_start.eligible(
+                ctx.experience_band
+            ):
+                return None
+            ctx.current_state = SessionStateEnum.REHEARSE_INTRO
+            ctx.rehearsal_turns_count = 0
+            ctx.retries_count = 0
+            ctx.rating_stage = ""
+            ctx.resume_scene_id = ""
+            ctx.module_check_stage = modules.CHECK_IDLE
+            # the learn step is skipped: the same marker a check-in jump to practice leaves
+            ctx.checkin_jump_move = move.id
+            setup = await self._begin_rehearse_setup(ctx, teacher_id, move)
+            return fast_start.add_keypoints_button(setup, af)
+        if ctx.current_state not in (SessionStateEnum.REHEARSE_INTRO, SessionStateEnum.REHEARSE):
+            return None
+        mode_buttons = (
+            [
+                Button(id=rehearse_setup.BTN_ONE, title_hi=get_message(rehearse_setup.BTN_ONE, af)),
+                Button(
+                    id=rehearse_setup.BTN_GROUP, title_hi=get_message(rehearse_setup.BTN_GROUP, af)
+                ),
+            ]
+            if ctx.rehearse_stage == rehearse_setup.STAGE_CHOOSE_MODE
+            else None
+        )
+        return [fast_start.keypoints_message(move, af, mode_buttons)]
+
     async def _handle_followup_button(
         self, ctx: SessionContext, teacher_id: UUID, button_id: str
     ) -> list[OutboundMessage]:
@@ -1214,7 +1369,9 @@ class SessionService:
                 ctx.last_inbound_at = now
                 await self._sync_context_to_db(ctx, teacher_id)
                 move = load_move_card(ctx.current_move_id)
-                return await self._build_learn_messages(move, address_form, ctx.class_struggles)
+                return await self._build_learn_messages(
+                    move, address_form, ctx.class_struggles, experience_band=ctx.experience_band
+                )
 
         ctx.last_inbound_at = now
 
@@ -1239,6 +1396,35 @@ class SessionService:
             and not ctx.awaiting_delete_confirm
         ):
             return await self._handle_followup_button(ctx, teacher_id, str(btn_id))
+
+        # 1''. The ARP's visit note acknowledgement (flag OBSERVATION_TO_TEACHER_ENABLED)
+        if (
+            btn_id == visit_note.BTN_OK
+            and visit_note.enabled()
+            and ctx.onboarding_state == OnboardingStateEnum.READY
+            and not ctx.awaiting_delete_confirm
+        ):
+            return [visit_note.ack_message(address_form)]
+
+        # 1''. "Today's focus" opt-in and card buttons (flag FOCUS_CARD_ENABLED)
+        if (
+            btn_id in focus.ALL_BUTTONS
+            and focus.enabled()
+            and ctx.onboarding_state == OnboardingStateEnum.READY
+            and not ctx.awaiting_delete_confirm
+        ):
+            return await self._handle_focus_button(ctx, teacher_id, str(btn_id))
+
+        # 1'''. "Straight to practice" for experienced teachers (flag FAST_START_ENABLED)
+        if (
+            btn_id in fast_start.ALL_BUTTONS
+            and fast_start.enabled()
+            and ctx.onboarding_state == OnboardingStateEnum.READY
+            and not ctx.awaiting_delete_confirm
+        ):
+            fast_msgs = await self._handle_fast_start(ctx, teacher_id, str(btn_id))
+            if fast_msgs is not None:
+                return fast_msgs
 
         # 1a. "After class: how did it go?" (flag CLASS_CHECKIN_ENABLED): closed-list buttons only
         if (
@@ -1839,7 +2025,10 @@ class SessionService:
                                 ),
                             ),
                             *await self._build_learn_messages(
-                                first_move, ctx.address_form, ctx.class_struggles
+                                first_move,
+                                ctx.address_form,
+                                ctx.class_struggles,
+                                experience_band=ctx.experience_band,
                             ),
                         ]
                     )
@@ -1859,7 +2048,9 @@ class SessionService:
         if curr == SessionStateEnum.LEARN:
             move = load_move_card(ctx.current_move_id)
             if matched_intent == Intent.REPEAT or btn_id == "btn_replay":
-                return await self._build_learn_messages(move, address_form, ctx.class_struggles)
+                return await self._build_learn_messages(
+                    move, address_form, ctx.class_struggles, experience_band=ctx.experience_band
+                )
             if matched_intent == Intent.NEXT or btn_id == "btn_understood":
                 wsm.transition("btn_understood")
                 await self._sync_context_to_db(ctx, teacher_id)
@@ -2691,7 +2882,9 @@ class SessionService:
                     move = load_move_card(choice.move_id)
                 wsm.transition("btn_next_move")
                 await self._sync_context_to_db(ctx, teacher_id)
-                learn = await self._build_learn_messages(move, address_form, ctx.class_struggles)
+                learn = await self._build_learn_messages(
+                    move, address_form, ctx.class_struggles, experience_band=ctx.experience_band
+                )
                 if choice is not None and learn:
                     learn[0] = learn[0].model_copy(
                         update={"text_hi": f"{adaptive.reason_text(choice)}\n\n{learn[0].text_hi}"}

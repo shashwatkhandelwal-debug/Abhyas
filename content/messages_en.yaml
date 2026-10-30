@@ -1042,3 +1042,47 @@ adp_why_some: {text: "Why this next: in a recent check-in you said some children
 adp_why_stuck: {text: "Why this next: the next day you said children are still stuck on '{label}'."}
 adp_why_worked: {text: "Why this next: the method for '{label}' worked for you, so a different practice comes first."}
 adp_why_new: {text: "Why this next: at the start, the basic practice first, where the model teacher shows the method before you try it."}
+# Track B scenes
+ui_board_compare: {text: "{a} and {b}: which is bigger?"}
+hint_example_compare: {text: "{child}, how did you decide which number is bigger?"}
+move_title_NUM_COMPARE_BUNDLES: {text: "Comparing two-digit numbers: count the bundles first"}
+move_title_LIT_LETTER_SOUND_PAIRS: {text: "Letter sound, not letter name: working on the first sound"}
+btn_chk_mod_NUM_COMPARE_BUNDLES: {text: "Compare numbers"}
+btn_chk_mod_LIT_LETTER_SOUND_PAIRS: {text: "Letter sounds"}
+ui_gap_title: {text: "Where training is not landing"}
+ui_gap_caption: {text: "Based on simulated rehearsals, not classroom observation. Each teacher's most recent rehearsal in the last {days} days is counted; only teachers who share their scores."}
+ui_gap_demo_note: {text: "This includes demo data."}
+ui_gap_empty: {text: "No rehearsals from teachers who share scores in the last {days} days."}
+ui_gap_move_col: {text: "Practice"}
+ui_gap_h_told_answer: {text: "Told the answer"}
+ui_gap_h_no_ask_why: {text: "Did not ask how or why"}
+ui_gap_h_no_named_child: {text: "Did not address a named child"}
+ui_gap_h_no_concrete: {text: "Did not use concrete objects"}
+ui_gap_na: {text: "Not applicable"}
+ui_gap_card_link: {text: "See the card"}
+ui_gap_back: {text: "Back to the trainer page"}
+ui_gap_card_points: {text: "Key points"}
+ui_gap_card_source: {text: "Source"}
+focus_offer: {text: "Show one short tip each day when you open the chat?"}
+btn_focus_yes: {text: "Yes"}
+btn_focus_no: {text: "Not now"}
+btn_focus_off: {text: "Turn off"}
+btn_focus_practice: {text: "Practise"}
+btn_focus_ask: {text: "Ask the handbook"}
+focus_card_head: {text: "Today's tip"}
+focus_card_body: {text: "One step for '{label}':\n{tip}\n{sources}"}
+focus_on_ack: {text: "Done. You will now see one tip each day when you open the chat. Tap 'Turn off' any time to stop."}
+focus_snooze_ack: {text: "Okay, not now. We will not ask again for a week."}
+focus_off_ack: {text: "Done, the daily tips are turned off."}
+fast_start_note: {text: "With your experience you can start straight with practice; you can see the key points any time."}
+btn_fast_start: {text: "Straight to practice"}
+btn_fast_keypoints: {text: "See key points"}
+fast_keypoints_head: {text: "Key points of this method:"}
+fast_keypoints_sources: {text: "Source: {sources}"}
+ui_arp_practise_together: {text: "Practise together"}
+ui_support_line: {text: "These teachers share their scores with you by choice. This is for support, not for evaluation."}
+obs_note: {text: "Your ARP noticed: {worked}. One thing to try: {step}."}
+obs_note_no_step: {text: "Your ARP noticed: {worked}."}
+obs_worked_none: {text: "your class was visited"}
+btn_obs_ok: {text: "Okay"}
+obs_ok_ack: {text: "Thank you. This is only a suggestion for you, not a score."}

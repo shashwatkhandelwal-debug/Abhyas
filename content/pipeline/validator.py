@@ -45,6 +45,9 @@ BUG_REGISTRY_IDS = {
     "MATRA_DROP",
     "FIRST_AKSHAR_GUESS",
     "AKSHAR_BY_AKSHAR",
+    # Track B scenes
+    "CMP_ONES_FIRST",
+    "LETTER_NAME_FOR_SOUND",
 }
 
 DEVANAGARI_REGEX = re.compile(r"[\u0900-\u097F]")
