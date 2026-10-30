@@ -119,6 +119,20 @@
       font-style: italic;
       color: var(--muted);
     }
+    .badge-support {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      background-color: #eef2f7;
+      color: var(--ink);
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .support-line {
+      margin: 0.25rem 0 0.75rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
     .badge-help {
       display: inline-block;
       padding: 0.25rem 0.5rem;
@@ -327,6 +341,7 @@
       <p class="arp-share-summary" style="margin: 0.5rem 0 1rem; color: var(--muted); font-size: 0.95rem;">
         {{ get_message('ui_arp_share_ratio', shared=digest.consenting_teachers | length, total=digest.total_teachers) }}
       </p>
+      {% if support_framing %}<p class="support-line" id="arp-support-line">{{ get_message('ui_support_line') }}</p>{% endif %}
       <div class="arp-table-wrap">
         <table class="arp-table">
           <thead>
@@ -360,7 +375,9 @@
                 {% endif %}
               </td>
               <td>
-                {% if t.needs_help %}
+                {% if t.needs_help and support_framing %}
+                <span class="badge-support">{{ get_message('ui_arp_practise_together') }}</span>
+                {% elif t.needs_help %}
                 <span class="badge-help">{{ get_message('ui_arp_needs_help') }}</span>
                 {% else %}
                 <span class="badge-ok">{{ get_message('ui_arp_status_ok') }}</span>
@@ -394,6 +411,7 @@
 
     <!-- Section 3: Suggested Visit List -->
     <section class="arp-section section-visits" aria-label="{{ get_message('ui_arp_section_visits') }}">
+      {% if support_framing %}<p class="support-line">{{ get_message('ui_support_line') }}</p>{% endif %}
       <div class="arp-section-title">
         <span>{{ get_message('ui_arp_section_visits') }}</span>
         <button class="btn-print" onclick="window.print()" title="{{ get_message('ui_arp_print_visit_list') }}">
@@ -415,7 +433,7 @@
               {{ get_message('ui_arp_move_colon') }} <strong>{{ v.move_title }}</strong> · {{ get_message('ui_arp_avg_score') }} <strong>{{ v.avg_score if v.avg_score is not none else '—' }} / 2.0</strong>
             </div>
           </div>
-          <span class="badge-help">{{ get_message('ui_arp_visit_reason') }}</span>
+          {% if support_framing %}<span class="badge-support">{{ get_message('ui_arp_practise_together') }}</span>{% else %}<span class="badge-help">{{ get_message('ui_arp_visit_reason') }}</span>{% endif %}
         </div>
 
         {% if v.peer_checklist %}

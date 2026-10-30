@@ -1,6 +1,7 @@
 {# ARP class-visit checklist. Context: visit_rows, visit_labels, csrf_token, get_message. Closed lists only, no free text. #}
 <section class="arp-section" id="visit-checklist" aria-label="{{ get_message('ui_visit_title') }}">
   <div class="arp-section-title"><span>{{ get_message('ui_visit_title') }}</span></div>
+  {% if support_framing %}<p class="support-line">{{ get_message('ui_support_line') }}</p>{% endif %}
   <p style="margin: 0.5rem 0 1rem; color: var(--muted); font-size: 0.9rem;">{{ get_message('ui_visit_desc') }}</p>
   {% for r in visit_rows %}
   <div class="visit-form-box" id="visit-form-{{ r.teacher_id }}">

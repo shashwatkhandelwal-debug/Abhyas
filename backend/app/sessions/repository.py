@@ -18,6 +18,7 @@ from backend.app.db.models import (
     ClassFollowup,
     ClassFollowupOutcome,
     ClassOutcome,
+    ClassVisitObservation,
     ConsentLog,
     ExplainScore,
     InviteCode,
@@ -381,6 +382,21 @@ class SessionRepository:
                 ClassFollowupOutcome.id.is_(None),
             )
             .order_by(ClassFollowup.due_date.desc(), ClassFollowup.created_at.desc())
+            .limit(1)
+        )
+        return res.scalar_one_or_none()
+
+    async def latest_visit_observation(
+        self, teacher_id: UUID, since: datetime
+    ) -> ClassVisitObservation | None:
+        """The newest class-visit observation an ARP saved about her since `since`."""
+        res = await self.session.execute(
+            select(ClassVisitObservation)
+            .where(
+                ClassVisitObservation.teacher_id == teacher_id,
+                ClassVisitObservation.created_at >= since,
+            )
+            .order_by(ClassVisitObservation.created_at.desc())
             .limit(1)
         )
         return res.scalar_one_or_none()

@@ -59,6 +59,50 @@ What it would NOT claim:
 - No comparison with other tools, no causal claim, no per-teacher ranking. Aggregates are shown only for 10 or more consenting teachers.
 - The demo numbers are made-up demo data and are labelled so; they say nothing about real teachers.
 
+## 2c. The monitoring constraint
+
+Teachers are wary of tools that watch them in order to assess them. A tool that feels like inspection gets avoided, so
+the design treats support, not monitoring, as a requirement. What is built, and what is not:
+
+| Design choice | Status | Where to see it |
+|---|---|---|
+| Sharing is the teacher's own choice. Scores go to an ARP only for teachers who agreed; everyone else is a count ("other N teachers, scores not shared"). | **Built** | ARP page; test that a teacher who has not agreed shows no name or score on the ARP or trainer pages |
+| ARP wording is about help, not deficit: "Practise together" in a neutral colour instead of a red "Needs help", and one line above every per-teacher list: these teachers share their scores by choice, this is for support, not evaluation. | **Built** (flag SUPPORT_FRAMING_ENABLED, on in demo mode) | ARP page |
+| The teacher sees what her ARP noted about her class, in her own chat: "Your ARP noticed: ... One thing to try: ...", with an OK button. Closed lists only, no score, no level, and it feeds nothing. | **Built** (flag OBSERVATION_TO_TEACHER_ENABLED, on in demo mode) | Save a visit on the ARP page for demo2, then open demo2's chat |
+| Trainers and DIET see counts, never a teacher, and nothing below 10 teachers. The training-gap table says in its caption that it comes from simulated rehearsals, not classroom observation. | **Built** | Trainer page: "Where training is not landing" |
+| The daily tip is opt-in, asked once a week at most, and one tap turns it off. | **Built** (flag FOCUS_CARD_ENABLED) | Chat, after a check-in or a finished practice |
+| School-setting question (village, town, several classes in one room) to tune the level sorter and handbook order, never shown to an ARP as an individual attribute. | **Not built** | Needs a new teacher column and an onboarding step; left for after the build (see docs/ux/TRACKB_REPORT.md) |
+| A teacher-facing view of exactly what an ARP can see about her. | Roadmap | The pieces exist (consent switch in My class); a single screen does not |
+
+What we do not claim: that this removes the feeling of being watched. We have not asked a teacher. It removes what we
+could remove from the product itself, and a pilot should ask.
+
+## 2d. Cascade
+
+Training reaches teachers through a cascade (state to district to block to cluster to teacher), and each step loses some of
+it. Abhyas puts one tool at each step so that every tier can see what landed without ranking anyone: the teacher practises
+with a simulated child; the ARP gets a cluster meeting pack and a visit list for the teachers who agreed to share; the
+trainer gets "Where training is not landing", per move, from counts only. What is not built: any measurement of how much of
+a module survives each step of a real cascade. That needs real teachers and a pilot.
+
+## 2e. Problem statement, key message by key message
+
+The challenge brief itself is not stored in this repository. The messages below are the ones the product spec
+(`spec/01_product.md`) and the problem table above take from it; if the brief words them differently, the right-hand
+columns still say what exists.
+
+| Key message | Built | Roadmap |
+|---|---|---|
+| Teachers get FLN training in bursts and have no safe place to practise between trainings | Rehearsal with simulated children whose answers come from a rule engine; six practice scenes (subtraction with regrouping, addition with carrying, place value, matra reading, comparing two-digit numbers, letter sound versus letter name) | More scenes; coach-approved wording (cards are still marked in review) |
+| Fidelity decays: what was trained is not what is done | Explain-back with key points, rubric feedback quoting her own words, talk-move line, retry | Measuring change in classroom talk over weeks with real teachers |
+| Trainers and ARPs see attendance, not adoption | Evidence ladder, ARP digest, class-visit checklist, "reported vs observed", "Where training is not landing" (latest rehearsal per teacher and move, counts only) | A real pilot and classroom observation to compare with |
+| Teachers need support after training, in their language and on cheap phones | Hindi and English, voice first, taps instead of typing, light mode, under 150 KB first load, offline queue, check-in with one cited tip, next-day follow-up, daily tip (opt in), experience-aware start | Regional languages; IVR for teachers without a smartphone |
+| Mixed levels and multigrade rooms | Level sorter with cited activities | Multigrade timetable support; the school-setting question |
+| Teachers distrust monitoring | Opt-in sharing, support wording, the teacher sees what the ARP noted, counts only above n of 10 | A single "what can my ARP see" screen; asking teachers whether it feels different |
+| Mentors are overloaded | Cluster meeting pack, visit list, escalated questions only | Time-saving measurement (none claimed) |
+| Training cascades and loses content on the way | One tool per tier (see 2d) | Cascade fidelity measurement |
+| Low or no connectivity | Low-network mode, offline queue, text before audio | Verified runs on real 2G devices (see the phone checklist) |
+
 ## 3. Judge Q&A (short, honest)
 
 **Why would a teacher keep using it?** We do not know yet. The design bets on what the UP field trial says went wrong: two-minute flows, taps not typing, official sources shown on every tip, and use anchored in a cluster meeting. A pilot would measure whether teachers come back in week 3 and finish check-ins, not whether they say they like it.

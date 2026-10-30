@@ -12,7 +12,7 @@ from datetime import UTC, date, datetime, timedelta
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import create_engine, func, select, text
+from sqlalchemy import create_engine, delete, func, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -360,3 +360,43 @@ async def test_focus_offer_demo3_is_asked_once_and_flag_off_hides_it(
     monkeypatch.setattr(settings, "DEMO_MODE", False)
     monkeypatch.setattr(settings, "FOCUS_CARD_ENABLED", False)
     assert await service.offer_focus(TEACHER_DEMO3_ID) == []
+
+
+# ── what an ARP saw, shown to the teacher (OBSERVATION_TO_TEACHER_ENABLED, on in demo mode) ──
+@pytest.mark.asyncio
+async def test_visit_note_reaches_demo2_once_after_an_arp_saves_an_observation(
+    session: AsyncSession,
+) -> None:
+    from backend.app.channels.web import WebChannel
+    from backend.app.class_profile import visit_note
+
+    await reset_demo_teacher(session, "teacher.demo2")
+    await session.commit()
+    service = SessionService(db_session=session)
+    assert await service.offer_visit_note(TEACHER_DEMO2_ID) == []  # nothing saved yet
+    session.add(
+        ClassVisitObservation(
+            id=uuid4(),
+            teacher_id=TEACHER_DEMO2_ID,
+            talk_moves=["why_how"],
+            practice_seen=True,
+            struggle_id=STRUGGLE,
+            next_step="hold_answer",
+            observed_on=TODAY,
+            is_demo=True,
+            created_at=datetime.now(UTC),
+        )
+    )
+    await session.commit()
+    out = await service.offer_visit_note(TEACHER_DEMO2_ID)
+    assert len(out) == 1 and [b.id for b in out[0].buttons] == [visit_note.BTN_OK]
+    assert out[0].text_hi.startswith("आपके ARP ने देखा:") and "एक बात आज़माएँ:" in out[0].text_hi
+    assert not any(ch.isdigit() for ch in out[0].text_hi)  # a note, never a score
+    teacher = await service.repo.get_or_create_teacher(TEACHER_DEMO2_ID)
+    await WebChannel().send(teacher, out, session=session)
+    await session.commit()
+    assert await service.offer_visit_note(TEACHER_DEMO2_ID) == []  # shown once
+    await session.execute(
+        delete(ClassVisitObservation).where(ClassVisitObservation.teacher_id == TEACHER_DEMO2_ID)
+    )
+    await session.commit()

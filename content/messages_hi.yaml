@@ -1387,3 +1387,10 @@ btn_fast_start: {text: "सीधे अभ्यास", audio: false}
 btn_fast_keypoints: {text: "मुख्य बातें देखें", audio: false}
 fast_keypoints_head: {text: "इस तरीके की मुख्य बातें:", audio: false}
 fast_keypoints_sources: {text: "स्रोत: {sources}", audio: false}
+ui_arp_practise_together: {text: "साथ में अभ्यास करें", audio: false}
+ui_support_line: {text: "ये शिक्षक अपनी मर्ज़ी से आपके साथ अंक साझा करते हैं। यह मूल्यांकन नहीं, सहयोग के लिए है।", audio: false}
+obs_note: {text: "आपके ARP ने देखा: {worked}। एक बात आज़माएँ: {step}।", audio: false}
+obs_note_no_step: {text: "आपके ARP ने देखा: {worked}।", audio: false}
+obs_worked_none: {text: "आपकी कक्षा का भ्रमण हुआ", audio: false}
+btn_obs_ok: {text: "ठीक है", audio: false}
+obs_ok_ack: {text: "धन्यवाद। यह सिर्फ़ आपके लिए एक सुझाव है, कोई अंक नहीं।", audio: false}

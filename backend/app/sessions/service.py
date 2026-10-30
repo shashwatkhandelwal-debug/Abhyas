@@ -22,6 +22,7 @@ from backend.app.class_profile import (
     level_sorter,
     personalise,
     skills_flow,
+    visit_note,
 )
 from backend.app.class_profile import flow as class_flow
 from backend.app.class_profile.library import load_library
@@ -956,6 +957,35 @@ class SessionService:
         await self._sync_context_to_db(ctx, teacher_id)
         return [followup.ask_message(load_library().get(row.struggle_id))]
 
+    async def offer_visit_note(self, teacher_id: UUID) -> list[OutboundMessage]:
+        """She opened the chat: what her ARP saw in her class, once (flag OBSERVATION_TO_TEACHER_ENABLED).
+
+        A note built from the closed lists of the ARP's form, never a rating, and nothing is
+        written: it reads the observation and goes into her thread. It is shown once, found from
+        her own thread (the message carrying the OK button), so no state is stored.
+        """
+        if not visit_note.enabled():
+            return []
+        ctx = await self.get_or_create_context(teacher_id)
+        if ctx.onboarding_state != OnboardingStateEnum.READY or ctx.awaiting_delete_confirm:
+            return []
+        since = followup.utcnow() - timedelta(days=settings.OBSERVATION_WINDOW_DAYS)
+        obs = await self.repo.latest_visit_observation(teacher_id, since)
+        if obs is None:
+            return []
+        shown = await self.repo.last_outbound_button_time(teacher_id, (visit_note.BTN_OK,))
+        if shown is not None and obs.created_at <= shown:
+            return []
+        return [
+            visit_note.note_message(
+                list(obs.talk_moves),
+                obs.struggle_id,
+                bool(obs.practice_seen),
+                obs.next_step,
+                ctx.address_form,
+            )
+        ]
+
     async def offer_focus(self, teacher_id: UUID) -> list[OutboundMessage]:
         """She opened the chat: the opt-in question, or today's focus card (flag FOCUS_CARD_ENABLED).
 
@@ -1219,6 +1249,15 @@ class SessionService:
             and not ctx.awaiting_delete_confirm
         ):
             return await self._handle_followup_button(ctx, teacher_id, str(btn_id))
+
+        # 1''. The ARP's visit note acknowledgement (flag OBSERVATION_TO_TEACHER_ENABLED)
+        if (
+            btn_id == visit_note.BTN_OK
+            and visit_note.enabled()
+            and ctx.onboarding_state == OnboardingStateEnum.READY
+            and not ctx.awaiting_delete_confirm
+        ):
+            return [visit_note.ack_message(address_form)]
 
         # 1''. "Today's focus" opt-in and card buttons (flag FOCUS_CARD_ENABLED)
         if (

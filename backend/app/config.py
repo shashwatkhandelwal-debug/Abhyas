@@ -381,6 +381,8 @@ class Settings(BaseSettings):
     FOCUS_OFFER_INTERVAL_DAYS: int = 7  # the opt-in is offered at most once in this many days
     FAST_START_ENABLED: bool = False  # experienced teachers may go straight to practice
     FAST_START_BANDS: tuple[str, ...] = ("6-10", "10+")  # experience bands offered the shortcut
+    SUPPORT_FRAMING_ENABLED: bool = False  # ARP pages: neutral support wording, no red per-teacher label
+    OBSERVATION_TO_TEACHER_ENABLED: bool = False  # the teacher sees what her ARP saw, as a note
     MODEL_AUDIO_ENABLED: bool = False  # model-practice message carries cached audio when it exists
 
     # ── Demo / Evaluation & Observability ────────────────────────────────

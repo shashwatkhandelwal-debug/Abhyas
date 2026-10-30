@@ -1045,3 +1045,10 @@ btn_fast_start: {text: "Straight to practice"}
 btn_fast_keypoints: {text: "See key points"}
 fast_keypoints_head: {text: "Key points of this method:"}
 fast_keypoints_sources: {text: "Source: {sources}"}
+ui_arp_practise_together: {text: "Practise together"}
+ui_support_line: {text: "These teachers share their scores with you by choice. This is for support, not for evaluation."}
+obs_note: {text: "Your ARP noticed: {worked}. One thing to try: {step}."}
+obs_note_no_step: {text: "Your ARP noticed: {worked}."}
+obs_worked_none: {text: "your class was visited"}
+btn_obs_ok: {text: "Okay"}
+obs_ok_ack: {text: "Thank you. This is only a suggestion for you, not a score."}
