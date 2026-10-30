@@ -328,6 +328,57 @@ test('voice note bubble: uploading -> transcribing -> transcript replaces it, on
   assert.equal(c.rows().length, 1);
 });
 
+test('F2: the sent voice note has a local play control before and after the transcript', async () => {
+  const c = load();
+  c.net.handler = async () => ({ status: 202, ok: true, json: async () => ({ message_id: 'srv-a' }) });
+  const blob = { size: 10, type: 'audio/webm' };
+  await c.handleSendAudio(blob, 4);
+  const row = c.rows()[0];
+  const play = row.querySelector('.bubble-audio');
+  assert.ok(play, 'play control is on the bubble immediately');
+  assert.equal(play._localUrl, 'blob:local/1');
+  assert.equal(row._bubble.children[0], play, 'control sits above the text');
+  c.onAudioButton(play);
+  assert.equal(c.FakeAudio.instances[0].src, 'blob:local/1', 'plays the local recording, not a server file');
+  assert.equal(c.fetchCalls.filter((f) => String(f.url).includes('/api/audio/')).length, 0);
+
+  await c.flush();
+  c.renderMessage({ id: 'srv-a', client_msg_id: 'client-1', direction: 'in', kind: 'audio', text: 'रवि, कैसे घटाया?', created_at: iso(c.clock.now) });
+  assert.equal(row._textEl.textContent, 'रवि, कैसे घटाया?');
+  assert.equal(row.querySelectorAll('.bubble-audio').length, 1, 'control kept after the transcript');
+  assert.equal(c.rows().length, 1);
+  assert.equal(c.URL.created.length, 1);
+});
+
+test('F2: the local recording URLs are revoked on page hide and logout', async () => {
+  const c = load();
+  await c.handleSendAudio({ size: 10 }, 2);
+  await c.handleSendAudio({ size: 10 }, 2);
+  assert.equal(c.URL.created.length, 2);
+  assert.equal(c.URL.revoked.length, 0);
+  c.revokeLocalAudio();
+  assert.deepEqual([...c.URL.revoked].sort(), [...c.URL.created].sort());
+  await c.handleSendAudio({ size: 10 }, 2);
+  c.windowListeners.pagehide();
+  assert.equal(c.URL.revoked.length, 3);
+});
+
+test('F2: offline or rejected, the voice bubble still plays locally and shows its pending state', async () => {
+  const off = load({ online: false });
+  await off.handleSendAudio({ size: 10 }, 3);
+  const row = off.rows()[0];
+  assert.ok(row.querySelector('.bubble-audio'));
+  assert.equal(row._phaseEl.textContent, strings.ui_chat_rec_uploading);
+  assert.ok(off.container.querySelector('#status-client-1').matches('.sending'));
+
+  const bad = load();
+  bad.net.handler = async () => ({ status: 413, ok: false, json: async () => ({}) });
+  await bad.handleSendAudio({ size: 10 }, 3);
+  await bad.flush();
+  const play = bad.rows()[0].querySelector('.bubble-audio');
+  assert.ok(play && !play._btn.disabled, 'still playable after a failed send');
+});
+
 test('voice note POST failure shows the red ! and clears the status line', async () => {
   const c = load();
   c.net.handler = async () => ({ status: 413, ok: false, json: async () => ({}) });

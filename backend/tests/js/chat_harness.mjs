@@ -74,6 +74,9 @@ export class El {
     this.children.push(c);
     return c;
   }
+  get firstChild() {
+    return this.children[0] || null;
+  }
   insertBefore(c, ref) {
     if (c.parentNode) c.parentNode.removeChild(c);
     c.parentNode = this;
@@ -304,7 +307,20 @@ export function loadChat({ strings = {}, online = true } = {}) {
     cookie: '',
   };
   const navigator = { onLine: online, serviceWorker: undefined };
-  const window = { AudioRecorder: class {}, addEventListener() {}, confirm: () => true };
+  const windowListeners = {};
+  const window = { AudioRecorder: class {}, addEventListener: (t, fn) => (windowListeners[t] = fn), confirm: () => true };
+  const URLStub = {
+    created: [],
+    revoked: [],
+    createObjectURL(blob) {
+      const u = `blob:local/${URLStub.created.length + 1}`;
+      URLStub.created.push(u);
+      return u;
+    },
+    revokeObjectURL(u) {
+      URLStub.revoked.push(u);
+    },
+  };
   let uuid = 0;
   const session = new Map();
   const sandbox = {
@@ -314,6 +330,7 @@ export function loadChat({ strings = {}, online = true } = {}) {
     console: { log() {}, warn() {}, error() {} },
     Element: El,
     Audio: FakeAudio,
+    URL: URLStub,
     Date: FakeDate,
     indexedDB: makeIndexedDB(),
     localStorage: { getItem: () => null, setItem() {} },
@@ -346,7 +363,7 @@ export function loadChat({ strings = {}, online = true } = {}) {
         recordRequestLatency, isSlowNetwork, showSlowNetworkWarning,
         formatCoachEvidenceText, upgradeCoachEvidenceQuotes,
         getChipA1Text, getChipBText, updateFastTrackChips, disableFastTrackChips, enableFastTrackChips, setupFastTrackTray,
-        ftActivity, ftStop, FAST_TRACK_IDLE_MS })`,
+        ftActivity, ftStop, FAST_TRACK_IDLE_MS, revokeLocalAudio })`,
     sandbox
   );
   api.setUiStrings(strings);
@@ -363,6 +380,8 @@ export function loadChat({ strings = {}, online = true } = {}) {
     FakeAudio,
     navigator,
     documentListeners,
+    windowListeners,
+    URL: URLStub,
     session,
     rows: () => container.children.filter((c) => c.className.includes('msg-row')),
   };

@@ -114,12 +114,17 @@ async function clearLocalState() {
 	]);
 }
 window.clearLocalState = clearLocalState;
+const localAudioUrls = [];
+function revokeLocalAudio() {
+	while (localAudioUrls.length) URL.revokeObjectURL(localAudioUrls.pop());
+}
 function setupLogoutCleanup() {
 	document.addEventListener('click', (e) => {
 		const link = e.target && e.target.closest ? e.target.closest('a[href="/logout"]') : null;
 		if (!link) return;
 		e.preventDefault();
 		ftStop();
+		revokeLocalAudio();
 		clearLocalState().finally(() => {
 			window.location.href = '/logout';
 		});
@@ -722,7 +727,10 @@ function enableFastTrackChips() {
 	});
 }
 document.addEventListener('visibilitychange', () => (document.hidden ? ftStop() : ftActivity()));
-window.addEventListener('pagehide', ftStop);
+window.addEventListener('pagehide', () => {
+	ftStop();
+	revokeLocalAudio();
+});
 function setupFastTrackTray() {
 	const tray = document.getElementById('fast-track-tray');
 	if (!tray) return;
@@ -902,7 +910,7 @@ function setAudioState(wrap, st) {
 	}
 	wrap._audioState = st;
 	wrap.setAttribute('data-audio-state', st);
-	const hasRef = !!wrap._ref;
+	const hasRef = !!(wrap._ref || wrap._localUrl);
 	wrap.setAttribute('data-has-audio', hasRef ? 'true' : 'false');
 	wrap._btn.disabled = !hasRef;
 	const labels = {
@@ -928,7 +936,7 @@ function getAudioEl(wrap) {
 	if (wrap._audio) return wrap._audio;
 	const a = new Audio();
 	a.preload = state.liteMode ? 'none' : 'metadata';
-	a.src = `/api/audio/${encodeURIComponent(wrap._ref)}.ogg`;
+	a.src = wrap._localUrl || `/api/audio/${encodeURIComponent(wrap._ref)}.ogg`;
 	a.addEventListener('playing', () => transitionAudio(wrap, 'playing'));
 	a.addEventListener('waiting', () => transitionAudio(wrap, 'waiting'));
 	a.addEventListener('pause', () => {
@@ -952,9 +960,9 @@ function onAudioButton(wrap) {
 		if (wrap._audio) wrap._audio.pause();
 		return;
 	}
-	if ((st === 'ready' || st === 'error') && wrap._ref) startAudio(wrap, false);
+	if ((st === 'ready' || st === 'error') && (wrap._ref || wrap._localUrl)) startAudio(wrap, false);
 }
-function buildAudioWrap(audioRef, initialState) {
+function buildAudioWrap(audioRef, initialState, localUrl) {
 	const wrap = document.createElement('div');
 	wrap.className = 'bubble-audio';
 	const btn = document.createElement('button');
@@ -972,6 +980,7 @@ function buildAudioWrap(audioRef, initialState) {
 	wrap._btn = btn;
 	wrap._label = label;
 	wrap._ref = audioRef || null;
+	wrap._localUrl = localUrl || null;
 	wrap._audio = null;
 	btn.onclick = () => onAudioButton(wrap);
 	setAudioState(wrap, initialState);
@@ -1441,6 +1450,12 @@ async function handleSendAudio(audioBlob, durationSec) {
 		created_at: new Date().toISOString(),
 	};
 	renderMessage(optimisticMsg, true);
+	const row = state.rows.get(clientMsgId);
+	if (row && row._bubble && typeof URL !== 'undefined' && URL.createObjectURL) {
+		const url = URL.createObjectURL(audioBlob);
+		localAudioUrls.push(url);
+		row._bubble.insertBefore(buildAudioWrap(null, 'ready', url), row._bubble.firstChild);
+	}
 	await saveToOutbox({
 		client_msg_id: clientMsgId,
 		kind: 'audio',
