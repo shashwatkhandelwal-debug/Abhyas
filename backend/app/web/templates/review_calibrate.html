@@ -72,6 +72,7 @@
       border-radius: var(--radius-md);
       font-size: 0.95rem;
       line-height: 1.5;
+      color: #1F2421;
     }
     .turn-teacher {
       background: #E4EFEA;
@@ -96,6 +97,17 @@
       border: 1px solid #D6CAEF;
       align-self: flex-start;
       max-width: 85%;
+    }
+    .turn-ravi .speaker-tag { color: #1F58C0 !important; }
+    .turn-priya .speaker-tag { color: #A8336A !important; }
+    .turn-aman .speaker-tag { color: #6444B0 !important; }
+    @media (prefers-color-scheme: dark) {
+      .turn-bubble { color: #F0EDE8; }
+      .turn-teacher { background: #194D40; border-color: #2B6B5A; }
+      .turn-ravi { background: #1B2F52; border-color: #2F4C7E; }
+      .turn-priya { background: #4A2236; border-color: #7A3A5B; }
+      .turn-aman { background: #33284F; border-color: #54448A; }
+      .turn-bubble .speaker-tag { color: #F0EDE8 !important; }
     }
     .speaker-tag {
       font-size: 0.75rem;
