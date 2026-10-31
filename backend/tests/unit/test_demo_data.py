@@ -526,7 +526,7 @@ def test_demo_banner_text_says_what_each_demo_shows_in_both_languages() -> None:
             "teacher.demo3": "डेमो: कक्षा के बारे में बताने के बाद ऐप ने पढ़ने का तरीका चुना (मात्रा)। 'समझ गई, आगे' दबाकर अभ्यास करें।",
         },
         "en": {
-            "teacher.demo1": "Demo: a fresh start. Go through the full introduction and the first practice.",
+            "teacher.demo1": "Demo: a fresh start. Do the intro and first practice.",
             "teacher.demo2": "Demo: a teacher in her second week. Talk to Ravi about 43 − 27, then press 'Still stuck', and open 'My progress'.",
             "teacher.demo3": "Demo: after describing the class, the app chose a reading move (matras). Press 'Got it, next' and practise.",
         },

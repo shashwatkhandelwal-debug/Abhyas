@@ -259,6 +259,9 @@ class Settings(BaseSettings):
     # key words appear in the passage summary), not about the home or parents, not an overview of
     # other topics, and for a male teacher must not address him with a feminine verb form.
     TIP_MIN_TOPIC_HITS: int = 1
+    TIP_STOPWORDS: tuple[str, ...] = (
+        "और", "से", "का", "की", "के", "में", "को", "पर", "वाला", "वाली", "जैसे", "तरीका",
+    )  # fmt: skip
     TIP_EXCERPT_POOL: int = 6  # passages looked at to find one that qualifies
     TIP_HOME_MARKERS: tuple[str, ...] = (
         "घर पर", "अभिभावक", "माता-पिता", "माता पिता", "पालक", "parents",
@@ -266,6 +269,7 @@ class Settings(BaseSettings):
     TIP_OTHER_TOPIC_MARKERS: tuple[str, ...] = (
         "गुणा", "भाग", "मुद्रा", "लंबाई", "वज़न", "पौधों", "जीव", "कक्षा 1 से 6",
     )  # fmt: skip
+    TIP_FEMININE_AUX: tuple[str, ...] = ("हैं", "हो", "हूँ")
     TIP_FEMININE_VERB_STEMS: tuple[str, ...] = (
         "सकती", "करती", "कराती", "करवाती", "चाहती", "पाती", "देती", "लेती", "रखती",
     )  # fmt: skip

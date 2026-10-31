@@ -669,7 +669,7 @@ scene_too_short: {text: "So far you have spoken {done} time(s). I need at least 
 scene_resumed: {text: "Okay, the scene continues from where you stopped. Say your next line."}
 btn_scene_continue: {text: "Continue the scene"}
 ui_demo_account_banner: {text: "Demo: chat resets on log in/out"}
-ui_demo_banner_demo1: {text: "Demo: a fresh start. Go through the full introduction and the first practice."}
+ui_demo_banner_demo1: {text: "Demo: a fresh start. Do the intro and first practice."}
 ui_demo_banner_demo2: {text: "Demo: a teacher in her second week. Talk to Ravi about 43 − 27, then press 'Still stuck', and open 'My progress'."}
 ui_demo_banner_demo3: {text: "Demo: after describing the class, the app chose a reading move (matras). Press 'Got it, next' and practise."}
 

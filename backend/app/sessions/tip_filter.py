@@ -13,8 +13,7 @@ import unicodedata
 from backend.app.config import settings
 from backend.app.content_models import MoveCard
 
-_TOKEN = re.compile(r"[\wऀ-ॿ]+")
-_STOP = frozenset({"और", "से", "का", "की", "के", "में", "को", "पर", "वाला", "वाली", "जैसे", "तरीका"})
+_TOKEN = re.compile("[\\w\u0900-\u097f]+")
 
 
 def _norm(text: str) -> str:
@@ -23,7 +22,7 @@ def _norm(text: str) -> str:
 
 def topic_stems(move: MoveCard) -> set[str]:
     """Key-word stems of the move title: short words whole, longer ones minus their last 2 letters."""
-    words = [w for w in _TOKEN.findall(_norm(move.title_hi)) if w not in _STOP and len(w) >= 3]
+    words = [w for w in _TOKEN.findall(_norm(move.title_hi)) if w not in settings.TIP_STOPWORDS and len(w) >= 3]
     return {w if len(w) <= 5 else w[:-2] for w in words}
 
 
@@ -48,7 +47,8 @@ def is_home_passage(*passage: str) -> bool:
 
 def _feminine_reader_form() -> re.Pattern[str]:
     stems = "|".join(re.escape(_norm(s)) for s in settings.TIP_FEMININE_VERB_STEMS)
-    return re.compile(rf"(?:{stems})\s+(?:हैं|हो|हूँ)")
+    aux = "|".join(re.escape(_norm(s)) for s in settings.TIP_FEMININE_AUX)
+    return re.compile(rf"(?:{stems})\s+(?:{aux})")
 
 
 def has_feminine_reader_verb(text: str) -> bool:

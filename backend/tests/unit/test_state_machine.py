@@ -978,6 +978,7 @@ async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence(
         "placement_done" in str(m.text_hi or "")
         or "तैयार" in str(m.text_hi or "")
         or "तरीका" in str(m.text_hi or "")
+        or "मुख्य बातें" in str(m.text_hi or "")  # fix3 K3: named once, then the key points
         for m in out8
     )
     assert any("इसलिए हम" in str(m.text_hi or "") for m in out8)  # F5: specific feedback line
