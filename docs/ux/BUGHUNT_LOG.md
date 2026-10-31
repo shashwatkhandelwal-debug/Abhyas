@@ -46,3 +46,4 @@ Driver: `scripts/bughunt/bh.py` (Playwright, 360x740 touch phone and 1366x768 de
   Aman, compare, letter, male teacher), then no-model re-runs of D, B02, B03, B07, K5 to K7.
 - End of run: hunt stack stopped with `docker compose ... down` (no `-v`), plain
   `docker compose up -d db` run from the repo folder, `docker ps` shows the db on 5432.
+- Final pass: RAM gate not reached (4.4 to 4.7 GB for 15 min), K1 run first as planned (61 real calls), banners kept, hunt stack stopped (`docker compose ps` and `docker ps` checked first, `down` without `-v`), plain db back on 5432, one final gate from a directory without `.env`, then the individual checks. Two earlier background jobs were stopped by the system for low memory and not retried automatically; orphaned driver and Chrome processes left behind were stopped by hand.
