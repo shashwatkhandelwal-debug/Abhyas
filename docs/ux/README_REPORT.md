@@ -15,7 +15,7 @@ Branch `fix/readme`, from `main` (228a8ad, fix6 merged). Docs and hygiene only: 
 | `WHATSAPP_VERIFY_TOKEN=abhyas_webhook_verify_token_secure` (in `.env.example` since the first commit) | Now `your_verify_token_here`. The owner checks Render and rotates if it was real. |
 | Old defaults `abhyas-demo-2026`, `abhyas-admin-2026` | `config.py` defaults and `.env.example` are now `change-me-demo-password` and `change-me-admin-password`. Production still refuses to start with any of the four values. |
 | OCR page cache of the UP guides (268 files) | `git rm`, and `content/sources/ocr_cache/` is git-ignored. Checked first: only `page_ocr.py` names the folder (the one-off ingest step, which also needs PDFs that are not in git) and its tests use a temp folder. Nothing needs it at runtime or in CI. |
-| `C:\Users\ASUS` paths | Removed from `eval/latency/REPORT.md` and `benchmark_latency.py` (relative links) and from `progress/lane-b.md`, `lane-c.md`. `git grep ASUS` is empty. |
+| Local Windows user-profile paths | Removed from `eval/latency/REPORT.md` and `benchmark_latency.py` (relative links) and from `progress/lane-b.md`, `lane-c.md`. A `git grep` for the user name is now empty. |
 | `.gitignore` | Added `*.db`, `*.sqlite`, `*.sqlite3`, `uploads/`, the OCR cache. (`.env*`, audio and `content/sources/*.pdf` were already covered.) |
 | `Abhyas_Technical_Design.docx` | Opened (first version, from history): the hackathon design document naming the three team members, no emails, phones, paths, keys or URLs. It is not in the current tree (removed earlier), so there is nothing to remove. Left in history. |
 | Author emails, history | Left alone, as decided. No rewrite, no branch deleted. |
