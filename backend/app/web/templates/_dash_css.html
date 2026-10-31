@@ -22,3 +22,6 @@
       .dash-page .trainer-title-area { flex-wrap: wrap; }
       .dash-page .arp-container, .dash-page .review-container { padding-left: 0.75rem; padding-right: 0.75rem; }
     }
+    /* In-page links: brand green on the light surface, light green on the dark one (underline kept). */
+    .dash-page a:not([class]), .dash-page .csv-link { color: #1F6F5C; text-decoration: underline; }
+    @media (prefers-color-scheme: dark) { .dash-page a:not([class]), .dash-page .csv-link { color: #7FD0B9; } }

@@ -81,6 +81,7 @@ Every service has a mock chosen by environment variable. With an empty `.env` th
 - **No child data.** The children are simulated. No real child's data is collected or stored.
 - **Consent.** Setup asks consent to use the service. Sharing a teacher's scores with their ARP is a separate opt-in, off by default and changeable from the menu.
 - **n < 10 suppression.** The trainer and district views show only aggregates for any batch or cluster with fewer than 10 teachers.
+- **Class struggles and skills.** "What teachers want to get better at" and "Common class struggles": shown only when at least 10 consenting teachers answered.
 - **Audio is not kept.** A voice note is held in memory while it is transcribed, then discarded. Only the text is stored.
 - **Delete my data.** A teacher can type `delete my data` (or use `/teacher/delete`) to erase their account and everything attached to it, after a confirmation. Inactive transcripts are also purged after `DATA_RETENTION_DAYS` (90).
 - **Phone numbers** (WhatsApp only) are stored as a salted hash plus a Fernet-encrypted copy.
