@@ -100,17 +100,8 @@ def test_log_out_is_visible_in_the_header_without_opening_the_menu(open_chat: An
     page.wait_for_url("**/login**", timeout=10_000)
 
 
-@pytest.mark.parametrize(
-    ("user", "expected"),
-    [("teacher.demo2", True), ("teacher.demo3", True), ("teacher.demo1", False)],
-)
-def test_prepared_chats_start_with_a_divider(open_chat: Any, user: str, expected: bool) -> None:
+@pytest.mark.parametrize("user", ["teacher.demo1", "teacher.demo2", "teacher.demo3"])
+def test_prepared_chats_have_no_generic_demo_divider(open_chat: Any, user: str) -> None:
     page = open_chat(user, lang="en").page
-    divider = page.locator(".demo-divider")
-    assert (divider.count() == 1) is expected
-    if expected:
-        assert divider.inner_text().strip() == _text("en", "ui_demo_divider")
-        first = page.evaluate(
-            "document.getElementById('chat-messages').firstElementChild.className"
-        )
-        assert first == "demo-divider", "above the prepared messages"
+    assert page.locator(".demo-divider").count() == 0
+    assert "Demo starts here" not in page.locator("#chat-messages").inner_text()

@@ -18,18 +18,14 @@
     </p>
   </main>
   <script>
-    // Poll the liveness probe; as soon as the server answers, reload the page we were sent to
-    // (the service worker serves this page at the original URL while the server is asleep).
+    // Server answered /healthz -> reload the page we were sent to.
     (function () {
-      var started = Date.now();
+      var t0 = Date.now();
       function check() {
-        fetch('/healthz', { cache: 'no-store' }).then(function (r) {
-          if (r.ok) { location.reload(); return; }
-          again();
-        }).catch(again);
+        fetch('/healthz', { cache: 'no-store' }).then(function (r) { r.ok ? location.reload() : again(); }).catch(again);
       }
       function again() {
-        if (Date.now() - started > 60000) document.getElementById('waking-still').hidden = false;
+        if (Date.now() - t0 > 60000) document.getElementById('waking-still').hidden = false;
         setTimeout(check, 3000);
       }
       setTimeout(check, 2000);

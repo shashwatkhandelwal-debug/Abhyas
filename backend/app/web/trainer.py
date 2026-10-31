@@ -20,7 +20,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.access import SUPPRESSION_MESSAGE
+from backend.app.auth.access import suppression_message
 from backend.app.auth.csrf import generate_csrf_token, set_csrf_cookie
 from backend.app.auth.guards import require_role
 from backend.app.class_profile.library import citations
@@ -156,7 +156,7 @@ async def get_trainer_dashboard(
             "training_gap": training_gap,
             "gap_titles": gap_titles,
             "suppression_n": settings.AGGREGATION_SUPPRESSION_N,
-            "suppression_message": SUPPRESSION_MESSAGE,
+            "suppression_message": suppression_message(),
             "user": current_user,
             "csrf_token": csrf_token,
             "get_message": get_message,

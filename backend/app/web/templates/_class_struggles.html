@@ -3,7 +3,7 @@
   <h2 style="margin: 0 0 0.25rem 0; font-size: 1.1rem;">{{ get_message("ui_trainer_class_title") }}</h2>
   <p style="margin: 0 0 0.75rem 0; color: var(--muted, #5E6662); font-size: 0.9rem;">{{ get_message("ui_trainer_class_desc") }}</p>
   {% if class_struggles.n_teachers == 0 %}
-    <p style="margin: 0; color: var(--muted, #5E6662);">&mdash;</p>
+    <p style="margin: 0; color: var(--muted, #5E6662);">{{ get_message("ui_trainer_hidden_few", n=suppression_n) }}</p>
   {% elif class_struggles.suppressed %}
     <p style="margin: 0;">{{ suppression_message }}</p>
   {% else %}

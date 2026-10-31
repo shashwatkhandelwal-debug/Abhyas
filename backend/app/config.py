@@ -168,6 +168,11 @@ class Settings(BaseSettings):
     # has a single content term only needs that one.
     RETRIEVAL_MIN_MATCHED_TERMS: int = 2
     QUOTE_FUZZY_MIN: float = 90.0
+    # Deterministic key-point matcher (llm/keypoints.py): share of a point's keyword weight that
+    # must appear in the answer. Calibrated on the move cards in content/moves.
+    KEYPOINT_COVERED_SCORE: float = 0.40
+    KEYPOINT_PARTIAL_SCORE: float = 0.15
+    KEYPOINT_MIN_STEM_CHARS: int = 3
     # Source-PDF chunking (offline, make content-ingest)
     CHUNK_MIN_WORDS: int = 150
     CHUNK_TARGET_WORDS: int = 300
@@ -277,6 +282,23 @@ class Settings(BaseSettings):
     # Everyday things a distracted child may mention ONLY in an engine-chosen off-topic / interject
     # line; a child answering the lesson must not (the live 1-1 run showed the model adding
     # "अरे मेरा बस्ता..." to explanations, which defeats MAX_DISTRACTIONS_PER_SCENE).
+    # Stock sentences a child must never use: "I did not follow, I do it my own way" (about half
+    # of all lines once the prompt gave it as an example; it ignored the teacher's question).
+    CHILD_BANNED_PHRASES: tuple[str, ...] = (
+        "अपने तरीके से ही",
+        "अपने तरीके से करता",
+        "अपने तरीके से करती",
+        "अपने ही तरीके से",
+    )
+    # Last step (1-7; 0 = before onboarding ends) for which a demo login's banner instruction is
+    # still true; after it the banner falls back to the plain demo line.
+    DEMO_BANNER_LAST_STEP: dict[str, int] = {  # noqa: RUF012
+        "teacher.demo1": 4,
+        "teacher.demo2": 6,
+        "teacher.demo3": 1,
+    }
+    # English pronoun for each scene child (the English lines used "they" for everyone).
+    CHILD_PRONOUN_EN: dict[str, str] = {"ravi": "he", "priya": "she", "aman": "he"}  # noqa: RUF012
     CHILD_DISTRACTION_WORDS: tuple[str, ...] = (
         "बस्ता",
         "पेंसिल",

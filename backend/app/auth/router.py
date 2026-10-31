@@ -262,7 +262,7 @@ background: #DFDBD3;
             document.getElementById('password').value = "{settings.DEMO_PASSWORD}";
         }}
     </script>
-    <script src="/static/ack.js" defer data-opening="{html.escape(m("ui_nav_opening"))}" data-waking="{html.escape(m("ui_nav_waking"))}"></script>
+    <script src="/static/ack.js" defer data-opening="{html.escape(m("ui_nav_opening"))}"></script>
 </body>
 </html>"""
 

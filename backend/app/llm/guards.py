@@ -229,6 +229,12 @@ def guard_child_line(
     if len(eng_tokens) > 3:
         return False, "Line contains more than 3 English words"
 
+    # 5a. The stock "I only do it my own way" sentence is banned (it answered nothing)
+    squashed = norm(line_hi).replace(" ", "")
+    for phrase in settings.CHILD_BANNED_PHRASES:
+        if norm(phrase).replace(" ", "") in squashed:
+            return False, f"Line uses a banned stock phrase ('{phrase}')"
+
     # 5b. Only an engine-chosen OFF_TOPIC / INTERJECT line may digress to everyday things
     if response.kind not in (ResponseKind.OFF_TOPIC, ResponseKind.INTERJECT):
         for word in settings.CHILD_DISTRACTION_WORDS:

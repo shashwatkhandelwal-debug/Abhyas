@@ -179,16 +179,26 @@
     </main>
   </div>
   <script>
-    // Logout also wipes this browser's chat cache (same database name as static/chat.js)
+    // Logout also wipes this browser's chat cache (same database as static/chat.js)
     document.addEventListener('click', function (e) {
       var a = e.target.closest && e.target.closest('a[href="/logout"]');
       if (!a) return;
       e.preventDefault();
       var go = function () { window.location.href = '/logout'; };
+      setTimeout(go, 1500);
       try {
-        var r = indexedDB.deleteDatabase('abhyas_chat_db');
-        r.onsuccess = r.onerror = r.onblocked = go;
-        setTimeout(go, 1500);
+        // Empty the stores in place; deleting the database raced with the next login's open.
+        var r = indexedDB.open('abhyas_chat_db', 2);
+        r.onupgradeneeded = function () { r.transaction.abort(); };
+        r.onerror = r.onblocked = go;
+        r.onsuccess = function () {
+          var db = r.result;
+          try {
+            var tx = db.transaction(db.objectStoreNames, 'readwrite');
+            for (var i = 0; i < db.objectStoreNames.length; i++) tx.objectStore(db.objectStoreNames[i]).clear();
+            tx.oncomplete = tx.onabort = tx.onerror = function () { db.close(); go(); };
+          } catch (err) { db.close(); go(); }
+        };
       } catch (err) { go(); }
     });
   </script>

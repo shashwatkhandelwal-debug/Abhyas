@@ -199,16 +199,17 @@ _GREETING_PATTERN = re.compile(
 # It needs all three: question form, teacher speaking about herself/himself in the first person
 # ("कैसे कराऊँ", "how do I"), and no address to a child (second person, or a leading child name).
 _QUESTION_FORM = re.compile(
-    rf"\?|{_WB}(कैसे|क्यों|कैसा|कौन\s*सा|kaise|kyun|kyon|how|why|which){_WBE}|"
+    rf"\?|{_WB}(कैसे|क्यों|कैसा|कौन\s*सा|क्या|kaise|kyun|kyon|how|why|which|what){_WBE}|"
     rf"{_WB}(तरीका|उपाय|सुझाव)\s*(क्या|बताइए|बताएं|बताएँ|बताओ){_WBE}",
     re.IGNORECASE,
 )
 _FIRST_PERSON_VERB = re.compile(
-    r"[ऀ-ॿ]+(?:ऊँ|ऊं)(?![ऀ-ॿ])|"
+    r"[ऀ-ॿ]+(?:ऊँ|ऊं|ूँ|ूं)(?![ऀ-ॿ])|"
     rf"{_WB}(?:मैं|मेरे|मेरी|मेरा|main|mere|meri|mera){_WBE}|"
     rf"{_WB}(?:kar(?:a|aa|u|oo|v?a)un|karun|karoon|sikha(?:u|oo)n|samjha(?:u|oo)n|"
     rf"padha(?:u|oo)n|bata(?:u|oo)n|sambhal(?:u|oo)n|karwa(?:u|oo)n){_WBE}|"
-    rf"{_WB}how\s+(?:do|can|should|could|would)\s+i{_WBE}|"
+    rf"{_WB}(?:how|what)\s+(?:do|can|should|could|would)\s+i{_WBE}|"
+    rf"{_WB}(?:should|can|could)\s+i{_WBE}|"
     rf"{_WB}how\s+to{_WBE}",
     re.IGNORECASE,
 )
@@ -247,6 +248,7 @@ def match_intent(
     text: str | None = None,
     in_rehearsal: bool = False,
     button_id: str | None = None,
+    ask_anywhere: bool = False,
 ) -> Intent | None:
     """Matches text and/or button_id to a canonical system Intent (spec/08 §8.3).
 
@@ -347,8 +349,9 @@ def match_intent(
     if _GREETING_PATTERN.match(cleaned) or _GREETING_PATTERN.match(cleaned_punct):
         return Intent.GREETING
 
-    # 6. Rehearsal only: a how-to question to the app goes to the guide, not to the children
-    if in_rehearsal and is_pedagogy_question_for_app(cleaned):
+    # 6. A how-to question to the app goes to the guide, not to the children (in a scene, or at any
+    # step where free text is not her answer)
+    if (in_rehearsal or ask_anywhere) and is_pedagogy_question_for_app(cleaned):
         return Intent.ASK
 
     return None

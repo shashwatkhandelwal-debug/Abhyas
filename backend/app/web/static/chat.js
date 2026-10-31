@@ -1,10 +1,9 @@
 // Abhyas Chat Client (spec/09)
 const DB_NAME = 'abhyas_chat_db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_OUTBOX = 'outbox';
 const STORE_MESSAGES = 'messages_cache';
 const TYPING_TIMEOUT_MS = 60000;
-const COLD_START_HINT_MS = 5000;
 const AUDIO_WAIT_MS = 25000;
 const CHIP_CONFIRM_MS = 1400;
 const FOLLOW_UP_POLL_MS = 1200;
@@ -25,70 +24,73 @@ function getCsrfToken() {
 	return '';
 }
 window.getCsrfToken = getCsrfToken;
-function openDatabase() {
+let dbPromise = null;
+let idbRetryAt = 0;
+const IDB_OPEN_TIMEOUT_MS = 2000;
+const IDB_RETRY_PAUSE_MS = 30000;
+const memOutbox = new Map();
+function rawOpen() {
 	return new Promise((resolve, reject) => {
 		const request = indexedDB.open(DB_NAME, DB_VERSION);
 		request.onupgradeneeded = (e) => {
 			const db = e.target.result;
-			if (!db.objectStoreNames.contains(STORE_OUTBOX)) {
-				db.createObjectStore(STORE_OUTBOX, { keyPath: 'client_msg_id' });
-			}
-			if (!db.objectStoreNames.contains(STORE_MESSAGES)) {
-				db.createObjectStore(STORE_MESSAGES, { keyPath: 'id' });
-			}
+			if (!db.objectStoreNames.contains(STORE_OUTBOX)) db.createObjectStore(STORE_OUTBOX, { keyPath: 'client_msg_id' });
+			if (!db.objectStoreNames.contains(STORE_MESSAGES)) db.createObjectStore(STORE_MESSAGES, { keyPath: 'id' });
 		};
 		request.onsuccess = () => resolve(request.result);
-		request.onerror = () => reject(request.error);
+		request.onerror = request.onblocked = () => reject(request.error || new Error('idb blocked'));
 	});
 }
-async function saveToOutbox(item) {
-	const db = await openDatabase();
-	return new Promise((resolve, reject) => {
-		const tx = db.transaction([STORE_OUTBOX], 'readwrite');
-		tx.objectStore(STORE_OUTBOX).put(item);
-		tx.oncomplete = () => resolve();
-		tx.onerror = () => reject(tx.error);
-	});
+const storesOk = (db) => db.objectStoreNames.contains(STORE_OUTBOX) && db.objectStoreNames.contains(STORE_MESSAGES);
+async function openFresh() {
+	let db = await rawOpen();
+	if (storesOk(db)) return db;
+	db.close();
+	await deleteChatDatabase();
+	db = await rawOpen();
+	if (!storesOk(db)) throw new Error('idb stores missing');
+	return db;
 }
-async function removeFromOutbox(clientMsgId) {
-	const db = await openDatabase();
-	return new Promise((resolve, reject) => {
-		const tx = db.transaction([STORE_OUTBOX], 'readwrite');
-		tx.objectStore(STORE_OUTBOX).delete(clientMsgId);
-		tx.oncomplete = () => resolve();
-		tx.onerror = () => reject(tx.error);
-	});
+function openDatabase() {
+	if (dbPromise) return dbPromise;
+	if (Date.now() < idbRetryAt) return Promise.reject(new Error('idb paused'));
+	const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('idb timeout')), IDB_OPEN_TIMEOUT_MS));
+	dbPromise = Promise.race([openFresh(), timeout]).then(
+		(db) => {
+			db.onversionchange = () => {
+				db.close();
+				dbPromise = null;
+			};
+			return db;
+		},
+		(err) => {
+			dbPromise = null;
+			idbRetryAt = Date.now() + IDB_RETRY_PAUSE_MS;
+			throw err;
+		}
+	);
+	return dbPromise;
 }
+function idbTx(names, mode, fn) {
+	return openDatabase().then(
+		(db) =>
+			new Promise((resolve, reject) => {
+				const tx = db.transaction(names, mode);
+				const req = fn(tx);
+				tx.oncomplete = () => resolve(req && req.result);
+				tx.onabort = tx.onerror = () => reject(tx.error);
+			})
+	);
+}
+const idbWrite = (store, fn) => idbTx([store], 'readwrite', (tx) => fn(tx.objectStore(store))).catch(() => {});
+const saveToOutbox = (item) => (memOutbox.set(item.client_msg_id, item), idbWrite(STORE_OUTBOX, (s) => s.put(item)));
+const removeFromOutbox = (id) => (memOutbox.delete(id), idbWrite(STORE_OUTBOX, (s) => s.delete(id)));
+const cacheMessages = (msgs) => (msgs && msgs.length ? idbWrite(STORE_MESSAGES, (s) => msgs.forEach((m) => s.put(m))) : Promise.resolve());
 async function getPendingOutboxItems() {
-	const db = await openDatabase();
-	return new Promise((resolve, reject) => {
-		const tx = db.transaction([STORE_OUTBOX], 'readonly');
-		const req = tx.objectStore(STORE_OUTBOX).getAll();
-		req.onsuccess = () => resolve(req.result || []);
-		req.onerror = () => reject(req.error);
-	});
-}
-async function cacheMessages(msgs) {
-	if (!msgs || msgs.length === 0) return;
-	const db = await openDatabase();
-	const tx = db.transaction([STORE_MESSAGES], 'readwrite');
-	const store = tx.objectStore(STORE_MESSAGES);
-	for (const m of msgs) {
-		store.put(m);
-	}
-}
-async function getCachedMessages() {
-	const db = await openDatabase();
-	return new Promise((resolve, reject) => {
-		const tx = db.transaction([STORE_MESSAGES], 'readonly');
-		const req = tx.objectStore(STORE_MESSAGES).getAll();
-		req.onsuccess = () => {
-			const res = req.result || [];
-			res.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-			resolve(res.slice(-50));
-		};
-		req.onerror = () => reject(req.error);
-	});
+	const stored = (await idbTx([STORE_OUTBOX], 'readonly', (tx) => tx.objectStore(STORE_OUTBOX).getAll()).catch(() => [])) || [];
+	const byId = new Map(stored.map((i) => [i.client_msg_id, i]));
+	for (const [id, item] of memOutbox) byId.set(id, item);
+	return [...byId.values()];
 }
 const LOGOUT_CLEAR_TIMEOUT_MS = 1500;
 function deleteChatDatabase() {
@@ -103,8 +105,26 @@ function deleteChatDatabase() {
 		}
 	});
 }
+async function clearChatStores() {
+	memOutbox.clear();
+	idbRetryAt = 0;
+	try {
+		const db = await openDatabase();
+		await new Promise((resolve, reject) => {
+			const tx = db.transaction([STORE_OUTBOX, STORE_MESSAGES], 'readwrite');
+			tx.objectStore(STORE_OUTBOX).clear();
+			tx.objectStore(STORE_MESSAGES).clear();
+			tx.oncomplete = resolve;
+			tx.onabort = tx.onerror = () => reject(tx.error);
+		});
+		db.close();
+	} catch (e) {
+		await deleteChatDatabase();
+	}
+	dbPromise = null;
+}
 async function clearLocalState() {
-	const wipes = [deleteChatDatabase()];
+	const wipes = [clearChatStores()];
 	if (window.caches) {
 		wipes.push(caches.delete('abhyas-audio-v1').catch(() => false));
 	}
@@ -113,7 +133,6 @@ async function clearLocalState() {
 		new Promise((resolve) => setTimeout(resolve, LOGOUT_CLEAR_TIMEOUT_MS)),
 	]);
 }
-window.clearLocalState = clearLocalState;
 const localAudioUrls = [];
 function revokeLocalAudio() {
 	while (localAudioUrls.length) URL.revokeObjectURL(localAudioUrls.pop());
@@ -266,10 +285,6 @@ function netNext(cur, ev) {
 	switch (ev) {
 		case 'success':
 			return 'ok';
-		case 'slow':
-			return cur === 'ok' ? 'cold' : cur;
-		case 'fail':
-			return cur === 'ok' ? 'cold' : cur;
 		case 'offline':
 			return 'offline';
 		case 'online':
@@ -337,16 +352,10 @@ function announce(text) {
 function renderNetStatus() {
 	const bar = document.getElementById('status-bar');
 	if (!bar) return;
-	const key = state.net === 'cold' ? 'ui_chat_cold_start' : state.net === 'reconnecting' ? 'ui_chat_reconnecting' : '';
-	if (key) {
-		bar.textContent = t(key);
-		bar.className = `status-bar ${state.net}`;
-		bar.hidden = false;
-	} else {
-		bar.textContent = '';
-		bar.className = 'status-bar';
-		bar.hidden = true;
-	}
+	const text = state.net === 'reconnecting' ? t('ui_chat_reconnecting') : '';
+	bar.textContent = text;
+	bar.className = text ? 'status-bar reconnecting' : 'status-bar';
+	bar.hidden = !text;
 }
 function netEvent(ev) {
 	const next = netNext(state.net, ev);
@@ -355,15 +364,12 @@ function netEvent(ev) {
 	renderNetStatus();
 }
 async function netFetch(url, opts) {
-	const timer = setTimeout(() => netEvent('slow'), COLD_START_HINT_MS);
 	try {
 		const res = await fetch(url, opts);
-		clearTimeout(timer);
-		netEvent(res.status >= 500 ? 'fail' : 'success');
+		if (res.status < 500) netEvent('success');
 		return res;
 	} catch (err) {
-		clearTimeout(timer);
-		netEvent(navigator.onLine ? 'fail' : 'offline');
+		if (!navigator.onLine) netEvent('offline');
 		throw err;
 	}
 }
@@ -824,6 +830,8 @@ function applyView(view) {
 	if (title && title.textContent !== view.move_title) title.textContent = view.move_title;
 	const step = document.getElementById('header-step');
 	if (step && step.textContent !== view.step_label) step.textContent = view.step_label;
+	const banner = document.getElementById('demo-banner');
+	if (banner && banner.dataset.lastStep && view.step > +banner.dataset.lastStep) banner.firstElementChild.textContent = banner.dataset.generic;
 }
 function setupSceneEnd() {
 	const btn = document.getElementById('sh-end');
@@ -1474,8 +1482,6 @@ function updateOnlineStatus() {
 		if (offlineMsg) {
 			banner.textContent = offlineMsg;
 			banner.style.display = 'block';
-		} else {
-			console.warn('Network banner element missing data-offline-text attribute');
 		}
 	} else {
 		netEvent('online');
@@ -1520,8 +1526,6 @@ function showSlowNetworkWarning() {
 	if (slowMsg) {
 		banner.textContent = slowMsg;
 		banner.style.display = 'block';
-	} else {
-		console.warn('Network banner element missing data-slow-text attribute');
 	}
 }
 async function toggleLiteMode(forceValue = null) {
@@ -1869,7 +1873,6 @@ function registerServiceWorker() {
 	if ('serviceWorker' in navigator) {
 		navigator.serviceWorker
 			.register('/sw.js')
-			.then((reg) => console.log('ServiceWorker registered with scope:', reg.scope))
 			.catch((err) => console.warn('ServiceWorker registration failed:', err));
 	}
 }
@@ -1962,7 +1965,7 @@ function initRenderedMessagesFromDom() {
 	});
 	upgradeCoachEvidenceQuotes(container);
 	if (cachedBatch.length > 0) {
-		cacheMessages(cachedBatch).catch((err) => console.warn('Cache initial msgs error:', err));
+		cacheMessages(cachedBatch);
 	}
 }
 document.addEventListener('DOMContentLoaded', async () => {

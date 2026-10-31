@@ -100,7 +100,12 @@ def scope_teachers_query(query: Any, user: AppUser) -> Any:
     return query
 
 
-SUPPRESSION_MESSAGE = "समूह छोटा है (n<10): गोपनीयता हेतु छिपाया गया"
+SUPPRESSION_MESSAGE = "समूह छोटा है (n<10): गोपनीयता हेतु छिपाया गया"  # the Hindi text (default UI)
+
+
+def suppression_message() -> str:
+    """The n<10 notice in the UI language (the Hindi text equals SUPPRESSION_MESSAGE)."""
+    return get_message("ui_suppressed")
 
 
 def apply_aggregation_suppression(
@@ -113,7 +118,7 @@ def apply_aggregation_suppression(
     result = dict(row)
     if n_teachers < min_n:
         result["suppressed"] = True
-        result["suppression_message"] = SUPPRESSION_MESSAGE
+        result["suppression_message"] = suppression_message()
         # Mask sensitive metrics
         for metric_key in (
             "explain_missing",
@@ -123,7 +128,7 @@ def apply_aggregation_suppression(
             "completed_rate",
         ):
             if metric_key in result:
-                result[metric_key] = SUPPRESSION_MESSAGE
+                result[metric_key] = suppression_message()
     else:
         result["suppressed"] = False
     return result

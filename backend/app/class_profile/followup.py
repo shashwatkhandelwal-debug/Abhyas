@@ -112,7 +112,8 @@ def back_to_scene_message(scene: dict[str, object] | None) -> OutboundMessage:
     """One line that returns her to the scene with the board's problem and one thing to ask."""
     board = str((scene or {}).get("board") or "")
     if scene and board and scene.get("mode") == "one_on_one":
-        text = get_message("fu_back_one", child=scene.get("child_name"), board=board)
+        he = settings.CHILD_PRONOUN_EN.get(str(scene.get("child_id")), "they")
+        text = get_message("fu_back_one", child=scene.get("child_name"), board=board, he=he)
     elif scene and board:
         text = get_message("fu_back_group", board=board)
     else:

@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ get_message('ui_offline_title', lang='hi') }}</title>
   <script>
-    // Language chosen in the app (cookie abhyas_lang); this page is cached, so it ships both languages.
     (function () {
       var m = document.cookie.match(/(?:^|; )abhyas_lang=(hi|en)/);
       var lang = m ? m[1] : 'hi';
@@ -17,40 +16,13 @@
   </script>
   <link rel="stylesheet" href="/static/app.css?v={{ asset_v() }}">
   <style>
-.bi > [lang="en"] { display: none; }
-html[data-lang="en"] .bi > [lang="hi"] { display: none; }
-html[data-lang="en"] .bi > [lang="en"] { display: inline; }
-.offline-card {
-background: var(--surface);
-border: 1px solid var(--border);
-border-radius: var(--radius-md);
-padding: 1.25rem;
-margin: 1rem;
-box-shadow: var(--shadow-sm);
-}
-.checklist-item {
-display: flex;
-align-items: flex-start;
-gap: 0.75rem;
-margin-bottom: 0.75rem;
-font-size: 0.95rem;
-}
-.checklist-item input[type="checkbox"] {
-width: 22px;
-height: 22px;
-margin-top: 3px;
-accent-color: var(--brand);
-}
-.offline-badge {
-display: inline-block;
-background: var(--danger-light);
-color: var(--danger);
-font-size: 0.8rem;
-font-weight: 700;
-padding: 0.2rem 0.6rem;
-border-radius: var(--radius-full);
-margin-bottom: 0.5rem;
-}
+.bi > [lang="en"] {display: none;}
+html[data-lang="en"] .bi > [lang="hi"] {display: none;}
+html[data-lang="en"] .bi > [lang="en"] {display: inline;}
+.offline-card {background: var(--surface);border: 1px solid var(--border);border-radius: var(--radius-md);padding: 1.25rem;margin: 1rem;box-shadow: var(--shadow-sm);}
+.checklist-item {display: flex;align-items: flex-start;gap: 0.75rem;margin-bottom: 0.75rem;font-size: 0.95rem;}
+.checklist-item input[type="checkbox"] {width: 22px;height: 22px;margin-top: 3px;accent-color: var(--brand);}
+.offline-badge {display: inline-block;background: var(--danger-light);color: var(--danger);font-size: 0.8rem;font-weight: 700;padding: 0.2rem 0.6rem;border-radius: var(--radius-full);margin-bottom: 0.5rem;}
 </style>
 </head>
 <body>
@@ -105,91 +77,50 @@ margin-bottom: 0.5rem;
   </div>
 
   <script>
-    const UI = {
-      hi: {
-        empty: {{ get_message('ui_offline_history_empty', lang='hi')|tojson }},
-        failed: {{ get_message('ui_offline_history_failed', lang='hi')|tojson }},
-        audio: {{ get_message('ui_chat_audio_ready', lang='hi')|tojson }},
-      },
-      en: {
-        empty: {{ get_message('ui_offline_history_empty', lang='en')|tojson }},
-        failed: {{ get_message('ui_offline_history_failed', lang='en')|tojson }},
-        audio: {{ get_message('ui_chat_audio_ready', lang='en')|tojson }},
-      },
+    const TXT = {
+      hi: [{{ get_message('ui_offline_history_empty', lang='hi')|tojson }}, {{ get_message('ui_offline_history_failed', lang='hi')|tojson }}, {{ get_message('ui_chat_audio_ready', lang='hi')|tojson }}],
+      en: [{{ get_message('ui_offline_history_empty', lang='en')|tojson }}, {{ get_message('ui_offline_history_failed', lang='en')|tojson }}, {{ get_message('ui_chat_audio_ready', lang='en')|tojson }}],
     };
-    const L = UI[document.documentElement.dataset.lang] || UI.hi;
+    const lang = document.documentElement.dataset.lang;
+    const [EMPTY, FAILED, AUDIO] = TXT[lang] || TXT.hi;
     document.querySelectorAll('[data-title-en]').forEach((el) => {
-      if (document.documentElement.dataset.lang === 'en') el.title = el.dataset.titleEn;
+      if (lang === 'en') el.title = el.dataset.titleEn;
     });
+    const listEl = document.getElementById('offline-messages-list');
     function note(text) {
       const p = document.createElement('p');
       p.style.cssText = 'color:var(--muted);font-size:0.85rem;';
       p.textContent = text;
-      return p;
-    }
-
-    // Restore checklist states
-    function loadChecklist() {
-      for (let i = 1; i <= 4; i++) {
-        const val = localStorage.getItem('abhyas_chk_' + i);
-        if (val === 'true') {
-          const el = document.getElementById('chk' + i);
-          if (el) el.checked = true;
-        }
-      }
+      listEl.replaceChildren(p);
     }
     function saveCheck(id) {
-      const el = document.getElementById('chk' + id);
-      if (el) {
-        localStorage.setItem('abhyas_chk_' + id, el.checked);
-      }
+      localStorage.setItem('abhyas_chk_' + id, document.getElementById('chk' + id).checked);
     }
-
-    // Load cached messages from IndexedDB
-    const DB_NAME = 'abhyas_chat_db';
-    const DB_VERSION = 1;
-
     function loadCachedHistory() {
-      const listEl = document.getElementById('offline-messages-list');
-      if (!listEl) return;
-
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      const req = indexedDB.open('abhyas_chat_db', 2);
+      req.onupgradeneeded = () => req.transaction.abort(); // never create an empty database from this page
       req.onsuccess = (e) => {
         const db = e.target.result;
-        if (!db.objectStoreNames.contains('messages_cache')) {
-          listEl.replaceChildren(note(L.empty));
-          return;
-        }
-        const tx = db.transaction(['messages_cache'], 'readonly');
-        const getAll = tx.objectStore('messages_cache').getAll();
+        if (!db.objectStoreNames.contains('messages_cache')) return note(EMPTY);
+        const getAll = db.transaction(['messages_cache'], 'readonly').objectStore('messages_cache').getAll();
         getAll.onsuccess = () => {
           const msgs = getAll.result || [];
-          if (msgs.length === 0) {
-            listEl.replaceChildren(note(L.empty));
-            return;
-          }
+          if (!msgs.length) return note(EMPTY);
           msgs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
           listEl.innerHTML = '';
           msgs.slice(-50).forEach((m) => {
             const div = document.createElement('div');
-            div.style.padding = '0.5rem 0.8rem';
-            div.style.borderRadius = '8px';
-            div.style.fontSize = '0.9rem';
-            div.style.backgroundColor = m.direction === 'in' ? 'var(--bubble-in)' : 'var(--bg)';
-            div.style.alignSelf = m.direction === 'in' ? 'flex-end' : 'flex-start';
-            div.style.maxWidth = '85%';
-            div.innerHTML = (m.speaker ? '<strong style="font-size:0.75rem;display:block;">' + m.speaker + '</strong>' : '') + (m.text || L.audio);
+            const inb = m.direction === 'in';
+            div.style.cssText = 'padding:.5rem .8rem;border-radius:8px;font-size:.9rem;max-width:85%;background-color:' + (inb ? 'var(--bubble-in)' : 'var(--bg)') + ';align-self:' + (inb ? 'flex-end' : 'flex-start');
+            div.innerHTML = (m.speaker ? '<strong style="font-size:0.75rem;display:block;">' + m.speaker + '</strong>' : '') + (m.text || AUDIO);
             listEl.appendChild(div);
           });
         };
       };
-      req.onerror = () => {
-        listEl.replaceChildren(note(L.failed));
-      };
+      req.onerror = () => note(req.error && req.error.name === 'AbortError' ? EMPTY : FAILED);
     }
-
     window.addEventListener('DOMContentLoaded', () => {
-      loadChecklist();
+      for (let i = 1; i <= 4; i++) if (localStorage.getItem('abhyas_chk_' + i) === 'true') document.getElementById('chk' + i).checked = true;
       loadCachedHistory();
     });
   </script>

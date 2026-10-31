@@ -692,6 +692,9 @@ DEMO_CHECKIN_REPORTS = (
     ("NUM_COUNTING", 2),
 )
 DEMO_CHECKIN_WELL = 3  # extra "it went well" check-ins (no struggle) from other teachers
+# What the cohort teachers want to get better at (rubric criterion ids), handed out in turn so the
+# trainer's "What teachers want to get better at" card has counts like the cluster pack beside it.
+DEMO_COHORT_SKILLS = ("asks_to_explain", "uses_concrete_representation", "does_not_tell_answer")
 
 
 async def _seed_demo_checkins(
@@ -715,9 +718,11 @@ async def _seed_demo_checkins(
 
     n = 0
     start = 0
+    reported: dict[uuid.UUID, set[str]] = {}
     for sid, count in DEMO_CHECKIN_REPORTS:
         for k in range(count):
             teacher = pool[(start + k) % len(pool)]
+            reported.setdefault(teacher.id, set()).add(sid)
             n += 1
             session.add(
                 ClassCheckin(
@@ -743,6 +748,11 @@ async def _seed_demo_checkins(
                 created_at=now - timedelta(days=2 + k),
             )
         )
+    # The same teachers' "My class" and "get better at" choices, so the trainer's cards count the
+    # teachers the cluster pack counts (same consenting pool, same struggles).
+    for i, teacher in enumerate(pool):
+        teacher.class_struggles = sorted(reported.get(teacher.id, ()))
+        teacher.teaching_skills = [DEMO_COHORT_SKILLS[i % len(DEMO_COHORT_SKILLS)]]
     await session.flush()
 
 

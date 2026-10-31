@@ -27,7 +27,7 @@ playwright_sync = pytest.importorskip("playwright.sync_api")
 
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 REPO_ROOT = Path(__file__).resolve().parents[3]
-DEMO_PASSWORD = "e2e-demo-pass"
+DEMO_PASSWORD = os.environ.get("E2E_DEMO_PASSWORD", "e2e-demo-pass")
 SEED_TIMEOUT_S = 600
 
 
@@ -41,7 +41,9 @@ def open_sheet(page: Any) -> None:
 MOBILE = {"width": 360, "height": 740}
 DESKTOP = {"width": 1280, "height": 800}
 
-pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="TEST_DATABASE_URL not set")
+pytestmark = pytest.mark.skipif(
+    not (TEST_DATABASE_URL or os.environ.get("E2E_BASE_URL")), reason="TEST_DATABASE_URL not set"
+)
 
 
 def _url(db_name: str | None, driver: str) -> str:
@@ -54,7 +56,14 @@ def _url(db_name: str | None, driver: str) -> str:
 
 @pytest.fixture(scope="session")
 def server() -> Iterator[str]:
-    """Base URL of a seeded app (demo1 to demo3, ARP, trainer, coach, admin)."""
+    """Base URL of a seeded app (demo1 to demo3, ARP, trainer, coach, admin).
+
+    With E2E_BASE_URL set (and E2E_DEMO_PASSWORD) the tests run against that already running app,
+    for example the local Docker container, instead of a server started here.
+    """
+    if os.environ.get("E2E_BASE_URL"):
+        yield os.environ["E2E_BASE_URL"].rstrip("/")
+        return
     if not TEST_DATABASE_URL:
         pytest.skip("TEST_DATABASE_URL not set")
     db_name = f"abhyas_e2e_{uuid4().hex[:10]}"

@@ -48,3 +48,21 @@ def outcome_line(
                         key = _LITERACY_KEYS.get(key, key)
                     return get_message(key, address_form, child=child)
     return ""
+
+
+_MISTAKE_KINDS = (ResponseKind.EXPLAIN_BUG, ResponseKind.RELAPSE)
+
+
+def class_link_key(turns: Sequence[TurnRecord], persona_id: str, domain: Domain | None) -> str:
+    """Catalog key for the line tying her class's struggle to this practice.
+
+    It only says "same as X's mistake" when X really made it in this scene (a child who read or
+    answered correctly did not), and it only talks about real objects outside literacy moves.
+    """
+    made = any(
+        r.persona_id == persona_id and r.kind in _MISTAKE_KINDS
+        for t in turns
+        for r in t.child_responses
+    )
+    key = "coach_class_link" if made else "coach_class_link_general"
+    return f"{key}_literacy" if domain == Domain.LITERACY else key

@@ -21,7 +21,11 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.access import SUPPRESSION_MESSAGE, can_access_teacher, can_view_teacher_scores
+from backend.app.auth.access import (
+    can_access_teacher,
+    can_view_teacher_scores,
+    suppression_message,
+)
 from backend.app.auth.csrf import (
     CSRF_COOKIE_NAME,
     generate_csrf_token,
@@ -133,7 +137,7 @@ async def get_arp_dashboard(
             "request": request,
             "digest": digest_data,
             "modules": modules,
-            "suppression_message": SUPPRESSION_MESSAGE,
+            "suppression_message": suppression_message(),
             "user": current_user,
             "csrf_token": csrf_token,
             "get_message": get_message,

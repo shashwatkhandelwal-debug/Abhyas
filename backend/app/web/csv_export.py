@@ -25,6 +25,7 @@ from zoneinfo import ZoneInfo
 from fastapi import HTTPException, Response, status
 
 from backend.app.auth.access import SUPPRESSION_MESSAGE
+from backend.app.core.messages import get_message
 
 logger = logging.getLogger("abhyas.export")
 IST = ZoneInfo("Asia/Kolkata")
@@ -36,10 +37,10 @@ _FORMULA_START = ("=", "+", "@")
 class _Tables(HTMLParser):
     """Collects the `data-export` tables: name -> rows of cell text."""
 
-    def __init__(self, repeat_text: str) -> None:
+    def __init__(self, repeat_texts: tuple[str, ...]) -> None:
         super().__init__(convert_charrefs=True)
         self.tables: dict[str, list[list[str]]] = {}
-        self._repeat = repeat_text
+        self._repeat = repeat_texts
         self._name: str | None = None
         self._depth = 0
         self._row: list[str] | None = None
@@ -102,12 +103,13 @@ class _Tables(HTMLParser):
         except ValueError:
             span = 1
         self._row.append(text)
-        self._row.extend([text if text == self._repeat else ""] * (span - 1))
+        self._row.extend([text if text in self._repeat else ""] * (span - 1))
 
 
 def tables_from_html(html: str) -> dict[str, list[list[str]]]:
     """Every `data-export` table of a rendered page: name -> rows (header row first)."""
-    parser = _Tables(SUPPRESSION_MESSAGE)
+    # the notice in whichever UI language the page was rendered in
+    parser = _Tables((SUPPRESSION_MESSAGE, get_message("ui_suppressed", lang="en")))
     parser.feed(html)
     parser.close()
     return parser.tables
