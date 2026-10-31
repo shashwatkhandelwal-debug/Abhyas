@@ -511,6 +511,24 @@ class SessionService:
             return get_message("ask_resume_scene_group", address_form)
         prior_prompt_key = WeeklyStateMachine(ctx).get_state_prompt_key(prior)
         move = load_move_card(ctx.current_move_id)
+        step = max(1, ctx.reflect_step)  # the item or question she was on
+        if prior == SessionStateEnum.REFLECT_PEER:
+            items = move.peer_checklist
+            return get_message(
+                prior_prompt_key,
+                address_form,
+                i=step,
+                n=len(items) or 3,
+                item=items[step - 1] if step <= len(items) else "",
+            )
+        if prior == SessionStateEnum.REFLECT_SELF:
+            questions = move.reflection_questions
+            return get_message(
+                prior_prompt_key,
+                address_form,
+                i=step,
+                question=questions[step - 1] if step <= len(questions) else "",
+            )
         if prior_prompt_key == "learn_intro":
             return get_message(prior_prompt_key, address_form, move_title=move_title(move.id))
         elif prior_prompt_key == "rehearse_intro":
@@ -555,6 +573,32 @@ class SessionService:
                 ],
             )
         ]
+
+    def _resume_buttons(self, ctx: SessionContext, prior: SessionStateEnum) -> list[Button]:
+        """The quick replies of the step she was on, re-sent after a Guide answer (fix7)."""
+        af = ctx.address_form
+        ids: tuple[str, ...] = ()
+        if prior == SessionStateEnum.FEEDBACK:
+            ids = ("btn_retry", "btn_continue", "btn_progress")
+        elif prior == SessionStateEnum.TRY_IN_CLASS:
+            ids = ("btn_peer", "btn_self", "btn_later")
+        elif prior == SessionStateEnum.REFLECT_PEER:
+            ids = ("btn_yes", "btn_no")
+        if "btn_progress" in ids and not my_progress.enabled():
+            ids = tuple(i for i in ids if i != "btn_progress")
+        return [
+            Button(id=i, title_hi=get_message(i, af)[: settings.WEB_BUTTON_TITLE_MAX]) for i in ids
+        ]
+
+    def _resume_message(
+        self, ctx: SessionContext, prior: SessionStateEnum, resume_note: str, prompt: str
+    ) -> OutboundMessage:
+        """The carry-on message with the step's own buttons, when the step has any."""
+        buttons = self._resume_buttons(ctx, prior)
+        text = f"{resume_note}\n\n{prompt}"
+        if buttons:
+            return OutboundMessage(kind="buttons", text_hi=text, buttons=buttons)
+        return OutboundMessage(kind="text", text_hi=text)
 
     @staticmethod
     def _progress_entry_buttons(address_form: str) -> list[Button]:
@@ -1518,6 +1562,15 @@ class SessionService:
                 )
             ),
         )
+        # fix7: "continue" typed on the practice-feedback screen is the Continue button
+        if (
+            matched_intent is None
+            and not btn_id
+            and ctx.current_state == SessionStateEnum.FEEDBACK
+            and ctx.onboarding_state == OnboardingStateEnum.READY
+            and text_content.strip().strip(".!").casefold() == "continue"
+        ):
+            matched_intent = Intent.NEXT
 
         # fix5: any other free text of 4+ words is a question for the Guide, not "did not understand".
         # Not while a scene runs, not where the line is her answer (explain-back, reflection,
@@ -1890,7 +1943,7 @@ class SessionService:
 
                 return [
                     OutboundMessage(kind="text", text_hi=reply_text),
-                    OutboundMessage(kind="text", text_hi=f"{resume_note}\n\n{prior_prompt}"),
+                    self._resume_message(ctx, prior, resume_note, prior_prompt),
                 ]
 
             if not q_text:
@@ -2028,7 +2081,7 @@ class SessionService:
                     speaker=None if answer_res.escalated else "guide",
                     citations=reply_cites,
                 ),
-                OutboundMessage(kind="text", text_hi=f"{resume_note}\n\n{prior_prompt}"),
+                self._resume_message(ctx, prior, resume_note, prior_prompt),
             ]
 
         # 4. Onboarding flow (§8.1)
