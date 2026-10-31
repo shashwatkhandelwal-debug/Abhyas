@@ -189,6 +189,18 @@
       font-weight: 600;
       border: 1px dashed var(--danger);
     }
+    table.data-table td.batch-cell { min-width: 11rem; }
+    table.data-table td.batch-cell small { display: block; line-height: 1.35; }
+    @media (prefers-color-scheme: dark) {
+      .suppressed-cell { background-color: #2A1B1B; padding-top: 0.45rem !important; padding-bottom: 0.45rem !important; }
+      .suppressed-badge {
+        background: #3A1F1F;
+        color: #FFB4AB;
+        border: 1px dashed #A55A55;
+        padding: 0.15rem 0.6rem;
+        line-height: 1.35;
+      }
+    }
     .ladder-tags {
       display: flex;
       flex-wrap: wrap;
@@ -325,7 +337,7 @@
         <tbody>
           {% for r in report.rows %}
           <tr>
-            <td>
+            <td class="batch-cell">
               <strong>{{ r.batch_id }}</strong><br>
               <small style="color:var(--muted)">{{ r.batch_name }}</small>
             </td>

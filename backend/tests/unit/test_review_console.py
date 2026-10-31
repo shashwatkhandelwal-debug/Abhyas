@@ -703,3 +703,60 @@ async def test_blind_calibration_all_labelled_renders_empty_state() -> None:
         assert "सभी उपलब्ध रिहर्सल जांची जा चुकी हैं" in res.text
 
     app.dependency_overrides.clear()
+
+
+async def _get_calibrate_html(texts: list[str]) -> str:
+    fake_session = FakeAsyncSession()
+    teacher_id = uuid.uuid4()
+    scene_id = uuid.uuid4()
+    fake_session.items[Scene].append(
+        Scene(
+            id=scene_id,
+            teacher_id=teacher_id,
+            move_id="NUM_SUB_REGROUP_BUNDLES",
+            status="ended",
+            mode="normal",
+            engine_state={},
+        )
+    )
+    for i, text in enumerate(texts):
+        fake_session.items[Turn].append(
+            Turn(
+                id=uuid.uuid4(),
+                teacher_id=teacher_id,
+                scene_id=scene_id,
+                idx=i,
+                role="teacher",
+                transcript=text,
+                acts=[],
+            )
+        )
+    coach = _make_coach_user("coach.demo", role="coach")
+    app.dependency_overrides[get_db_session] = lambda: fake_session
+    app.dependency_overrides[get_current_user] = lambda: coach
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            res = await client.get(f"/review/calibrate?scene_id={scene_id}")
+        assert res.status_code == 200
+        return res.text
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_calibrate_empty_turns_show_placeholder_and_keep_form() -> None:
+    html = await _get_calibrate_html(["", "   ", ""])
+    assert html.count("No text stored for this demo turn.") == 3
+    assert "This is demo data, so the conversation text is not stored." in html
+    assert 'action="/review/calibrate"' in html
+    assert 'name="scene_id"' in html
+    assert 'name="score_crit_explain"' in html
+
+
+@pytest.mark.asyncio
+async def test_calibrate_mixed_turns_have_placeholder_but_no_demo_line() -> None:
+    html = await _get_calibrate_html(["आओ पहले बंडल खोलें।", ""])
+    assert html.count("No text stored for this demo turn.") == 1
+    assert "आओ पहले बंडल खोलें।" in html
+    assert "This is demo data, so the conversation text is not stored." not in html

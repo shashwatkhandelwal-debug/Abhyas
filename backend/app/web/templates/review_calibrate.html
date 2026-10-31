@@ -109,6 +109,12 @@
       .turn-aman { background: #33284F; border-color: #54448A; }
       .turn-bubble .speaker-tag { color: #F0EDE8 !important; }
     }
+    .turn-empty { color: #4A524E; font-style: italic; font-size: 0.9rem; }
+    .turn-empty span { display: block; }
+    .demo-note { color: var(--muted); font-size: 0.9rem; margin: 0 0 0.75rem 0; }
+    @media (prefers-color-scheme: dark) {
+      .turn-empty { color: #C4CCC8; }
+    }
     .speaker-tag {
       font-size: 0.75rem;
       font-weight: 700;
@@ -222,13 +228,23 @@
       <div class="section-card">
         <h2>{{ get_message("ui_review_transcript_title") }}</h2>
         {% if turns %}
+        {% if turns | selectattr('text') | map(attribute='text') | map('trim') | select | list | length == 0 %}
+        <p class="demo-note">
+          यह डेमो डेटा है, इसलिए बातचीत का पाठ संग्रहीत नहीं है। असली अभ्यास में वह यहाँ दिखेगा।<br>
+          This is demo data, so the conversation text is not stored. For a real practice, it appears here.
+        </p>
+        {% endif %}
         <div class="transcript-box">
           {% for t in turns %}
           <div class="turn-bubble turn-{{ t.role }}">
             <span class="speaker-tag" style="{% if t.role == 'teacher' %}color:var(--brand);{% elif t.role == 'ravi' %}color:var(--child-ravi);{% elif t.role == 'priya' %}color:var(--child-priya);{% elif t.role == 'aman' %}color:var(--child-aman);{% else %}color:var(--muted);{% endif %}">
               {{ t.speaker }}
             </span>
+            {% if t.text and t.text.strip() %}
             <div>{{ t.text }}</div>
+            {% else %}
+            <div class="turn-empty"><span>इस डेमो टर्न का कोई पाठ संग्रहीत नहीं है।</span><span>No text stored for this demo turn.</span></div>
+            {% endif %}
           </div>
           {% endfor %}
         </div>
