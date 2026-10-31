@@ -47,7 +47,19 @@ def test_prompt_text_no_longer_carries_the_example() -> None:
 async def test_a_model_that_returns_the_phrase_never_reaches_the_teacher() -> None:
     stock = "मुझे समझ नहीं आया, मैं तो अपने तरीके से ही करता हूँ। 45"
     with patch(
-        "backend.app.llm.roles.child_voice.call_tool", new=AsyncMock(return_value={"line_hi": stock})
+        "backend.app.llm.roles.child_voice.call_tool",
+        new=AsyncMock(return_value={"line_hi": stock}),
     ):
         line = await voice_child_line(_resp(), PERSONA, address_form="m", previous_line=None)
     assert "अपने तरीके" not in line
+
+
+def test_a_child_who_finds_the_number_too_big_does_not_say_it_twice_in_a_row() -> None:
+    from backend.app.llm.roles.child_voice import is_near_repeat, template_line
+    from backend.app.rule_engine.domain import ResponseKind
+
+    resp = _resp().model_copy(update={"kind": ResponseKind.CONFUSED, "answer": None})
+    first = template_line(resp, PERSONA, 0, "m", None)
+    for turn in (0, 1, 2, 3):
+        again = template_line(resp, PERSONA, turn, "m", first)
+        assert not is_near_repeat(again, first), (turn, first, again)

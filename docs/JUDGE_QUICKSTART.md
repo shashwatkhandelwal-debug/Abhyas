@@ -16,7 +16,7 @@ classify, coach and answer from cited documents.**
 ## The first 5 minutes
 
 1. Open `<HOSTED URL>/healthz` and wait for `{"status": "ok", ...}`. The free hosting plan sleeps when idle, so
-   the first request can take **about a minute**; the pages say "the server is waking up" instead of failing.
+   the first request can take **about a minute**; the login page says "the server is waking up" instead of failing.
 2. Log in as `teacher.demo2` (mid-rehearsal with Ravi, problem 43 − 27). Tap a sample chip or send input 2 from
    `docs/SAMPLE_INPUTS.md` ("रवि, सही उत्तर 16 है…"): Ravi repeats 16 without understanding. Then send
    "अब नया सवाल: 61 में से 28।": he gets it wrong again (47). Nothing in the model decided that.
@@ -65,8 +65,9 @@ classify, coach and answer from cited documents.**
    history and the offline checklist stay readable; a message you send waits in the outbox and sends by itself
    when you go online. If sending gives up, a red **!** appears: tap it to resend.
 2. Throttle to **Slow 3G**: the page stays under 150 KB; the menu has **lite mode** (audio only on tap).
-3. Cold start: once any page of ours has loaded, a sleeping server shows the "waking up, about a minute" state and then
-   opens by itself; the very first request is answered by the hosting service's own waiting page.
+3. Cold start: the first load of the login page after the server slept shows a "waking up, about a minute" page and then
+   opens by itself (a browser that has never opened the app gets the hosting service's own waiting page instead). After that the app never shows that notice again: it retries quietly (about 30 s) and, only if the
+   server still does not answer, shows a plain "server not reachable, reload" page.
 
 ## If the app is slow
 

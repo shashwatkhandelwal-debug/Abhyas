@@ -145,9 +145,12 @@ The **meeting agenda** page (`/trainer/cluster-pack/print`, or `/arp/cluster-pac
   not in use.
 - **First visit after idle.** On Render's free plan the service sleeps when idle. The first request can take roughly a
   minute (Render's documented free-tier behaviour is a 40–60 s spin-up; we did not time it on the hosted site, so treat
-  "about 50 s" as an estimate). Open `<HOSTED URL>/healthz` first and wait for `"status": "ok"`. If the page is
-  requested while the server is still waking, it says **"सर्वर जाग रहा है — इसमें करीब एक मिनट लग सकता है…"** and
-  retries by itself. The service worker only helps **after** a first successful load (it then serves the shell and the
+  "about 50 s" as an estimate). Open `<HOSTED URL>/healthz` first and wait for `"status": "ok"`. If the very
+  first load of the login page gets no answer within about 3 seconds, a "waking up, about a minute" page is shown and
+  it opens the app by itself. Nowhere else (not after login, not in the chat, not on the dashboards): there the app
+  retries quietly for about 30 seconds and only then shows a plain "server not reachable, reload" page. A GitHub
+  Actions workflow (`.github/workflows/keepalive.yml`) pings `/healthz` every 5 minutes once it is on the default
+  branch. The service worker only helps **after** a first successful load (it then serves the shell and the
   last messages offline); it cannot make the very first cold start faster. A keep-alive pinger
   (`eval/KEEP_ALIVE.md`) is the recommended mitigation.
 
@@ -274,7 +277,7 @@ Not built: a school-setting question at onboarding (it needs a database change),
 7. **Low connectivity (5 min).** In the browser's developer tools set the network to Offline: the last
    messages and the learn summary stay readable and a message you send waits in the outbox, then sends by
    itself when you go online. The menu has a lite mode (audio plays only on tap). The first request after the
-   service slept is slow by design of the free plan; the page says the server is waking up.
+   service slept is slow by design of the free plan; the very first load of the login page then says the server is waking up.
 
 ## What is real, what is simulated, what is missing
 

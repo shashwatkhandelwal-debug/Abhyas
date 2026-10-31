@@ -114,6 +114,9 @@ def reaction_for(
     return None
 
 
+# The child's line for a number too big for him (no number in it); two wordings so it can alternate.
+_CONFUSED_LINES = ("ये तो बहुत बड़ा है… समझ नहीं आया।", "इतना बड़ा नंबर मुझसे नहीं होता। छोटा सवाल दीजिए?")
+
 # What a child says when the teacher told him the steps, or drifted off the question: he reacts
 # to it, says no number, and keeps his own mistake (no gendered verb: used for every child).
 _REACTION_LINES: dict[str, tuple[str, ...]] = {
@@ -179,6 +182,11 @@ def template_line(
     base = fix_address(_template_line(response, persona, turn_idx, word), address_form)
     if not previous_line or not base:
         return base
+    if response.kind == ResponseKind.CONFUSED:  # the other wording, never the same twice in a row
+        for wording in _CONFUSED_LINES:
+            fixed = fix_address(f"{word}, {wording}" if word else wording, address_form)
+            if not is_near_repeat(fixed, previous_line):
+                return fixed
     for lead, tail in _VARIANTS.get(response.kind, ()):
         candidate = _variant(base, response, lead, tail)
         fixed = fix_address(candidate, address_form)
@@ -254,7 +262,8 @@ def _template_line(
         return f"हम्म… {response.answer}!"
 
     if response.kind == ResponseKind.CONFUSED:
-        return f"{teacher_address + ', ' if teacher_address else ''}ये तो बहुत बड़ा है… समझ नहीं आया।"
+        lead = f"{teacher_address + ', ' if teacher_address else ''}"
+        return f"{lead}{_CONFUSED_LINES[turn_idx % len(_CONFUSED_LINES)]}"
 
     if response.kind in (ResponseKind.OFF_TOPIC, ResponseKind.INTERJECT):
         if persona and persona.off_topic_lines_hi:

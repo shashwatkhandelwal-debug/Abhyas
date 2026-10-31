@@ -24,7 +24,9 @@ TRAILING_SIGNS = "ािीेो"  # ा ि ी े ो
 
 def fold(text: str) -> str:
     """Guard normalisation plus spelling variants that teachers type interchangeably."""
-    return norm(unicodedata.normalize("NFC", text)).replace(NUKTA, "").replace(CHANDRABINDU, ANUSVARA)
+    return (
+        norm(unicodedata.normalize("NFC", text)).replace(NUKTA, "").replace(CHANDRABINDU, ANUSVARA)
+    )
 
 
 @dataclass(frozen=True)
@@ -47,9 +49,9 @@ def _hit(keyword: str, words: list[tuple[str, str]]) -> str | None:
         return next((raw for raw, f in words if f == keyword), None)
     for i in range(len(words) - len(parts) + 1):
         window = words[i : i + len(parts)]
-        if all(f == p for (_, f), p in zip(window[:-1], parts[:-1])) and window[-1][1].startswith(
-            parts[-1]
-        ):
+        if all(f == p for (_, f), p in zip(window[:-1], parts[:-1], strict=True)) and window[-1][
+            1
+        ].startswith(parts[-1]):
             return " ".join(raw for raw, _ in window)
     return None
 
@@ -57,7 +59,9 @@ def _hit(keyword: str, words: list[tuple[str, str]]) -> str | None:
 def match_key_points(move: MoveCard, transcript: str) -> list[KeyPointMatch]:
     """One verdict per key point of `move`, from the keywords in `keywords_hi`."""
     answer = [(raw, f) for raw in transcript.split() if (f := fold(raw))]
-    keywords = {kp.id: [k for k in (fold(w) for w in kp.keywords_hi) if k] for kp in move.key_points}
+    keywords = {
+        kp.id: [k for k in (fold(w) for w in kp.keywords_hi) if k] for kp in move.key_points
+    }
     shared: dict[str, int] = {}
     for words in keywords.values():
         for word in set(words):

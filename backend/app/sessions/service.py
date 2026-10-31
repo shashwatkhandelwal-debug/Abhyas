@@ -2673,9 +2673,7 @@ class SessionService:
                         OutboundMessage(
                             kind="text",
                             text_hi=get_message(
-                                class_link_key(
-                                    scene.turns, class_focus.persona_id, move.domain
-                                ),
+                                class_link_key(scene.turns, class_focus.persona_id, move.domain),
                                 address_form,
                                 label=personalise.label_of(class_focus.struggle),
                                 child=rehearse_setup.child_name(class_focus.persona_id),

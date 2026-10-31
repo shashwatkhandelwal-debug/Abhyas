@@ -63,9 +63,7 @@ def _send_and_expect_delivered(page: Any, text: str) -> None:
     page.click("#btn-send")
     page.get_by_text(text).first.wait_for(timeout=5000)
     # the clock must turn into a check (or the send visibly fails); it must never just stay
-    page.wait_for_function(
-        "() => !document.querySelector('.status-icon.sending')", timeout=15000
-    )
+    page.wait_for_function("() => !document.querySelector('.status-icon.sending')", timeout=15000)
     assert page.locator(".status-icon.failed").count() == 0
 
 
@@ -138,7 +136,8 @@ def test_coach_logs_in_with_one_submit_after_another_role_with_the_service_worke
             _login(page, server, before)
             if page.url.endswith("/teacher/start"):
                 page.click("#start-go")
-            page.evaluate("() => navigator.serviceWorker.ready.then(() => true)")
+            if before.startswith("teacher"):  # only the chat registers the service worker
+                page.evaluate("() => navigator.serviceWorker.ready.then(() => true)")
             page.goto(f"{server}/logout")
             page.wait_for_url("**/login")
         _login(page, server, "coach.demo")
