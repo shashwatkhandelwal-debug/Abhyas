@@ -744,7 +744,7 @@ ui_review_score_0: {text: "0 (अधूरी)", audio: false}
 ui_review_score_1: {text: "1 (आंशिक)", audio: false}
 ui_review_move_colon: {text: "मूव:", audio: false}
 ui_review_note_placeholder: {text: "कोच की सुधारात्मक टिप्पणी दर्ज करें...", audio: false}
-ui_review_no_transcript: {text: "कोई ट्रांसक्रिप्ट उपलब्ध नहीं है।", audio: false}
+ui_review_no_transcript: {text: "यह डेमो डेटा है, इसलिए कोई ट्रांसक्रिप्ट सहेजा नहीं गया है। असली अभ्यास में बातचीत यहीं दिखेगी।", audio: false}
 ui_review_teacher_explanation: {text: "शिक्षक द्वारा समझाया गया विवरण:", audio: false}
 ui_review_points_covered: {text: "मुख्य बिंदु (Points Covered):", audio: false}
 ui_review_guard_reason: {text: "गार्ड विफलता कारण:", audio: false}
@@ -1014,7 +1014,7 @@ ui_class_cleared: {text: "आपकी कक्षा का चुनाव �
 ui_class_too_many: {text: "ज़्यादा से ज़्यादा {max} चुनिए; पहले {max} रखे गए हैं।", audio: false}
 ui_class_chosen_because: {text: "आपकी कक्षा के लिए चुना गया: बच्चे यहाँ अटकते हैं, {label}", audio: false}
 ui_trainer_class_title: {text: "कक्षाओं की आम दिक्कतें", audio: false}
-ui_trainer_class_desc: {text: "शिक्षकों ने अपनी कक्षा के बारे में जो बताया (केवल सहमति देने वाले शिक्षक; 10 से कम पर छिपा)।", audio: false}
+ui_trainer_class_desc: {text: "शिक्षकों ने अपनी कक्षा के बारे में जो बताया। केवल तभी दिखता है जब सहमति देने वाले कम से कम 10 शिक्षकों ने उत्तर दिया हो।", audio: false}
 ui_trainer_class_teachers: {text: "बताने वाले शिक्षक", audio: false}
 class_helped_ask:
   text: "कक्षा में आज़माने के बाद एक सवाल: क्या इससे आपकी कक्षा को मदद मिली?"
@@ -1100,7 +1100,7 @@ ui_skill_progress_before: {text: "पहला अभ्यास", audio: false
 ui_skill_progress_now: {text: "सबसे ताज़ा", audio: false}
 ui_skill_progress_wait: {text: "{n} अभ्यास होने के बाद यहाँ पहले और अब की तुलना दिखेगी।", audio: false}
 ui_trainer_skills_title: {text: "शिक्षक किसमें बेहतर होना चाहते हैं", audio: false}
-ui_trainer_skills_desc: {text: "शिक्षकों का चुना हुआ कौशल (केवल सहमति देने वाले शिक्षक; 10 से कम पर छिपा)।", audio: false}
+ui_trainer_skills_desc: {text: "शिक्षकों का चुना हुआ कौशल। केवल तभी दिखता है जब सहमति देने वाले कम से कम 10 शिक्षकों ने उत्तर दिया हो।", audio: false}
 stt_unavailable_type_please:
   text: "आवाज़ समझने की सेवा अभी चल नहीं रही। कृपया अपना संदेश लिखकर भेजें।"
   audio: false

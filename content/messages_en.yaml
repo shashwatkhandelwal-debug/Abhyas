@@ -464,7 +464,7 @@ ui_review_score_0: {text: "0 (incomplete)"}
 ui_review_score_1: {text: "1 (partial)"}
 ui_review_move_colon: {text: "Move:"}
 ui_review_note_placeholder: {text: "Enter the coach's corrective note..."}
-ui_review_no_transcript: {text: "No transcript is available."}
+ui_review_no_transcript: {text: "This is demo data, so no transcript is stored. For a real practice, the conversation appears here."}
 ui_review_teacher_explanation: {text: "What the teacher explained:"}
 ui_review_points_covered: {text: "Key points covered:"}
 ui_review_guard_reason: {text: "Guard failure reason:"}
@@ -714,7 +714,7 @@ ui_class_cleared: {text: "Your class choice was removed."}
 ui_class_too_many: {text: "Choose at most {max}; the first {max} were kept."}
 ui_class_chosen_because: {text: "Chosen for your class: children get stuck here, {label}"}
 ui_trainer_class_title: {text: "Common class struggles"}
-ui_trainer_class_desc: {text: "What teachers said about their class (consenting teachers only; hidden below 10)."}
+ui_trainer_class_desc: {text: "What teachers said about their class. Shown only when at least 10 consenting teachers answered."}
 ui_trainer_class_teachers: {text: "Teachers who answered"}
 class_helped_ask: {text: "One question after trying it in class: did this help your class?"}
 btn_helped_yes: {text: "Yes, it helped"}
@@ -756,7 +756,7 @@ ui_skill_progress_before: {text: "First practice"}
 ui_skill_progress_now: {text: "Latest"}
 ui_skill_progress_wait: {text: "After {n} practices, the before and after comparison shows here."}
 ui_trainer_skills_title: {text: "What teachers want to get better at"}
-ui_trainer_skills_desc: {text: "The skill teachers chose (consenting teachers only; hidden below 10)."}
+ui_trainer_skills_desc: {text: "The skill teachers chose. Shown only when at least 10 consenting teachers answered."}
 stt_unavailable_type_please: {text: "The voice service is not available right now. Please type your message."}
 ui_login_shared_note: {text: "Demo accounts are shared: pick one not in use. Chats reset on login and logout."}
 ui_login_demo_teacher_experienced: {text: "Teacher (experienced): teacher.demo3"}
