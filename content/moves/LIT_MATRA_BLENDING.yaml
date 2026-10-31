@@ -66,14 +66,23 @@ feedback_bank:
     strength_hi: "आपने अक्षर और मात्रा की ध्वनि अलग-अलग बुलवाई।"
     change_hi: "पूरा शब्द दोहरवाने के बजाय पहले अक्षर पर उँगली रखवाकर उसकी ध्वनि बुलवाइए।"
     exact_words_hi: "अमन, पहले अक्षर पर उँगली रखो। म पर कौन-सी मात्रा है? बोलो, म… ए… मे।"
+    strength_en: "You had the child say the sound of the letter and the matra separately."
+    change_en: "Instead of having the whole word repeated, have the child put a finger on the first letter and say its sound."
+    exact_words_en: "Aman, put your finger on the first letter. Which matra is on म? Say it: म… ए… मे."
   crit_blend_model:
     strength_hi: "आपने मिलाकर पढ़ना धीरे-धीरे करके दिखाया।"
     change_hi: "शब्द पढ़कर सुनाने से पहले धीरे-धीरे ध्वनियाँ मिलाकर दिखाइए, फिर बच्चों से साथ में करवाइए।"
     exact_words_hi: "मेरे साथ बोलो: मे… ला… मे-ला… मेला!"
+    strength_en: "You showed how to blend slowly, step by step."
+    change_en: "Before reading the word aloud, blend the sounds slowly yourself, then have the children do it with you."
+    exact_words_en: "Say it with me: मे… ला… मे-ला… मेला!"
   crit_no_telling:
     strength_hi: "आपने शब्द खुद नहीं बताया, बच्चे को पढ़ने दिया।"
     change_hi: "बच्चा अंदाज़ा लगाए तो उसे पहले अक्षर पर लौटाइए, शब्द मत बताइए।"
     exact_words_hi: "प्रिया, मछली नहीं, पहला अक्षर फिर से देखो। उस पर कौन-सी मात्रा है?"
+    strength_en: "You did not say the word yourself and let the child read it."
+    change_en: "If the child guesses, take them back to the first letter; do not tell them the word."
+    exact_words_en: "Priya, not मछली. Look at the first letter again. Which matra is on it?"
 
 learn_script_hi: >-
   नमस्ते! इस हफ्ते हम मात्रा वाले शब्द पढ़ना सिखाने का एक तरीका सीखेंगे। जब बच्चे 'मेला' पढ़ते हैं, तो कुछ मात्रा छोड़कर

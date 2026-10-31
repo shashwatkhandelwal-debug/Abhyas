@@ -324,6 +324,9 @@ class Settings(BaseSettings):
     PROBLEM_MAX_ONES: int = 9
     PROBLEM_MAX_WORD_AKSHARS: int = 4
     MAX_COACH_FEEDBACK_WORDS: int = 60
+    COACH_WRONG_SCRIPT_MAX_RATIO: float = (
+        0.15  # share of letters in the other script a coach reply may carry (fix5)
+    )
     COACH_QUOTE_MAX_WORDS: int = 12  # words of the teacher's own line quoted back in feedback
     MAX_GUIDE_ANSWER_WORDS: int = 80
     # A guide answer must share at least this many distinct content terms with the excerpts it
@@ -397,6 +400,7 @@ class Settings(BaseSettings):
 
     # ── V3 features (same pattern: ON in demo mode, OFF otherwise) ──
     FOLLOWUP_ENABLED: bool = False  # next-school-day "how did the practice go?" after a struggle
+    GUIDE_FALLBACK_MIN_WORDS: int = 4  # unrecognised free text this long goes to the Guide (fix5)
     HELP_QUESTION_MAX_WORDS: int = 8  # a longer line is never treated as "what do I do now?"
     HELP_QUESTION_MIN_SIMILARITY: float = 0.86  # typo tolerance of the help-phrase matcher
     NAME_MAX_CHARS: int = 40  # the stored name is cut here (as before)

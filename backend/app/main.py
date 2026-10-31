@@ -7,11 +7,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 
 from backend.app.auth.router import router as auth_router
 from backend.app.config import settings
+from backend.app.db.session import async_session_factory
 from backend.app.jobs.admin_api import router as jobs_admin_router
 from backend.app.jobs.scheduler import start_scheduler
 from backend.app.web import (
@@ -119,8 +121,20 @@ async def root() -> RedirectResponse:
 
 @app.get("/healthz", tags=["System"])
 async def healthz() -> dict[str, str]:
-    """Lightweight liveness probe returning status and git SHA (spec/12)."""
+    """Liveness probe: no database work, so a ping is cheap and wakes the process, not the pool."""
     return {"status": "ok", "git_sha": settings.GIT_SHA}
+
+
+@app.get("/readyz", tags=["System"])
+async def readyz() -> JSONResponse:
+    """Readiness probe: the same answer as /healthz once the database also answers `SELECT 1`."""
+    try:
+        async with async_session_factory() as session:
+            await session.execute(text("SELECT 1"))
+    except Exception:
+        logger.warning("readyz: database check failed", exc_info=True)
+        return JSONResponse({"status": "unavailable", "git_sha": settings.GIT_SHA}, status_code=503)
+    return JSONResponse({"status": "ok", "git_sha": settings.GIT_SHA})
 
 
 @app.get("/health", tags=["System"])

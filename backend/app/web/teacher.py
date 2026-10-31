@@ -456,7 +456,7 @@ async def teacher_progress_page(
             pct = min(100, max(0, int((avg_score / 2.0) * 100)))
             score_history.append(
                 {
-                    "attempt": rs.attempt or (s_idx + 1),
+                    "attempt": s_idx + 1,  # numbered in order shown; the stored attempt can repeat
                     "avg_score": avg_score,
                     "pct": pct,
                 }

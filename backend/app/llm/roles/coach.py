@@ -20,12 +20,17 @@ from pydantic import ValidationError
 from backend.app.config import settings
 from backend.app.content_models import FeedbackItem, MoveCard, Rubric
 from backend.app.core.intents import is_pedagogy_question_for_app
-from backend.app.core.messages import get_message, get_ui_lang
+from backend.app.core.messages import (
+    get_message,
+    get_ui_lang,
+    has_message,
+    reset_ui_lang,
+    set_ui_lang,
+)
 from backend.app.llm.client import LLMUnavailable, call_tool, logged_role
 from backend.app.llm.guard_stats import record_guard_event
-from backend.app.llm.guards import guard_coach, norm
+from backend.app.llm.guards import guard_coach, guard_reply_language, norm
 from backend.app.llm.hindi_numbers import extract_numbers
-from backend.app.llm.messages import load_catalog_message
 from backend.app.llm.prompts import load_prompt
 from backend.app.llm.schemas import CoachFeedbackOutput, CoachResult, SceneTurn
 from backend.app.rule_engine.domain import ChildState, TeachingAct, child_state_rank
@@ -40,7 +45,9 @@ PROMPT_VERSION = "v1"
 
 def _load_contrast_message(key: str) -> str:
     """Loads localized exact words contrast fallback from catalog (shared helper)."""
-    return load_catalog_message(key)
+    if not has_message(key):
+        raise KeyError(f"Missing message key '{key}'")
+    return get_message(key)  # in the teacher's language
 
 
 def _is_rubric_rewarding_not_telling(move: MoveCard) -> bool:
@@ -238,7 +245,7 @@ def fallback_coach_feedback(
 
     fb_best = move.feedback_bank.get(best_crit.id) or next(iter(move.feedback_bank.values()))
     fb_worst = move.feedback_bank.get(worst_crit.id) or next(iter(move.feedback_bank.values()))
-    use_en = one_on_one and _is_english()
+    use_en = _is_english()  # one language per block: group scenes too
     best_line = fb_best.strength_en if use_en and fb_best.strength_en else fb_best.strength_hi
     worst_change = fb_worst.change_en if use_en and fb_worst.change_en else fb_worst.change_hi
     worst_words = (
@@ -250,9 +257,7 @@ def fallback_coach_feedback(
     strength_is_evidenced = (
         scores.get(best_crit.id, 0) >= 1 and bool(best_quote) and best_quote in teacher_words
     )
-    strength_hi = (
-        best_line if strength_is_evidenced else load_catalog_message("coach_fallback_neutral")
-    )
+    strength_hi = best_line if strength_is_evidenced else get_message("coach_fallback_neutral")
     if one_on_one and strength_is_evidenced:
         # Quote the teacher's own words (cut short) so the strength is visibly about them
         quote = " ".join(best_quote.split()[: settings.COACH_QUOTE_MAX_WORDS])
@@ -327,12 +332,52 @@ async def coach_feedback(
     diagnosis: "DiagnosisResult | None" = None,
     diagnosis_skipped: bool = False,
     one_on_one: bool = False,
+    lang: str | None = None,
 ) -> CoachResult:
     """Generates coach feedback for a rehearsal scene matching spec/05 §5.6.
 
     Invokes Claude smart model with forced tool schema, validates with guard_coach,
     retries once on failure with previous output + guard error, and falls back to deterministic scoring.
     """
+    lang = lang or get_ui_lang()
+    token = set_ui_lang(lang)  # the fallback and every catalog line below follow this language
+    try:
+        return await _coach_feedback(
+            move=move,
+            turns=turns,
+            acts=acts,
+            trajectories=trajectories,
+            target_child_id=target_child_id,
+            current_item_answer=current_item_answer,
+            attempt=attempt,
+            previous_target_criterion_id=previous_target_criterion_id,
+            previous_scores=previous_scores,
+            previous_change_hi=previous_change_hi,
+            diagnosis=diagnosis,
+            diagnosis_skipped=diagnosis_skipped,
+            one_on_one=one_on_one,
+            lang=lang,
+        )
+    finally:
+        reset_ui_lang(token)
+
+
+async def _coach_feedback(
+    move: MoveCard,
+    turns: list[SceneTurn],
+    acts: list[list[TeachingAct]],
+    trajectories: dict[str, list[ChildState]],
+    target_child_id: str,
+    current_item_answer: int | str,
+    attempt: int,
+    previous_target_criterion_id: str | None,
+    previous_scores: dict[str, int] | None,
+    previous_change_hi: str | None,
+    diagnosis: "DiagnosisResult | None",
+    diagnosis_skipped: bool,
+    one_on_one: bool,
+    lang: str,
+) -> CoachResult:
     _validate_turns(move, turns)
     teacher_turns = [t for t in turns if t.speaker == "teacher"]
     if len(acts) != len(teacher_turns):
@@ -366,6 +411,14 @@ async def coach_feedback(
             if one_on_one
             else "Group scene: nothing extra."
         ),
+    )
+
+    language_name = "English" if lang == "en" else "Hindi"
+    system_prompt += (
+        f"\n\nLANGUAGE: write strength_hi, change_hi and exact_words_hi entirely in {language_name} "
+        f"(the field names end in _hi but the language is {language_name}), including the sentence "
+        "the teacher can say to the child. Do not mix scripts. Only the teacher's own words quoted "
+        "inside « » stay as she said them."
     )
 
     transcript_text = "\n".join(f"{t.speaker}: {t.text_hi}" for t in turns)
@@ -427,7 +480,12 @@ async def coach_feedback(
                 teacher_lines=teacher_lines,
                 rubric_rewards_not_telling=rubric_rewards_not_telling,
                 current_item_answer=current_item_answer,
+                lang=lang,
             )
+            if is_valid:
+                is_valid, err_msg = guard_reply_language(
+                    [parsed.strength_hi, parsed.change_hi, parsed.exact_words_hi], lang
+                )
             record_guard_event("coach", attempt_idx, is_valid, err_msg)
 
             if is_valid:

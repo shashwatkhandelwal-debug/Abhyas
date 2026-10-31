@@ -86,14 +86,23 @@ feedback_bank:
     strength_hi: "आपने पहले अक्षर की ध्वनि बुलवाई, नाम नहीं।"
     change_hi: "बच्चा 'ब से बतख' कहे तो उसे पहले अक्षर पर उँगली रखवाकर उसकी ध्वनि बुलवाइए।"
     exact_words_hi: "अमन, पहले अक्षर पर उँगली रखकर उसकी ध्वनि बोलो, नाम नहीं।"
+    strength_en: "You had the child say the sound of the first letter, not its name."
+    change_en: "If the child says 'ब for बतख', have them put a finger on the first letter and say its sound."
+    exact_words_en: "Aman, put your finger on the first letter and say its sound, not its name."
   crit_blend_model:
     strength_hi: "आपने ध्वनियाँ मिलाकर पढ़ना धीरे-धीरे करके दिखाया।"
     change_hi: "शब्द पढ़कर सुनाने से पहले धीरे-धीरे ध्वनियाँ मिलाकर दिखाइए, फिर बच्चों से साथ में करवाइए।"
     exact_words_hi: "मेरे साथ बोलो: ब… क… री… बकरी!"
+    strength_en: "You showed how to blend the sounds slowly, step by step."
+    change_en: "Before reading the word aloud, blend the sounds slowly yourself, then have the children do it with you."
+    exact_words_en: "Say it with me: ब… क… री… बकरी!"
   crit_no_telling:
     strength_hi: "आपने शब्द खुद नहीं बताया, बच्चे को पढ़ने दिया।"
     change_hi: "बच्चा नाम बोले तो उसे ध्वनि पर लौटाइए, शब्द मत बताइए।"
     exact_words_hi: "प्रिया, नाम नहीं, पहले अक्षर की आवाज़ निकालो।"
+    strength_en: "You did not say the word yourself and let the child read it."
+    change_en: "If the child says the name of a letter, take them back to the sound; do not tell them the word."
+    exact_words_en: "Priya, not the name. Make the sound of the first letter."
 
 learn_script_hi: >-
   नमस्ते! इस हफ्ते हम अक्षर की ध्वनि पर काम करने का एक तरीका सीखेंगे। कभी-कभी बच्चे शब्द पढ़ने के बजाय अक्षर का

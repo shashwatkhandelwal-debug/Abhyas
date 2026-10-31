@@ -72,14 +72,23 @@ feedback_bank:
     strength_hi: "आपने बच्चे से पूछा कि उसने कैसे जोड़ा, इससे उसकी गलती की वजह दिखी।"
     change_hi: "अगली बार उत्तर जाँचने से पहले बच्चे से उसका हर कदम सुनिए।"
     exact_words_hi: "रवि, 8 और 5 जोड़कर तुम्हें क्या मिला, और फिर तुमने क्या लिखा?"
+    strength_en: "You asked the child how they added, which showed the reason for the mistake."
+    change_en: "Next time, before checking the answer, listen to the child's every step."
+    exact_words_en: "Ravi, what did you get adding 8 and 5, and then what did you write?"
   crit_concrete:
     strength_hi: "आपने तीलियों से जोड़ करवाया, बच्चों ने गिनकर देखा।"
     change_hi: "13 तीलियों में से 10 का नया बंडल बँधवाइए, फिर उसे बंडलों में मिलवाइए।"
     exact_words_hi: "इन 13 तीलियों में से 10 गिनकर एक बंडल बाँधो। अब कितने बंडल हो गए?"
+    strength_en: "You had the sums done with sticks, and the children counted and saw it."
+    change_en: "Have them bundle 10 of the 13 sticks into a new bundle, then join it with the bundles."
+    exact_words_en: "Count 10 of these 13 sticks and tie one bundle. Now how many bundles are there?"
   crit_no_telling:
     strength_hi: "आपने उत्तर नहीं बताया, बच्चों को खुद सोचने दिया।"
     change_hi: "दो अलग उत्तर सामने रखकर पूछिए कि तीलियों से कौन-सा सही निकलता है।"
     exact_words_hi: "प्रिया ने 713 कहा, रवि ने 73। बंडल गिनकर बताओ, असल में कितनी तीलियाँ हैं?"
+    strength_en: "You did not tell the answer and let the children think for themselves."
+    change_en: "Put two different answers side by side and ask which one the sticks give."
+    exact_words_en: "Priya said 713, Ravi said 73. Count the bundles and tell me how many sticks there really are."
 
 learn_script_hi: >-
   नमस्ते! इस हफ्ते हम हासिल वाला जोड़ सीखेंगे। 38 और 45 जोड़ते समय इकाई में 8 और 5 मिलकर 13 होते हैं। कुछ बच्चे 13 पूरा

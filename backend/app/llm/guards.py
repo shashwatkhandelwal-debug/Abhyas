@@ -293,8 +293,9 @@ def guard_coach(
     teacher_lines: list[str],
     rubric_rewards_not_telling: bool,
     current_item_answer: int | str | None,
+    lang: str = "hi",
 ) -> tuple[bool, str]:
-    """Validate coach rubric feedback (§5.6).
+    """Validate coach rubric feedback (§5.6). The Hindi register check applies to a Hindi reply only.
 
     Guards:
     - keys of scores == rubric_criterion_ids exactly
@@ -359,9 +360,9 @@ def guard_coach(
     # Respectful register: coach addressing the teacher in strength_hi and change_hi
     coach_evaluation = f"{output.strength_hi} {output.change_hi}"
     coach_tokens = set(norm(coach_evaluation).split())
-    if coach_tokens & DISRESPECTFUL_WORDS:
+    if lang != "en" and coach_tokens & DISRESPECTFUL_WORDS:
         return False, "Disrespectful register: coach must not use तुम/तुमने with teacher"
-    if not (coach_tokens & RESPECTFUL_WORDS):
+    if lang != "en" and not (coach_tokens & RESPECTFUL_WORDS):
         return False, "Coach feedback must use respectful register (आप/आपने)"
 
     # Answer leak prevention in exact_words_hi
@@ -471,6 +472,30 @@ def guard_teaching_skill_classifier(
         if sid not in candidate_ids:
             return False, f"skill id {sid!r} is not one of {candidate_ids}"
     return True, "Valid"
+
+
+_DEVANAGARI_LETTER = re.compile(r"[ऄ-हक़-ॡ]")
+_LATIN_LETTER = re.compile(r"[A-Za-z]")
+_QUOTED_WORDS = re.compile(r"«[^»]*»")
+
+
+def guard_reply_language(texts: list[str], lang: str) -> tuple[bool, str]:
+    """The reply must be written in the teacher's language: Hindi (Devanagari) or English (Latin).
+
+    The teacher's own words quoted inside « » are left out of the count. A few letters of the other
+    script (a letter being taught, "ARP") are fine, up to `COACH_WRONG_SCRIPT_MAX_RATIO`.
+    """
+    joined = _QUOTED_WORDS.sub(" ", " ".join(texts))
+    deva = len(_DEVANAGARI_LETTER.findall(joined))
+    latin = len(_LATIN_LETTER.findall(joined))
+    total = deva + latin
+    if total == 0:
+        return True, ""
+    wrong, want = (deva, "English") if lang == "en" else (latin, "Hindi")
+    ratio = wrong / total
+    if ratio > settings.COACH_WRONG_SCRIPT_MAX_RATIO:
+        return False, f"Reply must be written in {want} only ({ratio:.0%} is in the other script)"
+    return True, ""
 
 
 def guard_coach_suggestion(

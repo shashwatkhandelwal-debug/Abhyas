@@ -1478,12 +1478,13 @@ class SessionService:
         btn_id = inbound.button_id
 
         # Determine matched intent
+        in_rehearsal = (
+            ctx.current_state == SessionStateEnum.REHEARSE
+            and ctx.onboarding_state == OnboardingStateEnum.READY
+        )
         matched_intent = match_intent(
             text=text_content,
-            in_rehearsal=(
-                ctx.current_state == SessionStateEnum.REHEARSE
-                and ctx.onboarding_state == OnboardingStateEnum.READY
-            ),
+            in_rehearsal=in_rehearsal,
             button_id=btn_id or (text_content if text_content in BUTTON_INTENT_MAP else None),
             ask_anywhere=(
                 ctx.onboarding_state == OnboardingStateEnum.READY
@@ -1502,6 +1503,36 @@ class SessionService:
                 )
             ),
         )
+
+        # fix5: any other free text of 4+ words is a question for the Guide, not "did not understand".
+        # Not while a scene runs, not where the line is her answer (explain-back, reflection,
+        # onboarding, check-ins, a pending delete confirmation).
+        if (
+            matched_intent is None
+            and not btn_id
+            and ctx.onboarding_state == OnboardingStateEnum.READY
+            and not in_rehearsal
+            and ctx.current_state
+            in (
+                SessionStateEnum.MODEL,
+                SessionStateEnum.FEEDBACK,
+                SessionStateEnum.TRY_IN_CLASS,
+                SessionStateEnum.DONE,
+            )
+            and len(text_content.split()) >= settings.GUIDE_FALLBACK_MIN_WORDS
+            and not (
+                ctx.rating_stage
+                or ctx.checkin_stage
+                or ctx.level_stage
+                or ctx.class_stage
+                or ctx.skill_stage
+                or ctx.module_check_stage == "asking"
+                or ctx.followup_stage
+                or ctx.rehearse_stage in ("diagnose", "scene")
+                or ctx.awaiting_delete_confirm
+            )
+        ):
+            matched_intent = Intent.ASK
 
         # 1. Inactivity resume rule (§8.2: > 6h inactivity in mid-week state)
         if ctx.onboarding_state == OnboardingStateEnum.READY and ctx.last_inbound_at is not None:
@@ -1575,6 +1606,17 @@ class SessionService:
             and not ctx.awaiting_delete_confirm
         ):
             return [visit_note.ack_message(address_form)]
+
+        # 1''. "tip off" / "tip on" typed: the same choice as the Turn off / Yes buttons (fix5)
+        focus_cmd = None if btn_id else focus.command_button(text_content)
+        if (
+            focus_cmd
+            and focus.enabled()
+            and ctx.onboarding_state == OnboardingStateEnum.READY
+            and not ctx.awaiting_delete_confirm
+            and ctx.rehearse_stage not in ("diagnose", "scene")
+        ):
+            return await self._handle_focus_button(ctx, teacher_id, focus_cmd)
 
         # 1''. "Today's focus" opt-in and card buttons (flag FOCUS_CARD_ENABLED)
         if (

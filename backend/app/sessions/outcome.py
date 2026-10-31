@@ -10,6 +10,7 @@ from collections.abc import Sequence
 
 from backend.app.content_models import Domain
 from backend.app.core.messages import get_message
+from backend.app.core.pronouns import child_pronouns
 from backend.app.rehearsal.scene_store import TurnRecord
 from backend.app.rule_engine.domain import ResponseKind, TeachingAct
 
@@ -46,7 +47,9 @@ def outcome_line(
                     child = get_message(f"speaker_{response.persona_id}", address_form)
                     if domain == Domain.LITERACY:
                         key = _LITERACY_KEYS.get(key, key)
-                    return get_message(key, address_form, child=child)
+                    return get_message(
+                        key, address_form, child=child, **child_pronouns(response.persona_id)
+                    )
     return ""
 
 
