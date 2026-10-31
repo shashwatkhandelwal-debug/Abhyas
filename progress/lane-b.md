@@ -1,7 +1,7 @@
 # Lane B Progress (Pipeline: LLM client, Speech, Rehearsal, Sessions, Retrieval, Scoring, Jobs)
 
 Branch: `lane-b`
-Worktree: `C:\Users\ASUS\Downloads\abhyas-lane-b`
+Worktree: `../abhyas-lane-b`
 Port: 8002
 Database: `abhyas_b` (waits for Docker Desktop)
 

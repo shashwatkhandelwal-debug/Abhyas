@@ -724,10 +724,10 @@ Evaluated for a complete weekly learning cycle (LEARN → EXPLAIN_BACK → MODEL
 
 ## 5. Architectural Latency Optimisations Implemented in Code
 
-1. **Deterministic Rule Engine:** Child responses and bug state transitions are computed deterministically in pure Python in < 5 ms, avoiding slow recursive LLM generation loops ([`backend/app/rule_engine/engine.py`](file:///C:/Users/ASUS/Downloads/Abhyas/backend/app/rule_engine/engine.py)).
-2. **Anthropic Prompt Caching:** Ephemeral prompt caching (`cache_control: {{"type": "ephemeral"}}`) is applied to static role instructions and schemas, reducing Claude API roundtrip token latency ([`backend/app/llm/client.py#L445`](file:///C:/Users/ASUS/Downloads/Abhyas/backend/app/llm/client.py#L445)).
-3. **HTTP Connection Pooling:** A shared singleton `httpx.AsyncClient` with keep-alive connection pooling (`limits=httpx.Limits(max_connections=20, max_keepalive_connections=10)`) eliminates per-turn TLS handshake overhead ([`backend/app/speech/client.py#L16-L25`](file:///C:/Users/ASUS/Downloads/Abhyas/backend/app/speech/client.py#L16-L25)).
-4. **Static TTS Pre-warming:** Static message catalog prompts and fixed instructional lines are pre-warmed directly into the audio cache to eliminate runtime voice synthesis latency ([`backend/app/speech/spend.py#L182-L245`](file:///C:/Users/ASUS/Downloads/Abhyas/backend/app/speech/spend.py#L182-L245)).
+1. **Deterministic Rule Engine:** Child responses and bug state transitions are computed deterministically in pure Python in < 5 ms, avoiding slow recursive LLM generation loops ([`backend/app/rule_engine/engine.py`](../../backend/app/rule_engine/engine.py)).
+2. **Anthropic Prompt Caching:** Ephemeral prompt caching (`cache_control: {{"type": "ephemeral"}}`) is applied to static role instructions and schemas, reducing Claude API roundtrip token latency ([`backend/app/llm/client.py#L445`](../../backend/app/llm/client.py#L445)).
+3. **HTTP Connection Pooling:** A shared singleton `httpx.AsyncClient` with keep-alive connection pooling (`limits=httpx.Limits(max_connections=20, max_keepalive_connections=10)`) eliminates per-turn TLS handshake overhead ([`backend/app/speech/client.py#L16-L25`](../../backend/app/speech/client.py#L16-L25)).
+4. **Static TTS Pre-warming:** Static message catalog prompts and fixed instructional lines are pre-warmed directly into the audio cache to eliminate runtime voice synthesis latency ([`backend/app/speech/spend.py#L182-L245`](../../backend/app/speech/spend.py#L182-L245)).
 """
     return md
 

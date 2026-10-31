@@ -97,3 +97,12 @@ db.sqlite3-journal
 # OS
 .DS_Store
 Thumbs.db
+
+# OCR page cache of the UP guides (government material; rebuilt by make content-ingest from PDFs you supply)
+content/sources/ocr_cache/
+
+# Local databases and uploads
+*.db
+*.sqlite
+*.sqlite3
+uploads/
