@@ -1,7 +1,7 @@
 # Lane C Progress (Web & Ops: Channels, Auth, PWA, Reports, Deploy)
 
 Branch: `lane-c`
-Worktree: `C:\Users\ASUS\Downloads\abhyas-lane-c`
+Worktree: `../abhyas-lane-c`
 Port: 8003
 Database: `abhyas_c` (waits for Docker Desktop)
 

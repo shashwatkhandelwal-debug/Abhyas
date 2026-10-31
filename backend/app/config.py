@@ -14,6 +14,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 logger = logging.getLogger("abhyas.config")
 
 
+# Placeholders and older dev defaults: production refuses to start with any of them
+_PLACEHOLDER_DEMO_PASSWORDS = ("change-me-demo-password", "abhyas-demo-2026")
+_PLACEHOLDER_ADMIN_PASSWORDS = ("change-me-admin-password", "abhyas-admin-2026")
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -40,8 +45,8 @@ class Settings(BaseSettings):
     )
     PHONE_HASH_SALT: str = "dev_phone_hash_salt_32_chars_ok"
     PHONE_ENC_KEY: str = "P5sUu77tT3i8_R1m2tZ_7lqf4xL6D-0K0A5vG4J-7-8="
-    DEMO_PASSWORD: str = "abhyas-demo-2026"
-    ADMIN_PASSWORD: str = "abhyas-admin-2026"
+    DEMO_PASSWORD: str = "change-me-demo-password"
+    ADMIN_PASSWORD: str = "change-me-admin-password"
     # Logout resets the shared demo teachers; rows younger than this are session-made, older are seed
     DEMO_RESET_SEED_MIN_AGE_HOURS: int = 24
     # Teacher turns a scene needs before the coach gives feedback (shorter scenes offer continue/skip)
@@ -504,7 +509,7 @@ class Settings(BaseSettings):
                     missing.append("WHATSAPP_PHONE_NUMBER_ID")
                 if not self.WHATSAPP_APP_SECRET:
                     missing.append("WHATSAPP_APP_SECRET")
-            if self.DEMO_PASSWORD == "abhyas-demo-2026":
+            if self.DEMO_PASSWORD in _PLACEHOLDER_DEMO_PASSWORDS:
                 missing.append("DEMO_PASSWORD (must rotate in production)")
             if not self.SESSION_SECRET or self.SESSION_SECRET.startswith("dev_"):
                 missing.append("SESSION_SECRET")
@@ -515,7 +520,7 @@ class Settings(BaseSettings):
                 or self.PHONE_ENC_KEY == "P5sUu77tT3i8_R1m2tZ_7lqf4xL6D-0K0A5vG4J-7-8="
             ):
                 missing.append("PHONE_ENC_KEY")
-            if not self.ADMIN_PASSWORD or self.ADMIN_PASSWORD == "abhyas-admin-2026":
+            if not self.ADMIN_PASSWORD or self.ADMIN_PASSWORD in _PLACEHOLDER_ADMIN_PASSWORDS:
                 missing.append("ADMIN_PASSWORD")
 
             if missing:
