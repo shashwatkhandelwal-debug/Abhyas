@@ -1488,3 +1488,11 @@ test('server-rendered bubble times are rewritten with the same formatter as live
   assert.doesNotMatch(span.textContent, /^17:56$/);
   assert.equal(c.formatBubbleTime(''), null);
 });
+
+test('fix6: a Guide reply with six newlines between the bullets and the tip renders with one blank line', () => {
+  const c = load();
+  const guide = '• एक\n• दो\n\n\n\n\n\nइस हफ्ते आज़माएँ: कुछ करें';
+  c.renderMessage({ id: 'g1', direction: 'out', kind: 'text', speaker: 'guide', text: guide, created_at: '2026-10-31T10:00:00Z' });
+  const row = c.rows().find((r) => r.querySelector('.bubble-text'));
+  assert.equal(row.querySelector('.bubble-text').textContent, '• एक\n• दो\n\nइस हफ्ते आज़माएँ: कुछ करें');
+});

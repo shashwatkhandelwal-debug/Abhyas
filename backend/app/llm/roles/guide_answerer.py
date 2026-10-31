@@ -16,6 +16,7 @@ import httpx
 from pydantic import ValidationError
 
 from backend.app.config import settings
+from backend.app.core.outbound_text import tidy_blank_lines
 from backend.app.core.types import Citation
 from backend.app.llm.client import LLMUnavailable, call_tool, logged_role
 from backend.app.llm.guard_stats import record_guard_event
@@ -89,7 +90,9 @@ def compose_guide_reply(
         )
         lines.append(tip_line)
 
-    return unicodedata.normalize("NFC", "\n\n".join(lines))
+    # no empty piece (a source with no label), never more than one blank line between parts
+    joined = "\n\n".join(ln for ln in lines if ln.strip())
+    return unicodedata.normalize("NFC", tidy_blank_lines(joined))
 
 
 @logged_role("guide_answerer", lambda: settings.CLAUDE_MODEL_SMART)

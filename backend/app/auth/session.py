@@ -15,6 +15,8 @@ from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from backend.app.config import settings
 
 SESSION_COOKIE_NAME = "abhyas_session"
+# Readable by the page: tags the offline copy of the chat with the account it belongs to.
+USER_COOKIE_NAME = "abhyas_uid"
 SESSION_MAX_AGE_SECONDS = 12 * 3600  # 12 hours (§9.7)
 SESSION_SALT = "abhyas-session-salt"
 
@@ -58,6 +60,15 @@ def set_session_cookie(response: Response, token: str) -> None:
         samesite="lax",
         path="/",
     )
+    payload = verify_session_token(token)
+    response.set_cookie(
+        key=USER_COOKIE_NAME,
+        value=str(payload.get("user_id", "")) if payload else "",
+        max_age=SESSION_MAX_AGE_SECONDS,
+        secure=settings.ENVIRONMENT == "production",
+        samesite="lax",
+        path="/",
+    )
 
 
 def clear_session_cookie(response: Response) -> None:
@@ -67,3 +78,4 @@ def clear_session_cookie(response: Response) -> None:
         path="/",
         samesite="lax",
     )
+    response.delete_cookie(key=USER_COOKIE_NAME, path="/", samesite="lax")

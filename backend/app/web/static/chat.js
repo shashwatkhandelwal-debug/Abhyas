@@ -83,14 +83,15 @@ function idbTx(names, mode, fn) {
 	);
 }
 const idbWrite = (store, fn) => idbTx([store], 'readwrite', (tx) => fn(tx.objectStore(store))).catch(() => {});
-const saveToOutbox = (item) => (memOutbox.set(item.client_msg_id, item), idbWrite(STORE_OUTBOX, (s) => s.put(item)));
+const myUid = () => (document.cookie.match(/(?:^|;\s*)abhyas_uid=([^;]+)/) || [])[1] || '';
+const saveToOutbox = (item) => ((item.uid = myUid()), memOutbox.set(item.client_msg_id, item), idbWrite(STORE_OUTBOX, (s) => s.put(item)));
 const removeFromOutbox = (id) => (memOutbox.delete(id), idbWrite(STORE_OUTBOX, (s) => s.delete(id)));
-const cacheMessages = (msgs) => (msgs && msgs.length ? idbWrite(STORE_MESSAGES, (s) => msgs.forEach((m) => s.put(m))) : Promise.resolve());
+const cacheMessages = (msgs) => (msgs && msgs.length ? idbWrite(STORE_MESSAGES, (s) => msgs.forEach((m) => ((m.uid = myUid()), s.put(m)))) : Promise.resolve());
 async function getPendingOutboxItems() {
 	const stored = (await idbTx([STORE_OUTBOX], 'readonly', (tx) => tx.objectStore(STORE_OUTBOX).getAll()).catch(() => [])) || [];
 	const byId = new Map(stored.map((i) => [i.client_msg_id, i]));
 	for (const [id, item] of memOutbox) byId.set(id, item);
-	return [...byId.values()];
+	return [...byId.values()].filter((i) => i.uid === myUid());
 }
 const LOGOUT_CLEAR_TIMEOUT_MS = 1500;
 function deleteChatDatabase() {
@@ -123,7 +124,18 @@ async function clearChatStores() {
 	}
 	dbPromise = null;
 }
+async function syncAccount() {
+	try {
+		if (localStorage.getItem('abhyas_uid') !== myUid()) {
+			await clearLocalState();
+			localStorage.setItem('abhyas_uid', myUid());
+		}
+	} catch (e) {}
+}
 async function clearLocalState() {
+	try {
+		localStorage.removeItem('abhyas_uid');
+	} catch (e) {}
 	const wipes = [clearChatStores()];
 	if (window.caches) {
 		wipes.push(caches.delete('abhyas-audio-v1').catch(() => false));
@@ -366,6 +378,11 @@ function netEvent(ev) {
 async function netFetch(url, opts) {
 	try {
 		const res = await fetch(url, opts);
+		if (res.status === 401) {
+			document.cookie = 'abhyas_uid=;max-age=0;path=/';
+			ftStop();
+			clearLocalState().finally(() => (window.location.href = '/login'));
+		}
 		if (res.status < 500) netEvent('success');
 		return res;
 	} catch (err) {
@@ -1125,7 +1142,7 @@ function renderMessage(msg, isLocalOptimistic = false) {
 		if (msg.direction === 'out' && msg.speaker && msg.speaker.toLowerCase() === 'coach' && msg.text && msg.text.includes('«')) {
 			formatCoachEvidenceText(textEl, msg.text);
 		} else {
-			textEl.textContent = msg.text || '';
+			textEl.textContent = (msg.text || '').replace(/\n{3,}/g, '\n\n');
 		}
 		bubble.appendChild(textEl);
 		row._textEl = textEl;
@@ -1969,6 +1986,7 @@ function initRenderedMessagesFromDom() {
 	}
 }
 document.addEventListener('DOMContentLoaded', async () => {
+	await syncAccount();
 	loadUiStrings();
 	window.addEventListener('online', updateOnlineStatus);
 	window.addEventListener('offline', updateOnlineStatus);

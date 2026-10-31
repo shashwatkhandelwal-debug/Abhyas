@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.conversation import ConversationService
 from backend.app.core.messages import get_message
+from backend.app.core.outbound_text import tidy_blank_lines
 from backend.app.core.types import InboundMessage, OutboundMessage
 from backend.app.db.models import Message, Teacher
 from backend.app.db.session import async_session_factory
@@ -162,7 +163,7 @@ class WebChannel:
                     # The web UI shows citations as tappable chips under the bubble
                     for c in msg.citations:
                         text = text.replace(c.line_hi, "")
-                    text = text.strip()
+                    text = tidy_blank_lines(text)  # each removed line leaves its blank lines behind
                 db_msg = Message(
                     id=msg.message_id or uuid.uuid4(),
                     teacher_id=teacher.id,

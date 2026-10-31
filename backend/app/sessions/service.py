@@ -93,6 +93,16 @@ from backend.app.sessions.training_rating import (
 
 logger = logging.getLogger("abhyas.sessions.service")
 IST = ZoneInfo("Asia/Kolkata")
+AFTER_SCENE_STATES = (  # states in which no scene can be running
+    SessionStateEnum.LEARN,
+    SessionStateEnum.EXPLAIN_BACK,
+    SessionStateEnum.MODEL,
+    SessionStateEnum.FEEDBACK,
+    SessionStateEnum.TRY_IN_CLASS,
+    SessionStateEnum.REFLECT_PEER,
+    SessionStateEnum.REFLECT_SELF,
+    SessionStateEnum.DONE,
+)
 
 
 class SessionService:
@@ -1477,6 +1487,11 @@ class SessionService:
         text_content = (inbound.text or "").strip()
         btn_id = inbound.button_id
 
+        # fix6: a scene stage left over after the scene ended (the seeded demo2 scene, or "skip")
+        # must not make later steps look like a running scene. ASK keeps it: the scene resumes.
+        if ctx.rehearse_stage in ("diagnose", "scene") and ctx.current_state in AFTER_SCENE_STATES:
+            ctx.rehearse_stage = rehearse_setup.STAGE_NONE
+
         # Determine matched intent
         in_rehearsal = (
             ctx.current_state == SessionStateEnum.REHEARSE
@@ -1497,7 +1512,7 @@ class SessionService:
                     or ctx.class_stage
                     or ctx.skill_stage
                     or ctx.module_check_stage == "asking"
-                    or ctx.followup_stage
+                    or ctx.followup_stage == followup.STAGE_WHY
                     or ctx.rehearse_stage in ("diagnose", "scene")
                     or ctx.awaiting_delete_confirm
                 )
@@ -1527,7 +1542,7 @@ class SessionService:
                 or ctx.class_stage
                 or ctx.skill_stage
                 or ctx.module_check_stage == "asking"
-                or ctx.followup_stage
+                or ctx.followup_stage == followup.STAGE_WHY
                 or ctx.rehearse_stage in ("diagnose", "scene")
                 or ctx.awaiting_delete_confirm
             )
