@@ -70,7 +70,7 @@ from backend.app.rule_engine.domain import (
     TeachingAct,
 )
 from backend.app.sessions import modules, rehearse_setup, tip_filter
-from backend.app.sessions.outcome import outcome_line
+from backend.app.sessions.outcome import class_link_key, outcome_line
 from backend.app.sessions.path import MovePathEntry, compute_move_path, load_induction_order
 from backend.app.sessions.path_score import DONE_MIN_EVIDENCE
 from backend.app.sessions.placement_feedback import placement_feedback
@@ -599,6 +599,28 @@ class SessionService:
         return [
             Button(id=f"btn_trate_{n}", title_hi=get_message(f"btn_trate_{n}", address_form))
             for n in (1, 3, 5)
+        ]
+
+    def _realism_messages(
+        self, ctx: SessionContext, address_form: str, extra: list[Button] | None = None
+    ) -> list[OutboundMessage]:
+        """The realism question with 1 to 5 chips (a tap and a typed digit are read the same),
+        then "what next?" with retry / continue, so she can move on without rating."""
+        return [
+            OutboundMessage(
+                kind="buttons",
+                text_hi=self._realism_prompt(ctx, address_form),
+                buttons=[Button(id=f"btn_rating_{n}", title_hi=str(n)) for n in range(1, 6)],
+            ),
+            OutboundMessage(
+                kind="buttons",
+                text_hi=get_message("realism_next", address_form),
+                buttons=[
+                    Button(id="btn_retry", title_hi=get_message("btn_retry", address_form)),
+                    Button(id="btn_continue", title_hi=get_message("btn_continue", address_form)),
+                    *(extra or []),
+                ],
+            ),
         ]
 
     async def _cited_tip(
@@ -1271,6 +1293,9 @@ class SessionService:
         teacher = await self.repo.get_or_create_teacher(teacher_id)
         opted_in = bool(teacher.tomorrow_focus_opt_in)
         now = followup.utcnow()
+        if teacher.is_demo and not opted_in and ctx.current_state == SessionStateEnum.LEARN:
+            # a prepared demo chat opens on "read this, then Got it, next": no side question yet
+            return []
         if opted_in:
             last_card = await self.repo.last_outbound_button_time(teacher_id, (focus.CARD_MARKER,))
             if not focus.card_due(opted_in=True, last_card_at=last_card, now=now):
@@ -1460,6 +1485,10 @@ class SessionService:
                 and ctx.onboarding_state == OnboardingStateEnum.READY
             ),
             button_id=btn_id or (text_content if text_content in BUTTON_INTENT_MAP else None),
+            ask_anywhere=(
+                ctx.onboarding_state == OnboardingStateEnum.READY
+                and ctx.current_state not in (SessionStateEnum.EXPLAIN_BACK, SessionStateEnum.ASK)
+            ),
         )
 
         # 1. Inactivity resume rule (§8.2: > 6h inactivity in mid-week state)
@@ -1902,7 +1931,13 @@ class SessionService:
                 reply_text = compose_guide_reply(answer_res.output, schema_chunks, address_form)
                 reply_cites = citations_for_chunks(answer_res.sources_cited, address_form)
             if chip_q is not None and reply_cites:
-                label = get_message("handbook_source_label", address_form)
+                # a generated answer is Hindi, so its label is too; the stored-summary fallback keeps the
+                # UI-language lead-in ("... in Hindi") and its label
+                label = get_message(
+                    "handbook_source_label",
+                    address_form,
+                    lang=None if chip_fallback is not None else "hi",
+                )
                 reply_text = f"{reply_text}\n\n{label}"
 
             # Resume prior state
@@ -2638,7 +2673,9 @@ class SessionService:
                         OutboundMessage(
                             kind="text",
                             text_hi=get_message(
-                                "coach_class_link",
+                                class_link_key(
+                                    scene.turns, class_focus.persona_id, move.domain
+                                ),
                                 address_form,
                                 label=personalise.label_of(class_focus.struggle),
                                 child=rehearse_setup.child_name(class_focus.persona_id),
@@ -2655,19 +2692,8 @@ class SessionService:
                             kind="text", text_hi=f"{prefix}{feedback_body}", speaker="coach"
                         ),
                         *suggestion_msgs,
-                        OutboundMessage(
-                            kind="buttons",
-                            text_hi=self._realism_prompt(ctx, address_form),
-                            buttons=[
-                                Button(
-                                    id="btn_retry", title_hi=get_message("btn_retry", address_form)
-                                ),
-                                Button(
-                                    id="btn_continue",
-                                    title_hi=get_message("btn_continue", address_form),
-                                ),
-                                *self._progress_entry_buttons(address_form),
-                            ],
+                        *self._realism_messages(
+                            ctx, address_form, self._progress_entry_buttons(address_form)
                         ),
                     ]
                 )
@@ -2714,17 +2740,7 @@ class SessionService:
                 ack_key = "consent_share_saved_yes" if share_ok else "consent_share_saved_no"
                 return [
                     OutboundMessage(kind="text", text_hi=get_message(ack_key, address_form)),
-                    OutboundMessage(
-                        kind="buttons",
-                        text_hi=self._realism_prompt(ctx, address_form),
-                        buttons=[
-                            Button(id="btn_retry", title_hi=get_message("btn_retry", address_form)),
-                            Button(
-                                id="btn_continue",
-                                title_hi=get_message("btn_continue", address_form),
-                            ),
-                        ],
-                    ),
+                    *self._realism_messages(ctx, address_form),
                 ]
             if ctx.resume_scene_id and (btn_id == "btn_scene_continue"):
                 resumed = await self._resume_scene(ctx, teacher_id)
@@ -2876,7 +2892,7 @@ class SessionService:
                 return [
                     OutboundMessage(
                         kind="buttons",
-                        text_hi=self._realism_prompt(ctx, address_form),
+                        text_hi=get_message("realism_thanks", address_form),
                         buttons=[
                             Button(id="btn_retry", title_hi=get_message("btn_retry", address_form)),
                             Button(

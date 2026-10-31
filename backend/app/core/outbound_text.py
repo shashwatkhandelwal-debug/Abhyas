@@ -34,6 +34,14 @@ def _fix_piece(piece: str, *, at_line_start: bool) -> str:
     return piece.replace(_RANGE_MARK, "–")
 
 
+_BLANK_RUN = re.compile(r"\n(?:[ \t]*\n){2,}")
+
+
+def tidy_blank_lines(text: str) -> str:
+    """At most one blank line between paragraphs (a stored summary can carry several)."""
+    return _BLANK_RUN.sub("\n\n", text.replace("\r\n", "\n")).strip()
+
+
 def clean_text(text: str, protected_lines: tuple[str, ...] = ()) -> str:
     """`text` with separator dashes replaced; `protected_lines` (citation lines) are kept as is."""
     if not text or not any(d in text for d in _DASHES):
@@ -57,10 +65,12 @@ def normalize_outbound(msgs: list[OutboundMessage]) -> list[OutboundMessage]:
     """In place and idempotent: the text and button titles of every message."""
     for m in msgs:
         if m.text_hi:
-            m.text_hi = clean_text(m.text_hi, tuple(c.line_hi for c in m.citations))
+            m.text_hi = tidy_blank_lines(
+                clean_text(m.text_hi, tuple(c.line_hi for c in m.citations))
+            )
         for b in m.buttons:
             b.title_hi = clean_text(b.title_hi)
     return msgs
 
 
-__all__ = ["clean_text", "normalize_outbound"]
+__all__ = ["clean_text", "normalize_outbound", "tidy_blank_lines"]

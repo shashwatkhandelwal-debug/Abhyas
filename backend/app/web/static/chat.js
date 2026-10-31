@@ -82,17 +82,12 @@ function idbTx(names, mode, fn) {
 			})
 	);
 }
-const idbWrite = (store, fn) => idbTx([store], 'readwrite', (tx) => fn(tx.objectStore(store))).catch((e) => console.warn('idb', e));
+const idbWrite = (store, fn) => idbTx([store], 'readwrite', (tx) => fn(tx.objectStore(store))).catch(() => {});
 const saveToOutbox = (item) => (memOutbox.set(item.client_msg_id, item), idbWrite(STORE_OUTBOX, (s) => s.put(item)));
 const removeFromOutbox = (id) => (memOutbox.delete(id), idbWrite(STORE_OUTBOX, (s) => s.delete(id)));
 const cacheMessages = (msgs) => (msgs && msgs.length ? idbWrite(STORE_MESSAGES, (s) => msgs.forEach((m) => s.put(m))) : Promise.resolve());
 async function getPendingOutboxItems() {
-	let stored = [];
-	try {
-		stored = (await idbTx([STORE_OUTBOX], 'readonly', (tx) => tx.objectStore(STORE_OUTBOX).getAll())) || [];
-	} catch (e) {
-		console.warn('idb', e);
-	}
+	const stored = (await idbTx([STORE_OUTBOX], 'readonly', (tx) => tx.objectStore(STORE_OUTBOX).getAll()).catch(() => [])) || [];
 	const byId = new Map(stored.map((i) => [i.client_msg_id, i]));
 	for (const [id, item] of memOutbox) byId.set(id, item);
 	return [...byId.values()];
@@ -357,16 +352,10 @@ function announce(text) {
 function renderNetStatus() {
 	const bar = document.getElementById('status-bar');
 	if (!bar) return;
-	const key = state.net === 'reconnecting' ? 'ui_chat_reconnecting' : '';
-	if (key) {
-		bar.textContent = t(key);
-		bar.className = `status-bar ${state.net}`;
-		bar.hidden = false;
-	} else {
-		bar.textContent = '';
-		bar.className = 'status-bar';
-		bar.hidden = true;
-	}
+	const text = state.net === 'reconnecting' ? t('ui_chat_reconnecting') : '';
+	bar.textContent = text;
+	bar.className = text ? 'status-bar reconnecting' : 'status-bar';
+	bar.hidden = !text;
 }
 function netEvent(ev) {
 	const next = netNext(state.net, ev);
@@ -841,6 +830,8 @@ function applyView(view) {
 	if (title && title.textContent !== view.move_title) title.textContent = view.move_title;
 	const step = document.getElementById('header-step');
 	if (step && step.textContent !== view.step_label) step.textContent = view.step_label;
+	const banner = document.getElementById('demo-banner');
+	if (banner && banner.dataset.lastStep && view.step > +banner.dataset.lastStep) banner.firstElementChild.textContent = banner.dataset.generic;
 }
 function setupSceneEnd() {
 	const btn = document.getElementById('sh-end');

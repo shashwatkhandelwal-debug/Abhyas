@@ -464,3 +464,24 @@ def test_realism_wording_for_one_on_one_and_group() -> None:
             assert one != get_message("realism_prompt", "f")
         finally:
             set_ui_lang("hi")
+
+
+@pytest.mark.asyncio
+async def test_realism_question_comes_with_1_to_5_chips_and_a_tap_is_saved(
+    harness: Callable[[], Harness],
+) -> None:
+    h = harness()
+    await h.setup("NUM_SUB_REGROUP_BUNDLES", "ravi", "उल्टा घटा दिया, छोटी में से बड़ी")
+    out = await _turns_then_stop(h, 2)
+    question = next(m for m in out if m.text_hi and "असली कक्षा" in m.text_hi)
+    ids = [b.id for b in question.buttons or []]
+    assert ids[:5] == [f"btn_rating_{n}" for n in range(1, 6)], ids
+    assert [b.title_hi for b in (question.buttons or [])[:5]] == ["1", "2", "3", "4", "5"]
+    assert len(ids) == 5
+    after = out[out.index(question) + 1]  # she can move on without rating
+    assert {"btn_retry", "btn_continue"} <= {b.id for b in after.buttons or []}
+
+    reply = await h.say(button="btn_rating_4")
+    assert [r.rating for r in h.service.repo._realism_ratings] == [4]
+    assert reply[-1].text_hi == get_message("realism_thanks", "f")
+    assert [b.id for b in reply[-1].buttons or []] == ["btn_retry", "btn_continue"]

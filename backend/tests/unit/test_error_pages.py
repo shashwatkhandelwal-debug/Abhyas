@@ -122,8 +122,6 @@ def test_failure_messages_exist_in_both_languages_with_a_next_step() -> None:
         "ui_chat_rec_too_short",
         "ui_chat_send_failed_network",
         "ui_chat_send_failed_rejected",
-        "ui_chat_cold_start",
-        "ui_nav_waking",
     ]
     hi = yaml.safe_load((REPO / "content/messages_hi.yaml").read_text("utf-8"))
     en = yaml.safe_load((REPO / "content/messages_en.yaml").read_text("utf-8"))

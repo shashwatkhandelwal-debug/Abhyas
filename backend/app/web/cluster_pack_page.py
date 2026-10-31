@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from backend.app.auth.access import SUPPRESSION_MESSAGE
+from backend.app.auth.access import suppression_message
 from backend.app.config import settings, v2_enabled
 from backend.app.core.messages import get_message
 from backend.app.reports.cluster_pack import ClusterPack
@@ -28,7 +28,7 @@ def card_context(pack: ClusterPack | None, print_url: str) -> dict[str, Any]:
         "pack": pack,
         "pack_print_url": print_url,
         "suppression_n": settings.AGGREGATION_SUPPRESSION_N,
-        "suppression_message": SUPPRESSION_MESSAGE,
+        "suppression_message": suppression_message(),
     }
 
 
@@ -39,7 +39,7 @@ def print_context(pack: ClusterPack, scope_key: str) -> dict[str, Any]:
         "pack": pack,
         "get_message": get_message,
         "suppression_n": settings.AGGREGATION_SUPPRESSION_N,
-        "suppression_message": SUPPRESSION_MESSAGE,
+        "suppression_message": suppression_message(),
         "scope_text": get_message(scope_key),
         "today": datetime.now(IST).strftime("%d-%m-%Y"),
         "minutes": settings.CLUSTER_PACK_AGENDA_MINUTES,

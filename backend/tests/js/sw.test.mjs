@@ -251,7 +251,7 @@ test('retries run out while online: friendly retry page, not the Offline page', 
   await elapse();
   const res = await pending;
   assert.equal(res.status, 503);
-  assert.match(res.body, /Could not reach the server/);
+  assert.match(res.body, /Server not reachable/);
   assert.doesNotMatch(res.body, /precached/);
 });
 

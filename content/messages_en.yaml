@@ -52,6 +52,8 @@ feedback_header: {text: "Suggestions on your practice:"}
 feedback_body: {text: "👍 {strength}\n🔁 {change}\n🗣️ Next time, try saying:\n\"{exact_words}\""}
 feedback_trajectory: {text: "Change in the children:\n{trajectory}"}
 coach_low_conf_prefix: {text: "(An expert will also look at this suggestion.)"}
+realism_next: {text: "Or choose what to do next."}
+realism_thanks: {text: "Thanks, your rating is saved. What next?"}
 realism_prompt: {text: "Did these children feel like real classroom children? Choose from 1 (not at all) to 5 (exactly like them)."}
 rate_training_prompt: {text: "How useful was this week's practice for your work? Tell us any number from 1 (not at all) to 5 (very useful), typed or spoken."}
 rate_training_comment_prompt: {text: "Thank you! If you like, tell us in one line what worked or what to change, typed or spoken. Tap 'Skip' if you would rather not."}
@@ -142,6 +144,7 @@ ui_slow_banner: {text: "The network is slow. Turn on lite mode?"}
 ui_mic_denied: {text: "Microphone permission was not granted. Turn on the microphone in your browser settings, or type your message."}
 ui_demo_banner: {text: "Demo data: not real teachers"}
 ui_in_review: {text: "In review"}
+ui_trainer_hidden_few: {text: "Hidden: fewer than {n} teachers"}
 ui_suppressed: {text: "Group is small (n<10): hidden to protect privacy"}
 ui_samples_title: {text: "Sample voices (for evaluation)"}
 ui_logout: {text: "Log out"}
@@ -721,6 +724,9 @@ class_helped_thanks: {text: "Thank you, this is saved."}
 rehearse_child_focus: {text: "{child} makes the kind of mistake behind your class's struggle ({label}), so that child is placed first (★)."}
 rehearse_group_focus: {text: "This time {child} makes the kind of mistake behind your class's struggle ({label})."}
 coach_class_link: {text: "Your class's struggle ({label}) is the same as {child}'s mistake in this practice. In class too, ask the child for their way first, then show it with real objects."}
+coach_class_link_literacy: {text: "Your class's struggle ({label}) is the same as {child}'s mistake in this practice. In class too, ask the child to try first, then sound it out together letter by letter."}
+coach_class_link_general: {text: "Your class's struggle ({label}) is what this practice is about. In class too, ask the child for their way first, then show it with real objects."}
+coach_class_link_general_literacy: {text: "Your class's struggle ({label}) is what this practice is about. In class too, ask the child to try first, then sound it out together letter by letter."}
 learn_tip_focus: {text: "Trying this method in class"}
 learn_handbook_tip: {text: "A tip from the handbook:\n{tip}\n{citation}"}
 ui_handbook_title: {text: "Ask the handbook"}
@@ -838,7 +844,6 @@ hint_example_concrete: {text: "{child}, let us make {a} with bundles of ten and 
 # ── Chat clarity part 4: demo helpers ──
 ui_sample_title: {text: "Try a sample line: tap to send"}
 ui_demo_dismiss: {text: "Dismiss"}
-ui_demo_divider: {text: "Demo starts here: this chat was prepared so you can continue from here."}
 
 # ── Chat clarity (cont.): experience suggestion ──
 hint_experience_suggest: {text: "2-5 years"}
@@ -990,7 +995,7 @@ fu_leadin_well: {text: "the practice went well"}
 fu_leadin_some: {text: "some children got stuck"}
 fu_leadin_most: {text: "most children got stuck"}
 btn_fu_back: {text: "Back to practice"}
-fu_back_one: {text: "Now back to {child}: the board shows {board}. Ask {child} how they got this answer."}
+fu_back_one: {text: "Now back to {child}: the board shows {board}. Ask {child} how {he} got this answer."}
 fu_back_group: {text: "Now back to the children: the board shows {board}. Name one child and ask how they got this answer."}
 fu_back_setup: {text: "Now back to practice: pick one of the buttons above to go on."}
 fu_next_idle: {text: "Next: see your progress, or log an after-class check-in."}

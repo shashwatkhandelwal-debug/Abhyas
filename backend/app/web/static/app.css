@@ -385,7 +385,6 @@ body { margin: 0; padding: 0; background-color: var(--bg); color: var(--ink); fo
 .demo-dismiss { border: 0; background: transparent; color: inherit; font-size: 1.1rem; line-height: 1; min-width: 2rem; min-height: 2rem; cursor: pointer; }
 .header-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 0.1rem 0.5rem; }
 .header-logout { color: var(--muted); font-size: 0.75rem; text-decoration: underline; padding: 0.35rem 0.2rem; white-space: nowrap; }
-.demo-divider { align-self: stretch; text-align: center; font-size: 0.75rem; color: var(--muted); padding: 0.3rem 0.5rem; border: 1px dashed var(--border); border-radius: var(--radius-sm); background: var(--surface); }
 .start-main { display: flex; flex-direction: column; gap: 1.2rem; padding: 2rem 1.2rem; min-height: 100vh; justify-content: center; }
 .start-title { margin: 0; color: var(--brand); font-size: 1.6rem; }
 .start-lines { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.7rem; font-size: 1.05rem; }

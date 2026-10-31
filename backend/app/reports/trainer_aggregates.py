@@ -21,7 +21,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.access import SUPPRESSION_MESSAGE
+from backend.app.auth.access import suppression_message
 from backend.app.config import FLAGGED_MOVES, settings
 from backend.app.content_models import MoveCard
 from backend.app.core.messages import get_message
@@ -250,10 +250,10 @@ async def build_trainer_report(
                         move_title=m.title_hi,
                         n_teachers=n_teachers,
                         suppressed=True,
-                        pct_completed=SUPPRESSION_MESSAGE,
-                        most_missed_point=SUPPRESSION_MESSAGE,
-                        rubric_svg=SUPPRESSION_MESSAGE,
-                        ladder_summary=SUPPRESSION_MESSAGE,
+                        pct_completed=suppression_message(),
+                        most_missed_point=suppression_message(),
+                        rubric_svg=suppression_message(),
+                        ladder_summary=suppression_message(),
                         rubric_avg=None,
                         ladder_counts=None,
                     )
@@ -362,14 +362,14 @@ def generate_trainer_csv(report: TrainerReport) -> str:
                     r.move_id,
                     r.move_title,
                     r.n_teachers,
-                    SUPPRESSION_MESSAGE,
-                    SUPPRESSION_MESSAGE,
-                    SUPPRESSION_MESSAGE,
-                    SUPPRESSION_MESSAGE,
-                    SUPPRESSION_MESSAGE,
-                    SUPPRESSION_MESSAGE,
-                    SUPPRESSION_MESSAGE,
-                    SUPPRESSION_MESSAGE,
+                    suppression_message(),
+                    suppression_message(),
+                    suppression_message(),
+                    suppression_message(),
+                    suppression_message(),
+                    suppression_message(),
+                    suppression_message(),
+                    suppression_message(),
                 ]
             )
         else:

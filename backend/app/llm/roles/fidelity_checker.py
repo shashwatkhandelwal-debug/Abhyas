@@ -8,7 +8,7 @@ import json
 import logging
 import re
 import unicodedata
-from typing import Any, Literal
+from typing import Any
 
 import httpx
 from pydantic import ValidationError
@@ -17,7 +17,8 @@ from backend.app.config import settings
 from backend.app.content_models import MoveCard
 from backend.app.llm.client import LLMUnavailable, call_tool, logged_role
 from backend.app.llm.guard_stats import record_guard_event
-from backend.app.llm.guards import guard_fidelity_checker, norm, substring_match
+from backend.app.llm.guards import guard_fidelity_checker, norm
+from backend.app.llm.keypoints import match_key_points
 from backend.app.llm.messages import load_catalog_message
 from backend.app.llm.prompts import load_prompt
 from backend.app.llm.schemas import (
@@ -120,47 +121,16 @@ def compose_fidelity_reply(move: MoveCard, output: FidelityCheckerOutput) -> str
 
 
 def fallback_fidelity(move: MoveCard, transcript: str) -> FidelityCheckerOutput:
-    """Deterministic keyword fallback matching spec/05 §5.7.
+    """Deterministic keyword fallback matching spec/05 §5.7 (matcher: llm/keypoints.py).
 
-    For each key point:
-    - >= 50% keywords present in transcript -> covered
-    - >= 25% keywords present in transcript -> partial
-    - < 25% keywords present in transcript -> missing
-    Quote for covered/partial is the first matched keyword.
-    Quote for missing is empty string.
-    Confidence: 0.3.
+    A point is covered / partial / missing by the weighted share of its keywords found in the
+    answer (thresholds in config). The quote is the matched word; empty for missing. Confidence 0.3.
     """
-    norm_transcript = unicodedata.normalize("NFC", transcript)
-    points: list[KeyPointEvaluation] = []
-
-    for kp in move.key_points:
-        keywords = kp.keywords_hi
-        matched: list[str] = []
-        for kw in keywords:
-            kw_norm = unicodedata.normalize("NFC", kw.strip())
-            if not kw_norm:
-                continue
-            if substring_match(kw_norm, norm_transcript, min_fuzzy=settings.QUOTE_FUZZY_MIN):
-                matched.append(kw_norm)
-
-        ratio = (len(matched) / len(keywords)) if keywords else 0.0
-        if ratio >= 0.50:
-            status: Literal["covered", "partial", "missing"] = "covered"
-            quote = matched[0] if matched else ""
-        elif ratio >= 0.25:
-            status = "partial"
-            quote = matched[0] if matched else ""
-        else:
-            status = "missing"
-            quote = ""
-
-        points.append(KeyPointEvaluation(id=kp.id, status=status, quote=quote))
-
-    return FidelityCheckerOutput(
-        points=points,
-        misconceptions=[],
-        confidence=0.3,
-    )
+    points = [
+        KeyPointEvaluation(id=m.id, status=m.status, quote=m.quote)
+        for m in match_key_points(move, unicodedata.normalize("NFC", transcript))
+    ]
+    return FidelityCheckerOutput(points=points, misconceptions=[], confidence=0.3)
 
 
 @logged_role("fidelity_checker", lambda: settings.CLAUDE_MODEL_SMART)

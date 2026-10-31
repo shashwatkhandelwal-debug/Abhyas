@@ -90,10 +90,6 @@ _IST = ZoneInfo("Asia/Kolkata")  # no-JS fallback for the bubble clock (JS shows
 
 router = APIRouter(tags=["Teacher Web PWA"])
 
-# Demo logins that open on a prepared chat (seeded messages); demo1 starts empty
-PREPARED_DEMO_LOGINS = frozenset({"teacher.demo2", "teacher.demo3"})
-
-
 # Each shared demo teacher login says what its demo shows (fix3 K5).
 _DEMO_BANNER_KEYS = {
     "teacher.demo1": "ui_demo_banner_demo1",
@@ -102,10 +98,17 @@ _DEMO_BANNER_KEYS = {
 }
 
 
-def _demo_banner_text(current_user: AppUser) -> str:
-    """Shared demo logins are reset on login/logout; other demo views only show synthetic data."""
+def _demo_banner_text(current_user: AppUser, step: int | None = None) -> str:
+    """Shared demo logins are reset on login/logout; other demo views only show synthetic data.
+
+    The instruction in a demo login's banner is only true up to a step (config); on pages that do
+    not know the step (`step=None`) and past that step the banner is the plain demo line.
+    """
     if current_user.is_demo and current_user.role == "teacher":
-        return get_message(_DEMO_BANNER_KEYS.get(current_user.username, "ui_demo_account_banner"))
+        last = settings.DEMO_BANNER_LAST_STEP.get(current_user.username, -1)
+        if step is not None and step <= last:
+            return get_message(_DEMO_BANNER_KEYS[current_user.username])
+        return get_message("ui_demo_account_banner")
     return get_message("ui_demo_banner")
 
 
@@ -238,7 +241,7 @@ async def teacher_chat_page(
     )
     header = header or view.get("scene_preview")
 
-    demo_banner_text = _demo_banner_text(current_user)
+    demo_banner_text = _demo_banner_text(current_user, int(view.get("step") or 0))
     # "Ask the handbook": four questions per teacher per day, in a scene too (a question there is
     # answered and the teacher is told how to go back); a link from the modules page
     # (?ask=hb03) sends that question once the chat opens.
@@ -263,9 +266,7 @@ async def teacher_chat_page(
             "consent_share_scores": bool(teacher.consent_share_scores),
             "demo_mode": is_demo,
             "demo_banner_text": demo_banner_text,
-            "show_demo_divider": bool(
-                current_user.username in PREPARED_DEMO_LOGINS and initial_messages
-            ),
+            "demo_banner_last_step": settings.DEMO_BANNER_LAST_STEP.get(current_user.username, -1),
             "handbook_chips": handbook_chips,
             "handbook_autosend": autosend,
             "handbook_prefix": settings.HANDBOOK_ASK_PREFIX,

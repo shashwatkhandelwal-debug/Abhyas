@@ -49,7 +49,7 @@
     </header>
 
     {% if demo_mode %}
-    <div class="demo-banner" id="demo-banner" role="status" aria-label="{{ get_message('ui_demo_notice_label') }}"><span>{{ demo_banner_text or get_message('ui_demo_banner') }}</span><a href="/logout" class="demo-logout">{{ get_message('ui_logout') }}</a><button type="button" class="demo-dismiss" id="demo-dismiss" aria-label="{{ get_message('ui_demo_dismiss') }}">&times;</button></div>
+    <div class="demo-banner" id="demo-banner" data-last-step="{{ demo_banner_last_step }}" data-generic="{{ get_message('ui_demo_account_banner') }}" role="status" aria-label="{{ get_message('ui_demo_notice_label') }}"><span>{{ demo_banner_text or get_message('ui_demo_banner') }}</span><a href="/logout" class="demo-logout">{{ get_message('ui_logout') }}</a><button type="button" class="demo-dismiss" id="demo-dismiss" aria-label="{{ get_message('ui_demo_dismiss') }}">&times;</button></div>
     {% endif %}
 
     <div id="network-banner" class="network-banner" role="status" aria-live="polite" data-offline-text="{{ get_message('ui_offline_banner') }}" data-slow-text="{{ get_message('ui_slow_banner') }}">{% if not is_online and is_online is defined %}{{ get_message('ui_offline_banner') }}{% endif %}</div>
@@ -71,7 +71,6 @@
     <div class="status-slot"><div id="status-bar" class="status-bar" role="status" aria-live="polite" hidden></div></div>
 
     <main class="chat-messages" id="chat-messages" role="log" aria-live="polite">
-      {% if show_demo_divider %}<div class="demo-divider" role="separator">{{ get_message('ui_demo_divider') }}</div>{% endif %}
       {% for msg in initial_messages %}
       <div class="msg-row {{ 'inbound' if msg.direction == 'in' else 'outbound' }}" id="msg-{{ msg.id }}" data-created-at="{{ msg.created_at or '' }}">
         <div class="bubble">

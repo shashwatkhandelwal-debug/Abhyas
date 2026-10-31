@@ -158,6 +158,8 @@ feedback_trajectory:
 coach_low_conf_prefix:
   text: "(यह सुझाव एक विशेषज्ञ भी देखेंगे।)"
   audio: false
+realism_next: {text: "या आगे बढ़ने के लिए चुनिए।", audio: false}
+realism_thanks: {text: "धन्यवाद, आपकी रेटिंग दर्ज हो गई। आगे क्या करें?", audio: false}
 realism_prompt:
   text: "ये बच्चे असली कक्षा के बच्चों जैसे लगे? 1 (बिल्कुल नहीं) से 5 (बिल्कुल वैसे ही) चुनें।"
   audio: false
@@ -358,6 +360,7 @@ ui_slow_banner: {text: "नेटवर्क धीमा है। लाइ�
 ui_mic_denied: {text: "माइक की अनुमति नहीं मिली। ब्राउज़र की सेटिंग में माइक चालू करें, या लिखकर भेजें।", audio: false}
 ui_demo_banner: {text: "डेमो डेटा: वास्तविक शिक्षक नहीं", audio: false}
 ui_in_review: {text: "समीक्षा में", audio: false}
+ui_trainer_hidden_few: {text: "छिपा है: {n} से कम शिक्षक", audio: false}
 ui_suppressed: {text: "समूह छोटा है (n<10): गोपनीयता हेतु छिपाया गया", audio: false}
 ui_samples_title: {text: "नमूना आवाज़ें (मूल्यांकन हेतु)", audio: false}
 ui_logout: {text: "लॉग आउट", audio: false}
@@ -1031,6 +1034,15 @@ rehearse_group_focus:
 coach_class_link:
   text: "आपकी कक्षा की दिक्कत ({label}) इस अभ्यास में {child} की गलती से जुड़ी है। कक्षा में भी इसी तरह पहले बच्चे से उसका तरीका पूछिए, फिर ठोस चीज़ों से दिखाइए।"
   audio: false
+coach_class_link_literacy:
+  text: "आपकी कक्षा की दिक्कत ({label}) इस अभ्यास में {child} की गलती से जुड़ी है। कक्षा में भी इसी तरह पहले बच्चे को खुद पढ़ने दीजिए, फिर साथ में अक्षर-अक्षर की ध्वनि बुलवाइए।"
+  audio: false
+coach_class_link_general:
+  text: "आपकी कक्षा की दिक्कत ({label}) इसी अभ्यास का विषय है। कक्षा में भी पहले बच्चे से उसका तरीका पूछिए, फिर ठोस चीज़ों से दिखाइए।"
+  audio: false
+coach_class_link_general_literacy:
+  text: "आपकी कक्षा की दिक्कत ({label}) इसी अभ्यास का विषय है। कक्षा में भी पहले बच्चे को खुद पढ़ने दीजिए, फिर साथ में अक्षर-अक्षर की ध्वनि बुलवाइए।"
+  audio: false
 learn_tip_focus:
   text: "इस तरीके को कक्षा में आज़माना"
   audio: false
@@ -1182,7 +1194,6 @@ hint_example_concrete: {text: "{child}, चलो {a} को दस के ब�
 # ── Chat clarity part 4: demo helpers ──
 ui_sample_title: {text: "नमूना पंक्ति आज़माएँ: दबाकर भेजें", audio: false}
 ui_demo_dismiss: {text: "बंद करें", audio: false}
-ui_demo_divider: {text: "डेमो यहाँ से शुरू होता है: यह चैट पहले से तैयार है, ताकि आप यहीं से आगे बढ़ सकें।", audio: false}
 
 # ── Chat clarity (cont.): experience suggestion ──
 hint_experience_suggest: {text: "2-5 साल", audio: false}

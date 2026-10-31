@@ -491,7 +491,7 @@ def test_service_worker_contract() -> None:
     assert "'/offline.html'" in sw_content
 
     # Offline navigation fallback
-    assert "cachedOffline" in sw_content
+    assert "cached('/offline.html')" in sw_content
     assert "'/offline.html'" in sw_content
 
 

@@ -349,9 +349,10 @@ def _no_repeat_rule(previous_line: str | None) -> str:
     return (
         f"\nYour previous line in this scene was: «{_norm(previous_line)}»\n"
         "Do not repeat it. React to what the teacher just said, in new words, while keeping the "
-        "same mistake. If she explained a method in words, answer that explanation: say you did "
-        "not follow it and that you still do it your own way (for example «मुझे समझ नहीं आया, "
-        "मैं तो अपने तरीके से ही करता हूँ...»), using only the numbers you are allowed."
+        "same mistake. If she asked a concrete question (about a letter, a matra, a number, an "
+        "object), answer exactly that question in your own words. If she explained a method in "
+        "words, say which part you did not follow. Never use a stock sentence about doing it "
+        "your own way. Use only the numbers you are allowed."
     )
 
 
