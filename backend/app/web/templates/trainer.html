@@ -190,8 +190,13 @@
       border: 1px dashed var(--danger);
     }
     table.data-table td.batch-cell { min-width: 11rem; }
+    table.data-table td.batch-cell strong { white-space: nowrap; }
+    table.data-table td.move-cell { min-width: 14rem; }
+    table.data-table td.missed-cell { max-width: 240px; min-width: 10rem; color: #9B1C1C; }
+    .table-scroll table.data-table { min-width: 62rem; }
     table.data-table td.batch-cell small { display: block; line-height: 1.35; }
     @media (prefers-color-scheme: dark) {
+      table.data-table td.missed-cell { color: #ffb4a8; }
       .suppressed-cell { background-color: #2A1B1B; padding-top: 0.45rem !important; padding-bottom: 0.45rem !important; }
       .suppressed-badge {
         background: #3A1F1F;
@@ -341,7 +346,7 @@
               <strong>{{ r.batch_id }}</strong><br>
               <small style="color:var(--muted)">{{ r.batch_name }}</small>
             </td>
-            <td><strong>{{ r.move_title }}</strong></td>
+            <td class="move-cell"><strong>{{ r.move_title }}</strong></td>
             <td><strong>{{ r.n_teachers }}</strong></td>
             {% if r.suppressed %}
             <td colspan="4" class="suppressed-cell">
@@ -349,7 +354,7 @@
             </td>
             {% else %}
             <td><strong>{{ r.pct_completed }}</strong></td>
-            <td style="max-width:240px; color:#9B1C1C;">{{ r.most_missed_point }}</td>
+            <td class="missed-cell">{{ r.most_missed_point }}</td>
             <td data-csv="{{ r.rubric_avg if r.rubric_avg is not none else '-' }}">
               {{ r.rubric_svg | safe }}
               {% if r.rubric_avg is not none %}
