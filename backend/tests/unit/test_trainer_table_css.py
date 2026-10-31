@@ -17,20 +17,22 @@ def _rule(selector: str) -> str:
 
 def test_move_column_has_min_width_and_wraps() -> None:
     body = _rule("table.data-table td.move-cell")
-    assert "min-width: 14rem" in body
+    assert "min-width: 12rem" in body
     assert "word-break" not in body and "overflow: hidden" not in body
     assert 'class="move-cell"' in HTML
 
 
 def test_batch_column_min_width_and_nowrap_code() -> None:
-    assert "min-width: 11rem" in _rule("table.data-table td.batch-cell")
+    assert "min-width: 9rem" in _rule("table.data-table td.batch-cell")
     assert "white-space: nowrap" in _rule("table.data-table td.batch-cell strong")
 
 
 def test_table_scrolls_instead_of_squeezing() -> None:
     assert 'class="table-card table-scroll"' in HTML
     assert "overflow-x: auto" in (TEMPLATES / "_dash_css.html").read_text(encoding="utf-8")
-    assert re.search(r"min-width:\s*(\d+)rem", _rule(".table-scroll table.data-table"))
+    assert "min-width: 0" in _rule(".table-scroll table.data-table")
+    narrow = HTML.split("@media (max-width: 1099px)", 1)[1]
+    assert re.search(r"min-width:\s*(\d+)rem", narrow.split("}", 1)[0])
 
 
 def test_misconception_text_light_red_in_dark_only() -> None:
@@ -38,3 +40,19 @@ def test_misconception_text_light_red_in_dark_only() -> None:
     dark = HTML.split("@media (prefers-color-scheme: dark)", 1)[1]
     assert "td.missed-cell { color: #ffb4a8; }" in dark
     assert 'class="missed-cell"' in HTML
+
+
+def test_missed_cell_max_width_and_ladder_wraps() -> None:
+    assert "max-width: 14rem" in _rule("table.data-table td.missed-cell")
+    assert "flex-wrap: wrap" in _rule(".ladder-tags")
+    assert 'class="ladder-tag"' in HTML
+
+
+def test_empty_states_use_i18n_not_hardcoded() -> None:
+    assert "ui_trainer_no_misconception" in HTML
+    assert "ui_trainer_no_scores" in HTML
+    assert "No misconception flagged" not in HTML and "कोई भ्रांति" not in HTML
+    from backend.app.core.messages import get_message  # noqa: PLC0415
+
+    assert get_message("ui_trainer_no_misconception")
+    assert get_message("ui_trainer_no_scores")

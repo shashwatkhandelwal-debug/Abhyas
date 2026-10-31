@@ -780,6 +780,8 @@ ui_trainer_privacy_text: {text: "प्रशिक्षण डैशबोर�
 ui_trainer_privacy_label: {text: "गोपनीयता नीति:", audio: false}
 ui_trainer_demo_mode: {text: "डेमो मोड:", audio: false}
 ui_trainer_avg: {text: "औसत:", audio: false}
+ui_trainer_no_misconception: {text: "कोई भ्रांति चिह्नित नहीं", audio: false}
+ui_trainer_no_scores: {text: "अभी कोई स्कोर नहीं", audio: false}
 speaker_ravi: {text: "रवि", audio: false}
 speaker_priya: {text: "प्रिया", audio: false}
 speaker_aman: {text: "अमन", audio: false}

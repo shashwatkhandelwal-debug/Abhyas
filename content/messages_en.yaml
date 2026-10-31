@@ -500,6 +500,8 @@ ui_trainer_privacy_text: {text: "The training dashboard never shows teachers' pe
 ui_trainer_privacy_label: {text: "Privacy policy:"}
 ui_trainer_demo_mode: {text: "Demo mode:"}
 ui_trainer_avg: {text: "Average:"}
+ui_trainer_no_misconception: {text: "No misconception flagged"}
+ui_trainer_no_scores: {text: "No scores yet"}
 speaker_ravi: {text: "Ravi"}
 speaker_priya: {text: "Priya"}
 speaker_aman: {text: "Aman"}
