@@ -37,9 +37,15 @@ def _fix_piece(piece: str, *, at_line_start: bool) -> str:
 _BLANK_RUN = re.compile(r"\n(?:[ \t]*\n){2,}")
 
 
+# A line with nothing visible: spaces, NBSP, zero-width characters, or a bullet marker with no text
+_EMPTY_LINE = re.compile(r"[\s ​-‍⁠﻿•·▪●○*-]*")
+
+
 def tidy_blank_lines(text: str) -> str:
-    """At most one blank line between paragraphs (a stored summary can carry several)."""
-    return _BLANK_RUN.sub("\n\n", text.replace("\r\n", "\n")).strip()
+    """At most one blank line between paragraphs; an empty bullet or invisible line counts as blank."""
+    lines = text.replace("\r\n", "\n").split("\n")
+    blanked = "\n".join("" if _EMPTY_LINE.fullmatch(ln) else ln for ln in lines)
+    return _BLANK_RUN.sub("\n\n", blanked).strip()
 
 
 def clean_text(text: str, protected_lines: tuple[str, ...] = ()) -> str:

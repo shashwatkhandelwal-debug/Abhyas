@@ -871,3 +871,52 @@ async def test_consent_redirect_restriction() -> None:
             )
             assert res.status_code == 303
             assert res.headers["location"] == "/teacher/progress?saved=1", f"Failed for {bad_url}"
+
+
+@pytest.mark.asyncio
+async def test_score_history_numbers_attempts_in_order_even_if_stored_attempts_repeat() -> None:
+    """fix5: two stored rows with attempt=1 must not both read 'Attempt 1'."""
+    teacher_id = uuid.UUID("00000000-0000-0000-0000-000000000003")
+    teacher = Teacher(
+        id=teacher_id,
+        name="अनीता देवी",
+        preferred_channel="web",
+        lite_mode=False,
+        consent_share_scores=True,
+        consent_research=False,
+        is_demo=True,
+    )
+    user = AppUser(
+        id=uuid.UUID("00000000-0000-0000-0001-000000000003"),
+        username="teacher.demo3",
+        role="teacher",
+        teacher_id=teacher_id,
+        display_name="डेमो",
+        password_hash="hash",
+        is_demo=True,
+    )
+    move_id = "NUM_SUB_REGROUP_BUNDLES"
+    rows = [
+        RehearsalScore(
+            id=uuid.uuid4(),
+            teacher_id=teacher_id,
+            move_id=move_id,
+            attempt=a,
+            scores={"wait_time": s, "regroup_explanation": s},
+            evidence={},
+        )
+        for a, s in ((1, 1), (1, 0), (2, 2))
+    ]
+    session = InMemoryProgressSession(
+        entities=[
+            teacher,
+            user,
+            MovePath(teacher_id=teacher_id, position=1, move_id=move_id),
+            *rows,
+        ]
+    )
+    app = create_test_progress_app(session, user=user)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        html = (await client.get("/teacher/progress")).text
+    for n in (1, 2, 3):
+        assert html.count(f"प्रयास {n}") == 1

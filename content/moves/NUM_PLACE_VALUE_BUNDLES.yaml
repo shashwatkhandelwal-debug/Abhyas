@@ -66,14 +66,23 @@ feedback_bank:
     strength_hi: "आपने बच्चे से पूछा कि उसने संख्या कैसे लिखी।"
     change_hi: "बच्चे के उत्तर के बाद पूछिए कि उसने पहले कौन-सा अंक लिखा और क्यों।"
     exact_words_hi: "अमन, तुमने 407 कैसे लिखा? पहले क्या लिखा, फिर क्या?"
+    strength_en: "You asked the child how they wrote the number."
+    change_en: "After the child answers, ask which digit they wrote first and why."
+    exact_words_en: "Aman, how did you write 407? What did you write first, and then what?"
   crit_concrete:
     strength_hi: "आपने बंडल और तीलियाँ दिखाकर संख्या बनवाई।"
     change_hi: "बंडल को 10-10 करके बोलकर गिनवाइए: 10, 20, 30, 40।"
     exact_words_hi: "चलो बंडल गिनें: 10, 20, 30, 40। अब खुली तीलियाँ जोड़ो: 41, 42 … कितनी हुईं?"
+    strength_en: "You showed bundles and sticks and had the number built."
+    change_en: "Have the bundles counted aloud in tens: 10, 20, 30, 40."
+    exact_words_en: "Let us count the bundles: 10, 20, 30, 40. Now add the loose sticks: 41, 42 ... how many are there?"
   crit_no_telling:
     strength_hi: "आपने उत्तर नहीं बताया।"
     change_hi: "दो बच्चों के उत्तर साथ रखकर पूछिए कि तीलियाँ गिनकर कौन-सा सही है।"
     exact_words_hi: "प्रिया ने 11 कहा और रवि ने 47। गिनकर देखो, कौन सही है?"
+    strength_en: "You did not tell the answer."
+    change_en: "Put two children's answers side by side and ask which one is right when the sticks are counted."
+    exact_words_en: "Priya said 11 and Ravi said 47. Count and see, which one is right?"
 
 learn_script_hi: >-
   नमस्ते! इस हफ्ते का तरीका है: बंडल और खुली तीलियों से संख्या समझाना। बच्चे से 10 तीलियाँ गिनवाकर एक बंडल बँधवाइए,

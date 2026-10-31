@@ -215,3 +215,54 @@ async def test_static_files_are_always_revalidated(async_client: AsyncClient) ->
         resp = await async_client.get(path)
         assert resp.status_code == 200
         assert resp.headers["cache-control"] == "no-cache", path
+
+
+class _NoDatabase:
+    """Stands in for the session factory: any use of it is a failure."""
+
+    def __call__(self) -> object:
+        raise AssertionError("the database was touched")
+
+
+@pytest.mark.asyncio
+async def test_healthz_does_no_database_work(
+    async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """fix5: a ping wakes the process without waking the pool."""
+    monkeypatch.setattr("backend.app.main.async_session_factory", _NoDatabase())
+    response = await async_client.get("/healthz")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "git_sha": settings.GIT_SHA}
+
+
+@pytest.mark.asyncio
+async def test_readyz_checks_the_database(
+    async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    executed: list[str] = []
+
+    class _Session:
+        async def __aenter__(self) -> "_Session":
+            return self
+
+        async def __aexit__(self, *exc: object) -> None:
+            return None
+
+        async def execute(self, stmt: object) -> None:
+            executed.append(str(stmt))
+
+    monkeypatch.setattr("backend.app.main.async_session_factory", lambda: _Session())
+    response = await async_client.get("/readyz")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+    assert executed == ["SELECT 1"]
+
+
+@pytest.mark.asyncio
+async def test_readyz_is_503_when_the_database_is_down(
+    async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("backend.app.main.async_session_factory", _NoDatabase())
+    response = await async_client.get("/readyz")
+    assert response.status_code == 503
+    assert response.json()["status"] == "unavailable"

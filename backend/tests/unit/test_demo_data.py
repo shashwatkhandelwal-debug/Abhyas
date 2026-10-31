@@ -506,7 +506,7 @@ async def test_demo_banner_displayed_on_web_page() -> None:
         assert resp.status_code == 200
         assert "डेमो: नई शुरुआत। पूरा परिचय और पहला अभ्यास करें।" in resp.text
         banner = resp.text.split('id="demo-banner"')[1].split("</div>")[0]
-        assert 'href="/logout"' in banner, "a visible Log out inside the banner"
+        assert 'href="/logout"' not in banner, "one Log out only: the top bar has it (fix5)"
         assert 'id="demo-dismiss"' in banner, "and the banner can be dismissed"
 
 

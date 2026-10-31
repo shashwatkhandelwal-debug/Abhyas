@@ -16,6 +16,8 @@ WhatsApp: a WhatsApp job would call `card_messages` for opted-in teachers inside
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
@@ -35,6 +37,21 @@ ALL_BUTTONS = (BTN_YES, BTN_NO, BTN_OFF, BTN_PRACTICE, BTN_ASK)
 # the buttons that identify a message in her thread
 OFFER_MARKER = BTN_YES
 CARD_MARKER = BTN_OFF
+
+
+# Typed commands for the same two choices as the "Yes" and "Turn off" buttons (fix5)
+_COMMAND = re.compile(
+    r"^\s*(?:(?:daily|आज\s*का)\s+)?(?:tip|tips|सुझाव)\s+(?P<way>off|on|बंद|चालू)\s*[.!।]?\s*$",
+    re.IGNORECASE,
+)
+
+
+def command_button(text: str | None) -> str | None:
+    """ "tip off" / "tip on" (also "daily tip off", "सुझाव बंद") as the button it stands for."""
+    m = _COMMAND.match(unicodedata.normalize("NFC", text or ""))
+    if m is None:
+        return None
+    return BTN_OFF if m.group("way").lower() in ("off", "बंद") else BTN_YES
 
 
 def enabled() -> bool:

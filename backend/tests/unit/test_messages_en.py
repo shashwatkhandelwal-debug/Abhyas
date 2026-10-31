@@ -27,8 +27,6 @@ DEVANAGARI = re.compile("[ऀ-ॿ]")
 # English entries that intentionally stay Hindi: words said to Hindi-speaking children, titles
 # written into the Hindi content index at ingest time, and the Hindi language name itself.
 KEEP_HINDI = {
-    "coach_exact_words_contrast_math",
-    "coach_exact_words_contrast_lit",
     "ingest_summary_title",
     "ingest_method_title",
     "ingest_key_points_title",
@@ -51,7 +49,15 @@ def test_every_hindi_key_exists_in_english_and_vice_versa() -> None:
 
 
 # English needs a pronoun for the child ("how he got this answer"); the Hindi line does not
-ENGLISH_ONLY_FIELDS = {"fu_back_one": {"he"}}
+ENGLISH_ONLY_FIELDS = {  # the child's pronoun (fix5): Hindi has no gendered pronoun here
+    "fu_back_one": {"he"},
+    "rehearse_one_start": {"his"},
+    "hint_scene_one": {"he"},
+    "coach_outcome_told": {"he", "him"},
+    "coach_outcome_relapse_scaffold": {"him"},
+    "coach_outcome_concrete_literacy": {"him"},
+    "coach_outcome_explain": {"his"},
+}
 
 
 def test_english_placeholders_match_hindi() -> None:

@@ -136,7 +136,7 @@ def test_one_on_one_scene_asks_for_the_method_with_the_boards_numbers() -> None:
     finally:
         reset_ui_lang(token)
     assert h is not None
-    assert h["text"] == "Ask Ravi how they did it. Tap the example or say your own."
+    assert h["text"] == "Ask Ravi how he did it. Tap the example or say your own."
     assert h["suggest"] == "Ravi, how did you take 27 from 43?"
 
 

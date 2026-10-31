@@ -228,7 +228,7 @@
           <p><strong>{{ get_message('ui_review_teacher_explanation') }}</strong></p>
           <div class="turn-bubble turn-teacher">{{ explain.transcript }}</div>
           <p><strong>{{ get_message('ui_review_points_covered') }}</strong></p>
-          <pre style="background:#F4EFEA; padding:0.5rem; border-radius:4px;">{{ explain.points | tojson(indent=2) }}</pre>
+          <pre style="background:var(--border); padding:0.5rem; border-radius:4px;">{{ explain.points | tojson(indent=2) }}</pre>
         </div>
         {% elif question %}
         <div>
@@ -242,7 +242,7 @@
         {% elif guard %}
         <div>
           <p><strong>{{ get_message('ui_review_guard_reason') }}</strong> {{ guard.reason }}</p>
-          <pre style="background:#F4EFEA; padding:0.5rem; border-radius:4px;">{{ guard.resolution | tojson(indent=2) }}</pre>
+          <pre style="background:var(--border); padding:0.5rem; border-radius:4px;">{{ guard.resolution | tojson(indent=2) }}</pre>
         </div>
         {% else %}
         <p style="color:var(--muted);">{{ get_message('ui_review_no_transcript') }}</p>

@@ -17,6 +17,7 @@ from backend.app.class_profile.personalise import FocusChild, focus_child, label
 from backend.app.content_models import MoveCard
 from backend.app.core.intents import Intent, match_intent
 from backend.app.core.messages import get_message, get_ui_lang
+from backend.app.core.pronouns import child_pronouns
 from backend.app.core.types import Button, OutboundMessage
 from backend.app.rehearsal.diagnosis import (
     DiagnosisResult,
@@ -277,7 +278,10 @@ async def handle_setup(
     ctx.rehearse_stage = STAGE_SCENE
     return [
         OutboundMessage(kind="text", text_hi=get_message(key, af, reveal=reveal)),
-        OutboundMessage(kind="text", text_hi=get_message("rehearse_one_start", af, child=name)),
+        OutboundMessage(
+            kind="text",
+            text_hi=get_message("rehearse_one_start", af, child=name, **child_pronouns(persona_id)),
+        ),
     ]
 
 

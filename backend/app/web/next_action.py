@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from backend.app.core.messages import get_message
+from backend.app.core.pronouns import child_pronouns
 from backend.app.sessions.state_machine import OnboardingStateEnum, SessionStateEnum
 
 # What the flow offers at each onboarding stage: (hint key, suggested line key or None)
@@ -192,7 +193,14 @@ def _practice_hint(
             )
         suggest = _scene_example(scene, child, af)
         key = "hint_retry_one" if retries > 0 else "hint_scene_one"
-        return _make(key, af, suggest, step="scene_one", child=child)
+        return _make(
+            key,
+            af,
+            suggest,
+            step="scene_one",
+            child=child,
+            **child_pronouns((scene or {}).get("child_id")),
+        )
     if spoken:
         return _make("hint_scene_group_next", af, step="scene_group")
     children = (scene or {}).get("children") or []

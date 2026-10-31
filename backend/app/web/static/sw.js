@@ -3,6 +3,7 @@ const STATIC_CACHE_PREFIX = 'abhyas-static-';
 const CACHE_NAME_STATIC = STATIC_CACHE_PREFIX + BUILD_VERSION;
 const CACHE_NAME_AUDIO = 'abhyas-audio-v1';
 const MAX_AUDIO_CACHE_ITEMS = 30;
+const LOGIN_PAGE = '/login';
 const STATIC_ASSETS = [
   '/static/app.css?v=' + BUILD_VERSION,
   '/static/chat.js?v=' + BUILD_VERSION,
@@ -12,10 +13,20 @@ const STATIC_ASSETS = [
   '/offline.html',
   '/waking',
 ];
+// Public login page, kept for a cold start. Plain 200 only (a signed-in visitor is redirected).
+async function keepLogin(cache, response) {
+  if (response && response.status === 200 && !response.redirected && response.type !== 'opaqueredirect') {
+    await cache.put(LOGIN_PAGE, response);
+  }
+}
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME_STATIC).then((cache) => {
-      return cache.addAll(STATIC_ASSETS.map((url) => new Request(url, { cache: 'reload' })));
+    caches.open(CACHE_NAME_STATIC).then(async (cache) => {
+      await cache.addAll(STATIC_ASSETS.map((url) => new Request(url, { cache: 'reload' })));
+      // not awaited: a sleeping server must not hold the install back
+      fetch(LOGIN_PAGE, { cache: 'reload', redirect: 'manual' })
+        .then((res) => keepLogin(cache, res))
+        .catch(() => {});
     })
   );
   self.skipWaiting();
@@ -36,7 +47,7 @@ async function trimCache(cacheName, maxItems) {
     await trimCache(cacheName, maxItems);
   }
 }
-const WAKING_HINT_MS = 3000;
+const WAKING_HINT_MS = 1000;
 const NAV_BACKOFF_MS = [1000, 2000, 4000, 8000, 15000];
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const cached = (url) => caches.open(CACHE_NAME_STATIC).then((cache) => cache.match(url));
@@ -57,13 +68,21 @@ async function fetchWithRetry(request) {
   }
   return last || new Response(RETRY_PAGE, { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 }
-// "Waking up" only on the very first load of the entry page, and only if the server is silent for 3 s.
+// First load of the entry page, server silent for 1 s: show the kept login page (else "waking up").
 async function handleNavigation(request, url) {
-  const entry = !request.referrer && (url.pathname === '/login' || url.pathname === '/');
+  const entry = !request.referrer && (url.pathname === LOGIN_PAGE || url.pathname === '/');
   try {
     const answer = fetchWithRetry(request);
+    if (url.pathname === LOGIN_PAGE) {
+      answer.then((res) => res.status === 200 && caches.open(CACHE_NAME_STATIC).then((c) => keepLogin(c, res.clone()))).catch(() => {});
+    }
     if (!entry) return await answer;
-    return (await Promise.race([answer, sleep(WAKING_HINT_MS).then(() => null)])) || (await cached('/waking')) || (await answer);
+    return (
+      (await Promise.race([answer, sleep(WAKING_HINT_MS).then(() => null)])) ||
+      (await cached(LOGIN_PAGE)) ||
+      (await cached('/waking')) ||
+      (await answer)
+    );
   } catch (err) {
     return (await cached('/offline.html')) || new Response('Offline', { status: 503 });
   }

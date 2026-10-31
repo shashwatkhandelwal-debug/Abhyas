@@ -90,18 +90,30 @@ feedback_bank:
     strength_hi: "आपने बच्चे से उसका तरीका पूछा, इससे उसकी असली उलझन सामने आई।"
     change_hi: "अगली बार 'गलत है' कहने से पहले बच्चे से पूछिए कि उसने कैसे घटाया।"
     exact_words_hi: "रवि, तुमने 43 में से 27 कैसे घटाया? मुझे एक-एक कदम बताओ।"
+    strength_en: "You asked the child for their method, which brought the real confusion into the open."
+    change_en: "Next time, before saying 'wrong', ask the child how they subtracted."
+    exact_words_en: "Ravi, how did you subtract 27 from 43? Tell me each step."
   crit_concrete:
     strength_hi: "आपने बंडल और तीलियों से संख्या बनवाई, यह बच्चों को दिखता है।"
     change_hi: "अगली बार बंडल खोलकर गिनवाइए कि अब कितनी खुली तीलियाँ हो गईं।"
     exact_words_hi: "3 तीलियों में से 7 नहीं निकलतीं, तो एक बंडल खोलो। अब गिनो, कितनी तीलियाँ हुईं?"
+    strength_en: "You had the number built with bundles and sticks, which the children can see."
+    change_en: "Next time, open a bundle and have them count how many loose sticks there are now."
+    exact_words_en: "You cannot take 7 from 3 sticks, so open a bundle. Now count: how many sticks are there?"
   crit_no_telling:
     strength_hi: "आपने उत्तर खुद नहीं बताया, बच्चों को सोचने का मौका दिया।"
     change_hi: "उत्तर बताने के बजाय दो उत्तर सामने रखकर पूछिए कि कौन-सा सही है।"
     exact_words_hi: "रवि ने 24 कहा और प्रिया ने 16। तीलियाँ गिनकर बताओ, कौन-सा सही है?"
+    strength_en: "You did not tell the answer yourself and gave the children room to think."
+    change_en: "Instead of telling the answer, put two answers side by side and ask which one is right."
+    exact_words_en: "Ravi said 24 and Priya said 16. Count the sticks and tell me which one is right."
   crit_all_children:
     strength_hi: "आपने तीनों बच्चों को बातचीत में शामिल किया।"
     change_hi: "शांत बच्ची प्रिया का नाम लेकर उसे धीरे से बोलने का मौका दीजिए।"
     exact_words_hi: "प्रिया, तुम्हारा तरीका भी सुनना है। धीरे से बताओ, कोई बात नहीं।"
+    strength_en: "You brought all three children into the conversation."
+    change_en: "Call quiet Priya by name and gently give her a chance to speak."
+    exact_words_en: "Priya, I want to hear your way too. Tell me slowly, it is all right."
 
 learn_script_hi: >-
   नमस्ते! इस हफ्ते हम हासिल वाले घटाव पर एक तरीका सीखेंगे। जब बच्चे 43 में से 27 घटाते हैं, तो कई बच्चे इकाई में

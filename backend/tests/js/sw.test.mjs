@@ -14,9 +14,11 @@ class FakeResponse {
   constructor(body, init = {}) {
     this.body = body;
     this.status = init.status ?? 200;
+    this.redirected = init.redirected ?? false;
+    this.type = init.type ?? 'basic';
   }
   clone() {
-    return new FakeResponse(this.body, { status: this.status });
+    return new FakeResponse(this.body, { status: this.status, redirected: this.redirected, type: this.type });
   }
 }
 
@@ -303,6 +305,8 @@ test('a form POST answered 503 is not replayed', async () => {
     },
   });
   await dispatch('install');
+  await settle();
+  calls = 0; // the install's own login-page request does not count
   const res = await dispatch('fetch', nav('/teacher/skip', { method: 'POST' }));
   assert.equal(res.status, 503);
   assert.equal(calls, 1);
@@ -313,4 +317,56 @@ test('a normal page response passes through untouched', async () => {
   await dispatch('install');
   const res = await dispatch('fetch', nav('/teacher'));
   assert.equal(res.body, 'page');
+});
+
+// ── login page kept for a cold start ────────────────────────────────────────
+const loginKey = 'https://abhyas.test/login';
+const staticCacheOf = (sw) => sw.caches.store.get(`abhyas-static-${sw.version}`);
+
+test('install keeps a plain 200 login page, without waiting for the server', async () => {
+  const hang = loadSw({ fetchImpl: () => new Promise(() => {}) });
+  await hang.dispatch('install'); // resolves although the login request never answers
+  assert.equal(staticCacheOf(hang).has(loginKey), false);
+
+  const ok = loadSw({ fetchImpl: async () => new FakeResponse('login form') });
+  await ok.dispatch('install');
+  await settle();
+  assert.equal(staticCacheOf(ok).get(loginKey).body, 'login form');
+});
+
+test('a redirect or error is never kept as the login page', async () => {
+  for (const res of [
+    new FakeResponse('teacher app', { redirected: true }),
+    new FakeResponse('', { status: 0, type: 'opaqueredirect' }),
+    new FakeResponse('oops', { status: 503 }),
+  ]) {
+    const sw = loadSw({ fetchImpl: async () => res });
+    await sw.dispatch('install');
+    await settle();
+    assert.equal(staticCacheOf(sw).has(loginKey), false);
+  }
+});
+
+test('cold start: a silent server gets the kept login page at once, not the waking page', async () => {
+  let asleep = false;
+  const sw = loadSw({
+    fetchImpl: async (req) => (asleep ? new Promise(() => {}) : new FakeResponse('login form')),
+  });
+  await sw.dispatch('install');
+  await settle();
+  asleep = true;
+  const pending = sw.start('fetch', nav('/login'));
+  await sw.elapse();
+  assert.equal((await pending).body, 'login form');
+});
+
+test('a normal /login load refreshes the kept copy', async () => {
+  let body = 'old form';
+  const sw = loadSw({ fetchImpl: async () => new FakeResponse(body) });
+  await sw.dispatch('install');
+  await settle();
+  body = 'new form';
+  assert.equal((await sw.dispatch('fetch', nav('/login'))).body, 'new form');
+  await settle();
+  assert.equal(staticCacheOf(sw).get(loginKey).body, 'new form');
 });

@@ -31,7 +31,9 @@
       display: flex;
       align-items: center;
       gap: 0.5rem;
+      flex-wrap: wrap;
     }
+    .review-title-group h1 span { overflow-wrap: normal; word-break: normal; white-space: nowrap; }
     .review-actions {
       display: flex;
       gap: 0.75rem;
@@ -143,7 +145,7 @@
       font-size: 0.95rem;
     }
     th {
-      background: #F4EFEA;
+      background: var(--border);
       color: var(--ink);
       font-weight: 600;
     }

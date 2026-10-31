@@ -101,9 +101,35 @@ FALLBACK_PATTERNS: list[tuple[re.Pattern[str], TeachingAct]] = [
 LITERACY_STOPWORDS: frozenset[str] = frozenset(
     unicodedata.normalize("NFC", w)
     for w in (
-        "करो", "देखो", "यह", "ये", "अब", "सब", "से", "फिर", "को", "भी", "ही", "मत", "ना",
-        "नहीं", "जोर", "ज़ोर", "धीरे", "एक", "साथ", "मिलाकर", "पूरा", "पहला", "दूसरा",
-        "बार", "दोबारा", "पढ़ो", "पढ़ें", "पढ़ना", "पढ़िए",
+        "करो",
+        "देखो",
+        "यह",
+        "ये",
+        "अब",
+        "सब",
+        "से",
+        "फिर",
+        "को",
+        "भी",
+        "ही",
+        "मत",
+        "ना",
+        "नहीं",
+        "जोर",
+        "ज़ोर",
+        "धीरे",
+        "एक",
+        "साथ",
+        "मिलाकर",
+        "पूरा",
+        "पहला",
+        "दूसरा",
+        "बार",
+        "दोबारा",
+        "पढ़ो",
+        "पढ़ें",
+        "पढ़ना",
+        "पढ़िए",
     )
 )
 
@@ -181,9 +207,10 @@ def detect_problem_in_fallback(
     # 1. Subtraction phrases: "X में से Y", "X - Y", "X माइनस Y", "X से Y घटाओ"
     sub_patterns = [
         r"(?P<x>[\u0900-\u097F\w]+)\s+में\s+से\s+(?P<y>[\u0900-\u097F\w]+)(?!\s*नहीं)",
-        r"(?P<x>\d+|[०-९]+)\s*-\s*(?P<y>\d+|[०-९]+)",
+        r"(?P<x>\d+|[०-९]+)\s*[-−–—]\s*(?P<y>\d+|[०-९]+)",
         r"(?P<x>[\u0900-\u097F\w]+)\s+(?:माइनस|minus)\s+(?P<y>[\u0900-\u097F\w]+)",
         r"(?P<x>[\u0900-\u097F\w]+)\s+से\s+(?P<y>[\u0900-\u097F\w]+)\s+(?:घटा|घटाओ|घटाना)",
+        r"(?P<x>\d+|[०-९]+)\s+घटा\s+(?P<y>\d+|[०-९]+)",
     ]
     for pat in sub_patterns:
         m = re.search(pat, clean_text, flags=re.IGNORECASE)
@@ -320,6 +347,24 @@ def fallback_tag_act(
     )
 
 
+def _with_posed_problem(
+    parsed: ActTaggerOutput, transcript: str, current_item: Problem | None
+) -> ActTaggerOutput:
+    """The tagger saw no new problem but the teacher wrote one ("अब 52 - 17"): take it from the text.
+
+    Only the numbers in her own words are read here; the child's answer still comes from the engine.
+    """
+    if parsed.problem is not None:
+        return parsed
+    problem = detect_problem_in_fallback(transcript.strip(), current_item)
+    if problem is None:
+        return parsed
+    acts = list(parsed.acts)
+    if TeachingAct.GIVE_NEW_PROBLEM not in acts and len(acts) < 4:
+        acts.append(TeachingAct.GIVE_NEW_PROBLEM)
+    return parsed.model_copy(update={"problem": problem, "acts": acts})
+
+
 async def tag_act(
     transcript: str,
     move_title_hi: str,
@@ -374,7 +419,7 @@ async def tag_act(
             record_guard_event("act_tagger", attempt, is_valid, err_msg)
             if is_valid:
                 log_role_call("act_tagger", settings.CLAUDE_MODEL_FAST, started, False)
-                return parsed
+                return _with_posed_problem(parsed, transcript, current_item)
 
             logger.warning("act_tagger guard failed (attempt %d): %s", attempt + 1, err_msg)
             if attempt == 0:

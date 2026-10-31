@@ -228,8 +228,8 @@ ui_role_arp: {text: "ARP"}
 ui_role_trainer: {text: "Trainer"}
 ui_role_admin: {text: "Admin"}
 ui_role_teacher: {text: "Teacher"}
-coach_exact_words_contrast_math: {text: "दोनों के उत्तर देखो, तीलियाँ गिनकर बताओ कि कौन-सा सही है और क्यों?"}
-coach_exact_words_contrast_lit: {text: "दोनों के पढ़े शब्द सुनो, अक्षर मिलाकर बताओ कि कौन-सा सही है?"}
+coach_exact_words_contrast_math: {text: "Look at both answers, count the sticks and tell me which one is right, and why."}
+coach_exact_words_contrast_lit: {text: "Listen to both ways of reading the word, blend the letters and tell me which one is right."}
 coach_fallback_neutral: {text: "I could not clearly see this move in your words yet; try the suggestion below and have another go."}
 ingest_summary_title: {text: "अभ्यास मूव सारांश"}
 ingest_method_title: {text: "सीखने का तरीका"}
@@ -593,7 +593,7 @@ diag_result_correct: {text: "You spotted it. {reveal}"}
 diag_result_partly: {text: "You are on the right track, but did not catch all of it. In fact: {reveal}"}
 diag_result_wrong: {text: "That was not the confusion. In fact: {reveal}"}
 diag_result_skipped: {text: "No problem. In fact: {reveal}"}
-rehearse_one_start: {text: "Now talk to {child}. First ask for their method, then explain with something concrete, and finally give a new problem to check. Say 'stop' to finish."}
+rehearse_one_start: {text: "Now talk to {child}. First ask for {his} method, then explain with something concrete, and finally give a new problem to check. Say 'stop' to finish."}
 scene_all_correct_one: {text: "Wow! {child} used the right method on the new problem too."}
 coach_diag_change_wrong: {text: "Next time, ask the child and work out what the confusion was: {label}."}
 coach_diag_change_partly: {text: "Next time, pin the confusion down more exactly: {label}."}
@@ -809,7 +809,7 @@ hint_model: {text: "Tap '{listen}' to hear another teacher do this move, or '{sk
 hint_choose_mode: {text: "Choose who to practise with: one child (best) or all three."}
 hint_choose_child: {text: "Pick the child you want to talk to."}
 hint_diagnose: {text: "First say, in your own words, what mistake {child} made. Or tap '{skip}'."}
-hint_scene_one: {text: "Ask {child} how they did it. Tap the example or say your own."}
+hint_scene_one: {text: "Ask {child} how {he} did it. Tap the example or say your own."}
 hint_scene_group: {text: "Say a child's name, then your question. Tap a name above to start."}
 hint_retry_one: {text: "Try again. This time ask {child} to explain first, then use something concrete."}
 hint_retry_group: {text: "Try again. This time ask a child to explain first."}
@@ -856,13 +856,13 @@ ui_start_button: {text: "Start your first practice"}
 ui_start_skip: {text: "Skip"}
 
 # ── Chat clarity part 7: what happened in the scene ──
-coach_outcome_told: {text: "You told {child} the answer, so they repeated it without understanding. Try asking them to explain first."}
+coach_outcome_told: {text: "You told {child} the answer, so {he} repeated it without understanding. Try asking {him} to explain first."}
 coach_outcome_relapse: {text: "You gave a new problem after telling the answer, so {child} went back to the old mistake. Telling the answer does not teach the method."}
-coach_outcome_relapse_scaffold: {text: "On the new problem {child} went back to the old mistake. Ask them to explain again with the objects in hand."}
+coach_outcome_relapse_scaffold: {text: "On the new problem {child} went back to the old mistake. Ask {him} to explain again with the objects in hand."}
 coach_outcome_checked: {text: "You checked on a new problem, and {child} solved it by explaining the method: it stuck."}
 coach_outcome_concrete: {text: "You used something concrete (bundles and sticks), so {child} could see what to do where."}
-coach_outcome_concrete_literacy: {text: "With your help {child} read the word correctly: the sounds gave them something to hold on to."}
-coach_outcome_explain: {text: "You asked {child} to explain, so their own method came out."}
+coach_outcome_concrete_literacy: {text: "With your help {child} read the word correctly: the sounds gave {him} something to hold on to."}
+coach_outcome_explain: {text: "You asked {child} to explain, so {his} own method came out."}
 btn_share_arp: {text: "Share with my ARP"}
 btn_share_not_now: {text: "Not now"}
 consent_share_saved_yes: {text: "Thank you! Your scores will be shared with your ARP. You can change this at any time in My class."}

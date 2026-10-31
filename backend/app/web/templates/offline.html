@@ -83,6 +83,11 @@ html[data-lang="en"] .bi > [lang="en"] {display: inline;}
     };
     const lang = document.documentElement.dataset.lang;
     const [EMPTY, FAILED, AUDIO] = TXT[lang] || TXT.hi;
+    const SPEAKERS = {
+      abhyas: {{ get_message('speaker_abhyas')|tojson }}, coach: {{ get_message('speaker_coach')|tojson }}, guide: {{ get_message('speaker_guide')|tojson }},
+      ravi: {{ get_message('speaker_ravi')|tojson }}, priya: {{ get_message('speaker_priya')|tojson }}, aman: {{ get_message('speaker_aman')|tojson }},
+      model_teacher: {{ get_message('speaker_model_teacher')|tojson }}, teacher: {{ get_message('speaker_teacher')|tojson }},
+    };
     document.querySelectorAll('[data-title-en]').forEach((el) => {
       if (lang === 'en') el.title = el.dataset.titleEn;
     });
@@ -108,11 +113,18 @@ html[data-lang="en"] .bi > [lang="en"] {display: inline;}
           if (!msgs.length) return note(EMPTY);
           msgs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
           listEl.innerHTML = '';
-          msgs.slice(-50).forEach((m) => {
+          msgs.filter((m) => !/^btn_[a-z_]+$/.test((m.text || '').trim())).slice(-50).forEach((m) => {
             const div = document.createElement('div');
             const inb = m.direction === 'in';
             div.style.cssText = 'padding:.5rem .8rem;border-radius:8px;font-size:.9rem;max-width:85%;background-color:' + (inb ? 'var(--bubble-in)' : 'var(--bg)') + ';align-self:' + (inb ? 'flex-end' : 'flex-start');
-            div.innerHTML = (m.speaker ? '<strong style="font-size:0.75rem;display:block;">' + m.speaker + '</strong>' : '') + (m.text || AUDIO);
+            const who = m.speaker ? (SPEAKERS[String(m.speaker).toLowerCase()] || m.speaker) : '';
+            if (who) {
+              const strong = document.createElement('strong');
+              strong.style.cssText = 'font-size:0.75rem;display:block;';
+              strong.textContent = who;
+              div.appendChild(strong);
+            }
+            div.appendChild(document.createTextNode(m.text || AUDIO));
             listEl.appendChild(div);
           });
         };
