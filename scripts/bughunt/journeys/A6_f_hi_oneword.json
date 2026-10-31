@@ -1,0 +1,1 @@
+[["login", "teacher.demo1"], ["logout"], ["goto", "/login"], ["lang", "hi"], ["login", "teacher.demo1"], ["css", "#start-go"], ["say", "नमस्ते"], ["click", "सहमत हूँ"], ["say", "DEMO"], ["say", "रिया"], ["click", "शिक्षिका"], ["say", "2-5 साल"], ["say", "कक्षा 2"], ["say", "क्यों?"], ["say", "😀👍🙏"], ["dump"]]

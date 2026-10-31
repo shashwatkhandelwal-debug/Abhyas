@@ -99,9 +99,7 @@ def test_the_trend_compares_first_and_latest_per_fact(lang: str) -> None:
     yes, no = get_message("mp_yes"), get_message("mp_no")
     lines = [ln for ln in text.splitlines() if get_message("mp_l_told") in ln]
     assert lines == [
-        get_message(
-            "mp_trend_line", label=get_message("mp_l_told"), before=yes, after=no
-        )
+        get_message("mp_trend_line", label=get_message("mp_l_told"), before=yes, after=no)
     ]
     assert get_message("mp_trend_head", move="").split(":")[0] in text
     for label in ("mp_l_asked", "mp_l_concrete", "mp_l_named"):
@@ -132,13 +130,15 @@ def test_only_the_last_five_are_listed() -> None:
     assert text.count("\n") >= 5
     rows = [ln for ln in text.splitlines() if re.match(r"^\d\. ", ln)]
     assert len(rows) == settings.MY_PROGRESS_SHOWN == 5
-    assert rows[-1].startswith("5. ") and "27/10" in rows[-1]  # the newest, in India's date
+    assert (
+        rows[-1].startswith("5. ") and "27 " in rows[-1] and "/" not in rows[-1]
+    )  # the newest, a day and a month name
 
 
 def test_different_moves_say_a_comparison_needs_the_same_move(lang: str) -> None:
     text = text_of([reh(0, [TOLD]), reh(2, [ASKED], move=OTHER)])
     assert get_message("mp_no_pair") in text
-    assert get_message("mp_trend_head", move="") .split(":")[0] not in text
+    assert get_message("mp_trend_head", move="").split(":")[0] not in text
     assert get_message("mp_n_asked") not in text  # she asked in the latest one
 
 
@@ -184,7 +184,9 @@ def test_both_languages_have_every_key_with_no_dashes() -> None:
 
 def test_the_practice_button_fits_the_whatsapp_title_cap() -> None:
     for code in ("hi", "en"):
-        assert 0 < len(get_message("btn_mp_practice", lang=code)) <= settings.WHATSAPP_BUTTON_TITLE_MAX
+        assert (
+            0 < len(get_message("btn_mp_practice", lang=code)) <= settings.WHATSAPP_BUTTON_TITLE_MAX
+        )
 
 
 # ── through the real service ─────────────────────────────────────────────────────────────────
@@ -235,7 +237,8 @@ async def test_feedback_screen_keeps_its_own_buttons() -> None:
 
 
 @pytest.mark.asyncio
-async def test_never_inside_a_scene() -> None:
+async def test_inside_a_scene_only_the_exact_typed_command_opens_it_and_the_scene_stays() -> None:
+    """fix3 B07: the demo2 banner says to open "मेरी प्रगति"; a line said to a child never counts."""
     t = await teacher(SessionStateEnum.REHEARSE, [FIRST, LAST])
     seen: list[Any] = []
     orig = SessionService._my_progress_messages
@@ -246,11 +249,18 @@ async def test_never_inside_a_scene() -> None:
 
     SessionService._my_progress_messages = spy  # type: ignore[method-assign]
     try:
-        await t.tap("btn_progress")
-        await t.say("मेरी प्रगति")
+        await t.tap("btn_progress")  # the button is never offered in a scene: no progress
+        assert seen == []
+        out = await t.say("मेरी प्रगति")  # the whole line is the command
+        assert seen == [1]
+        assert get_message("mp_head", n=2).split(",")[0] in alltext(out)
+        assert len(out) == 2 and not out[0].buttons  # the progress, then back to the scene
+        assert (await t.ctx()).current_state == SessionStateEnum.REHEARSE
+        seen.clear()
+        await t.say("रवि, मेरी प्रगति कैसी है, बताओ")  # said to a child: a normal teacher turn
+        assert seen == []
     finally:
         SessionService._my_progress_messages = orig  # type: ignore[method-assign]
-    assert seen == []
 
 
 def test_the_quick_reply_follows_the_flag(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -275,3 +285,16 @@ async def test_demo_mode_turns_it_on(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "DEMO_MODE", True)
     t = await teacher(SessionStateEnum.DONE, [FIRST, LAST])
     assert get_message("mp_head", n=2).split(",")[0] in alltext(await t.tap("btn_progress"))
+
+
+@pytest.mark.parametrize(("lang", "expected"), [("hi", "21 अक्टूबर"), ("en", "21 Oct")])
+def test_b08_a_date_reads_as_a_date_not_a_score(lang: str, expected: str) -> None:
+    """fix3 B08: "(21/10)" read like a score of 21 out of 10."""
+    from datetime import UTC, datetime
+
+    token = set_ui_lang(lang)
+    try:
+        shown = my_progress._date(datetime(2026, 10, 21, 6, 0, tzinfo=UTC))
+    finally:
+        reset_ui_lang(token)
+    assert shown == expected and "/" not in shown

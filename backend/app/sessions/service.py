@@ -44,6 +44,7 @@ from backend.app.core.types import Button, Citation, InboundMessage, OutboundMes
 from backend.app.db.models import Message
 from backend.app.handbook.fallback import fallback_reply, match_handbook_question
 from backend.app.llm.client import LLMUnavailable
+from backend.app.llm.roles.child_voice import teacher_is_telling
 from backend.app.llm.roles.coach import coach_feedback
 from backend.app.llm.roles.coach_suggestion import SuggestionResult, suggest_from_sources
 from backend.app.llm.roles.fidelity_checker import check_fidelity
@@ -68,7 +69,7 @@ from backend.app.rule_engine.domain import (
     SceneTurn,
     TeachingAct,
 )
-from backend.app.sessions import modules, rehearse_setup
+from backend.app.sessions import modules, rehearse_setup, tip_filter
 from backend.app.sessions.outcome import outcome_line
 from backend.app.sessions.path import MovePathEntry, compute_move_path, load_induction_order
 from backend.app.sessions.path_score import DONE_MIN_EVIDENCE
@@ -119,14 +120,20 @@ class SessionService:
         struggle_ids: list[str] | None = None,
         audio_ref: str | None = None,
         experience_band: str | None = None,
+        move_announced: bool = False,
     ) -> list[OutboundMessage]:
         """Builds one or two bubbles for the learn step according to one-language-per-bubble rule.
+
+        `move_announced`: the move's name was just said (the onboarding feedback), so the intro
+        goes straight to the key points instead of naming it again.
 
         Bubble 1 is the move introduction (in the teacher's UI language). If official tips or
         excerpts exist in Hindi, they form their own separate bubble (Bubble 2, speaker="guide")
         so English and Hindi text never mix inside a single bubble.
         """
         intro_key = "learn_intro_audio" if audio_ref else "learn_intro"
+        if move_announced and not audio_ref:
+            intro_key = "learn_intro_announced"
         intro = get_message(intro_key, address_form, move_title=move_title(move.id))
         reason = personalise.because(move.id, struggle_ids or [])
         if reason is not None:
@@ -160,11 +167,20 @@ class SessionService:
 
         query = f"{move.title_hi} {' '.join(t.replace('_', ' ') for t in move.tags)}"
         hits = await self.retriever.retrieve(
-            query, top_k=1, min_score=settings.RETRIEVAL_MIN_SCORE, official_only=True
+            query,
+            top_k=settings.TIP_EXCERPT_POOL,
+            min_score=settings.RETRIEVAL_MIN_SCORE,
+            official_only=True,
         )
+        # the best passage that is about this move (never an unrelated overview or a home activity)
+        hits = [
+            h
+            for h in hits
+            if h.gloss_hi and tip_filter.chunk_qualifies(move, h.gloss_hi, *(h.keywords_hi or []))
+        ][:1]
         hit_cites: list[Citation] = []
         ref_text = ""
-        if hits and hits[0].gloss_hi:
+        if hits:
             hit = hits[0]
             chunk = RetrievedChunk(
                 chunk_id=hit.chunk_id,
@@ -566,6 +582,18 @@ class SessionService:
         ]
 
     @staticmethod
+    def _address_form_question(address_form: str) -> OutboundMessage:
+        """The address-form question with its two buttons (asked again on an unclear reply)."""
+        return OutboundMessage(
+            kind="buttons",
+            text_hi=get_message("ask_address_form", address_form),
+            buttons=[
+                Button(id="btn_female", title_hi=get_message("btn_female", address_form)),
+                Button(id="btn_male", title_hi=get_message("btn_male", address_form)),
+            ],
+        )
+
+    @staticmethod
     def _rating_buttons(address_form: str) -> list[Button]:
         """Three quick taps for the anchors; 2 and 4 (and all of 1-5) can be typed or spoken."""
         return [
@@ -574,13 +602,23 @@ class SessionService:
         ]
 
     async def _cited_tip(
-        self, query: str, move_title_hi: str, change_hi: str, *, pool: int, candidates: int
+        self,
+        query: str,
+        move: MoveCard,
+        change_hi: str,
+        *,
+        address_form: str,
+        pool: int,
+        candidates: int,
     ) -> SuggestionResult | None:
         """One guarded tip from the FLN training package, or None.
 
         Official chunks only (`official_only`), the retrieval score and matched-terms gates, then
         `suggest_from_sources` (schema, cited chunk must be one retrieved, grounded wording, one
         retry). No support or a failed guard means no tip: nothing is invented.
+
+        fix3 K4: only passages about this move, not about the home or parents, are offered, and a
+        tip with a feminine verb to a male teacher (or a home tip) is dropped, never rewritten.
         """
         try:
             hits = await self.retriever.retrieve(
@@ -603,12 +641,16 @@ class SessionService:
                 )
                 for c in hits
                 if c.source == settings.COACH_SUGGESTION_SOURCE_ID
+                and tip_filter.chunk_qualifies(move, c.gloss_hi or c.text, *(c.keywords_hi or []))
             ][:candidates]
-            result = await suggest_from_sources(move_title_hi, change_hi, chunks)
+            result = await suggest_from_sources(move.title_hi, change_hi, chunks)
         except (LLMUnavailable, TimeoutError, ValueError, OSError) as exc:
             logger.warning("source tip skipped: %s", exc)
             return None
         if not result.suggestion_hi or result.chunk is None:
+            return None
+        if not tip_filter.tip_text_qualifies(result.suggestion_hi, address_form):
+            logger.info("source tip dropped: home passage or feminine verb for a male teacher")
             return None
         return result
 
@@ -618,8 +660,9 @@ class SessionService:
         """One tip from the FLN training package after a scene, with a tappable citation."""
         result = await self._cited_tip(
             f"{move.title_hi} {change_hi}",
-            move.title_hi,
+            move,
             change_hi,
+            address_form=address_form,
             pool=settings.COACH_SUGGESTION_POOL,
             candidates=settings.COACH_SUGGESTION_CANDIDATES,
         )
@@ -642,8 +685,9 @@ class SessionService:
         query = f"{move.title_hi} {' '.join(t.replace('_', ' ') for t in move.tags)}"
         result = await self._cited_tip(
             query,
-            move.title_hi,
+            move,
             get_message("learn_tip_focus", address_form),
+            address_form=address_form,
             pool=settings.HANDBOOK_TIP_POOL,
             candidates=settings.HANDBOOK_TIP_CANDIDATES,
         )
@@ -1145,6 +1189,13 @@ class SessionService:
         }
     )
 
+    @staticmethod
+    def _in_scene_state(ctx: SessionContext) -> bool:
+        return ctx.current_state in (
+            SessionStateEnum.REHEARSE_INTRO,
+            SessionStateEnum.REHEARSE,
+        )
+
     async def _my_progress_messages(
         self, ctx: SessionContext, teacher_id: UUID
     ) -> list[OutboundMessage]:
@@ -1152,11 +1203,11 @@ class SessionService:
         history = await self.repo.rehearsal_history(teacher_id, settings.MY_PROGRESS_HISTORY_MAX)
         state = ctx.current_state.value
         ids = [
-            b
-            for b in self._HELP_BUTTONS.get(state, ())
-            if b != "btn_progress" and b != "btn_skip"
+            b for b in self._HELP_BUTTONS.get(state, ()) if b != "btn_progress" and b != "btn_skip"
         ]
-        if state == SessionStateEnum.FEEDBACK.value:
+        if self._in_scene_state(ctx):
+            ids = []  # the scene's own next step follows (back to the scene), no other buttons
+        elif state == SessionStateEnum.FEEDBACK.value:
             ids = ["btn_retry", "btn_continue"]  # the practice buttons of this very screen
         elif len(ids) < 3:
             ids.append(my_progress.BTN_PRACTICE)
@@ -1615,12 +1666,26 @@ class SessionService:
             my_progress.enabled()
             and ctx.onboarding_state == OnboardingStateEnum.READY
             and not ctx.awaiting_delete_confirm
-            and ctx.current_state in self._PROGRESS_STATES
-            and (btn_id in ("btn_progress", my_progress.BTN_PRACTICE) or matched_intent == Intent.PROGRESS)
+            and (
+                (
+                    ctx.current_state in self._PROGRESS_STATES
+                    and (
+                        btn_id in ("btn_progress", my_progress.BTN_PRACTICE)
+                        or matched_intent == Intent.PROGRESS
+                    )
+                )
+                # fix3 B07: inside a scene only the exact command (the whole line is "my progress",
+                # never something said to a child) opens it, and the scene stays where it was
+                or (self._in_scene_state(ctx) and not btn_id and matched_intent == Intent.PROGRESS)
+            )
         ):
             if btn_id == my_progress.BTN_PRACTICE:
                 return await self._launch_checkin_practice(ctx, teacher_id, ctx.current_move_id)
-            return await self._my_progress_messages(ctx, teacher_id)
+            progress = await self._my_progress_messages(ctx, teacher_id)
+            if self._in_scene_state(ctx):
+                _, header, _ = await self._followup_scene(ctx, teacher_id)
+                return [*progress, followup.back_to_scene_message(header)]
+            return progress
 
         # 2. Delete confirmation flow (§8.3 step 7)
         if ctx.awaiting_delete_confirm:
@@ -1968,26 +2033,13 @@ class SessionService:
                             kind="text", text_hi=get_message("ask_name_again", address_form)
                         )
                     ]
-                return [
-                    OutboundMessage(
-                        kind="buttons",
-                        text_hi=get_message("ask_address_form", address_form),
-                        buttons=[
-                            Button(
-                                id="btn_female",
-                                title_hi=get_message("btn_female", address_form),
-                            ),
-                            Button(
-                                id="btn_male",
-                                title_hi=get_message("btn_male", address_form),
-                            ),
-                        ],
-                    )
-                ]
+                return [self._address_form_question(address_form)]
 
             elif current_onboarding == OnboardingStateEnum.PROFILE_ADDRESS:
                 osm.transition(btn_id or text_content)
                 await self._sync_context_to_db(ctx, teacher_id)
+                if ctx.onboarding_state == OnboardingStateEnum.PROFILE_ADDRESS:
+                    return [self._address_form_question(address_form)]  # unclear reply: ask again
                 default_name = (
                     get_message("btn_female", ctx.address_form)
                     if ctx.address_form == "f"
@@ -2101,6 +2153,12 @@ class SessionService:
                     placement_acts = [a for t in (scene.turns if scene else []) for a in t.acts]
                     if turn_res:
                         placement_acts.extend(turn_res.turn.acts)
+                    later_turns = [(t.transcript, t.acts) for t in (scene.turns if scene else [])][
+                        1:
+                    ]
+                    if turn_res:
+                        later_turns.append((text_content, list(turn_res.turn.acts)))
+                    told_later = any(teacher_is_telling(said, acts) for said, acts in later_turns)
                     ready_outbounds: list[OutboundMessage] = []
                     if turn_res:
                         ready_outbounds.extend(turn_res.outbound)
@@ -2112,21 +2170,16 @@ class SessionService:
                                     placement_acts,
                                     move_title(first_move.id),
                                     ctx.address_form,
+                                    told_later=told_later,
                                 ),
                             ),
-                            OutboundMessage(
-                                kind="text",
-                                text_hi=get_message(
-                                    "ready_first_move",
-                                    ctx.address_form,
-                                    move_title=move_title(first_move.id),
-                                ),
-                            ),
+                            # the feedback above names the move once; no second announcement
                             *await self._build_learn_messages(
                                 first_move,
                                 ctx.address_form,
                                 ctx.class_struggles,
                                 experience_band=ctx.experience_band,
+                                move_announced=True,
                             ),
                         ]
                     )

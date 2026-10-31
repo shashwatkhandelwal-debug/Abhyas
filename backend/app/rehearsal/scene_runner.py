@@ -330,6 +330,7 @@ class SceneRunner:
                 address_form=address_form,
                 previous_line=own_lines[-1] if own_lines else None,
                 teacher_said=transcript,
+                teacher_acts=[a.value for a in act_enums],
             )
             return ChildLineRecord(
                 persona_id=resp.persona_id,

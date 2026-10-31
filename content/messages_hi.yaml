@@ -67,6 +67,9 @@ placement_fb_objects:
 placement_fb_told:
   text: "आपने रवि को सही उत्तर बता दिया, पर उसने खुद सोचकर नहीं निकाला।"
   audio: false
+placement_fb_told_later:
+  text: "फिर आपने खुद तरीका बता दिया; अगली बार रवि को खुद करने दें।"
+  audio: false
 placement_fb_none:
   text: "आपने रवि से बात की।"
   audio: false
@@ -87,6 +90,9 @@ ready_first_move:
   audio: true
 
 # ── Weekly loop ───────────────────────────────────────────────
+learn_intro_announced:
+  text: "मुख्य बातें नीचे लिखी हैं:"
+  audio: false
 learn_intro:
   text: "इस हफ्ते का तरीका: {move_title}। मुख्य बातें नीचे लिखी हैं:"
   audio: false
@@ -945,6 +951,9 @@ scene_too_short: {text: "अभी तक आपने {done} बार बा�
 scene_resumed: {text: "ठीक है, सीन वहीं से जारी है। अपनी अगली बात कहिए।", audio: false}
 btn_scene_continue: {text: "सीन जारी रखें", audio: false}
 ui_demo_account_banner: {text: "डेमो: लॉगिन/लॉगआउट पर चैट रीसेट", audio: false}
+ui_demo_banner_demo1: {text: "डेमो: नई शुरुआत। पूरा परिचय और पहला अभ्यास करें।", audio: false}
+ui_demo_banner_demo2: {text: "डेमो: दूसरे हफ़्ते की शिक्षिका। रवि से 43 − 27 पर बात करें, फिर 'अब भी अटके हैं' दबाएँ, और 'मेरी प्रगति' खोलें।", audio: false}
+ui_demo_banner_demo3: {text: "डेमो: कक्षा के बारे में बताने के बाद ऐप ने पढ़ने का तरीका चुना (मात्रा)। 'समझ गई, आगे' दबाकर अभ्यास करें।", text_m: "डेमो: कक्षा के बारे में बताने के बाद ऐप ने पढ़ने का तरीका चुना (मात्रा)। 'समझ गया, आगे' दबाकर अभ्यास करें।", audio: false}
 
 # ── "My class": where is your class struggling (class_profile/flow.py) ─────────────
 class_ask:
@@ -1415,6 +1424,7 @@ adp_why_new: {text: "क्यों अभी यह: शुरुआत मे
 btn_mp_practice: {text: "अभ्यास करें", audio: false}
 mp_head: {text: "आपकी प्रगति, पिछले {n} अभ्यास:", audio: false}
 mp_row: {text: "{i}. {move} ({date})", audio: false}
+mp_months: {text: "जनवरी,फ़रवरी,मार्च,अप्रैल,मई,जून,जुलाई,अगस्त,सितंबर,अक्टूबर,नवंबर,दिसंबर", audio: false}
 mp_trend_head: {text: "तुलना, {move}: पहला अभ्यास और सबसे नया अभ्यास", audio: false}
 mp_trend_line: {text: "{label}: पहले {before}, अब {after}।", audio: false}
 mp_yes: {text: "हाँ", audio: false}

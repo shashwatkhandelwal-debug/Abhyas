@@ -121,7 +121,10 @@ def _yes_no(value: bool) -> str:
 
 
 def _date(moment: datetime) -> str:
-    return moment.astimezone(IST).strftime("%d/%m")
+    """"21 अक्टूबर" / "21 Oct": a day and a month name, never 21/10 (it reads as a score)."""
+    local = moment.astimezone(IST)
+    months = get_message("mp_months").split(",")
+    return f"{local.day} {months[local.month - 1]}"
 
 
 def progress_message(

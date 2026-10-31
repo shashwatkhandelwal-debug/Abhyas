@@ -23,12 +23,14 @@ placement_fb_asked: {text: "You asked Ravi how he got 45, good."}
 placement_fb_words: {text: "You explained the method in words, but Ravi is still making the same mistake."}
 placement_fb_objects: {text: "You showed it with bundles and sticks, which is the easiest way for children to see it."}
 placement_fb_told: {text: "You told Ravi the right answer, but he did not work it out himself."}
+placement_fb_told_later: {text: "Then you told the method yourself; next time let Ravi do it himself."}
 placement_fb_none: {text: "You talked with Ravi."}
 placement_fb_why_told: {text: "So we will start with '{move_title}', where the child gets the chance to think for himself."}
 placement_fb_why_words: {text: "So we will start with '{move_title}'."}
 placement_fb_why_objects: {text: "So we will start with '{move_title}', to make this way of teaching stronger."}
 placement_fb_why_default: {text: "So we will start with '{move_title}'."}
 ready_first_move: {text: "Your first move is: {move_title}. Let's begin!"}
+learn_intro_announced: {text: "The key points are written below:"}
 learn_intro: {text: "This week's move: {move_title}. The key points are written below:"}
 learn_intro_audio: {text: "This week's move: {move_title}. First listen to this 2-minute voice note. The key points are written below:"}
 explain_back_prompt: {text: "Now, in 1 minute, tell me in your own words: what is the most important thing in this move? Send it by voice or by typing."}
@@ -667,6 +669,9 @@ scene_too_short: {text: "So far you have spoken {done} time(s). I need at least 
 scene_resumed: {text: "Okay, the scene continues from where you stopped. Say your next line."}
 btn_scene_continue: {text: "Continue the scene"}
 ui_demo_account_banner: {text: "Demo: chat resets on log in/out"}
+ui_demo_banner_demo1: {text: "Demo: a fresh start. Do the intro and first practice."}
+ui_demo_banner_demo2: {text: "Demo: a teacher in her second week. Talk to Ravi about 43 − 27, then press 'Still stuck', and open 'My progress'."}
+ui_demo_banner_demo3: {text: "Demo: after describing the class, the app chose a reading move (matras). Press 'Got it, next' and practise."}
 
 # ── "My class" ──────────────────────────────────────────────────────────────────
 class_ask: {text: "Where is your class struggling? Say it or type it, or send a number from the list below (optional):\n{list}"}
@@ -1055,6 +1060,7 @@ adp_why_new: {text: "Why this next: at the start, the basic practice first, wher
 btn_mp_practice: {text: "Practise"}
 mp_head: {text: "Your progress, last {n} practices:"}
 mp_row: {text: "{i}. {move} ({date})"}
+mp_months: {text: "Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec"}
 mp_trend_head: {text: "Comparison, {move}: first practice and latest practice"}
 mp_trend_line: {text: "{label}: before {before}, now {after}."}
 mp_yes: {text: "yes"}

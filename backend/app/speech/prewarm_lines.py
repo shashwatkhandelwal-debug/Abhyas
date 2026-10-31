@@ -149,6 +149,7 @@ async def engine_template_targets(moves_dir: Path) -> list[Target]:
         address_form: str = "f",
         previous_line: str | None = None,
         teacher_said: str | None = None,
+        teacher_acts: Any = (),
     ) -> str:
         return child_voice.template_line(
             response=response,

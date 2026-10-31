@@ -4,9 +4,12 @@ Renders rule engine ChildResponse into natural childlike Hindi speech
 using Claude fast model (or MockLLM) with a deterministic template fallback.
 """
 
+import difflib
 import logging
 import re
 import time
+import unicodedata
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -51,6 +54,105 @@ def _format_steps(steps: list[Any], max_words: int) -> str:
     return "। ".join(selected)
 
 
+_PUNCT = re.compile(r"[^\wऀ-ॿ\s]|_")
+_ADDRESS_WORDS = frozenset({"सर", "दीदी", "मैडम", "मैम", "मेम", "madam", "sir"})
+
+
+def _core_tokens(line: str) -> list[str]:
+    """Words of a child line without punctuation, the address word and filler words (NFC)."""
+    text = _PUNCT.sub(" ", unicodedata.normalize("NFC", line or "").casefold())
+    skip = _ADDRESS_WORDS | set(settings.CHILD_REPEAT_FILLER_WORDS)
+    return [w for w in text.split() if w not in skip]
+
+
+def is_near_repeat(line: str, previous_line: str | None) -> bool:
+    """True when `line` says (nearly) what the same child said last: same core words, or a
+    token similarity of at least `CHILD_REPEAT_SIMILARITY`."""
+    if not previous_line or not previous_line.strip():
+        return False
+    now, before = _core_tokens(line), _core_tokens(previous_line)
+    if not now or not before:
+        return _norm(line) == _norm(previous_line)
+    if now == before:
+        return True
+    return difflib.SequenceMatcher(None, now, before).ratio() >= settings.CHILD_REPEAT_SIMILARITY
+
+
+_TELLING_ACTS = frozenset({"tell_answer", "model_step_aloud"})
+
+
+def teacher_is_telling(teacher_said: str | None, acts: Sequence[str] = ()) -> bool:
+    """The teacher told or explained the steps (tagged, or: several numbers plus a procedure verb)."""
+    if _TELLING_ACTS & {str(a) for a in acts}:
+        return True
+    text = teacher_said or ""
+    if len(extract_numbers(text)) < settings.CHILD_TELLING_MIN_NUMBERS:
+        return False
+    return any(stem in text for stem in settings.CHILD_TELLING_VERB_STEMS)
+
+
+def reaction_for(
+    response: ChildResponse,
+    teacher_said: str | None,
+    acts: Sequence[str],
+    previous_line: str | None,
+) -> str | None:
+    """ "telling" or "off_task" when the child must answer what the teacher just did, else None.
+
+    Only a child holding on to a method (explain_bug, relapse, or a repeated answer) reacts this
+    way; a child who got it right, parrots, or is a scripted distraction keeps the engine's line.
+    """
+    kind = response.kind
+    if kind not in (ResponseKind.EXPLAIN_BUG, ResponseKind.RELAPSE, ResponseKind.ANSWER):
+        return None
+    if kind == ResponseKind.ANSWER and not previous_line:
+        return None
+    if "off_task" in {str(a) for a in acts}:
+        return "off_task"
+    if teacher_is_telling(teacher_said, acts):
+        return "telling"
+    return None
+
+
+# What a child says when the teacher told him the steps, or drifted off the question: he reacts
+# to it, says no number, and keeps his own mistake (no gendered verb: used for every child).
+_REACTION_LINES: dict[str, tuple[str, ...]] = {
+    "telling": (
+        "मुझे ठीक से समझ नहीं आया। पहला कदम फिर से बताइए?",
+        "आपने जो कहा, उसमें एक जगह मेरा काम अटक गया। वहाँ क्या करना है?",
+        "हम्म… थोड़ा-सा समझ आया, पर आगे क्या करना है, पता नहीं।",
+        "इतनी जल्दी-जल्दी मुझे समझ नहीं आया, धीरे से बताइए?",
+    ),
+    "off_task": (
+        "आपने क्या कहा? मुझे तो सवाल वाली बात ही याद है।",
+        "ये तो सवाल से अलग बात है। पहले सवाल पर बात करें?",
+        "हम्म… अभी तो सवाल चल रहा है, उसी पर बात करें?",
+    ),
+}
+
+
+def reaction_template(
+    reaction: str, turn_idx: int, address_form: str | None, previous_line: str | None
+) -> str:
+    """The template-path line for a reaction state; never a near-repeat of the previous line."""
+    pool = _REACTION_LINES[reaction]
+    word = address_word(address_form)
+    lines = [fix_address(f"{word}, {t}" if word else t, address_form) for t in pool]
+    for k in range(len(lines)):
+        candidate = lines[(turn_idx + k) % len(lines)]
+        if not is_near_repeat(candidate, previous_line):
+            return candidate
+    return lines[turn_idx % len(lines)]
+
+
+# Short restatements of the child's own answer, used when every fuller variant would repeat him.
+_RESTATE_SHORT: tuple[str, ...] = (
+    "मैंने तो यही किया था। {a}!",
+    "{a} आया, मुझे तो यही लगता है।",
+    "मैंने ध्यान से किया, {a}!",
+)
+
+
 def template_line(
     response: ChildResponse,
     persona: PersonaCard | None = None,
@@ -77,13 +179,21 @@ def template_line(
     base = fix_address(_template_line(response, persona, turn_idx, word), address_form)
     if not previous_line or not base:
         return base
-    prior = _norm(previous_line)
     for lead, tail in _VARIANTS.get(response.kind, ()):
         candidate = _variant(base, response, lead, tail)
-        if _norm(fix_address(candidate, address_form)) != prior and guard_child_line(
-            candidate, response
-        )[0]:
-            return fix_address(candidate, address_form)
+        fixed = fix_address(candidate, address_form)
+        if not is_near_repeat(fixed, previous_line) and guard_child_line(candidate, response)[0]:
+            return fixed
+    if response.answer is not None and response.kind not in (
+        ResponseKind.OFF_TOPIC,
+        ResponseKind.INTERJECT,
+        ResponseKind.CONFUSED,
+    ):
+        for k in range(len(_RESTATE_SHORT)):
+            short = _RESTATE_SHORT[(turn_idx + k) % len(_RESTATE_SHORT)].format(a=response.answer)
+            fixed = fix_address(short, address_form)
+            if not is_near_repeat(fixed, previous_line) and guard_child_line(short, response)[0]:
+                return fixed
     return base
 
 
@@ -253,14 +363,23 @@ async def voice_child_line(
     address_form: str | None = "f",
     previous_line: str | None = None,
     teacher_said: str | None = None,
+    teacher_acts: Sequence[str] = (),
 ) -> str:
     """One child line, with the address word forced to the teacher's form (text-only last check).
 
     `previous_line` is this child's last line in the scene; the new line is never identical to it.
-    `teacher_said` is what the teacher just said, so the child can react to it.
+    `teacher_said` is what the teacher just said, so the child can react to it, and
+    `teacher_acts` the acts the tagger found in it (telling or drifting off makes him react).
     """
     line = await _voice_child_line(
-        response, persona, last_4_lines, turn_idx, address_form, previous_line, teacher_said
+        response,
+        persona,
+        last_4_lines,
+        turn_idx,
+        address_form,
+        previous_line,
+        teacher_said,
+        teacher_acts,
     )
     return fix_address(line, address_form)
 
@@ -273,6 +392,7 @@ async def _voice_child_line(
     address_form: str | None,
     previous_line: str | None,
     teacher_said: str | None,
+    teacher_acts: Sequence[str] = (),
 ) -> str:
     """Voices one child line using Claude fast model, with guard and template fallback.
 
@@ -286,6 +406,12 @@ async def _voice_child_line(
         # Out-of-range problem: the child just says it is too big. Nothing to voice, no answer.
         return template_line(response, persona, turn_idx, address_form, previous_line)
 
+    reaction = reaction_for(response, teacher_said, teacher_acts, previous_line)
+    if reaction is not None:
+        # The teacher told him the steps (or drifted): he reacts to that, with no number, instead
+        # of restating his method. Voiced as a "confused" line, so the guard allows no new answer.
+        response = response.model_copy(update={"kind": ResponseKind.CONFUSED, "answer": None})
+
     prompt_path = Path(__file__).resolve().parent.parent / "prompts" / f"{PROMPT_VERSION}.md"
     if prompt_path.exists():
         system_template = prompt_path.read_text(encoding="utf-8")
@@ -296,6 +422,13 @@ async def _voice_child_line(
     # Hand the model steps already compressed to fit the cap, so it does not pad and overrun.
     steps_text = _format_steps(response.steps, max_words=max_words - 10) if response.steps else ""
     script_lines = _script_lines(response, steps_text)
+    if reaction is not None:
+        script_lines = (
+            "- the teacher just "
+            + ("told you the steps" if reaction == "telling" else "said something off the question")
+            + ": answer THAT. Say you tried to follow and got stuck, or ask about one step, or say "
+            "you are confused. Do not restate your own method or any answer."
+        )
 
     system_prompt = system_template.format(
         name=persona.name_hi,
@@ -315,7 +448,9 @@ async def _voice_child_line(
     context_lines = "\n".join(last_4_lines) if last_4_lines else "कक्षा में अभ्यास चल रहा है।"
     said = ""
     if teacher_said and teacher_said.strip():
-        said = f"The teacher just said: «{_norm(teacher_said)[: settings.TEACHER_SAID_MAX_CHARS]}»\n\n"
+        said = (
+            f"The teacher just said: «{_norm(teacher_said)[: settings.TEACHER_SAID_MAX_CHARS]}»\n\n"
+        )
     user_message = (
         f"Recent dialogue in classroom:\n{context_lines}\n\n{said}"
         f"Voice {persona.name_hi}'s next line."
@@ -342,12 +477,12 @@ async def _voice_child_line(
             parsed = ChildVoiceOutput.model_validate(tool_input)
             is_valid, err_msg = guard_child_line(parsed.line_hi, response)
             record_guard_event("child_voice", attempt, is_valid, err_msg)
-            if (
-                is_valid
-                and previous_line
-                and _norm(fix_address(parsed.line_hi, address_form)) == _norm(previous_line)
+            if is_valid and reaction is not None and extract_numbers(parsed.line_hi):
+                is_valid, err_msg = False, "react to the teacher without any number or answer"
+            if is_valid and is_near_repeat(
+                fix_address(parsed.line_hi, address_form), previous_line
             ):
-                is_valid, err_msg = False, "identical to your previous line"
+                is_valid, err_msg = False, "too close to your previous line (say it differently)"
             if is_valid:
                 latency_ms = int((time.perf_counter() - started) * 1000)
                 logger.info(
@@ -407,6 +542,8 @@ async def _voice_child_line(
         latency_ms,
     )
     log_role_call("child_voice", settings.CLAUDE_MODEL_FAST, started, True)
+    if reaction is not None:
+        return reaction_template(reaction, turn_idx, address_form, previous_line)
     return template_line(
         response=response,
         persona=persona,

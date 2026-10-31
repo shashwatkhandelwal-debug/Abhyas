@@ -121,16 +121,35 @@ class InMemorySceneStore:
 
 
 def _rule_result(turn: TurnRecord) -> dict[str, Any] | None:
-    """What the rule engine answered for this turn, kept so the feedback can name what happened."""
-    if not turn.child_responses:
+    """What the rule engine answered for this turn, kept so the feedback can name what happened.
+
+    fix3: also the lines the children spoke. They were never stored, so after a reload every
+    child had no "previous line" and could repeat himself word for word.
+    """
+    if not turn.child_responses and not turn.child_lines:
         return None
-    return {"child_responses": [r.model_dump(mode="json") for r in turn.child_responses]}
+    return {
+        "child_responses": [r.model_dump(mode="json") for r in turn.child_responses],
+        "child_lines": [
+            {"persona_id": c.persona_id, "line_hi": c.line_hi, "voice_id": c.voice_id}
+            for c in turn.child_lines
+        ],
+    }
 
 
 def _stored_responses(rule_result: dict[str, Any] | None) -> list[ChildResponse]:
     try:
         return [
             ChildResponse.model_validate(r) for r in (rule_result or {}).get("child_responses", [])
+        ]
+    except ValueError:
+        return []
+
+
+def _stored_lines(rule_result: dict[str, Any] | None) -> list[ChildLineRecord]:
+    try:
+        return [
+            ChildLineRecord.model_validate(c) for c in (rule_result or {}).get("child_lines", [])
         ]
     except ValueError:
         return []
@@ -248,6 +267,7 @@ class PostgresSceneStore:
                             acts=t.acts or [],
                             addressed_child=t.addressed_child,
                             child_responses=_stored_responses(t.rule_result),
+                            child_lines=_stored_lines(t.rule_result),
                             stage_ms=t.stage_ms or {},
                             ended=(db_scene.status != "active" and t.idx == db_scene.teacher_turns),
                             end_reason=db_scene.end_reason

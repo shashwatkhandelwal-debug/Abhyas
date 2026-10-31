@@ -1,0 +1,1 @@
+[["login", "teacher.demo1"], ["logout"], ["login", "teacher.demo1"], ["css", "#start-go"], ["say", "नमस्ते"], ["click", "सहमत हूँ"], ["say", "DEMO"], ["say", "सुनील"], ["click", "शिक्षक"], ["goto", "/teacher/delete"], ["css", "button:has-text('हाँ, मिटाएँ')"], ["login", "teacher.demo1"], ["dump"]]

@@ -1178,9 +1178,7 @@ function renderMessage(msg, isLocalOptimistic = false) {
 	meta.className = 'bubble-meta';
 	row._meta = meta;
 	const timeEl = document.createElement('span');
-	timeEl.textContent = msg.created_at
-		? new Date(msg.created_at).toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' })
-		: t('ui_time_just_now');
+	timeEl.textContent = formatBubbleTime(msg.created_at) || t('ui_time_just_now');
 	meta.appendChild(timeEl);
 	const statusEl = document.createElement('span');
 	const statusKey = msg.client_msg_id || msg.id;
@@ -1924,9 +1922,22 @@ function setupDock() {
 		if (e.key === 'Escape') setSheet(false);
 	});
 }
+// One clock format for every bubble: live ones and the ones the server rendered (seeded history).
+function formatBubbleTime(iso) {
+	const d = iso ? new Date(iso) : null;
+	if (!d || isNaN(d.getTime())) return null;
+	return d.toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' });
+}
+function localizeServerTimes(root) {
+	root.querySelectorAll('.msg-time[data-ts]').forEach((el) => {
+		const s = formatBubbleTime(el.getAttribute('data-ts'));
+		if (s) el.textContent = s;
+	});
+}
 function initRenderedMessagesFromDom() {
 	const container = document.getElementById('chat-messages');
 	if (!container) return;
+	localizeServerTimes(container);
 	const rows = container.querySelectorAll('.msg-row');
 	const cachedBatch = [];
 	rows.forEach((row) => {

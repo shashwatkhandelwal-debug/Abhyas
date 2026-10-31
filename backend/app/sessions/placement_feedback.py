@@ -17,8 +17,17 @@ _OBJECTS = {TeachingAct.CONCRETE_REPRESENTATION}
 _TOLD = {TeachingAct.TELL_ANSWER}
 
 
-def placement_feedback(acts: Iterable[str], move_title: str, address_form: str = "f") -> str:
-    """One specific feedback message from the acts of the onboarding scene."""
+def placement_feedback(
+    acts: Iterable[str],
+    move_title: str,
+    address_form: str = "f",
+    told_later: bool = False,
+) -> str:
+    """One specific feedback message from the acts of the onboarding scene.
+
+    `told_later`: a turn after her first one dictated the procedure (found from her words, since
+    the act tagger can miss it); it adds one line unless she is already told she gave the answer.
+    """
     seen = {str(a) for a in acts}
 
     def has(group: set[TeachingAct]) -> bool:
@@ -37,6 +46,8 @@ def placement_feedback(acts: Iterable[str], move_title: str, address_form: str =
         parts.append("placement_fb_told")
     if not parts:
         parts.append("placement_fb_none")
+    if told_later and not told:
+        parts.append("placement_fb_told_later")
     why = (
         "placement_fb_why_told"
         if told

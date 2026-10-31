@@ -357,7 +357,7 @@ export function loadChat({ strings = {}, online = true } = {}) {
         typingEvent, renderTyping, netFetch, netEvent, buildAudioWrap, attachAudioRef, lockChips,
         drainOutbox, handleSendText, handleSendAudio, setMicPhase, onAudioButton, expectsAudio,
         TYPING_TIMEOUT_MS, COLD_START_HINT_MS, AUDIO_WAIT_MS, MAX_AUTO_RETRIES, BACKOFF_STEPS,
-        pollMessages, updateOnlineStatus, upgradeServerAudio,
+        pollMessages, updateOnlineStatus, upgradeServerAudio, formatBubbleTime, localizeServerTimes,
         toggleTranslation, buildTranslateControl, TRANSLATABLE_SPEAKERS, getSpeakerLabel,
         renderSceneHeader, addressChild, renderHint, hintSent, applyView, setupSceneEnd, setupHandbookChips, recorderErrorText, toggleLiteMode, flashStatus,
         recordRequestLatency, isSlowNetwork, showSlowNetworkWarning,

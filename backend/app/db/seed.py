@@ -223,9 +223,14 @@ def _demo2_diagnosis() -> dict[str, Any]:
 
 def _demo2_context() -> dict[str, Any]:
     """demo2 resumes inside a one-on-one scene with Ravi (diagnosed, one question asked)."""
+    from backend.app.class_profile import followup
+    from backend.app.db.demo_loop import DEMO2_N, FOLLOWUP_KIND, _id
+
     return {
         "current_move_id": _DEMO2_MOVE_ID,
         "current_state": "REHEARSE",
+        "followup_id": str(_id(FOLLOWUP_KIND, DEMO2_N)),  # its card is already in the thread
+        "followup_stage": followup.STAGE_ASK,
         "rehearse_stage": "scene",
         "rehearse_mode": "one_on_one",
         "rehearse_child": _DEMO2_CHILD,

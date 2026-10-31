@@ -978,6 +978,7 @@ async def test_full_happy_path_new_to_done_with_session_service_and_db_evidence(
         "placement_done" in str(m.text_hi or "")
         or "तैयार" in str(m.text_hi or "")
         or "तरीका" in str(m.text_hi or "")
+        or "मुख्य बातें" in str(m.text_hi or "")  # fix3 K3: named once, then the key points
         for m in out8
     )
     assert any("इसलिए हम" in str(m.text_hi or "") for m in out8)  # F5: specific feedback line
@@ -1312,3 +1313,28 @@ def test_free_words_about_teaching_years_become_a_stored_band(text: str, band: s
     from backend.app.sessions.state_machine import experience_band_of
 
     assert experience_band_of(text) == band
+
+
+def test_address_form_step_never_guesses_a_gender() -> None:
+    """fix3 B01: only the two buttons (or a clear male/female word) set the address form."""
+    from backend.app.sessions.state_machine import address_form_of
+
+    assert address_form_of("btn_male") == "m" and address_form_of("btn_female") == "f"
+    assert address_form_of(get_message("btn_male", "m", lang="hi")) == "m"
+    assert address_form_of(get_message("btn_female", "f", lang="hi")) == "f"
+    assert address_form_of(get_message("btn_male", "m", lang="en")) == "m"
+    assert address_form_of("Female") == "f" and address_form_of("m") == "m"
+    for stray in ("हाँ", "जी", "yes", "2-5 साल", "सुनील", ""):
+        assert address_form_of(stray) is None, stray
+
+    ctx = SessionContext(
+        teacher_id="t_test",
+        week_start="2026-10-12",
+        current_move_id="NUM_PLACE_VALUE",
+        onboarding_state=OnboardingStateEnum.PROFILE_ADDRESS,
+        address_form="m",
+    )
+    res = OnboardingStateMachine(ctx).transition("हाँ")
+    assert ctx.onboarding_state == OnboardingStateEnum.PROFILE_ADDRESS
+    assert ctx.address_form == "m"  # a stray reply changes nothing
+    assert res.message_keys == ["ask_address_form"]

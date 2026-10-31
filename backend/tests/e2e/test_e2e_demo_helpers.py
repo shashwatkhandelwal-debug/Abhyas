@@ -77,8 +77,9 @@ def test_the_demo_banner_is_one_small_line_with_log_out_and_can_be_dismissed(
     page = teacher.page
     banner = page.locator("#demo-banner")
     assert banner.is_visible()
-    assert banner.inner_text().replace("\n", " ").startswith(_text("en", "ui_demo_account_banner"))
-    assert banner.bounding_box()["height"] < 40, "one small line"  # type: ignore[index]
+    assert banner.inner_text().replace("\n", " ").startswith(_text("en", "ui_demo_banner_demo1"))
+    # fix3 K5: the banner now says what the demo shows, so on a phone it takes up to two small lines
+    assert banner.bounding_box()["height"] < 48, "at most two small lines"  # type: ignore[index]
     assert page.evaluate(CLIPPED, "#demo-banner, #demo-banner *") == []
     assert banner.locator("a[href='/logout']").is_visible()
     # dismissed for the session: gone now and after a reload; the header Log out stays

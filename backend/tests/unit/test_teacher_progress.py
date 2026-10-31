@@ -453,6 +453,25 @@ async def test_get_delete_confirm_page() -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_delete_confirm_page_uses_masculine_form_for_male_teacher() -> None:
+    """fix3 B09: the confirmation question follows the teacher's address form."""
+    teacher_id = uuid.UUID("00000000-0000-0000-0000-000000000009")
+    teacher = Teacher(id=teacher_id, name="सुनील", is_demo=False, address_form="m")
+    user = AppUser(
+        id=uuid.uuid4(),
+        username="teacher.m",
+        role="teacher",
+        teacher_id=teacher_id,
+        password_hash="hash",
+    )
+    app = create_test_progress_app(InMemoryProgressSession(entities=[teacher, user]), user=user)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        html = (await client.get("/teacher/delete")).text
+    assert "चाहते हैं?" in html
+    assert "चाहती हैं" not in html
+
+
+@pytest.mark.asyncio
 async def test_post_delete_purges_data_and_logs_out() -> None:
     """POST /teacher/delete purges all teacher data and logs out with redirect to /login."""
     teacher_id = uuid.UUID("00000000-0000-0000-0000-000000000003")
@@ -462,7 +481,7 @@ async def test_post_delete_purges_data_and_logs_out() -> None:
     teacher = Teacher(id=teacher_id, name="रेखा कुमारी", is_demo=True)
     user = AppUser(
         id=user_id,
-        username="teacher.demo3",
+        username="teacher.real",
         role="teacher",
         teacher_id=teacher_id,
         password_hash="hash",
@@ -564,6 +583,58 @@ async def test_post_delete_purges_data_and_logs_out() -> None:
         assert scheduled_job in session.deleted
         assert review_item in session.deleted
         assert len(session.entities) == 0
+
+
+@pytest.mark.asyncio
+async def test_post_delete_on_shared_demo_login_resets_instead_of_deleting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """fix3 B02: "delete my data" on teacher.demo1/2/3 resets the seeded state; the login survives."""
+    import backend.app.db.seed as seed_mod
+    import backend.app.web.teacher as teacher_mod
+
+    teacher_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    user_id = uuid.UUID("00000000-0000-0000-0001-000000000001")
+    teacher = Teacher(id=teacher_id, name="डेमो", is_demo=True)
+    user = AppUser(
+        id=user_id,
+        username="teacher.demo1",
+        role="teacher",
+        teacher_id=teacher_id,
+        password_hash="hash",
+    )
+    session = InMemoryProgressSession(entities=[teacher, user])
+    app = create_test_progress_app(session, user=user)
+    reset_calls: list[str] = []
+    purge_calls: list[uuid.UUID] = []
+
+    async def fake_reset(_db: Any, login: str) -> bool:
+        reset_calls.append(login)
+        return True
+
+    async def fake_purge(_db: Any, tid: uuid.UUID) -> None:
+        purge_calls.append(tid)
+
+    monkeypatch.setattr(seed_mod, "reset_demo_teacher", fake_reset)
+    monkeypatch.setattr(teacher_mod, "purge_teacher_data", fake_purge)
+    token = create_session_token({"user_id": str(user_id), "role": "teacher"})
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        cookies={SESSION_COOKIE_NAME: token},
+    ) as client:
+        resp = await client.post(
+            "/teacher/delete",
+            headers={"Authorization": "Bearer test-token"},
+            follow_redirects=False,
+        )
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/login"
+    assert reset_calls == ["teacher.demo1"]
+    assert purge_calls == []
+    assert teacher not in session.deleted
+    assert user not in session.deleted
 
 
 @pytest.mark.asyncio

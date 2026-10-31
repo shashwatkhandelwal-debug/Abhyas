@@ -10,6 +10,7 @@ import os
 from collections.abc import AsyncGenerator, Iterator
 from datetime import UTC, date, datetime, timedelta
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 import pytest
 from sqlalchemy import create_engine, delete, func, select, text
@@ -27,6 +28,7 @@ from backend.app.db.models import (
     ClassFollowup,
     ClassFollowupOutcome,
     ClassVisitObservation,
+    Message,
     Teacher,
 )
 from backend.app.db.seed import (
@@ -142,16 +144,55 @@ async def test_demo2_follow_up_is_due_on_login_and_offered(session: AsyncSession
         .all()
     )
     assert chk.id == row.checkin_id and chk.struggle_ids == [STRUGGLE]
+    assert row.offered_at is not None  # fix3 K6: its card is already in the thread
     await session.commit()
     service = SessionService(db_session=session)
-    out = await service.offer_followup(TEACHER_DEMO2_ID)
-    assert [b.id for b in out[0].buttons] == [
+    assert await service.offer_followup(TEACHER_DEMO2_ID) == []  # never a second card
+    [card] = (
+        (
+            await session.execute(
+                select(Message).where(
+                    Message.teacher_id == TEACHER_DEMO2_ID,
+                    Message.channel_msg_id == "seed-demo2-followup",
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert [b["id"] for b in card.buttons] == [
         followup.BTN_WORKED,
         followup.BTN_STUCK,
         followup.BTN_CANT,
     ]
-    assert get_message("fu_leadin_most") in out[0].text_hi  # led in by the stored check-in
-    assert await service.offer_followup(TEACHER_DEMO2_ID) == []  # once
+    assert get_message("fu_leadin_most") in card.text  # led in by the stored check-in
+
+
+@pytest.mark.asyncio
+async def test_k6_demo2_card_comes_before_the_rehearsal_block_never_between_turns(
+    session: AsyncSession,
+) -> None:
+    """The seeded follow-up card is the first message of the thread; every rehearsal message follows."""
+    assert await reset_demo_teacher(session, "teacher.demo2")
+    await session.commit()
+    msgs = (
+        (
+            await session.execute(
+                select(Message)
+                .where(Message.teacher_id == TEACHER_DEMO2_ID)
+                .order_by(Message.created_at, Message.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert msgs[0].channel_msg_id == "seed-demo2-followup"
+    assert [m.channel_msg_id for m in msgs[1:]] == sorted(m.channel_msg_id for m in msgs[1:]), (
+        "the rehearsal block keeps its own order after the card"
+    )
+    assert len(msgs) == 6  # card + the five seeded rehearsal messages
+    # opening the chat later offers nothing new in the middle of the scene
+    assert await SessionService(db_session=session).offer_followup(TEACHER_DEMO2_ID) == []
 
 
 @pytest.mark.asyncio
@@ -162,8 +203,7 @@ async def test_reset_restores_the_seeded_state_after_a_judge_answers(
     await seed_login_loop(session, TEACHER_DEMO2_ID, FIXED)
     await session.commit()
     service = SessionService(db_session=session)
-    await service.offer_followup(TEACHER_DEMO2_ID)
-    await service.handle_inbound(_tap(TEACHER_DEMO2_ID, followup.BTN_WORKED))
+    await service.handle_inbound(_tap(TEACHER_DEMO2_ID, followup.BTN_WORKED))  # the seeded card
     assert (
         await _count(
             session, ClassFollowupOutcome, ClassFollowupOutcome.teacher_id == TEACHER_DEMO2_ID
@@ -178,8 +218,12 @@ async def test_reset_restores_the_seeded_state_after_a_judge_answers(
         )
         == 0
     )
-    due = await SessionService(db_session=session).repo.next_due_followup(TEACHER_DEMO2_ID, TODAY)
-    assert due is not None and due.offered_at is None and due.struggle_id == STRUGGLE
+    # the reset seeds against the real clock, so ask with the real India date (not FIXED)
+    real_today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+    due = await SessionService(db_session=session).repo.next_due_followup(
+        TEACHER_DEMO2_ID, real_today
+    )
+    assert due is not None and due.offered_at is not None and due.struggle_id == STRUGGLE
 
 
 def _tap(teacher_id, button):  # type: ignore[no-untyped-def]

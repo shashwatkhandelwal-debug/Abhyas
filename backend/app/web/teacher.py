@@ -86,16 +86,26 @@ TEMPLATES_DIR = WEB_DIR / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 register_ui_globals(templates.env)
 
+_IST = ZoneInfo("Asia/Kolkata")  # no-JS fallback for the bubble clock (JS shows the local time)
+
 router = APIRouter(tags=["Teacher Web PWA"])
 
 # Demo logins that open on a prepared chat (seeded messages); demo1 starts empty
 PREPARED_DEMO_LOGINS = frozenset({"teacher.demo2", "teacher.demo3"})
 
 
+# Each shared demo teacher login says what its demo shows (fix3 K5).
+_DEMO_BANNER_KEYS = {
+    "teacher.demo1": "ui_demo_banner_demo1",
+    "teacher.demo2": "ui_demo_banner_demo2",
+    "teacher.demo3": "ui_demo_banner_demo3",
+}
+
+
 def _demo_banner_text(current_user: AppUser) -> str:
     """Shared demo logins are reset on login/logout; other demo views only show synthetic data."""
     if current_user.is_demo and current_user.role == "teacher":
-        return get_message("ui_demo_account_banner")
+        return get_message(_DEMO_BANNER_KEYS.get(current_user.username, "ui_demo_account_banner"))
     return get_message("ui_demo_banner")
 
 
@@ -187,7 +197,7 @@ async def teacher_chat_page(
             "citations": m.citations,
             "created_at": m.created_at.isoformat() if m.created_at else "",
             "time_str": (
-                m.created_at.astimezone(UTC).strftime("%H:%M")
+                m.created_at.astimezone(_IST).strftime("%I:%M %p").lower()
                 if m.created_at
                 else get_message("ui_time_just_now")
             ),
@@ -856,6 +866,7 @@ async def get_delete_confirm_page(
         context={
             "request": request,
             "csrf_token": csrf_token,
+            "address_form": teacher.address_form,
             "teacher_name": (
                 teacher.name or current_user.display_name or get_message("ui_default_teacher_name")
             ),
@@ -887,7 +898,13 @@ async def delete_teacher_account_data(
         )
 
     teacher_id = teacher.id
-    await purge_teacher_data(db, teacher_id)
+    from backend.app.db.seed import DEMO_TEACHER_LOGINS, reset_demo_teacher
+
+    if current_user.username in DEMO_TEACHER_LOGINS:
+        # A shared demo login must survive: "delete" restores its seeded state (like logout does).
+        await reset_demo_teacher(db, current_user.username)
+    else:
+        await purge_teacher_data(db, teacher_id)
     await db.commit()
 
     accept = request.headers.get("accept", "")

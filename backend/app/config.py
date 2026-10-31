@@ -245,6 +245,34 @@ class Settings(BaseSettings):
     # the answer; 25 forced truncation that dropped the answer. 30 words is ~10-12 s of child TTS
     # at ~2.5 words/s, still short enough for a rehearsal turn.
     MAX_CHILD_LINE_WORDS_EXPLAIN: int = 30
+    # fix3 K1: a child line is a repeat of his previous one when, after dropping punctuation, the
+    # address word and these filler words, the two are the same or at least this similar.
+    CHILD_REPEAT_SIMILARITY: float = 0.8
+    CHILD_REPEAT_FILLER_WORDS: tuple[str, ...] = (
+        "तो", "इसलिए", "जवाब", "उत्तर", "आंसर", "देखो", "सुनो", "है", "हैं", "ही", "हुआ", "अरे",
+    )  # fmt: skip
+    # The teacher's turn counts as telling/explaining the steps when it names at least this many
+    # numbers and carries one of these procedure-verb stems (the act tagger may miss it).
+    CHILD_TELLING_MIN_NUMBERS: int = 3
+    CHILD_TELLING_VERB_STEMS: tuple[str, ...] = ("घटा", "जोड़", "लिखो", "उधार", "निकाल", "काट")
+    # fix3 K4: a handbook tip or excerpt shown with a move must be about its topic (the move title's
+    # key words appear in the passage summary), not about the home or parents, not an overview of
+    # other topics, and for a male teacher must not address him with a feminine verb form.
+    TIP_MIN_TOPIC_HITS: int = 1
+    TIP_STOPWORDS: tuple[str, ...] = (
+        "और", "से", "का", "की", "के", "में", "को", "पर", "वाला", "वाली", "जैसे", "तरीका",
+    )  # fmt: skip
+    TIP_EXCERPT_POOL: int = 6  # passages looked at to find one that qualifies
+    TIP_HOME_MARKERS: tuple[str, ...] = (
+        "घर पर", "अभिभावक", "माता-पिता", "माता पिता", "पालक", "parents",
+    )  # fmt: skip
+    TIP_OTHER_TOPIC_MARKERS: tuple[str, ...] = (
+        "गुणा", "भाग", "मुद्रा", "लंबाई", "वज़न", "पौधों", "जीव", "कक्षा 1 से 6",
+    )  # fmt: skip
+    TIP_FEMININE_AUX: tuple[str, ...] = ("हैं", "हो", "हूँ")
+    TIP_FEMININE_VERB_STEMS: tuple[str, ...] = (
+        "सकती", "करती", "कराती", "करवाती", "चाहती", "पाती", "देती", "लेती", "रखती",
+    )  # fmt: skip
     MAX_DISTRACTIONS_PER_SCENE: int = 1
     # Everyday things a distracted child may mention ONLY in an engine-chosen off-topic / interject
     # line; a child answering the lesson must not (the live 1-1 run showed the model adding
@@ -354,7 +382,14 @@ class Settings(BaseSettings):
     NAME_MAX_UNFRAMED_WORDS: int = 4  # more words than this with no "my name is" frame: ask again
     FOLLOWUP_SCENE_QUIET_HOURS: int = 6  # sent something this recently in a scene: no follow-up now
     FOLLOWUP_MAX_AGE_DAYS: int = 7  # a follow-up due longer ago than this is no longer offered
-    FOLLOWUP_SCHOOL_DAYS: tuple[int, ...] = (0, 1, 2, 3, 4, 5)  # weekday numbers, Monday to Saturday
+    FOLLOWUP_SCHOOL_DAYS: tuple[int, ...] = (
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+    )  # weekday numbers, Monday to Saturday
     OBSERVATION_ENABLED: bool = False  # ARP visit checklist and "reported vs observed"
     ADAPTIVE_PATH_ENABLED: bool = False  # next practice chosen from check-ins and follow-ups
     ADAPTIVE_MOST_WEIGHT: int = 3  # a "most struggled" check-in
@@ -362,13 +397,17 @@ class Settings(BaseSettings):
     ADAPTIVE_STUCK_WEIGHT: int = 2  # a follow-up "still stuck"
     ADAPTIVE_WORKED_WEIGHT: int = 2  # a follow-up "worked" lowers the score by this much
     ADAPTIVE_HISTORY_DAYS: int = 30  # check-ins and follow-ups older than this are ignored
-    ADAPTIVE_NEW_TEACHER_BANDS: tuple[str, ...] = ("0-1",)  # experience bands that get model practice first
+    ADAPTIVE_NEW_TEACHER_BANDS: tuple[str, ...] = (
+        "0-1",
+    )  # experience bands that get model practice first
     MY_PROGRESS_ENABLED: bool = False  # "My progress": her own last rehearsals and talk-move trend
     MY_PROGRESS_SHOWN: int = 5  # rehearsals listed in "My progress"
     MY_PROGRESS_HISTORY_MAX: int = 20  # stored rehearsals read to find the earliest of a move
     PEER_WORKED_ENABLED: bool = False  # "what worked for other teachers" line after a struggle
     PEER_WORKED_WINDOW_DAYS: int = 60  # "worked" follow-up answers counted in the peer line
-    OBSERVATION_WINDOW_DAYS: int = 30  # observations and follow-ups counted in "reported vs observed"
+    OBSERVATION_WINDOW_DAYS: int = (
+        30  # observations and follow-ups counted in "reported vs observed"
+    )
     OBSERVATION_ROWS_MAX: int = 3  # struggles shown in "reported vs observed"
     OBSERVATION_TALK_MOVES: tuple[str, ...] = ("named_child", "why_how", "not_told", "think_time")
     OBSERVATION_NEXT_STEPS: tuple[str, ...] = (
@@ -378,7 +417,12 @@ class Settings(BaseSettings):
         "wait_time",
         "repeat",
     )
-    CLUSTER_PACK_AGENDA_MINUTES: tuple[int, int, int, int] = (5, 15, 10, 5)  # share, practise, read, plan
+    CLUSTER_PACK_AGENDA_MINUTES: tuple[int, int, int, int] = (
+        5,
+        15,
+        10,
+        5,
+    )  # share, practise, read, plan
     CHILD_STRIP_ENABLED: bool = (
         False  # scene bar shows each child's state label (stuck / getting it / got it)
     )
@@ -389,11 +433,15 @@ class Settings(BaseSettings):
     SCENE_LIT_LETTER_SOUND_ENABLED: bool = False  # practice scene: confusable Hindi letter sounds
     TRAINING_GAP_ENABLED: bool = False  # trainer view: "Where training is not landing"
     TRAINING_GAP_WINDOW_DAYS: int = 30  # rehearsals counted: the last this many days
-    FOCUS_CARD_ENABLED: bool = False  # "आज का सुझाव": one cited step when an opted-in teacher opens the chat
+    FOCUS_CARD_ENABLED: bool = (
+        False  # "आज का सुझाव": one cited step when an opted-in teacher opens the chat
+    )
     FOCUS_OFFER_INTERVAL_DAYS: int = 7  # the opt-in is offered at most once in this many days
     FAST_START_ENABLED: bool = False  # experienced teachers may go straight to practice
     FAST_START_BANDS: tuple[str, ...] = ("6-10", "10+")  # experience bands offered the shortcut
-    SUPPORT_FRAMING_ENABLED: bool = False  # ARP pages: neutral support wording, no red per-teacher label
+    SUPPORT_FRAMING_ENABLED: bool = (
+        False  # ARP pages: neutral support wording, no red per-teacher label
+    )
     OBSERVATION_TO_TEACHER_ENABLED: bool = False  # the teacher sees what her ARP saw, as a note
     MODEL_AUDIO_ENABLED: bool = False  # model-practice message carries cached audio when it exists
 

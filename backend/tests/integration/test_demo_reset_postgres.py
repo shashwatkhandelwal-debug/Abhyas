@@ -315,7 +315,9 @@ async def test_logout_resets_demo_teacher_to_seed(session: AsyncSession, login: 
         assert scene is not None and scene.status == "active"
         assert scene.engine_state["one_on_one"] is True
         assert scene.engine_state["teacher_turns"] == 1
-        assert len(after["messages"]) == 5
+        assert (
+            len(after["messages"]) == 6
+        )  # the five seeded rehearsal messages + the follow-up card
 
 
 async def test_logout_does_not_reset_a_non_demo_teacher(session: AsyncSession) -> None:
@@ -393,7 +395,7 @@ async def test_admin_reset_restores_one_on_one_and_modules_like_logout(
     admin_state = await _scene_one_on_one_state(session, demo2)
     assert admin_state["rehearse_mode"] == "one_on_one"
     assert admin_state["scene_active"] is True
-    assert admin_state["messages"] == 5
+    assert admin_state["messages"] == 6  # five rehearsal messages + the seeded follow-up card
     modules = (
         (await session.execute(select(ModuleProgress).where(ModuleProgress.teacher_id == demo3)))
         .scalars()
@@ -675,3 +677,40 @@ async def test_too_short_scene_continue_and_skip_for_a_teacher_with_a_class_prof
     ctx = await service.get_or_create_context(teacher_id)
     assert ctx.current_state == SessionStateEnum.TRY_IN_CLASS
     assert await _class_struggles(session, teacher_id)  # profile untouched by the flow
+
+
+@pytest.mark.asyncio
+async def test_a_child_never_repeats_his_line_after_a_postgres_reload(
+    session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """fix3 K1 root cause: the store used to drop the spoken lines, so after a reload (every turn in
+    the live app) `previous_line` was empty and a child could say the same thing again and again."""
+    from unittest.mock import AsyncMock, patch
+
+    from backend.app.llm.roles.child_voice import is_near_repeat
+    from backend.app.rehearsal import scene_store as ss
+    from backend.app.rehearsal.scene_runner import SceneRunner
+
+    store = ss.PostgresSceneStore()
+    monkeypatch.setattr(
+        settings, "DATABASE_URL", session.bind.url.render_as_string(hide_password=False)
+    )
+    monkeypatch.setattr(
+        ss, "async_session_factory", async_sessionmaker(session.bind, expire_on_commit=False)
+    )  # type: ignore[arg-type]
+    teacher_id = DEMO_TEACHER_LOGINS["teacher.demo1"][0]
+    runner = SceneRunner(store=store)
+    rec = await runner.create_scene(
+        teacher_id, "NUM_SUB_REGROUP_BUNDLES", one_on_one_persona="ravi"
+    )
+    same = "13 में से 7 घटाया, 6 आया। 3 में से 2 घटाया, 1 आया। जवाब 16!"
+    with patch(
+        "backend.app.llm.roles.child_voice.call_tool", new=AsyncMock(return_value={"line_hi": same})
+    ):
+        r1 = await runner.turn(scene_id=rec.scene_id, transcript="रवि, तुमने कैसे किया?")
+        reloaded = await store.get(rec.scene_id)
+        assert reloaded is not None and reloaded.turns[-1].child_lines  # the line was stored
+        r2 = await runner.turn(scene_id=rec.scene_id, transcript="रवि, बंडल लेकर बनाओ।")
+    line1 = next(c.line_hi for c in r1.turn.child_lines)
+    line2 = next(c.line_hi for c in r2.turn.child_lines)
+    assert not is_near_repeat(line2, line1), (line1, line2)

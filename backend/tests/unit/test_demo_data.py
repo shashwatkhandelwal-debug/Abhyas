@@ -504,26 +504,49 @@ async def test_demo_banner_displayed_on_web_page() -> None:
     ) as client:
         resp = await client.get("/teacher")
         assert resp.status_code == 200
-        assert "डेमो: लॉगिन/लॉगआउट पर चैट रीसेट" in resp.text
+        assert "डेमो: नई शुरुआत। पूरा परिचय और पहला अभ्यास करें।" in resp.text
         banner = resp.text.split('id="demo-banner"')[1].split("</div>")[0]
         assert 'href="/logout"' in banner, "a visible Log out inside the banner"
         assert 'id="demo-dismiss"' in banner, "and the banner can be dismissed"
 
 
-def test_demo_banner_text_says_the_chat_resets_in_both_languages() -> None:
+def test_demo_banner_text_says_what_each_demo_shows_in_both_languages() -> None:
+    """fix3 K5: one banner per demo account, in both languages, no dashes."""
     from backend.app.core.messages import get_message, set_ui_lang
     from backend.app.web.teacher import _demo_banner_text
 
-    demo = AppUser(username="teacher.demo1", role="teacher", password_hash="x", is_demo=True)
+    def teacher(login: str) -> AppUser:
+        return AppUser(username=login, role="teacher", password_hash="x", is_demo=True)
+
     other = AppUser(username="arp.demo", role="arp", password_hash="x", is_demo=True)
-    for lang, expected in (("en", "Demo: chat resets on log in/out"),):
+    expected = {
+        "hi": {
+            "teacher.demo1": "डेमो: नई शुरुआत। पूरा परिचय और पहला अभ्यास करें।",
+            "teacher.demo2": "डेमो: दूसरे हफ़्ते की शिक्षिका। रवि से 43 − 27 पर बात करें, फिर 'अब भी अटके हैं' दबाएँ, और 'मेरी प्रगति' खोलें।",
+            "teacher.demo3": "डेमो: कक्षा के बारे में बताने के बाद ऐप ने पढ़ने का तरीका चुना (मात्रा)। 'समझ गई, आगे' दबाकर अभ्यास करें।",
+        },
+        "en": {
+            "teacher.demo1": "Demo: a fresh start. Do the intro and first practice.",
+            "teacher.demo2": "Demo: a teacher in her second week. Talk to Ravi about 43 − 27, then press 'Still stuck', and open 'My progress'.",
+            "teacher.demo3": "Demo: after describing the class, the app chose a reading move (matras). Press 'Got it, next' and practise.",
+        },
+    }
+    for lang, per_login in expected.items():
         set_ui_lang(lang)
         try:
-            assert _demo_banner_text(demo) == expected
+            for login, text in per_login.items():
+                shown = _demo_banner_text(teacher(login))
+                assert shown == text
+                assert "—" not in shown and "–" not in shown
+                if lang == "hi":  # no English left in the Hindi banner
+                    assert not any("a" <= c.lower() <= "z" for c in shown), shown
             assert _demo_banner_text(other) == get_message("ui_demo_banner")
         finally:
             set_ui_lang("hi")
-    assert "रीसेट" in _demo_banner_text(demo)
+    # the shown button names exist in the catalog (demo3: the learn step button)
+    assert "'समझ गई, आगे'" in expected["hi"]["teacher.demo3"]
+    assert get_message("btn_understood", "f", lang="hi") == "समझ गई, आगे"
+    assert get_message("btn_understood", "f", lang="en") == "Got it, next"
     assert "demo-banner:empty" in (STATIC_DIR / "app.css").read_text(encoding="utf-8").replace(
         ".demo-banner:empty", "demo-banner:empty"
     )

@@ -1,0 +1,1 @@
+[["login", "teacher.demo2"], ["logout"], ["login", "teacher.demo2"], ["css", "#start-skip"], ["goto", "/teacher/class"], ["goto", "/teacher/delete"], ["goto", "/teacher/progress"], ["goto", "/teacher/modules"]]

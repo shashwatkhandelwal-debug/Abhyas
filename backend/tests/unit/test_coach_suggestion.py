@@ -101,7 +101,11 @@ async def test_service_adds_a_tappable_citation_only_for_a_retrieved_nishtha_chu
         tip = "आप " + " ".join(body.split()[1:14])
         return {"suggestion_hi": tip, "chunk_id": chunk_id.group(1)}
 
-    with patch("backend.app.llm.roles.coach_suggestion.call_tool", fake_call):
+    # this test is about the citation gate, not topicality (fix3 K4 has its own tests)
+    with (
+        patch("backend.app.llm.roles.coach_suggestion.call_tool", fake_call),
+        patch("backend.app.sessions.service.tip_filter.chunk_qualifies", return_value=True),
+    ):
         msg = await service._source_suggestion(
             move, "खिलौना आधारित शिक्षण (toy based pedagogy) से गिनती करवाइए", "f"
         )
