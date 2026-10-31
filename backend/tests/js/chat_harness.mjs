@@ -258,7 +258,7 @@ function makeIndexedDB(st) {
 }
 
 // ── harness ─────────────────────────────────────────────────────────────────
-export function loadChat({ strings = {}, online = true, idb = makeIdbState() } = {}) {
+export function loadChat({ strings = {}, online = true, idb = makeIdbState(), storage = new Map(), cookie = '' } = {}) {
   const body = new El('body');
   const byId = {};
   const add = (id, tag = 'div', parent = body) => {
@@ -374,11 +374,11 @@ export function loadChat({ strings = {}, online = true, idb = makeIdbState() } =
     addEventListener: (t, fn) => (documentListeners[t] = fn),
     querySelector: (s) => (s.startsWith('meta') ? null : body.querySelector(s)),
     querySelectorAll: (s) => body.querySelectorAll(s),
-    cookie: '',
+    cookie,
   };
   const navigator = { onLine: online, serviceWorker: undefined };
   const windowListeners = {};
-  const window = { AudioRecorder: class {}, addEventListener: (t, fn) => (windowListeners[t] = fn), confirm: () => true };
+  const window = { location: { href: '' }, AudioRecorder: class {}, addEventListener: (t, fn) => (windowListeners[t] = fn), confirm: () => true };
   const URLStub = {
     created: [],
     revoked: [],
@@ -403,7 +403,7 @@ export function loadChat({ strings = {}, online = true, idb = makeIdbState() } =
     URL: URLStub,
     Date: FakeDate,
     indexedDB: makeIndexedDB(idb),
-    localStorage: { getItem: () => null, setItem() {} },
+    localStorage: { getItem: (k) => storage.get(k) ?? null, setItem: (k, v) => storage.set(k, String(v)), removeItem: (k) => storage.delete(k) },
     sessionStorage: { getItem: (k) => session.get(k) ?? null, setItem: (k, v) => session.set(k, String(v)) },
     crypto: { randomUUID: () => `client-${++uuid}` },
     FormData: class {
@@ -434,7 +434,7 @@ export function loadChat({ strings = {}, online = true, idb = makeIdbState() } =
         formatCoachEvidenceText, upgradeCoachEvidenceQuotes,
         getChipA1Text, getChipBText, updateFastTrackChips, disableFastTrackChips, enableFastTrackChips, setupFastTrackTray,
         ftActivity, ftStop, FAST_TRACK_IDLE_MS, revokeLocalAudio,
-        clearLocalState, saveToOutbox, getPendingOutboxItems, cacheMessages, openDatabase, DB_VERSION })`,
+        clearLocalState, syncAccount, myUid, saveToOutbox, getPendingOutboxItems, cacheMessages, openDatabase, DB_VERSION })`,
     sandbox
   );
   api.setUiStrings(strings);
