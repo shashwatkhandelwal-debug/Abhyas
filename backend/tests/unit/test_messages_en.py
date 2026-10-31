@@ -155,3 +155,9 @@ def test_texts_for_lang_overlays_english_on_hindi() -> None:
 )
 def test_translate_control_strings_exist_in_both_languages(key: str) -> None:
     assert key in HI and key in EN
+
+
+def test_calibrate_keys_exist_in_both_languages() -> None:
+    for key in ("ui_calibrate_demo_data", "ui_calibrate_no_turn_text"):
+        assert key in HI and key in EN
+        assert get_message(key, lang="hi") != get_message(key, lang="en")

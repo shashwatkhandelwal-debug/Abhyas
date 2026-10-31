@@ -1501,3 +1501,5 @@ obs_note_no_step: {text: "आपके ARP ने देखा: {worked}।", au
 obs_worked_none: {text: "आपकी कक्षा का भ्रमण हुआ", audio: false}
 btn_obs_ok: {text: "ठीक है", audio: false}
 obs_ok_ack: {text: "धन्यवाद। यह सिर्फ़ आपके लिए एक सुझाव है, कोई अंक नहीं।", audio: false}
+ui_calibrate_demo_data: {text: "यह डेमो डेटा है, इसलिए बातचीत का पाठ संग्रहीत नहीं है। असली अभ्यास में वह यहाँ दिखेगा।", audio: false}
+ui_calibrate_no_turn_text: {text: "इस डेमो टर्न का कोई पाठ संग्रहीत नहीं है।", audio: false}

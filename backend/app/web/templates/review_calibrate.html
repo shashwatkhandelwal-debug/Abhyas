@@ -230,8 +230,8 @@
         {% if turns %}
         {% if turns | selectattr('text') | map(attribute='text') | map('trim') | select | list | length == 0 %}
         <p class="demo-note">
-          यह डेमो डेटा है, इसलिए बातचीत का पाठ संग्रहीत नहीं है। असली अभ्यास में वह यहाँ दिखेगा।<br>
-          This is demo data, so the conversation text is not stored. For a real practice, it appears here.
+          {{ get_message('ui_calibrate_demo_data', lang='hi') }}<br>
+          {{ get_message('ui_calibrate_demo_data', lang='en') }}
         </p>
         {% endif %}
         <div class="transcript-box">
@@ -243,7 +243,7 @@
             {% if t.text and t.text.strip() %}
             <div>{{ t.text }}</div>
             {% else %}
-            <div class="turn-empty"><span>इस डेमो टर्न का कोई पाठ संग्रहीत नहीं है।</span><span>No text stored for this demo turn.</span></div>
+            <div class="turn-empty"><span>{{ get_message('ui_calibrate_no_turn_text', lang='hi') }}</span><span>{{ get_message('ui_calibrate_no_turn_text', lang='en') }}</span></div>
             {% endif %}
           </div>
           {% endfor %}
