@@ -209,6 +209,20 @@ async def test_offline_page_endpoint(teacher_pwa_app: FastAPI) -> None:
         assert "messages_cache" in html
 
 
+@pytest.mark.asyncio
+async def test_offline_page_has_a_logout_that_empties_the_chat_cache(
+    teacher_pwa_app: FastAPI,
+) -> None:
+    """fix7: the same /logout path as the other pages; the cached chat is cleared first."""
+    async with AsyncClient(
+        transport=ASGITransport(app=teacher_pwa_app), base_url="http://test"
+    ) as client:
+        html = (await client.get("/offline.html")).text
+    assert 'href="/logout"' in html
+    assert "लॉग आउट" in html and "Log out" in html
+    assert "abhyas_chat_db" in html and ".clear()" in html
+
+
 def test_asset_budget_under_150kb() -> None:
     """Strict performance budget test: HTML + CSS + JS < 150 KB uncompressed (spec/09 §9, §9.2)."""
     static_files = list(STATIC_DIR.glob("*"))
