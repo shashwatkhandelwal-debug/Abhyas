@@ -62,21 +62,21 @@ I drove the real chat: seeded Postgres, `reset_demo_teacher` + `seed_login_loop`
 
 | | start (5129f0b) | fix6 |
 |---|---|---|
-| all offline assets | 153074 B | **153068 B** |
-| headroom to 153600 | 526 B | **532 B** |
-| first load (teacher chat) | 130647 B | 130880 B |
+| all offline assets | 153074 B | **151937 B** |
+| headroom to 153600 | 526 B | **1663 B** |
+| first load (teacher chat) | 130647 B | 130189 B |
 
-The changes added bytes to `chat.js` (+~190: owner tag, account check, 401 handler, newline collapse) and `offline.html` (+~125: owner filter). I removed more than that elsewhere, so the total went down by 6 B:
-- `chat.js`: 138 `\uXXXX` escapes of Hindi text turned into the literal characters (same strings, UTF-8; −411 B). `node --check` and the Node suite pass, and the NFC test over client JS passes.
-- `offline.html`: leading indentation removed from the markup (head and body, not the inline script) and the spaces after `:` in its own `<style>` block, plus blank lines (about −540 B). Rendering is unchanged (whitespace between tags).
+`chat.js` grew by about 190 B (owner tag, account check, 401 handler, newline collapse) and `offline.html` by about 125 B (owner filter). I took more than that back from indentation only, in `teacher.html` and `offline.html`: leading spaces outside `<script>` blocks, the inline script of the offline page, spaces after `:` in its own `<style>` block, blank lines. Rendering and behaviour are unchanged. `sw.js` and `app.css` are untouched.
 
-The first-load figure grew by 233 B because `chat.js` is part of it. It stays under the 150 KB first-load check (PASS).
+Two budgets exist: the 153600 B ceiling of `check_first_load.py` and `test_asset_budget_under_150kb` (static files plus `teacher.html` under 131 KB). Both hold.
+
+Dead end, reverted: I first saved bytes by turning the \uXXXX Hindi escapes in `chat.js` into literal characters. That broke the "no hardcoded Hindi in chat.js" tests, so `chat.js` keeps its escapes.
 
 ## Gates
 
 - `ruff check`, `mypy --strict backend/app`: clean.
 - `ruff format --check .`: 14 files differ, all untouched by this branch and failing the same way on 5129f0b (`followup.py`, `my_progress.py`, `name_extract.py`, `demo_history.py`, `address.py`, `tip_filter.py` and eight test or script files). I left them alone. Every file this branch touches is formatted.
-- Node: 121 pass. Python: see the run summary in the hand-off message.
+- Node: 121 pass. Python (unit and integration, with Postgres; `e2e` browser tests not run): the same tests fail on fix6 and on main (database-state failures in `test_training_gap`, `test_support_framing`, `test_whatsapp_integration`, `test_training_rating_flow` and similar). None is touched by this branch. My new tests pass.
 
 ## Instructions for the hosted deploy
 
