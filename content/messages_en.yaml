@@ -174,7 +174,6 @@ ui_chat_rec_uploading: {text: "Sending your voice…"}
 ui_chat_rec_transcribing: {text: "Writing out what you said…"}
 ui_chat_voice_note: {text: "🎤 Voice note ({sec} seconds)"}
 ui_chat_chip_done: {text: "Sent ✓"}
-ui_chat_cold_start: {text: "The server is waking up. This can take about a minute. Please wait; your message is safe."}
 ui_chat_source_page: {text: "page {page}"}
 ui_chat_source_printed: {text: "printed page {page}"}
 ui_chat_source_summary: {text: "Hindi summary"}
@@ -648,7 +647,6 @@ ui_modprog_step_check: {text: "Check"}
 ui_modprog_label_pilot: {text: "Pilot"}
 ui_modprog_label_demo: {text: "Demo (synthetic)"}
 ui_nav_opening: {text: "Opening…"}
-ui_nav_waking: {text: "The server is waking up. This can take about a minute. Please wait, the page will open by itself."}
 ui_chat_send_failed_network: {text: "No internet. Your message is kept on this phone. When the internet is back, tap the ‘!’ to send it again."}
 ui_chat_send_failed_rejected: {text: "The message could not be sent. Refresh the page and try again, or type it instead."}
 ui_chat_lite_save_failed: {text: "Lite mode changed on this phone but did not reach the server. Tap again when the internet is back."}
@@ -657,7 +655,7 @@ ui_error_404_body: {text: "The link may be old or wrong. Go to the home page and
 ui_error_500_title: {text: "Something went wrong"}
 ui_error_500_body: {text: "This is a problem on our side, not yours. Your work is safe. Please try again in a little while."}
 ui_error_503_title: {text: "The service is getting ready"}
-ui_error_503_body: {text: "The server is waking up. This can take about a minute. Please wait, the page will reopen by itself."}
+ui_error_503_body: {text: "The service is busy. Please reopen the page in a minute."}
 ui_error_home: {text: "Go to the home page"}
 ui_error_retry: {text: "Try again"}
 ui_waking_title: {text: "Abhyas is waking up…"}

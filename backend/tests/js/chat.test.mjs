@@ -507,11 +507,10 @@ test('arriving with ?ask sends that handbook question once; no autosend section 
 });
 
 // ── connection status bar ───────────────────────────────────────────────────
-test('net state machine', () => {
+test('net state machine: slow or failing requests never raise a status; only offline does', () => {
   const { netNext: n } = load();
-  assert.equal(n('ok', 'slow'), 'cold');
-  assert.equal(n('cold', 'success'), 'ok');
-  assert.equal(n('ok', 'fail'), 'cold');
+  assert.equal(n('ok', 'slow'), 'ok');
+  assert.equal(n('ok', 'fail'), 'ok');
   assert.equal(n('ok', 'offline'), 'offline');
   assert.equal(n('offline', 'online'), 'reconnecting');
   assert.equal(n('reconnecting', 'fail'), 'reconnecting');
@@ -519,31 +518,24 @@ test('net state machine', () => {
   assert.equal(n('ok', 'online'), 'ok');
 });
 
-test('cold start: no answer for 5 s shows the waking hint, first success hides it', async () => {
+test('a silent server inside the chat never shows a waking-up notice', async () => {
   const c = load();
   const bar = c.byId['status-bar'];
   let answer;
   c.net.handler = () => new Promise((r) => (answer = r));
   const req = c.netFetch('/api/chat/messages');
-  await c.advance(c.COLD_START_HINT_MS - 100);
-  assert.equal(bar.hidden, true, 'not before 5 s');
-  await c.advance(200);
-  assert.equal(bar.hidden, false);
-  assert.equal(bar.textContent, strings.ui_chat_cold_start);
+  await c.advance(60000);
+  assert.equal(bar.hidden, true);
   answer({ status: 200, ok: true });
   await req;
   assert.equal(bar.hidden, true);
 });
 
-test('a 502 while the server wakes keeps the hint up; the next 200 clears it', async () => {
+test('a 502 while online shows no status bar', async () => {
   const c = load();
-  const bar = c.byId['status-bar'];
   c.net.handler = async () => ({ status: 502, ok: false });
   await c.netFetch('/x');
-  assert.equal(bar.hidden, false);
-  c.net.handler = async () => ({ status: 200, ok: true });
-  await c.netFetch('/x');
-  assert.equal(bar.hidden, true);
+  assert.equal(c.byId['status-bar'].hidden, true);
 });
 
 test('offline -> online shows "reconnecting" until a request succeeds', async () => {
@@ -562,13 +554,14 @@ test('offline -> online shows "reconnecting" until a request succeeds', async ()
   assert.equal(bar.hidden, true);
 });
 
-test('network exception while online is treated as the server being unreachable', async () => {
+test('network exception while online leaves the status bar alone (the outbox retries quietly)', async () => {
   const c = load();
   c.net.handler = async () => {
     throw new TypeError('Failed to fetch');
   };
   await assert.rejects(c.netFetch('/x'));
-  assert.equal(c.state.net, 'cold');
+  assert.equal(c.state.net, 'ok');
+  assert.equal(c.byId['status-bar'].hidden, true);
 });
 
 // ── on-demand translation under child / coach / guide bubbles ───────────────

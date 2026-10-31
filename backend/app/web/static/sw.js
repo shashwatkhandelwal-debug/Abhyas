@@ -51,10 +51,44 @@ async function trimCache(cacheName, maxItems) {
   }
 }
 
+const WAKING_HINT_MS = 3000;
+const NAV_BACKOFF_MS = [1000, 2000, 4000, 8000, 15000];
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const cached = (url) => caches.open(CACHE_NAME_STATIC).then((cache) => cache.match(url));
+const RETRY_PAGE = '<meta charset="utf-8"><meta name="viewport" content="width=device-width"><p style="margin:2rem;font:1.1rem sans-serif">सर्वर से जुड़ नहीं पाए। पेज फिर खोलें।<br>Could not reach the server. Please reload.';
+
+// Quiet retries (~30 s). A POST is replayed only if it got no answer at all.
+async function fetchWithRetry(request) {
+  const get = request.method === 'GET' || request.method === 'HEAD';
+  let last = null;
+  for (let i = 0; i <= NAV_BACKOFF_MS.length; i++) {
+    if (i) await sleep(NAV_BACKOFF_MS[i - 1]);
+    try {
+      const response = await fetch(request.clone());
+      if (!get || ![502, 503, 504].includes(response.status)) return response;
+      last = response;
+    } catch (err) {
+      if (!self.navigator.onLine) throw err;
+    }
+  }
+  return last || new Response(RETRY_PAGE, { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+}
+
+// "Waking up" only on the very first load of the entry page, and only if the server is silent for 3 s.
+async function handleNavigation(request, url) {
+  const entry = !request.referrer && (url.pathname === '/login' || url.pathname === '/');
+  try {
+    const answer = fetchWithRetry(request);
+    if (!entry) return await answer;
+    return (await Promise.race([answer, sleep(WAKING_HINT_MS).then(() => null)])) || (await cached('/waking')) || (await answer);
+  } catch (err) {
+    return (await cached('/offline.html')) || new Response('Offline', { status: 503 });
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  
   if (url.pathname.startsWith('/api/audio/')) {
     event.respondWith(
       caches.open(CACHE_NAME_AUDIO).then(async (cache) => {
@@ -77,28 +111,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  
   if (event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html')) {
-    event.respondWith(
-      fetch(event.request).then(async (response) => {
-        
-        
-        if ([502, 503, 504].includes(response.status)) {
-          const cache = await caches.open(CACHE_NAME_STATIC);
-          const waking = await cache.match('/waking');
-          if (waking) return waking;
-        }
-        return response;
-      }).catch(async () => {
-        const cache = await caches.open(CACHE_NAME_STATIC);
-        const cachedOffline = await cache.match('/offline.html');
-        return cachedOffline || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
-      })
-    );
+    event.respondWith(handleNavigation(event.request, url));
     return;
   }
 
-  
   if (url.pathname.startsWith('/static/') && /\.(js|css)$/.test(url.pathname)) {
     event.respondWith(
       caches.open(CACHE_NAME_STATIC).then(async (cache) => {
@@ -119,7 +136,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  
   if (url.pathname.startsWith('/static/')) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
@@ -138,6 +154,5 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  
   event.respondWith(fetch(event.request));
 });

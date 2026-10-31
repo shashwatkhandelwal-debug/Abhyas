@@ -1,11 +1,10 @@
-/* Instant "Opening…" bar on link/form navigation; after 4 s the "server waking, ~1 minute" hint. */
+/* Instant "Opening…" bar on link/form navigation. */
 (function () {
-  var d = document.currentScript.dataset, bar, tm;
-  function hide() { clearTimeout(tm); if (bar) bar.hidden = true; }
+  var d = document.currentScript.dataset, bar;
+  function hide() { if (bar) bar.hidden = true; }
   function show() {
     if (!bar) { bar = document.createElement('div'); bar.className = 'nav-ack'; bar.setAttribute('role', 'status'); document.body.appendChild(bar); }
-    bar.textContent = d.opening; bar.hidden = false; clearTimeout(tm);
-    tm = setTimeout(function () { bar.textContent = d.waking; }, 4000);
+    bar.textContent = d.opening; bar.hidden = false;
   }
   document.addEventListener('click', function (e) {
     var a = e.target instanceof Element && e.target.closest('a[href]');

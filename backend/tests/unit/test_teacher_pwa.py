@@ -515,7 +515,6 @@ async def test_chat_page_serves_ui_strings_json_and_status_slots(teacher_pwa_app
         get_catalog().texts_with_prefix(CHAT_UI_PREFIX)
     )
     assert strings["speaker_coach"] == "कोच" and strings["ui_time_just_now"] == "अभी"
-    assert strings["ui_chat_cold_start"] == get_message("ui_chat_cold_start", lang="hi")
     for slot in ('id="status-bar"', 'id="sr-live"', 'id="pending-bubble"', 'id="rec-status"'):
         assert slot in html
     # the typing bubble starts generic; chat.js names the child (the strings are in the JSON above)

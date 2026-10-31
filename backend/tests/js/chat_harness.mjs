@@ -144,51 +144,121 @@ export class El {
 // `instanceof Element` in chat.js
 export const ElementCtor = El;
 
-// ── fake IndexedDB (outbox + messages_cache) ────────────────────────────────
-function makeIndexedDB() {
-  const stores = { outbox: new Map(), messages_cache: new Map() };
-  const keyPaths = { outbox: 'client_msg_id', messages_cache: 'id' };
+// ── fake IndexedDB: versioned, with real-browser failure modes ──────────────
+// `state` outlives page loads (pass the same one to two loadChat calls to model a reload).
+export function makeIdbState({ version = 0, stores = [] } = {}) {
+  return {
+    version,
+    data: Object.fromEntries(stores.map((n) => [n, new Map()])),
+    conns: new Set(),
+    pendingDelete: null,
+    waiting: [], // opens queued behind a delete that other connections are blocking
+    opens: 0,
+    deletes: 0,
+    failStores: new Set(), // transaction() throws for these stores
+    holdOpenForever: false, // open() never answers (a stuck browser)
+  };
+}
+const KEY_PATHS = { outbox: 'client_msg_id', messages_cache: 'id' };
+function makeIndexedDB(st) {
   const later = (fn) => queueMicrotask(fn);
-  const db = {
-    objectStoreNames: { contains: () => true },
-    transaction(names) {
-      const tx = { oncomplete: null, onerror: null };
-      const name = names[0];
-      const store = stores[name];
-      const done = () => later(() => tx.oncomplete && tx.oncomplete());
-      tx.objectStore = () => ({
-        put(item) {
-          store.set(item[keyPaths[name]], structuredClone(item));
-          done();
-        },
-        delete(key) {
-          store.delete(key);
-          done();
-        },
-        getAll() {
-          const req = { result: null, onsuccess: null };
-          later(() => {
-            req.result = [...store.values()].map((v) => structuredClone(v));
-            req.onsuccess && req.onsuccess();
-          });
-          return req;
-        },
-      });
-      return tx;
-    },
+  const finishDelete = () => {
+    const req = st.pendingDelete;
+    if (!req || st.conns.size) return;
+    st.pendingDelete = null;
+    st.version = 0;
+    st.data = {};
+    later(() => req.onsuccess && req.onsuccess());
+    st.waiting.splice(0).forEach((fn) => later(fn));
+  };
+  const makeConn = () => {
+    const conn = {
+      onversionchange: null,
+      onclose: null,
+      closed: false,
+      ignoreVersionChange: false,
+      objectStoreNames: { contains: (n) => n in st.data },
+      createObjectStore(n) {
+        st.data[n] = new Map();
+      },
+      close() {
+        conn.closed = true;
+        st.conns.delete(conn);
+        finishDelete();
+      },
+      transaction(names) {
+        if (conn.closed) throw new Error('InvalidStateError: connection is closing');
+        const name = names[0];
+        if (st.failStores.has(name)) throw new Error('UnknownError: transaction failed');
+        for (const n of names) if (!(n in st.data)) throw new Error(`NotFoundError: no object store ${n}`);
+        const tx = { oncomplete: null, onerror: null, onabort: null };
+        const done = () => later(() => tx.oncomplete && tx.oncomplete());
+        tx.objectStore = (n) => {
+          const store = st.data[n];
+          return {
+            put(item) {
+              store.set(item[KEY_PATHS[n]], structuredClone(item));
+              done();
+            },
+            delete(key) {
+              store.delete(key);
+              done();
+            },
+            clear() {
+              store.clear();
+              done();
+            },
+            getAll() {
+              const req = { result: null, onsuccess: null };
+              later(() => {
+                req.result = [...store.values()].map((v) => structuredClone(v));
+                req.onsuccess && req.onsuccess();
+                done();
+              });
+              return req;
+            },
+          };
+        };
+        return tx;
+      },
+    };
+    return conn;
   };
   return {
-    stores,
-    open() {
-      const req = { result: db, onsuccess: null, onerror: null, onupgradeneeded: null };
-      later(() => req.onsuccess && req.onsuccess());
+    open(_name, version = 1) {
+      st.opens++;
+      const req = { result: null, error: null, onsuccess: null, onerror: null, onupgradeneeded: null, onblocked: null };
+      const run = () => {
+        if (st.pendingDelete) return void st.waiting.push(run);
+        const conn = makeConn();
+        if (version > st.version) {
+          req.result = conn;
+          st.version = version;
+          req.onupgradeneeded && req.onupgradeneeded({ target: req });
+        }
+        req.result = conn;
+        st.conns.add(conn);
+        req.onsuccess && req.onsuccess();
+      };
+      if (!st.holdOpenForever) later(run);
+      return req;
+    },
+    deleteDatabase() {
+      st.deletes++;
+      const req = { onsuccess: null, onerror: null, onblocked: null };
+      st.pendingDelete = req;
+      later(() => {
+        for (const c of [...st.conns]) if (!c.ignoreVersionChange && c.onversionchange) c.onversionchange();
+        if (st.conns.size) req.onblocked && req.onblocked();
+        else finishDelete();
+      });
       return req;
     },
   };
 }
 
 // ── harness ─────────────────────────────────────────────────────────────────
-export function loadChat({ strings = {}, online = true } = {}) {
+export function loadChat({ strings = {}, online = true, idb = makeIdbState() } = {}) {
   const body = new El('body');
   const byId = {};
   const add = (id, tag = 'div', parent = body) => {
@@ -332,7 +402,7 @@ export function loadChat({ strings = {}, online = true } = {}) {
     Audio: FakeAudio,
     URL: URLStub,
     Date: FakeDate,
-    indexedDB: makeIndexedDB(),
+    indexedDB: makeIndexedDB(idb),
     localStorage: { getItem: () => null, setItem() {} },
     sessionStorage: { getItem: (k) => session.get(k) ?? null, setItem: (k, v) => session.set(k, String(v)) },
     crypto: { randomUUID: () => `client-${++uuid}` },
@@ -356,20 +426,22 @@ export function loadChat({ strings = {}, online = true } = {}) {
         state, t, setUiStrings, renderMessage, setMessageState, failMessage, retryMessage,
         typingEvent, renderTyping, netFetch, netEvent, buildAudioWrap, attachAudioRef, lockChips,
         drainOutbox, handleSendText, handleSendAudio, setMicPhase, onAudioButton, expectsAudio,
-        TYPING_TIMEOUT_MS, COLD_START_HINT_MS, AUDIO_WAIT_MS, MAX_AUTO_RETRIES, BACKOFF_STEPS,
+        TYPING_TIMEOUT_MS, AUDIO_WAIT_MS, MAX_AUTO_RETRIES, BACKOFF_STEPS,
         pollMessages, updateOnlineStatus, upgradeServerAudio, formatBubbleTime, localizeServerTimes,
         toggleTranslation, buildTranslateControl, TRANSLATABLE_SPEAKERS, getSpeakerLabel,
         renderSceneHeader, addressChild, renderHint, hintSent, applyView, setupSceneEnd, setupHandbookChips, recorderErrorText, toggleLiteMode, flashStatus,
         recordRequestLatency, isSlowNetwork, showSlowNetworkWarning,
         formatCoachEvidenceText, upgradeCoachEvidenceQuotes,
         getChipA1Text, getChipBText, updateFastTrackChips, disableFastTrackChips, enableFastTrackChips, setupFastTrackTray,
-        ftActivity, ftStop, FAST_TRACK_IDLE_MS, revokeLocalAudio })`,
+        ftActivity, ftStop, FAST_TRACK_IDLE_MS, revokeLocalAudio,
+        clearLocalState, saveToOutbox, getPendingOutboxItems, cacheMessages, openDatabase, DB_VERSION })`,
     sandbox
   );
   api.setUiStrings(strings);
   return {
     ...api,
     sandbox,
+    idb,
     byId,
     container,
     clock,

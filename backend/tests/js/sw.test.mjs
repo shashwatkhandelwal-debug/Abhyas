@@ -24,7 +24,12 @@ class FakeRequest {
   constructor(url, init = {}) {
     this.url = url.startsWith('http') ? url : `https://abhyas.test${url}`;
     this.mode = init.mode ?? 'no-cors';
+    this.method = init.method ?? 'GET';
+    this.referrer = init.referrer ?? '';
     this.headers = { get: () => null };
+  }
+  clone() {
+    return this;
   }
 }
 
@@ -70,10 +75,14 @@ function makeCaches() {
   };
 }
 
-function loadSw({ version = 'abc123-deadbeef', fetchImpl }) {
+const settle = () => new Promise((r) => setImmediate(r));
+
+function loadSw({ version = 'abc123-deadbeef', fetchImpl, online = true }) {
   const listeners = {};
   const caches = makeCaches();
+  const timers = [];
   const self = {
+    navigator: { onLine: online },
     addEventListener: (type, fn) => (listeners[type] = fn),
     skipWaiting: () => {},
     clients: { claim: () => {} },
@@ -87,6 +96,7 @@ function loadSw({ version = 'abc123-deadbeef', fetchImpl }) {
     URL,
     Promise,
     console,
+    setTimeout: (fn, ms) => timers.push({ fn, ms }),
   };
   vm.runInNewContext(SW_SOURCE.replaceAll('__BUILD_VERSION__', version), sandbox);
 
@@ -96,11 +106,22 @@ function loadSw({ version = 'abc123-deadbeef', fetchImpl }) {
     listeners[type](ev);
     return pending === undefined ? undefined : await pending;
   };
-  return { caches, dispatch, version };
+  // fires every pending timer (repeatedly) so back-off sleeps and the waking hint elapse
+  const elapse = async () => {
+    for (let i = 0; i < 40; i++) {
+      await settle();
+      timers.splice(0).forEach((t) => t.fn());
+    }
+  };
+  const start = (type, event) => {
+    let pending;
+    listeners[type]({ ...event, waitUntil: (p) => (pending = p), respondWith: (p) => (pending = p) });
+    return pending;
+  };
+  return { caches, dispatch, version, elapse, start, self };
 }
 
 const fetchEvent = (url) => ({ request: new FakeRequest(url) });
-const settle = () => new Promise((r) => setImmediate(r));
 
 test('cache name carries the build version', async () => {
   const { caches, dispatch } = loadSw({ version: 'v9-cafe0001' });
@@ -206,27 +227,90 @@ test('non-script static assets stay cache-first', async () => {
 });
 
 // ── navigation fallbacks ────────────────────────────────────────────────────
-test('navigation while the host answers 503 shows the cached waking page', async () => {
-  const { dispatch } = loadSw({ fetchImpl: async () => new FakeResponse('render-503', { status: 503 }) });
+const nav = (url, init = {}) => ({ request: new FakeRequest(url, { mode: 'navigate', ...init }) });
+const refusing = async () => {
+  throw new TypeError('Failed to fetch');
+};
+
+test('a 503 on an open app is retried quietly and never shows the waking page', async () => {
+  let calls = 0;
+  const { dispatch, start, elapse } = loadSw({
+    fetchImpl: async () => (++calls < 3 ? new FakeResponse('render-503', { status: 503 }) : new FakeResponse('page')),
+  });
   await dispatch('install');
-  const res = await dispatch('fetch', { request: new FakeRequest('/teacher', { mode: 'navigate' }) });
-  assert.equal(res.body, 'precached:https://abhyas.test/waking');
+  const pending = start('fetch', nav('/teacher', { referrer: 'https://abhyas.test/login' }));
+  await elapse();
+  assert.equal((await pending).body, 'page');
+  assert.equal(calls, 3);
 });
 
-test('navigation with no network at all shows the offline page', async () => {
+test('retries run out while online: friendly retry page, not the Offline page', async () => {
+  const { dispatch, start, elapse } = loadSw({ fetchImpl: refusing });
+  await dispatch('install');
+  const pending = start('fetch', nav('/teacher'));
+  await elapse();
+  const res = await pending;
+  assert.equal(res.status, 503);
+  assert.match(res.body, /Could not reach the server/);
+  assert.doesNotMatch(res.body, /precached/);
+});
+
+test('truly offline shows the offline page', async () => {
+  const { dispatch } = loadSw({ fetchImpl: refusing, online: false });
+  await dispatch('install');
+  const res = await dispatch('fetch', nav('/teacher'));
+  assert.equal(res.body, 'precached:https://abhyas.test/offline.html');
+});
+
+test('first load of /login with a server that is silent for 3 s shows the waking page', async () => {
+  const { dispatch, start, elapse } = loadSw({ fetchImpl: () => new Promise(() => {}) });
+  await dispatch('install');
+  const pending = start('fetch', nav('/login'));
+  await elapse();
+  assert.equal((await pending).body, 'precached:https://abhyas.test/waking');
+});
+
+test('/login answered in time, or opened from inside the app, never shows the waking page', async () => {
+  const fast = loadSw({ fetchImpl: async () => new FakeResponse('login') });
+  await fast.dispatch('install');
+  assert.equal((await fast.dispatch('fetch', nav('/login'))).body, 'login');
+
+  let release;
+  const slow = loadSw({ fetchImpl: () => new Promise((r) => (release = r)) });
+  await slow.dispatch('install');
+  const pending = slow.start('fetch', nav('/login', { referrer: 'https://abhyas.test/teacher' }));
+  await slow.elapse();
+  release(new FakeResponse('late login'));
+  assert.equal((await pending).body, 'late login');
+});
+
+test('a slow page other than the entry page just waits for the server', async () => {
+  let release;
+  const { dispatch, start, elapse } = loadSw({ fetchImpl: () => new Promise((r) => (release = r)) });
+  await dispatch('install');
+  const pending = start('fetch', nav('/trainer'));
+  await elapse();
+  release(new FakeResponse('trainer'));
+  assert.equal((await pending).body, 'trainer');
+});
+
+test('a form POST answered 503 is not replayed', async () => {
+  let calls = 0;
   const { dispatch } = loadSw({
     fetchImpl: async () => {
-      throw new TypeError('Failed to fetch');
+      calls++;
+      return new FakeResponse('x', { status: 503 });
     },
   });
   await dispatch('install');
-  const res = await dispatch('fetch', { request: new FakeRequest('/teacher', { mode: 'navigate' }) });
-  assert.equal(res.body, 'precached:https://abhyas.test/offline.html');
+  const res = await dispatch('fetch', nav('/teacher/skip', { method: 'POST' }));
+  assert.equal(res.status, 503);
+  assert.equal(calls, 1);
 });
 
 test('a normal page response passes through untouched', async () => {
   const { dispatch } = loadSw({ fetchImpl: async () => new FakeResponse('page', { status: 200 }) });
   await dispatch('install');
-  const res = await dispatch('fetch', { request: new FakeRequest('/teacher', { mode: 'navigate' }) });
+  const res = await dispatch('fetch', nav('/teacher'));
   assert.equal(res.body, 'page');
 });

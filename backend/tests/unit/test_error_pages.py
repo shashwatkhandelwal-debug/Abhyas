@@ -132,6 +132,6 @@ def test_failure_messages_exist_in_both_languages_with_a_next_step() -> None:
             entry = catalog[key]
             text = entry["text"] if isinstance(entry, dict) else entry
             assert text.strip() and unicodedata.is_normalized("NFC", text), key
-    for key in ("ui_chat_cold_start", "ui_nav_waking", "ui_error_503_body", "ui_waking_body"):
+    for key in ("ui_error_503_body", "ui_waking_body"):
         assert "एक मिनट" in hi[key]["text"], key
         assert "minute" in en[key]["text"], key
