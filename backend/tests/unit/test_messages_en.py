@@ -50,6 +50,10 @@ def test_every_hindi_key_exists_in_english_and_vice_versa() -> None:
     assert len(EN) > 400
 
 
+# English needs a pronoun for the child ("how he got this answer"); the Hindi line does not
+ENGLISH_ONLY_FIELDS = {"fu_back_one": {"he"}}
+
+
 def test_english_placeholders_match_hindi() -> None:
     bad = []
     for key, hi_entry in HI.items():
@@ -57,6 +61,7 @@ def test_english_placeholders_match_hindi() -> None:
         if isinstance(hi_entry, dict) and hi_entry.get("text_m"):
             assert _fields(str(hi_entry["text_m"])) == want, f"{key}: text_m differs from text"
         got = _fields(_text(EN[key]))
+        got -= ENGLISH_ONLY_FIELDS.get(key, set())
         if want != got:
             bad.append((key, sorted(want), sorted(got)))
     assert not bad, f"placeholder mismatch (key, hindi, english): {bad}"

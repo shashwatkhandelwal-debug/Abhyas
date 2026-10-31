@@ -159,7 +159,7 @@ coach_low_conf_prefix:
   text: "(यह सुझाव एक विशेषज्ञ भी देखेंगे।)"
   audio: false
 realism_next: {text: "या आगे बढ़ने के लिए चुनिए।", audio: false}
-realism_thanks: {text: "धन्यवाद, आपकी रेटिंग दर्ज हो गई। आगे क्या करें?", audio: false}
+realism_thanks: {text: "धन्यवाद! आपकी रेटिंग सुरक्षित है। आगे क्या करें?", audio: false}
 realism_prompt:
   text: "ये बच्चे असली कक्षा के बच्चों जैसे लगे? 1 (बिल्कुल नहीं) से 5 (बिल्कुल वैसे ही) चुनें।"
   audio: false

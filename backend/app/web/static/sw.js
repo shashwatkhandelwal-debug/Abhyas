@@ -40,7 +40,7 @@ const WAKING_HINT_MS = 3000;
 const NAV_BACKOFF_MS = [1000, 2000, 4000, 8000, 15000];
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const cached = (url) => caches.open(CACHE_NAME_STATIC).then((cache) => cache.match(url));
-const RETRY_PAGE = '<meta charset="utf-8"><p style="margin:2rem;font:1.1rem sans-serif">सर्वर नहीं मिला, पेज फिर खोलें।<br>Server not reachable, please reload.';
+const RETRY_PAGE = '<meta charset="utf-8"><p style="margin:2rem;font:1.1rem sans-serif">&#2360;&#2352;&#2381;&#2357;&#2352; &#2344;&#2361;&#2368;&#2306; &#2350;&#2367;&#2354;&#2366;, &#2346;&#2375;&#2332; &#2347;&#2367;&#2352; &#2326;&#2379;&#2354;&#2375;&#2306;&#2404;<br>Server not reachable, please reload.';
 // Quiet retries (~30 s). A POST is replayed only if it got no answer at all.
 async function fetchWithRetry(request) {
   const get = request.method === 'GET' || request.method === 'HEAD';

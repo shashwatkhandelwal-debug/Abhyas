@@ -535,10 +535,14 @@ def test_demo_banner_text_says_what_each_demo_shows_in_both_languages() -> None:
         set_ui_lang(lang)
         try:
             for login, text in per_login.items():
-                shown = _demo_banner_text(teacher(login))
+                shown = _demo_banner_text(teacher(login), 1)  # the first step of the demo
                 assert shown == text
+                # past the step it describes, and on pages that do not know the step: the plain line
+                plain = get_message("ui_demo_account_banner")
+                assert _demo_banner_text(teacher(login), 7) == plain
+                assert _demo_banner_text(teacher(login)) == plain
                 assert "—" not in shown and "–" not in shown
-                if lang == "hi":  # no English left in the Hindi banner
+                if lang == "hi" and shown == text:  # no English left in the Hindi banner
                     assert not any("a" <= c.lower() <= "z" for c in shown), shown
             assert _demo_banner_text(other) == get_message("ui_demo_banner")
         finally:

@@ -1488,6 +1488,18 @@ class SessionService:
             ask_anywhere=(
                 ctx.onboarding_state == OnboardingStateEnum.READY
                 and ctx.current_state not in (SessionStateEnum.EXPLAIN_BACK, SessionStateEnum.ASK)
+                # free text is her answer inside these side flows
+                and not (
+                    ctx.checkin_stage
+                    or ctx.level_stage
+                    or ctx.rating_stage
+                    or ctx.class_stage
+                    or ctx.skill_stage
+                    or ctx.module_check_stage == "asking"
+                    or ctx.followup_stage
+                    or ctx.rehearse_stage in ("diagnose", "scene")
+                    or ctx.awaiting_delete_confirm
+                )
             ),
         )
 

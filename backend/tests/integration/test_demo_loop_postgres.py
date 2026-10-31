@@ -396,6 +396,13 @@ async def test_focus_offer_demo3_is_asked_once_and_flag_off_hides_it(
     service = SessionService(db_session=session)
     teacher = await service.repo.get_or_create_teacher(TEACHER_DEMO3_ID)
     assert teacher.tomorrow_focus_opt_in is False
+    # demo3 opens on "read this, then Got it, next": no side question yet (fix4)
+    assert await service.offer_focus(TEACHER_DEMO3_ID) == []
+    from backend.app.sessions.state_machine import SessionStateEnum
+
+    ctx = await service.get_or_create_context(TEACHER_DEMO3_ID)
+    ctx.current_state = SessionStateEnum.MODEL  # she has moved on
+    await service._sync_context_to_db(ctx, TEACHER_DEMO3_ID)
     out = await service.offer_focus(TEACHER_DEMO3_ID)
     assert [b.id for b in out[0].buttons] == [focus.BTN_YES, focus.BTN_NO]
     await WebChannel().send(teacher, out, session=session)
