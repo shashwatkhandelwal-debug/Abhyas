@@ -56,7 +56,7 @@ def test_production_mode_default_demo_password_fails_fast() -> None:
 def test_production_mode_defaults_fail_fast_naming_admin_password_and_phone_enc_key() -> None:
     """Settings(ENVIRONMENT='production') with defaults raises ValidationError naming ADMIN_PASSWORD and PHONE_ENC_KEY."""
     with pytest.raises(ValidationError) as exc_info:
-        Settings(_env_file=None, ENVIRONMENT="production")
+        Settings(ENVIRONMENT="production")
     err_str = str(exc_info.value)
     assert "ADMIN_PASSWORD" in err_str
     assert "PHONE_ENC_KEY" in err_str

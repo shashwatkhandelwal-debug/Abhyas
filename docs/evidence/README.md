@@ -11,7 +11,7 @@
 Abhyas is a voice-first practice partner for foundational learning teachers (FLN, Classes 1–3) in Hindi. This document synthesises the empirical evidence, architectural verifications, benchmarks, and cost structures implemented across the codebase.
 
 ### Evidence Index
-- **Cost Analysis:** Section 2 (Real provider pricing rates, computed per-turn model, and log baselines)
+- **Cost Analysis:** Section 2 (Rate sources from `backend/app/config.py` and `eval/cost/cost_report.py`, turn calculation formula, and log baselines)
 - **Safety & Pedagogical Guards:** Section 3 (15 guard functions in [`backend/app/llm/guards.py`](../../backend/app/llm/guards.py) and adversarial corpus)
 - **Evaluation Benchmarks:** Section 4 (Synthesised from [`eval/latency/`](../../eval/latency/), [`eval/guards/`](../../eval/guards/), [`eval/cost/`](../../eval/cost/), [`eval/stt/`](../../eval/stt/), and [`eval/user_testing/`](../../eval/user_testing/))
 - **Voice-Turn Timing Breakdown:** Section 5 (Per-stage latency profiling)
@@ -22,42 +22,53 @@ Abhyas is a voice-first practice partner for foundational learning teachers (FLN
 
 ## 2. Cost Per Teacher & Unit Economics
 
-### 2.1 Pinned Provider Pricing Rates
-All pricing constants are configured in [`backend/app/config.py`](../../backend/app/config.py) and verified against provider price schedules:
+### 2.1 Provider Rates Defined in Code
+Every rate below is sourced directly from repository configuration files:
 
-| Provider / Model | Modality / Operation | Official Price Rate | Price in INR | Reference |
+| Provider / Model | Modality / Operation | Configured Price in Repo | Repo File Source | INR Rate Calculation (Formula) |
 |---|---|---|---|---|
-| **Claude Haiku 5.5** | Input tokens | $0.10 / MTok | ₹0.0088 / 1k tokens | Anthropic Claude Pricing (2026-10) |
-| **Claude Haiku 5.5** | Output tokens | $0.50 / MTok | ₹0.0440 / 1k tokens | Anthropic Claude Pricing (2026-10) |
-| **Claude Haiku 5.5** | Prompt cache read | $0.01 / MTok | ₹0.00088 / 1k tokens | Anthropic Claude Pricing (2026-10) |
-| **Claude Sonnet 5.5** | Input tokens | $2.00 / MTok | ₹0.1760 / 1k tokens | Anthropic Claude Pricing (2026-10) |
-| **Claude Sonnet 5.5** | Output tokens | $10.00 / MTok | ₹0.8800 / 1k tokens | Anthropic Claude Pricing (2026-10) |
-| **Claude Sonnet 5.5** | Prompt cache read | $0.10 / MTok | ₹0.0088 / 1k tokens | Anthropic Claude Pricing (2026-10) |
-| **Sarvam Saaras v4** | Speech-to-Text (STT) | ₹30.00 / hour | ₹0.50 / minute | Sarvam AI API Pricing (2026-10) |
-| **Sarvam Bulbul v3** | Text-to-Speech (TTS) | ₹30.00 / 10,000 chars | ₹0.0030 / character | Sarvam AI API Pricing (2026-10) |
-| **Gemini Flash STT** | STT Fallback | ₹0.00 / min (standard tier) | ₹0.00 / min | Gemini API Pricing |
-| **Gemini Flash TTS** | TTS Fallback | ₹0.00 / 1k chars (standard tier) | ₹0.00 / char | Gemini API Pricing |
+| **Claude Haiku 5.5** | Input tokens | $0.10 / MTok | [`backend/app/config.py#L72`](../../backend/app/config.py#L72) | $\frac{\$0.10 \times 88.0}{1,000,000} = ₹0.0000088$ / token (₹0.0088 / 1k tokens) |
+| **Claude Haiku 5.5** | Output tokens | $0.50 / MTok | [`backend/app/config.py#L73`](../../backend/app/config.py#L73) | $\frac{\$0.50 \times 88.0}{1,000,000} = ₹0.0000440$ / token (₹0.0440 / 1k tokens) |
+| **Claude Haiku 5.5** | Prompt cache read | $0.01 / MTok | [`backend/app/config.py#L74`](../../backend/app/config.py#L74) | $\frac{\$0.01 \times 88.0}{1,000,000} = ₹0.00000088$ / token (₹0.00088 / 1k tokens) |
+| **Claude Sonnet 5.5** | Input tokens | $2.00 / MTok | [`backend/app/config.py#L75`](../../backend/app/config.py#L75) | $\frac{\$2.00 \times 88.0}{1,000,000} = ₹0.000176$ / token (₹0.176 / 1k tokens) |
+| **Claude Sonnet 5.5** | Output tokens | $10.00 / MTok | [`backend/app/config.py#L76`](../../backend/app/config.py#L76) | $\frac{\$10.00 \times 88.0}{1,000,000} = ₹0.000880$ / token (₹0.880 / 1k tokens) |
+| **Claude Sonnet 5.5** | Prompt cache read | $0.10 / MTok | [`backend/app/config.py#L77`](../../backend/app/config.py#L77) | $\frac{\$0.10 \times 88.0}{1,000,000} = ₹0.0000088$ / token (₹0.0088 / 1k tokens) |
+| **Sarvam Saaras STT** | Speech-to-Text | ₹30.00 / hr (₹0.50 / min) | [`eval/cost/cost_report.py#L36`](../../eval/cost/cost_report.py#L36) | ASSUMPTION, verify against the provider's current price page: $\frac{₹30.00}{60} = ₹0.50$ / minute |
+| **Sarvam Bulbul v3 TTS** | Text-to-Speech | ₹30.00 / 10k chars | [`eval/cost/cost_report.py#L37`](../../eval/cost/cost_report.py#L37) | ASSUMPTION, verify against the provider's current price page: $\frac{₹30.00}{10} = ₹3.00$ / 1,000 characters |
+| **Gemini Flash STT** | STT Fallback | ₹0.0 / min | [`backend/app/config.py#L112`](../../backend/app/config.py#L112) | Configured in codebase |
+| **Gemini Flash TTS** | TTS Fallback | ₹0.0 / 1k chars | [`backend/app/config.py#L113`](../../backend/app/config.py#L113) | Configured in codebase |
 
-*USD to INR exchange rate assumed at ₹88.00 as configured in `settings.USD_TO_INR`.*
+*Exchange rate assumption:* `USD_TO_INR = 88.0` in [`backend/app/config.py#L78`](../../backend/app/config.py#L78) ("ASSUMPTION, verify against the provider's current price page").
 
-### 2.2 Rehearsal Turn & Weekly Loop Cost Calculation
-A typical weekly practice cycle consists of:
-1. **Explain-Back Step:** 1 inbound audio note (~30 s), 1 Sonnet 5.5 fidelity check (~1,000 input tokens, ~150 output tokens).
-2. **Rehearsal Scene:** 6–8 dialogue turns. Each turn:
-   - Inbound voice note: ~10–15 s audio (`Sarvam Saaras STT` → ₹0.08–₹0.125).
-   - Pedagogical act tagging: `Claude Haiku 5.5` (~450 input tokens, ~350 cached, ~40 output tokens → ~₹0.005).
-   - Deterministic Rule Engine transition: Pure Python (`₹0.00`).
-   - Child line phrasing: `Claude Haiku 5.5` (~500 input tokens, ~40 output tokens → ~₹0.006).
-   - Outbound voice note: 15–25 words (~80–120 characters) synthesized via `Sarvam Bulbul v3` (`₹0.24–₹0.36`).
-   - *Cost per rehearsal turn:* **~₹0.33 – ₹0.50**.
-3. **Coach Feedback Step:** 1 Sonnet 5.5 call (~1,500 input tokens, ~350 output tokens → ~₹0.57) + optional TTS summary (~250 chars → ~₹0.75).
-4. **Reflection Step:** 1 short teacher note (~15 s STT → ₹0.125).
+### 2.2 Theoretical Cost Calculation (Model, not measured)
+*Note: The following numbers represent a calculated theoretical model based on typical token and audio lengths, not measured production costs.*
 
-**Estimated Total Cost per Completed Weekly Cycle:** **₹3.80 – ₹5.50 (~$0.043 – $0.062)**.
+**Model assumptions for 1 weekly rehearsal loop (7 rehearsal turns + 1 explain-back + 1 coach feedback):**
+1. **Explain-back step:**
+   - 1 inbound audio note (assumed 30 s @ ₹0.50/min): $30 \times \frac{0.50}{60} = ₹0.25$
+   - 1 Sonnet 5.5 fidelity check call: assumed 1,000 input tokens (₹0.176) + 150 output tokens (₹0.132) = $₹0.308$
+2. **Rehearsal turns (7 turns):**
+   - Inbound audio: assumed 12 s/turn $\times 7 = 84$ s @ ₹0.50/min: $84 \times \frac{0.50}{60} = ₹0.70$
+   - Act tagger (Haiku 5.5, 7 calls): assumed 450 input (350 cached) + 40 output tokens per call:
+     $$\text{Per call} = (100 \times 0.0000088) + (350 \times 0.00000088) + (40 \times 0.000044) = ₹0.00295$$
+     $$7 \times ₹0.00295 \approx ₹0.021$$
+   - Rule engine transition: **₹0.00** (pure Python, 0 tokens)
+   - Child line phrasing (Haiku 5.5, 7 calls): assumed 500 input + 40 output tokens per call:
+     $$\text{Per call} = (500 \times 0.0000088) + (40 \times 0.000044) = ₹0.00616$$
+     $$7 \times ₹0.00616 \approx ₹0.043$$
+   - Outbound TTS audio (Bulbul v3, 7 lines): assumed 100 characters per line $\times 7 = 700$ chars:
+     $$700 \times \frac{3.00}{1,000} = ₹2.10$$
+3. **Coach feedback step:**
+   - 1 Sonnet 5.5 call: assumed 1,500 input + 350 output tokens:
+     $$(1,500 \times 0.000176) + (350 \times 0.000880) = ₹0.264 + ₹0.308 = ₹0.572$$
+4. **Teacher reflection step:**
+   - 1 inbound audio note (assumed 15 s @ ₹0.50/min): $15 \times \frac{0.50}{60} = ₹0.125$
 
-### 2.3 Empirical Log Data
-- **Local/Mock Environment Baseline:** `eval/cost/REPORT.md` records ₹0.00 for mock provider executions (by design, mock rows are never charged).
-- `TODO-HUMAN: Live deployment token and speech meter logs from production database (production teachers cohort)` — to be extracted from production database tables `llm_call_logs` and `speech_spend_records` once deployed to live field cohorts.
+**Theoretical Loop Total:** $₹0.25 + ₹0.308 + ₹0.70 + ₹0.021 + ₹0.043 + ₹2.10 + ₹0.572 + ₹0.125 \approx \mathbf{₹4.12}$ per teacher per weekly loop.
+
+### 2.3 Measured Spend in Repository
+- **Local/Mock Environment Run:** In [`eval/cost/REPORT.md#L14-L18`](../../eval/cost/REPORT.md#L14-L18), the recorded measured spend is **₹0.00** because tests execute against mock providers by design to prevent unmetered expenditure.
+- `TODO-HUMAN: Live deployment token and speech meter logs from production database (production teachers cohort)` — physical field telemetry from table `llm_call_logs` and `speech_spend_records` on the live hosted deployment.
 
 ---
 
@@ -134,7 +145,7 @@ From [`eval/guards/REPORT.md`](../../eval/guards/REPORT.md), testing `guard_chil
 
 ## 5. Voice-Turn Timing Breakdown
 
-Measured per-stage timings from local instrumentation profiling (`eval/latency/REPORT.md`):
+Measured per-stage timings from local instrumentation profiling ([`eval/latency/REPORT.md`](../../eval/latency/REPORT.md)):
 
 ```
 [Inbound Voice Note]
