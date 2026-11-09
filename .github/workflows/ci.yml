@@ -71,6 +71,21 @@ jobs:
         run: |
           python -m pytest -rA backend/tests content/tests
 
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
+      - name: Run CI smoke test (health and basic flow)
+        run: |
+          python -m pytest -v backend/tests/unit/test_ci_smoke.py
+
   content:
     runs-on: ubuntu-latest
     steps:
