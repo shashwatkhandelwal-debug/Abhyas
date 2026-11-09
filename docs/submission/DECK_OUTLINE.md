@@ -148,9 +148,8 @@ flowchart LR
 4. **One retry, then a fixed template, and every failure is logged** (0 fallbacks in 94 calls in the ten-scene live run).
 5. **Closed lists and "no support, no answer".** A tip or answer without a retrieved passage is dropped; off-topic
    questions are declined.
-6. **Privacy by default.** Scores private until the teacher agrees to share; ARP sees consenting teachers only;
-   trainer sees groups of 10 or more; delete on request; phone numbers hashed.
-7. **Operational limits.** Daily AI and speech budgets, login rate limiting, CSRF, secret scanning in CI.
+6. **Privacy by default.** Teacher practice is never shown by teacher name; ARP, trainer, and coach screens show school-level aggregates only; n < 10 suppression on all oversight views; separate opt-in consent for score sharing; delete on request; phone numbers hashed.
+7. **Operational limits & evidence.** Daily AI and speech budgets, login rate limiting, CSRF, secret scanning in CI. Full verifiable evidence: docs/evidence/README.md; limits in README.md.
 - Not done, said on the slide: no bias audit across Hindi dialects or rural accents; no legal data-protection review.
 
 ---

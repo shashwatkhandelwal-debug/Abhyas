@@ -10,6 +10,8 @@ Built by Team Asymptotes for the AI for Foundational Learning Hackathon 2026, Ch
 
 It runs on Render's free tier, which sleeps when idle: **the first load can take about 50 seconds**. Later loads are fast. The login page is kept by the service worker, so a second visit shows it at once.
 
+For a structured 15-minute evaluation walkthrough, follow the [Judge Demo Script (docs/JUDGE_DEMO_SCRIPT.md)](docs/JUDGE_DEMO_SCRIPT.md).
+
 ### Test credentials
 
 Password for every account: `abhyas_admin_2026` (the public demo password; all data behind these accounts is synthetic).
@@ -19,12 +21,13 @@ Password for every account: `abhyas_admin_2026` (the public demo password; all d
 | `teacher.demo1` | Teacher, new | Onboarding, then the first weekly loop from the learn step |
 | `teacher.demo2` | Teacher, practised | Chat opens in a one-on-one scene with Ravi (43 − 27): continue it, get coach feedback, retry, diagnose a child |
 | `teacher.demo3` | Teacher, experienced | Three modules done: the next module, the progress page, adaptive next practice, asking the handbook |
-| `arp.demo` | ARP (cluster mentor) | Weekly digest, visit list, an escalated question to answer |
+| `arp.demo` | ARP (cluster mentor) | Weekly digest with school-level aggregates, visit list, an escalated question to answer |
 | `trainer.demo` | Trainer (DIET) | Module by batch view and the n < 10 suppression (batch KNP-B3) |
 | `coach.demo` | FLN coach | Review queue, calibration labelling, move-card review |
 
+Dedicated per-judge non-colliding accounts (`judge.1` to `judge.5`, `judge.arp`, `judge.trainer`, `judge.coach`) are also supported; see [docs/JUDGE_DEMO_SCRIPT.md](docs/JUDGE_DEMO_SCRIPT.md).
 An `admin` account (latency, guardrail stats, reset demo) is created by the seed too; its password is set separately by `ADMIN_PASSWORD`, so it is not in the table.
-The teacher logins are shared: a chat resets to its starting state when you log in or out, so pick one nobody else is using.
+The demo teacher logins are shared: a chat resets to its starting state when you log in or out, so pick one nobody else is using.
 
 ### Five inputs to try
 
@@ -38,7 +41,7 @@ Type these in the teacher chat (voice works too, with a microphone and a Sarvam 
 | 4 | `teacher.demo3` | `सवाल: खिलौना आधारित शिक्षण का क्या महत्व है?` | A handbook answer with a source chip (document and page). |
 | 5 | `teacher.demo3` | `How do I teach place value to Class 1 children?` | An answer from the handbook, in Hindi, with its source. Questions in English are understood. |
 
-Two behaviours that look like bugs but are not: on a learn step, plain typed text gets "tap one of the two buttons" unless it starts with `सवाल:` or is clearly a how-to question; and a question the documents cannot answer is not guessed, it is sent to the ARP's review list.
+Two behaviours that look like bugs but are not: on a learn step, plain typed text gets "tap one of the two buttons" unless it starts with `सवाल:` or is clearly a how-to question; and a question the documents cannot answer is not guessed, it is sent to the ARP's review list with an honest low-confidence notification.
 Ready-made chips for the same inputs are in the suggestions panel.
 
 ---
@@ -50,10 +53,18 @@ The central design rule: **a deterministic rule engine owns each simulated child
 | Layer | What happens |
 |---|---|
 | **Input** | Hindi or Hinglish voice note (speech to text), typed text, or a button tap. Text is normalised (NFC) at every boundary. |
-| **Processing** | Claude Haiku classifies the intent and tags what the teacher just did (asked the child to explain, told the answer, and so on). The rule engine (`backend/app/rule_engine/`) updates the child's hidden state and picks the child's answer. Claude Haiku then renders that answer in the child's voice. Claude Sonnet writes coach feedback, scores explain-back fidelity, and answers handbook questions from retrieved excerpts (BM25 over the committed chunks). |
+| **Processing** | Claude Haiku classifies the intent and tags what the teacher just did (asked the child to explain, told the answer, and so on). The rule engine (`backend/app/rule_engine/`) updates the child's hidden state and picks the child's answer. Claude Haiku then renders that answer in the child's voice. Claude Sonnet writes coach feedback, scores explain-back fidelity, and answers handbook questions from retrieved excerpts (BM25 / vector search over the committed chunks). |
 | **Guardrails** | Every model output is checked against a strict schema, then guarded: a child's numbers must belong to the rule engine's permitted set; a coach's quoted words must exist in the real conversation; a guide answer may cite only the passages that were retrieved. A failed guard is retried once, then replaced by a template. Every failure is logged (`backend/app/llm/guards.py`, `guard_stats.py`). |
 | **Evaluation** | Latency logs and guard-failure counts (admin page); the harnesses in `eval/` for latency, guard cases, retrieval recall, classifier accuracy, and coach agreement (kappa). No coach double-coding has been done, so there is no kappa figure yet. |
 | **Output** | Text always, plus a synthesised voice reply (a distinct voice per child), buttons, and the ARP and trainer views built from consented, aggregated data. |
+
+### Evidence and Verified Benchmarks
+
+Full measurement breakdown, formulas, and guard tests live in [docs/evidence/README.md](docs/evidence/README.md):
+- **Cost per Teacher Loop**: Measured tokens per prompt and speech seconds based on repository configs (`backend/app/config.py#L72-L78`, `eval/cost/cost_report.py`).
+- **15 Input/Output Guards**: Exact regex, schema, and hallucination checks across all LLM roles; 8/8 adversarial benchmark passed (`eval/guards/REPORT.md`).
+- **Turn Timing Breakdown**: Component latencies (STT ~2.5s, Tagging ~1.2s, Rule Engine ~0.01s, Voice ~1.4s, TTS ~3.2s) well within the 20s budget.
+- **Honest Provable Limits**: Every number cites its source file; unmeasured figures are marked `TODO-HUMAN`.
 
 ### External AI services
 
@@ -76,32 +87,47 @@ Every service has a mock chosen by environment variable. With an empty `.env` th
 
 ---
 
-## Privacy
+## Privacy by Design
 
+- **Teacher practice is never shown by teacher name.** Practice sessions are private to the teacher. Oversight screens (ARP, Trainer, Coach) provide **school-level aggregates only**; supervisors can never inspect individual teacher transcripts, individual scores, or individual mistake rates.
+- **n < 10 suppression.** The trainer, district, and ARP views enforce a strict minimum group size: any school, batch, or cluster with fewer than 10 consenting practicing teachers displays nothing identifying.
 - **No child data.** The children are simulated. No real child's data is collected or stored.
-- **Consent.** Setup asks consent to use the service. Sharing a teacher's scores with their ARP is a separate opt-in, off by default and changeable from the menu.
-- **n < 10 suppression.** The trainer and district views show only aggregates for any batch or cluster with fewer than 10 teachers.
+- **Explicit Two-Tier Consent.** Setup asks consent to use the service. Sharing a teacher's scores with their ARP is a separate opt-in, off by default and changeable at any time from the menu.
 - **Class struggles and skills.** "What teachers want to get better at" and "Common class struggles": shown only when at least 10 consenting teachers answered.
-- **Audio is not kept.** A voice note is held in memory while it is transcribed, then discarded. Only the text is stored.
-- **Delete my data.** A teacher can type `delete my data` (or use `/teacher/delete`) to erase their account and everything attached to it, after a confirmation. Inactive transcripts are also purged after `DATA_RETENTION_DAYS` (90).
+- **Audio is not kept.** A voice note is held in memory while it is transcribed, then immediately discarded. Audio files are never written to disk or retained.
+- **Delete my data.** A teacher can type `delete my data` (or use `/teacher/delete`) to erase their account and everything attached to it, after confirmation. Inactive transcripts are purged after `DATA_RETENTION_DAYS` (90).
 - **Phone numbers** (WhatsApp only) are stored as a salted hash plus a Fernet-encrypted copy.
 - **Cross-border processing.** Voice and text go to Sarvam and Anthropic APIs. A legal review against the DPDP Act 2023 has not been done.
 - **Shared devices.** The offline copy of a chat belongs to one account: it is cleared on logout, on session expiry and when a different account logs in on the same browser.
 
 ---
 
+## What This Does NOT Do
+
+To prevent misunderstanding and avoid overpromising, Abhyas operates under strict boundaries:
+
+1. **Does NOT replace human teachers or mentors**: Abhyas is an asynchronous practice simulator before teaching, not a classroom substitute.
+2. **Does NOT grade, rank, or discipline teachers**: No supervisory dashboard ranks teachers, generates disciplinary alerts, or displays individual mistake logs.
+3. **Does NOT let LLMs decide simulated child answers**: Children's answers, misconceptions, and numbers are determined 100% by a deterministic rule engine (`backend/app/rule_engine/`). No LLM invents or calculates a child's arithmetic response.
+4. **Does NOT hallucinate ungrounded handbook advice**: The Guide answers strictly from cited passages of approved NIPUN Bharat and NCERT sandarshikas. If confidence is below 0.60 or passages are missing, it honestly states so and escalates to the ARP.
+5. **Does NOT execute AI inference offline on device**: Offline mode supports classroom checklists, cached history review, and outbox queuing. Speech recognition (STT) and LLM inference require server connectivity.
+6. **Does NOT claim verified field pilot results or learning outcomes**: All pilot cohort data in the demo is synthetic (clearly marked 'डेमो'). No longitudinal student learning gains or teacher field studies have been conducted.
+
+---
+
 ## Offline and low connectivity
 
-Pages are server-rendered HTML with a little vanilla JavaScript and one CSS file, kept under 150 KB on first load (audio excluded), for low-cost Android phones on 2G or 3G.
+Pages are server-rendered HTML with vanilla JavaScript and one CSS file, kept under 150 KB on first load (audio excluded), for low-cost Android phones on 2G or 3G.
+For the complete technical breakdown of offline capabilities and limits, see [docs/OFFLINE_CAPABILITIES.md](docs/OFFLINE_CAPABILITIES.md).
 
 | | Needs a connection? | Without one |
 |---|---|---|
 | Opening the app again | Only the first visit | The service worker keeps the login page and static files |
-| Reading the offline page | No | Shows a checklist and the last 50 messages of **your** account (`/offline.html`) |
-| Sending text or a voice note | Yes, to be answered | It is queued on the phone and sent when the network returns; the message shows a clock, then a tick |
-| Practice replies (the children, the coach) | Yes | Not available offline; they need the server and the models |
-| Audio playback | On demand | Lite mode skips automatic audio; text is always shown first |
-| A sleeping server | | The phone retries quietly for about 30 seconds before saying so |
+| Reading the offline page | No | Shows a 4-step classroom checklist, saved rehearsal transcripts, and Guide history (`/offline.html`) |
+| Sending text or a voice note | Yes, to be answered | It is queued on the phone (IndexedDB outbox) and sent when the network returns |
+| Practice replies (the children, the coach) | Yes | Not available offline; requires backend rule engine and LLM providers |
+| Audio playback | On demand | Lite mode skips automatic audio; previously played clips are cached in SW LRU |
+| A sleeping server | | The phone retries quietly with backoff for ~30 seconds before notifying |
 
 ---
 
@@ -137,7 +163,7 @@ Every variable is listed there with a placeholder and a comment. The groups:
 |---|---|---|
 | Server | `ENVIRONMENT`, `PORT`, `LOG_LEVEL`, `PUBLIC_BASE_URL`, `GIT_SHA` | `ENVIRONMENT=production` refuses to start with placeholder secrets |
 | Database | `DATABASE_URL`, `ALEMBIC_DATABASE_URL` | Async URL for the app, plain URL for Alembic |
-| Security | `SESSION_SECRET`, `PHONE_HASH_SALT`, `PHONE_ENC_KEY`, `DEMO_PASSWORD`, `ADMIN_PASSWORD` | Generate your own; production rejects the placeholders |
+| Security | `SESSION_SECRET`, `PHONE_HASH_SALT`, `PHONE_ENC_KEY`, `DEMO_PASSWORD`, `ADMIN_PASSWORD`, `JUDGE_PASSWORD` | Generate your own; production rejects the placeholders |
 | Claude | `LLM_PROVIDER`, `ANTHROPIC_API_KEY`, `CLAUDE_MODEL_*`, `LLM_DAILY_TOKEN_BUDGET` | Empty key means the mock model |
 | Speech | `STT_PROVIDER`, `TTS_PROVIDER`, `*_FALLBACK_PROVIDER`, `SARVAM_*`, `GEMINI_*`, `BHASHINI_*`, `MOCK_STT_TEXT` | Empty keys mean mock speech |
 | WhatsApp | `WHATSAPP_*` | Off unless `WHATSAPP_ENABLED=true` |
