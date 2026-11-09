@@ -341,7 +341,53 @@
 
     {% if pack %}{% include "_cluster_pack.html" %}{% endif %}
 
-    <section class="arp-section" aria-label="{{ get_message('ui_arp_section_teachers') }}">
+        <!-- School-Level Aggregates (spec/09 §9.3, Job 03: minimum group size suppression N=10) -->
+    {% if digest.school_aggregates %}
+    <section class="arp-section" id="section-school-aggregates" aria-label="विद्यालय-वार सारांश (School Aggregates)">
+      <div class="arp-section-title">
+        <span>विद्यालय-वार अभ्यास सारांश</span>
+      </div>
+      <p style="margin: 0.5rem 0 1rem; color: var(--muted); font-size: 0.88rem;">
+        गोपनीयता नियम: शिक्षकों की व्यक्तिगत पहचान सुरक्षित रखने के लिए 10 से कम अभ्यास करने वाले शिक्षकों वाले विद्यालयों का डेटा छिपाया जाता है (n &lt; 10)।
+      </p>
+      <div class="arp-table-wrap table-scroll">
+        <table class="arp-table" id="table-schools">
+          <thead>
+            <tr>
+              <th>विद्यालय</th>
+              <th>अभ्यास करने वाले शिक्षक (n)</th>
+              <th>स्थिति / अभ्यास मूव</th>
+              <th>पूरे किए गए चक्र</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in digest.school_aggregates %}
+            <tr>
+              <td><strong>{{ s.school_id }}</strong></td>
+              <td><strong>{{ s.n_practising }}</strong></td>
+              {% if s.suppressed %}
+              <td colspan="2" class="suppressed-cell" style="background-color: #faf5f5; text-align: center;">
+                <span class="suppressed-badge" style="display: inline-block; background: #fbeaea; color: var(--danger); padding: 0.3rem 0.6rem; border-radius: var(--radius-sm); font-size: 0.82rem; font-weight: 600; border: 1px dashed var(--danger);">n &lt; 10 (पहचान सुरक्षित रखने हेतु छिपाया गया)</span>
+              </td>
+              {% else %}
+              <td>
+                {% if s.moves_practised %}
+                  {{ s.moves_practised | join(', ') }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>{{ s.completed_loops }}</td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+
+<section class="arp-section" aria-label="{{ get_message('ui_arp_section_teachers') }}">
       <div class="arp-section-title">
         <span>{{ get_message('ui_arp_section_teachers') }}</span>
       </div>

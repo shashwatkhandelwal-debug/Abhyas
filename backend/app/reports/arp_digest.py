@@ -11,7 +11,8 @@ Strict privacy enforcement:
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from collections import defaultdict
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,7 @@ from backend.app.auth.access import (
     get_teacher_display_name_for_arp,
     scope_teachers_query,
 )
+from backend.app.config import settings
 from backend.app.core.messages import get_message
 from backend.app.db.models import (
     AdoptionEvidence,
@@ -104,6 +106,16 @@ class RubricDot:
 
 
 @dataclass(frozen=True)
+class SchoolDigestRow:
+    school_id: str
+    n_practising: int
+    suppressed: bool
+    completed_loops: int
+    moves_practised: list[str]
+    needs_help_count: int
+
+
+@dataclass(frozen=True)
 class TeacherDigestRow:
     teacher_id: str
     name: str
@@ -152,6 +164,7 @@ class ARPDigestData:
     non_consenting_count: int
     suggested_visits: list[SuggestedVisit]
     escalated_questions: list[EscalatedQuestionItem]
+    school_aggregates: list[SchoolDigestRow] = field(default_factory=list)
 
 
 def _load_move_metadata(move_id: str) -> tuple[str, list[str]]:
@@ -376,6 +389,30 @@ async def build_arp_digest(
             )
         )
 
+    # School-level aggregation with minimum group size suppression (spec/09 §9.3, Job 03)
+    schools_map: dict[str, list[TeacherDigestRow]] = defaultdict(list)
+    for r in consenting_rows:
+        schools_map[r.school].append(r)
+
+    school_aggregates: list[SchoolDigestRow] = []
+    suppression_threshold = settings.AGGREGATION_SUPPRESSION_N
+    for school_name, t_rows in sorted(schools_map.items()):
+        n_p = len(t_rows)
+        is_suppressed = n_p < suppression_threshold
+        distinct_moves = sorted({tr.move_title for tr in t_rows if tr.move_title and tr.move_title != "—"})
+        c_loops = sum(1 for tr in t_rows if tr.step_reached in ("DONE", "REFLECT"))
+        help_cnt = sum(1 for tr in t_rows if tr.needs_help)
+        school_aggregates.append(
+            SchoolDigestRow(
+                school_id=school_name,
+                n_practising=n_p,
+                suppressed=is_suppressed,
+                completed_loops=0 if is_suppressed else c_loops,
+                moves_practised=[] if is_suppressed else distinct_moves,
+                needs_help_count=0 if is_suppressed else help_cnt,
+            )
+        )
+
     return ARPDigestData(
         cluster_id=cluster_id,
         cluster_name=cluster_name,
@@ -389,4 +426,5 @@ async def build_arp_digest(
         non_consenting_count=non_consenting_count,
         suggested_visits=suggested_visits,
         escalated_questions=escalated_items,
+        school_aggregates=school_aggregates,
     )
