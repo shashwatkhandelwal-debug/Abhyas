@@ -185,6 +185,8 @@ class GuideAnswerResult(BaseModel):
     guard_error: str | None = None
     used_fallback: bool = False
     no_sources: bool = False  # escalated because the excerpts did not support an answer
+    model_unavailable: bool = False  # escalated because the model/service was unavailable
+    low_confidence: bool = False  # escalated because confidence was below threshold
 
 
 class TranslationOutput(BaseModel):

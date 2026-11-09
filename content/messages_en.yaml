@@ -90,6 +90,8 @@ ask_try_this_week: {text: "Try this week:\n{tip}"}
 ask_escalated: {text: "Good question. I do not have a reliable answer, so I have put it in your ARP's review list; they will see it there."}
 learn_reference: {text: "What the official document says on this topic (summary):\n{summary}\n{citation}"}
 ask_not_in_sources: {text: "I could not find the answer to this in my official documents, so I will not guess. I have put your question in your ARP's review list; they will see it there."}
+ask_low_confidence: {text: "There is not enough clarity in the official documents for this question (confidence below 60%). Rather than giving misleading advice, I have placed your question in your ARP's review list for human guidance."}
+ask_model_unavailable: {text: "Sorry, the handbook guide service is currently unavailable. Rather than guessing without reliable grounding, I have forwarded your question to your ARP's review list; they will see it there."}
 ask_out_of_scope: {text: "Sorry, I can only help with Class 1–3 teaching and classroom questions."}
 ask_admin: {text: "This information will come from your BEO or ARP office. I have passed your question on to your ARP."}
 ask_resume: {text: "Let's carry on from where we were."}

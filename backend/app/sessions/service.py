@@ -2040,6 +2040,10 @@ class SessionService:
             elif answer_res.escalated:
                 if category == "admin":
                     reply_key = "ask_admin"
+                elif getattr(answer_res, "model_unavailable", False):
+                    reply_key = "ask_model_unavailable"
+                elif getattr(answer_res, "low_confidence", False):
+                    reply_key = "ask_low_confidence"
                 elif answer_res.no_sources:
                     reply_key = "ask_not_in_sources"
                 else:

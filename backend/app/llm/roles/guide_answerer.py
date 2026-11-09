@@ -177,6 +177,7 @@ async def answer_guide_question(
         {"role": "user", "content": user_content},
     ]
 
+    llm_was_unavailable = False
     for attempt in range(2):
         try:
             tool_input = await call_tool(
@@ -206,17 +207,17 @@ async def answer_guide_question(
                         parsed.confidence,
                         settings.GUIDE_CONFIDENCE_THRESHOLD,
                     )
-                    not_found = load_catalog_message(
-                        "ask_not_in_sources", address_form=address_form
+                    low_conf_msg = load_catalog_message(
+                        "ask_low_confidence", address_form=address_form
                     )
                     return GuideAnswerResult(
                         output=parsed,
-                        answer_text_hi=not_found,
+                        answer_text_hi=low_conf_msg,
                         escalated=True,
                         sources_cited=[],
                         guarded=True,
-                        used_fallback=False,
-                        no_sources=True,
+                        used_fallback=True,
+                        low_confidence=True,
                     )
 
                 chunks_by_id = {c.chunk_id: c for c in chunks}
@@ -259,6 +260,7 @@ async def answer_guide_question(
                 "guide_answerer LLM unavailable: %s; escalating to ARP",
                 exc,
             )
+            llm_was_unavailable = True
             break
         except (ValidationError, httpx.HTTPError, json.JSONDecodeError, TimeoutError) as exc:
             logger.warning(
@@ -268,6 +270,24 @@ async def answer_guide_question(
             )
             if attempt == 1:
                 break
+
+    if llm_was_unavailable:
+        logger.warning("guide_answerer LLM unavailable; returning honest unavailable message")
+        unavail_msg = load_catalog_message("ask_model_unavailable", address_form=address_form)
+        return GuideAnswerResult(
+            output=GuideAnswererOutput(
+                answer_hi=unavail_msg,
+                source_ids=[],
+                confidence=0.0,
+            ),
+            answer_text_hi=unavail_msg,
+            escalated=True,
+            sources_cited=[],
+            guarded=True,
+            guard_error="LLM unavailable; escalated to ARP",
+            used_fallback=True,
+            model_unavailable=True,
+        )
 
     logger.warning("guide_answerer exhausted retries or failed guard; escalating to ARP")
     escalated_msg = load_catalog_message("ask_escalated", address_form=address_form)
