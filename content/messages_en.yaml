@@ -1131,5 +1131,7 @@ obs_note_no_step: {text: "Your ARP noticed: {worked}."}
 obs_worked_none: {text: "your class was visited"}
 btn_obs_ok: {text: "Okay"}
 obs_ok_ack: {text: "Thank you. This is only a suggestion for you, not a score."}
+ui_novice_teacher_tip: {text: "Tip (foundation practice): Rather than telling the answer directly, use concrete objects/bundles and ask how the child thought."}
+ui_model_teacher_exemplar_label: {text: "Model teacher demonstration:"}
 ui_calibrate_demo_data: {text: "This is demo data, so the conversation text is not stored. For a real practice, it appears here."}
 ui_calibrate_no_turn_text: {text: "No text stored for this demo turn."}

@@ -170,6 +170,8 @@ class SessionService:
         if fast_start.eligible(experience_band):  # FAST_START_ENABLED: experienced teachers
             buttons.append(fast_start.fast_button(address_form))
             intro_note = f"\n\n{fast_start.note(address_form)}"
+        elif experience_band in ("0-1", "2-5"):
+            intro_note = f"\n\n{get_message('ui_novice_teacher_tip', address_form)}"
         else:
             intro_note = ""
 
@@ -2770,6 +2772,16 @@ class SessionService:
                     change=coach_res.feedback.change_hi,
                     exact_words=coach_res.feedback.exact_words_hi,
                 )
+
+                # Show modelled example of teaching move done well (Job 05)
+                model_turn = next(
+                    (t for t in move.model_rehearsal if getattr(t, "speaker", None) == "teacher" and t.text_hi),
+                    None,
+                )
+                if model_turn and model_turn.text_hi:
+                    model_label = get_message("ui_model_teacher_exemplar_label", address_form)
+                    model_box = f"{model_label}\n\"{model_turn.text_hi}\""
+                    feedback_body = f"{feedback_body}\n\n{model_box}"
 
                 skill_lead = self._skill_lead(move, coach_res.feedback.scores, ctx, address_form)
                 if skill_lead:
