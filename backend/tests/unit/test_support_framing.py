@@ -98,6 +98,13 @@ async def arp_html(
     app_.dependency_overrides[get_current_user] = lambda: user
     app_.dependency_overrides[get_db_session] = lambda: AsyncMock(spec=AsyncSession)
     monkeypatch.setattr(arp_module, "build_arp_digest", AsyncMock(return_value=_digest()))
+    from backend.app.reports.cluster_pack import ClusterPack
+
+    monkeypatch.setattr(
+        arp_module,
+        "build_cluster_pack",
+        AsyncMock(return_value=ClusterPack(n_teachers=0, window_days=30, suppressed=True)),
+    )
     monkeypatch.setattr(arp_module, "module_progress_summary", AsyncMock(return_value=[]))
     async with AsyncClient(
         transport=ASGITransport(app=app_), base_url="http://testserver"
