@@ -843,6 +843,12 @@ ui_offline_history_title: {text: "हाल का अभ्यास इति�
 ui_offline_history_loading: {text: "इतिहास लोड हो रहा है…", audio: false}
 ui_offline_history_empty: {text: "कोई सहेजा हुआ संदेश नहीं है।", audio: false}
 ui_offline_history_failed: {text: "इतिहास लोड नहीं हो सका।", audio: false}
+ui_offline_tab_all: {text: "सभी संदेश", audio: false}
+ui_offline_tab_rehearsal: {text: "सहेजे गए अभ्यास", audio: false}
+ui_offline_tab_guide: {text: "मार्गदर्शिका प्रश्नोत्तर", audio: false}
+ui_offline_capabilities_heading: {text: "ऑफ़लाइन व ऑनलाइन क्षमताएँ", audio: false}
+ui_offline_capabilities_available: {text: "ऑफ़लाइन उपलब्ध: कक्षा चेकलिस्ट, सहेजे गए अभ्यास संवाद, मार्गदर्शिका इतिहास, और आउटबॉक्स कतार।", audio: false}
+ui_offline_capabilities_required: {text: "ऑनलाइन आवश्यक: नई आवाज़ पहचान (STT), सिमुलेटेड बच्चों के नए उत्तर, और नया कोच फ़ीडबैक।", audio: false}
 ui_review_reason_low_confidence: {text: "कम भरोसा / समीक्षा आवश्यक", audio: false}
 ui_review_reason_question_escalated: {text: "ARP को भेजा गया प्रश्न", audio: false}
 ui_review_reason_guard_failure: {text: "गार्ड विफलता", audio: false}

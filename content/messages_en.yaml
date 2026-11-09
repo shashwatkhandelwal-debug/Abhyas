@@ -563,6 +563,12 @@ ui_offline_history_title: {text: "Recent practice history (last 50 messages)"}
 ui_offline_history_loading: {text: "Loading history…"}
 ui_offline_history_empty: {text: "There are no saved messages."}
 ui_offline_history_failed: {text: "Could not load history."}
+ui_offline_tab_all: {text: "All messages"}
+ui_offline_tab_rehearsal: {text: "Saved rehearsals"}
+ui_offline_tab_guide: {text: "Guide Q&A"}
+ui_offline_capabilities_heading: {text: "Offline and Online Capabilities"}
+ui_offline_capabilities_available: {text: "Available offline: classroom checklist, saved rehearsals, cached Guide Q&A, and outbox queue."}
+ui_offline_capabilities_required: {text: "Requires internet: new speech recognition (STT), new simulated child responses, and new coach feedback."}
 ui_review_reason_low_confidence: {text: "Low confidence / review needed"}
 ui_review_reason_question_escalated: {text: "Question sent to the ARP"}
 ui_review_reason_guard_failure: {text: "Guard failure"}
